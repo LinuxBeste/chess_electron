@@ -1,0 +1,23 @@
+# Build artifacts
+*.o
+*.exe
+*.out
+*.a
+*.so
+*.dll
+build/
+bin/
+
+# Node.js
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+
+# Web build output
+dist/
+
+package-lock.json
