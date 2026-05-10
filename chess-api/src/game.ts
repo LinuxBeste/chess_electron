@@ -211,6 +211,15 @@ export function joinGame(
   /* Black joins and the game immediately becomes active */
   game.players.black = playerId;
   game.status = 'active';
+
+  /* Broadcast to P1 (white) so their game view updates from waiting → active.
+     P2 gets the game state from the REST response. */
+  broadcastToGame(gameId, {
+    type: 'game_started',
+    gameId,
+    game,
+  });
+
   return { success: true, game };
 }
 

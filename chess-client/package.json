@@ -1,0 +1,25 @@
+{
+  "name": "chess-client",
+  "version": "1.0.0",
+  "description": "Premium desktop chess client",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build:main": "webpack --config webpack.main.config.js",
+    "build:renderer": "webpack --config webpack.renderer.config.js",
+    "build": "npm run build:main && npm run build:renderer",
+    "start": "electron .",
+    "dev": "npm run build && electron .",
+    "typecheck": "tsc --noEmit",
+    "package": "npm run build && electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.13.0",
+    "html-webpack-plugin": "^5.6.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.4.0",
+    "webpack": "^5.90.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {}
+}

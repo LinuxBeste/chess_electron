@@ -7,6 +7,7 @@
 
 import supertest from 'supertest';
 import { app } from '../src/index';
+import { describe, test, expect } from '@jest/globals';
 
 const request = supertest(app);
 

@@ -1,0 +1,22 @@
+{
+  "appId": "com.chess.client",
+  "productName": "Chess Client",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "assets/**/*"
+  ],
+  "linux": {
+    "target": ["AppImage", "deb"],
+    "category": "Game"
+  },
+  "mac": {
+    "target": ["dmg"],
+    "category": "public.app-category.games"
+  },
+  "win": {
+    "target": ["nsis"]
+  }
+}
