@@ -11,6 +11,26 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
+import * as fs from 'fs';
+import * as path from 'path';
+
+/* Read CHESS_SERVER_URL from .env file at project root */
+let serverUrl = 'http://localhost:3000';
+try {
+  const envPath = path.join(__dirname, '..', '..', '.env');
+  const envContent = fs.readFileSync(envPath, 'utf-8');
+  for (const line of envContent.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx !== -1) {
+        const key = trimmed.slice(0, eqIdx).trim();
+        const val = trimmed.slice(eqIdx + 1).trim();
+        if (key === 'CHESS_SERVER_URL' && val) serverUrl = val;
+      }
+    }
+  }
+} catch {} /* .env missing — use default */
 
 contextBridge.exposeInMainWorld('electronAPI', {
   /** Platform string (darwin/win32/linux) for OS-specific UI adjustments */
@@ -18,4 +38,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   /** Open a second window for testing multi-player */
   openNewWindow: () => ipcRenderer.send('open-new-window'),
+
+  /** Server URL for the chess API — from .env CHESS_SERVER_URL or default */
+  serverUrl,
 });

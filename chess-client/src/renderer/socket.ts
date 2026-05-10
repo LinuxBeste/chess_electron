@@ -70,6 +70,12 @@ class SocketManager {
   private moveHandlers = new Set<MoveHandler>();
   private gameOverHandlers = new Set<GameOverHandler>();
   private gameStartedHandlers = new Set<GameStartedHandler>();
+  private serverUrl = 'http://localhost:3000';
+
+  /** Set a custom server URL for the WebSocket connection */
+  setServerUrl(url: string): void {
+    this.serverUrl = url;
+  }
 
   /**
    * Connect to the WebSocket endpoint.
@@ -89,7 +95,8 @@ class SocketManager {
     this.shouldReconnect = true;
     store.set('wsStatus', 'connecting');
 
-    const wsUrl = `ws://localhost:3000/?token=${encodeURIComponent(token!)}`;
+    const wsBase = this.serverUrl.replace(/^http/, 'ws');
+    const wsUrl = `${wsBase}/?token=${encodeURIComponent(token!)}`;
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {

@@ -2,6 +2,7 @@ import { store } from './store';
 import { socketManager } from './socket';
 import { initRouter } from './router';
 import { el } from './chess';
+import { setBaseUrl } from './api';
 import type { ToastMessage } from '../types';
 
 import { loginView } from './views/login';
@@ -10,6 +11,11 @@ import { gameView } from './views/game';
 import { resultView } from './views/result';
 
 const container = document.getElementById('app')!;
+
+/* Configure server URL from Electron preload config or default to localhost */
+const serverUrl = window.electronAPI?.serverUrl || 'http://localhost:3000';
+setBaseUrl(serverUrl);
+socketManager.setServerUrl(serverUrl);
 
 /* Persistent toast bar above all views */
 const toastBar = el('div', ['toast-bar'], { style: 'position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;flex-direction:column;align-items:center;pointer-events:none;padding:8px 16px 0' });

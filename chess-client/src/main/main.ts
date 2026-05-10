@@ -1,8 +1,27 @@
 import { app, BrowserWindow, screen, ipcMain } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 
 /* Disable GPU acceleration for environments without a GPU (Docker, remote, VMs) */
 app.disableHardwareAcceleration();
+
+/* Load .env from project root for CHESS_SERVER_URL config */
+let serverUrl = 'http://localhost:3000';
+try {
+  const envPath = path.join(__dirname, '..', '..', '.env');
+  const envContent = fs.readFileSync(envPath, 'utf-8');
+  for (const line of envContent.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx !== -1) {
+        const key = trimmed.slice(0, eqIdx).trim();
+        const val = trimmed.slice(eqIdx + 1).trim();
+        if (key === 'CHESS_SERVER_URL' && val) serverUrl = val;
+      }
+    }
+  }
+} catch {} /* .env file missing — use default */
 
 /* Window sized for a chess board + side panels, not full-screen by default */
 function createWindow(): void {

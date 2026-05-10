@@ -67,6 +67,7 @@ declare global {
     electronAPI?: {
       platform: string;
       openNewWindow: () => void;
+      serverUrl: string;
     };
   }
 }

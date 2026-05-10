@@ -7,6 +7,7 @@
 
 import * as chess from '../src/chess';
 import { Board, Piece, CastlingRights } from '../src/types';
+import { describe, test, expect } from '@jest/globals';
 
 /**
  * Build a board from an 8-string visual representation.
