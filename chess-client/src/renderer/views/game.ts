@@ -686,9 +686,9 @@ function animateOpponentMove(from: string, to: string): void {
   const animPiece = el('div', [], {
     style: `position:absolute;z-index:10;width:${sqSize}px;height:${sqSize}px;top:${fromRect.top - rect.top}px;left:${fromRect.left - rect.left}px;transition:all 220ms cubic-bezier(0.25,0.46,0.45,0.94);pointer-events:none`,
   });
-  /* Copy the SVG from the destination square */
-  const destSvg = toSq.querySelector('svg');
-  if (destSvg) animPiece.innerHTML = destSvg.outerHTML;
+  /* Copy the piece from the destination square */
+  const destPiece = toSq.querySelector('.piece-char');
+  if (destPiece) animPiece.innerHTML = (destPiece as HTMLElement).outerHTML;
   boardEl.appendChild(animPiece);
 
   /* Trigger animation on next frame */

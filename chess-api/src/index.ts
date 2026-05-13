@@ -3,6 +3,7 @@
  * supertest can import the app without starting the server. */
 
 import express, { Express } from 'express';
+import cors from 'cors';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
@@ -11,6 +12,8 @@ import * as game from './game';
 
 export const app: Express = express();
 
+/* Enable CORS for all origins (Electron renderer loads from file://) */
+app.use(cors());
 /* Parse incoming JSON request bodies for all routes */
 app.use(express.json());
 /* Attach all API routes */

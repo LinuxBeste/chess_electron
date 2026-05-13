@@ -25,6 +25,11 @@ export const lobbyView = {
     }, 'Open Games');
     leftCol.appendChild(leftHeader);
 
+    const statusEl = el('div', [], {
+      style: 'font-size:13px;font-weight:300;color:#888;text-align:center;padding:16px;display:none',
+    });
+    leftCol.appendChild(statusEl);
+
     const gameList = el('div', [], {
       style: 'flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px',
     });
@@ -82,14 +87,21 @@ export const lobbyView = {
 
     /* Poll open games every 3s, diff DOM to avoid full re-render */
     let polling = true;
+    let hasGames = false;
 
     async function poll(): Promise<void> {
       if (!polling) return;
       try {
         const games = await api.getOpenGames();
+        hasGames = games.length > 0;
         updateGameList(gameList, games);
+        statusEl.style.display = hasGames ? 'none' : 'block';
+        statusEl.style.color = '#888';
+        statusEl.textContent = 'No open games yet';
       } catch {
-        /* Network errors are transient — keep polling */
+        statusEl.style.display = 'block';
+        statusEl.style.color = 'rgba(220,80,80,0.7)';
+        statusEl.textContent = 'Cannot connect to server';
       }
       if (polling) setTimeout(poll, 3000);
     }
