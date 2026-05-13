@@ -5,7 +5,7 @@ import { Router, Request, Response } from 'express';
 import { PieceType } from './types';
 import * as game from './game';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 /**
  * Middleware: extract and validate the bearer token from the

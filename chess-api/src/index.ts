@@ -2,14 +2,14 @@
  * and starts listening on the configured port.  Exported separately so
  * supertest can import the app without starting the server. */
 
-import express from 'express';
+import express, { Express } from 'express';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
 import routes from './routes';
 import * as game from './game';
 
-export const app = express();
+export const app: Express = express();
 
 /* Parse incoming JSON request bodies for all routes */
 app.use(express.json());
