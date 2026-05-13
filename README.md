@@ -5,6 +5,7 @@
 ![Electron](https://img.shields.io/badge/Electron-29-47848F?logo=electron&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?logo=typescript&logoColor=white)
 ![Node](https://img.shields.io/badge/Node-20-339933?logo=node.js&logoColor=white)
+![pnpm](https://img.shields.io/badge/pnpm-9-F69220?logo=pnpm&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-4.18-000000?logo=express&logoColor=white)
 ![WebSocket](https://img.shields.io/badge/ws-8.14-000000?logo=socket.io&logoColor=white)
 ![Webpack](https://img.shields.io/badge/Webpack-5.90-8DD6F9?logo=webpack&logoColor=white)
