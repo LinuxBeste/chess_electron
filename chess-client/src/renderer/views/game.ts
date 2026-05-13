@@ -149,12 +149,38 @@ function initBoard(g: GameState): void {
   /* Show waiting overlay if game hasn't started yet */
   if (g.status === 'waiting' && boardEl) {
     waitingOverlay = el('div', [], {
-      style: 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;border-radius:8px;z-index:5',
+      style: 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border-radius:8px;z-index:5',
     });
     const waitingText = el('div', [], {
       style: 'font-size:18px;font-weight:500;color:#e0e0e0;letter-spacing:0.3px',
     }, 'Waiting for opponent...');
     waitingOverlay.appendChild(waitingText);
+
+    const idRow = el('div', [], {
+      style: 'display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);padding:8px 14px;border-radius:8px',
+    });
+    const idLabel = el('span', [], {
+      style: 'font-size:12px;font-weight:400;color:#888;letter-spacing:0.2px',
+    }, 'Game ID:');
+    idRow.appendChild(idLabel);
+    const idValue = el('span', [], {
+      style: 'font-size:13px;font-weight:500;color:#e0e0e0;letter-spacing:0.3px;font-family:monospace',
+    }, g.id);
+    idRow.appendChild(idValue);
+    const copyIdBtn = el('button', [], {
+      style: 'padding:4px 10px;font-size:11px;font-weight:500;color:#4f8ef7;background:transparent;border:1px solid #4f8ef7;border-radius:4px;cursor:pointer;letter-spacing:0.2px;transition:background 150ms ease,color 150ms ease',
+    }, 'Copy');
+    copyIdBtn.addEventListener('mouseenter', () => { copyIdBtn.style.background = '#4f8ef7'; copyIdBtn.style.color = '#fff'; });
+    copyIdBtn.addEventListener('mouseleave', () => { copyIdBtn.style.background = 'transparent'; copyIdBtn.style.color = '#4f8ef7'; });
+    copyIdBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(g.id).then(() => {
+        copyIdBtn.textContent = 'Copied';
+        setTimeout(() => { copyIdBtn.textContent = 'Copy'; }, 2000);
+      });
+    });
+    idRow.appendChild(copyIdBtn);
+    waitingOverlay.appendChild(idRow);
+
     boardEl.appendChild(waitingOverlay);
   }
 

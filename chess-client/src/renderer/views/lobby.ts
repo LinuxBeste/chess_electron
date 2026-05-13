@@ -197,6 +197,7 @@ function updateGameList(container: HTMLElement, games: GameState[]): void {
   }
 
   for (const game of games) {
+    if (game.visibility === 'private') continue;
     const existing = gameCardMap.get(game.id);
     const creatorId = game.players.white;
     const creatorName = creatorId === store.get('playerId') ? 'You' : creatorId?.slice(0, 8) ?? 'Unknown';
