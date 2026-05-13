@@ -638,8 +638,8 @@ function updateBoardDisplay(): void {
     const piece = board[rank]?.[file];
 
     /* Clear existing piece content (keep labels) */
-    const existingSvg = sq.querySelector('svg');
-    if (existingSvg) existingSvg.remove();
+    const existingPiece = sq.querySelector('.piece-char');
+    if (existingPiece) existingPiece.remove();
     const dots = sq.querySelectorAll(':scope > div');
     dots.forEach(d => d.remove());
 
