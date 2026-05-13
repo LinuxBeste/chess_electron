@@ -450,7 +450,7 @@ export function isSquareAttackedBy(board: Board, rank: number, file: number, byC
 
   /* Check for pawn attacks: white pawns attack upward (decreasing rank),
    * black pawns attack downward (increasing rank) */
-  const pawnDir = byColor === 'white' ? -1 : 1;
+  const pawnDir = byColor === 'white' ? 1 : -1;
   for (const df of [-1, 1]) {
     const r = rank + pawnDir;
     const f = file + df;
@@ -789,7 +789,7 @@ export function moveToAlgebraic(
       disambig = move.from[0];
     } else {
       const sameRank = ambiguous.some(m => m.from[1] === move.from[1]);
-      disambig = sameRank ? move.from : move.from[0];
+      disambig = sameRank ? move.from : move.from[1];
     }
   }
 

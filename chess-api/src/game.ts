@@ -147,8 +147,12 @@ function isPlayerInActiveGame(playerId: string): boolean {
  * The game starts in 'waiting' status — it needs a second player (black)
  * to join before any moves can be made.  The board is set to the standard
  * starting position and both sides have full castling rights initially.
+ *
+ * @param playerId - The white player's ID.
+ * @param visibility - Whether the game appears in the open games list.
+ *   Defaults to 'public'.  Private games can only be joined by direct ID.
  */
-export function createGame(playerId: string): GameState {
+export function createGame(playerId: string, visibility: 'public' | 'private' = 'public'): GameState {
   const id = uuidv4();
   const game: GameState = {
     id,
@@ -168,17 +172,18 @@ export function createGame(playerId: string): GameState {
     lastMove: null,
     winner: null,
     createdAt: Date.now(),
+    visibility,
   };
   games.set(id, game);
   return game;
 }
 
 /**
- * List all games that are waiting for a second player.
- * Used by the game-lobby UI to show available matches.
+ * List all games that are waiting for a second player and public.
+ * Private games are excluded — they must be joined by direct ID.
  */
 export function getOpenGames(): GameState[] {
-  return Array.from(games.values()).filter(g => g.status === 'waiting');
+  return Array.from(games.values()).filter(g => g.status === 'waiting' && g.visibility === 'public');
 }
 
 /**
@@ -364,12 +369,13 @@ export function resignGame(
 ): { success: boolean; error?: string; state?: GameState } {
   const game = games.get(gameId);
   if (!game) return { success: false, error: 'Game not found' };
-  if (game.status !== 'active') return { success: false, error: 'Game is not active' };
 
   let resigningColor: Color | null = null;
   if (game.players.white === playerId) resigningColor = 'white';
   else if (game.players.black === playerId) resigningColor = 'black';
   if (!resigningColor) return { success: false, error: 'You are not a player in this game' };
+
+  if (game.status !== 'active') return { success: false, error: 'Game is not active' };
 
   /* The opponent is declared the winner */
   const winner: Color = resigningColor === 'white' ? 'black' : 'white';

@@ -92,10 +92,14 @@ export function healthCheck(): Promise<{ status: string; uptime: number; gamesAc
 }
 
 /* POST /games — auth required.
+ * Optional body field: visibility ('public' | 'private', defaults to 'public').
  * Response shape confirmed in ../chess-api/src/routes.ts line 62-65
  * and ../chess-api/docs/api.md lines 58-80. */
-export function createGame(): Promise<GameState> {
-  return request('/games', { method: 'POST' });
+export function createGame(visibility?: 'public' | 'private'): Promise<GameState> {
+  return request('/games', {
+    method: 'POST',
+    body: JSON.stringify({ ...(visibility ? { visibility } : {}) }),
+  });
 }
 
 /* GET /games — no auth required.

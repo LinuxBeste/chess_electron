@@ -44,7 +44,8 @@ export type Board = (Piece | null)[][];
  * `players.white`/`players.black` are player IDs (undefined before join).
  * `enPassantTarget` is set when a pawn double-pushes (the square the capturing pawn moves to).
  * `lastMove` tracks the most recent move for UI highlight purposes.
- * `winner` is set when the game ends with a decisive result. */
+ * `winner` is set when the game ends with a decisive result.
+ * `visibility` controls whether the game appears in the open games list. */
 export interface GameState {
   id: string;
   board: Board;
@@ -57,6 +58,7 @@ export interface GameState {
   lastMove: { from: string; to: string } | null;
   winner: Color | null;
   createdAt: number;
+  visibility: 'public' | 'private';
 }
 
 /* A registered human player.  `tokens` is a list of bearer tokens so the

@@ -10,12 +10,17 @@
     "start": "electron .",
     "dev": "pnpm run build && electron .",
     "typecheck": "tsc --noEmit",
+    "test": "jest --forceExit",
     "package": "pnpm run build && electron-builder"
   },
   "devDependencies": {
+    "@jest/globals": "^30.4.1",
+    "@types/jest": "^29.5.14",
     "electron": "^29.0.0",
     "electron-builder": "^24.13.0",
     "html-webpack-plugin": "^5.6.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.9",
     "ts-loader": "^9.5.1",
     "typescript": "^5.4.0",
     "webpack": "^5.90.0",

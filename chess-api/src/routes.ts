@@ -58,9 +58,11 @@ router.get('/auth/me', authMiddleware, (req: Request, res: Response) => {
   res.json({ id: req.player.id, username: req.player.username });
 });
 
-/* Create a new game (player becomes white) */
+/* Create a new game (player becomes white).
+ * Optional body field: visibility ('public' | 'private', defaults to 'public'). */
 router.post('/games', authMiddleware, (req: Request, res: Response) => {
-  const g = game.createGame(req.player.id);
+  const visibility: 'public' | 'private' = req.body.visibility === 'private' ? 'private' : 'public';
+  const g = game.createGame(req.player.id, visibility);
   res.status(201).json(g);
 });
 

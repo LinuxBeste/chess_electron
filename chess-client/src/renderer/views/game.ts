@@ -62,7 +62,6 @@ function mountGame(container: HTMLElement): () => void {
 
     const stored = store.get('currentGame');
     game = stored && stored.id === gameId ? stored : null;
-    playerColor = game?.players.white === store.get('playerId') ? 'white' : 'black';
     resignConfirmed = false;
 
     /* Build layout */
@@ -93,6 +92,8 @@ function mountGame(container: HTMLElement): () => void {
 
 function cleanup(): void {
   if (clockInterval !== null) clearInterval(clockInterval);
+  document.removeEventListener('mousemove', handleDocumentMouseMove);
+  document.removeEventListener('mouseup', handleDocumentMouseUp);
   if (unsubMove) unsubMove();
   if (unsubGameOver) unsubGameOver();
   if (unsubGameStarted) unsubGameStarted();
@@ -133,6 +134,7 @@ function removeWaitingOverlay(): void {
 
 function initBoard(g: GameState): void {
   game = g;
+  playerColor = g.players.white === store.get('playerId') ? 'white' : 'black';
   if (g.status === 'resigned' || g.status === 'checkmate' || g.status === 'stalemate') {
     navigate('result', g.id);
     return;
@@ -325,6 +327,9 @@ function applyHighlights(): void {
     if (selSq) selSq.style.background = 'rgba(79,142,247,0.25)';
   }
 
+  /* Remove stale hints first */
+  boardEl.querySelectorAll('.legal-hint').forEach(d => d.remove());
+
   /* Legal move hints */
   const playerId = store.get('playerId');
   /* Differentiate capture targets (full circle) from empty squares (small dot) */
@@ -334,12 +339,12 @@ function applyHighlights(): void {
     const [r, f] = squareToIndices(hint.to);
     const hasPiece = board[r] && board[r][f] !== null;
     if (hasPiece) {
-      const dot = el('div', [], {
+      const dot = el('div', ['legal-hint'], {
         style: 'position:absolute;width:100%;height:100%;border-radius:50%;background:rgba(79,142,247,0.4);pointer-events:none;z-index:2',
       });
       hintSq.appendChild(dot);
     } else {
-      const dot = el('div', [], {
+      const dot = el('div', ['legal-hint'], {
         style: 'position:absolute;width:12px;height:12px;border-radius:50%;background:rgba(79,142,247,0.3);pointer-events:none;z-index:2',
       });
       hintSq.appendChild(dot);
@@ -703,6 +708,9 @@ function animateOpponentMove(from: string, to: string): void {
 
 function handleWsGameOver(msg: GameOverMessage): void {
   if (!game) return;
+  board = deserializeBoard(msg.board);
+  lastMove = msg.lastMove;
+  updateBoardDisplay();
   store.set('currentGame', game);
   setTimeout(() => navigate('result', msg.gameId), 500);
 }

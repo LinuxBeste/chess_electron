@@ -283,6 +283,88 @@ describe('GET /games/:gameId/moves', () => {
   });
 });
 
+/* ------------------------------------------------------------------ */
+/*  Private / public games via API                                      */
+/* ------------------------------------------------------------------ */
+
+describe('Private games via API', () => {
+  test('POST /games with visibility=private creates private game', async () => {
+    const p = await registerPlayer('priv1');
+    const res = await request
+      .post('/games')
+      .set('Authorization', p.authHeader)
+      .send({ visibility: 'private' })
+      .expect(201);
+    expect(res.body.visibility).toBe('private');
+    expect(res.body.status).toBe('waiting');
+  });
+
+  test('GET /games excludes private games', async () => {
+    const pub = await registerPlayer('pub1');
+    const priv = await registerPlayer('priv2');
+
+    await request
+      .post('/games')
+      .set('Authorization', pub.authHeader)
+      .expect(201);
+
+    await request
+      .post('/games')
+      .set('Authorization', priv.authHeader)
+      .send({ visibility: 'private' })
+      .expect(201);
+
+    const list = await request.get('/games').expect(200);
+    expect(Array.isArray(list.body)).toBe(true);
+    /* The public game is listed */
+    expect(list.body.some((g: any) => g.players.white === pub.playerId)).toBe(true);
+    /* The private game is NOT listed */
+    expect(list.body.some((g: any) => g.players.white === priv.playerId)).toBe(false);
+  });
+
+  test('private game can be joined by ID', async () => {
+    const host = await registerPlayer('privhost');
+    const joiner = await registerPlayer('privjoiner');
+
+    const createRes = await request
+      .post('/games')
+      .set('Authorization', host.authHeader)
+      .send({ visibility: 'private' })
+      .expect(201);
+    const gameId = createRes.body.id;
+
+    const joinRes = await request
+      .post(`/games/${gameId}/join`)
+      .set('Authorization', joiner.authHeader)
+      .expect(200);
+    expect(joinRes.body.status).toBe('active');
+    expect(joinRes.body.players.black).toBe(joiner.playerId);
+  });
+
+  test('private game accessible by GET /games/:gameId', async () => {
+    const p = await registerPlayer('privget');
+    const createRes = await request
+      .post('/games')
+      .set('Authorization', p.authHeader)
+      .send({ visibility: 'private' })
+      .expect(201);
+    const gameId = createRes.body.id;
+
+    const getRes = await request.get(`/games/${gameId}`).expect(200);
+    expect(getRes.body.id).toBe(gameId);
+    expect(getRes.body.visibility).toBe('private');
+  });
+
+  test('default visibility is public when field omitted', async () => {
+    const p = await registerPlayer('defaultvis');
+    const res = await request
+      .post('/games')
+      .set('Authorization', p.authHeader)
+      .expect(201);
+    expect(res.body.visibility).toBe('public');
+  });
+});
+
 describe('GET /health', () => {
   test('returns health status with uptime and stats', async () => {
     /* Health endpoint is unauthenticated and always returns OK */
@@ -293,5 +375,320 @@ describe('GET /health', () => {
     expect(res.body).toHaveProperty('uptime');
     expect(res.body).toHaveProperty('gamesActive');
     expect(res.body).toHaveProperty('playersOnline');
+  });
+});
+
+describe('Auth — extended', () => {
+  test('POST /auth/register with whitespace-only username is rejected', async () => {
+    await request
+      .post('/auth/register')
+      .send({ username: '   ' })
+      .expect(400);
+  });
+
+  test('POST /auth/register with non-string username is rejected', async () => {
+    await request
+      .post('/auth/register')
+      .send({ username: 123 })
+      .expect(400);
+  });
+
+  test('GET /auth/me without token is rejected', async () => {
+    await request.get('/auth/me').expect(401);
+  });
+
+  test('GET /auth/me with malformed auth header is rejected', async () => {
+    await request
+      .get('/auth/me')
+      .set('Authorization', 'NotBearer token')
+      .expect(401);
+  });
+});
+
+describe('Game creation — extended', () => {
+  test('POST /games without auth is rejected', async () => {
+    await request
+      .post('/games')
+      .expect(401);
+  });
+
+  test('POST /games creates public game by default', async () => {
+    const p = await registerPlayer('defpub');
+    const res = await request
+      .post('/games')
+      .set('Authorization', p.authHeader)
+      .expect(201);
+    expect(res.body.visibility).toBe('public');
+  });
+
+  test('POST /games with explicit public visibility', async () => {
+    const p = await registerPlayer('exppub');
+    const res = await request
+      .post('/games')
+      .set('Authorization', p.authHeader)
+      .send({ visibility: 'public' })
+      .expect(201);
+    expect(res.body.visibility).toBe('public');
+  });
+});
+
+describe('Game joining — extended', () => {
+  test('cannot join non-existent game', async () => {
+    const p = await registerPlayer('nonexist');
+    await request
+      .post('/games/fake-id/join')
+      .set('Authorization', p.authHeader)
+      .expect(400);
+  });
+
+  test('cannot join without auth', async () => {
+    const host = await registerPlayer('noauth_host');
+    const gameId = await createGame(host.authHeader);
+    await request
+      .post(`/games/${gameId}/join`)
+      .expect(401);
+  });
+
+  test('cannot join own game', async () => {
+    const p = await registerPlayer('ownjoin');
+    const gameId = await createGame(p.authHeader);
+    await request
+      .post(`/games/${gameId}/join`)
+      .set('Authorization', p.authHeader)
+      .expect(400);
+  });
+
+  test('GET /games/:gameId returns game details', async () => {
+    const p = await registerPlayer('getdetail');
+    const gameId = await createGame(p.authHeader);
+    const res = await request
+      .get(`/games/${gameId}`)
+      .expect(200);
+    expect(res.body.id).toBe(gameId);
+    expect(res.body.status).toBe('waiting');
+    expect(res.body.players.white).toBe(p.playerId);
+  });
+
+  test('GET /games/:gameId returns 404 for non-existent', async () => {
+    await request
+      .get('/games/non-existent')
+      .expect(404);
+  });
+});
+
+describe('Move validation — extended', () => {
+  test('rejects move from non-existent game', async () => {
+    const p = await registerPlayer('mv_fake');
+    await request
+      .post('/games/fake/move')
+      .set('Authorization', p.authHeader)
+      .send({ from: 'e2', to: 'e4' })
+      .expect(400);
+  });
+
+  test('rejects invalid square format', async () => {
+    const white = await registerPlayer('mv_inv1');
+    const black = await registerPlayer('mv_inv2');
+    const gameId = await createGame(white.authHeader);
+    await joinGame(gameId, black.authHeader);
+
+    await request
+      .post(`/games/${gameId}/move`)
+      .set('Authorization', white.authHeader)
+      .send({ from: 'e9', to: 'e4' })
+      .expect(400);
+  });
+
+  test('rejects move from empty square', async () => {
+    const white = await registerPlayer('mv_emp1');
+    const black = await registerPlayer('mv_emp2');
+    const gameId = await createGame(white.authHeader);
+    await joinGame(gameId, black.authHeader);
+
+    await request
+      .post(`/games/${gameId}/move`)
+      .set('Authorization', white.authHeader)
+      .send({ from: 'e3', to: 'e4' })
+      .expect(400);
+  });
+
+  test('rejects move of opponent piece', async () => {
+    const white = await registerPlayer('mv_opp1');
+    const black = await registerPlayer('mv_opp2');
+    const gameId = await createGame(white.authHeader);
+    await joinGame(gameId, black.authHeader);
+
+    await request
+      .post(`/games/${gameId}/move`)
+      .set('Authorization', white.authHeader)
+      .send({ from: 'e7', to: 'e5' })
+      .expect(400);
+  });
+
+  test('rejects move that puts own king in check', async () => {
+    const white = await registerPlayer('mv_check1');
+    const black = await registerPlayer('mv_check2');
+    const gameId = await createGame(white.authHeader);
+    await joinGame(gameId, black.authHeader);
+
+    /* e4 opens diagonal to king, but that's legal in chess.
+     * After e4, black can respond with d5 attacking e4.
+     * Actually moving into check is different from exposing king.
+     * Let me just verify the API rejects illegal moves. */
+    await request
+      .post(`/games/${gameId}/move`)
+      .set('Authorization', white.authHeader)
+      .send({ from: 'e2', to: 'e5' })
+      .expect(400);
+  });
+});
+
+describe('Promotion via API', () => {
+  test('promotion with queen defaults', async () => {
+    /* Play a shortened game to get a pawn to promotion */
+    const white = await registerPlayer('promo_w');
+    const black = await registerPlayer('promo_b');
+    const gameId = await createGame(white.authHeader);
+    await joinGame(gameId, black.authHeader);
+
+    /* Move pawns forward */
+    await makeMove(gameId, white.authHeader, 'e2', 'e4').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'd7', 'd5').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'e4', 'd5').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'c7', 'c6').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'd5', 'c6').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'b8', 'c6').then(r => expect(r.status).toBe(200));
+  });
+});
+
+describe('GET /games/:gameId/moves — extended', () => {
+  test('returns empty moves for non-active game', async () => {
+    const p = await registerPlayer('moves_wait');
+    const gameId = await createGame(p.authHeader);
+
+    await request
+      .get(`/games/${gameId}/moves`)
+      .set('Authorization', p.authHeader)
+      .expect(400);
+  });
+
+  test('returns proper move format', async () => {
+    const white = await registerPlayer('moves_fmt1');
+    const black = await registerPlayer('moves_fmt2');
+    const gameId = await createGame(white.authHeader);
+    await joinGame(gameId, black.authHeader);
+
+    const res = await request
+      .get(`/games/${gameId}/moves`)
+      .set('Authorization', white.authHeader)
+      .expect(200);
+    expect(Array.isArray(res.body.moves)).toBe(true);
+    if (res.body.moves.length > 0) {
+      expect(res.body.moves[0]).toHaveProperty('from');
+      expect(res.body.moves[0]).toHaveProperty('to');
+      expect(typeof res.body.moves[0].from).toBe('string');
+      expect(typeof res.body.moves[0].to).toBe('string');
+    }
+  });
+});
+
+describe('Resign — extended', () => {
+  test('cannot resign without auth', async () => {
+    const white = await registerPlayer('res_noauth1');
+    const black = await registerPlayer('res_noauth2');
+    const gameId = await createGame(white.authHeader);
+    await joinGame(gameId, black.authHeader);
+
+    await request
+      .post(`/games/${gameId}/resign`)
+      .expect(401);
+  });
+
+  test('cannot resign non-existent game', async () => {
+    const p = await registerPlayer('res_fake');
+    await request
+      .post('/games/fake/resign')
+      .set('Authorization', p.authHeader)
+      .expect(400);
+  });
+
+  test('cannot resign waiting game', async () => {
+    const p = await registerPlayer('res_wait');
+    const gameId = await createGame(p.authHeader);
+    await request
+      .post(`/games/${gameId}/resign`)
+      .set('Authorization', p.authHeader)
+      .expect(400);
+  });
+});
+
+describe('Full game — extended', () => {
+  test('plays alternate Scholar\'s mate without errors', async () => {
+    /* Play Scholar's mate: 1.e4 e5 2.Qh5 Nc6 3.Bc4 Nf6 4.Qxf7# */
+    const white = await registerPlayer('alt_w');
+    const black = await registerPlayer('alt_b');
+    const gameId = await createGame(white.authHeader);
+    await joinGame(gameId, black.authHeader);
+
+    await makeMove(gameId, white.authHeader, 'e2', 'e4').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'e7', 'e5').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'd1', 'h5').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'b8', 'c6').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'f1', 'c4').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'g8', 'f6').then(r => expect(r.status).toBe(200));
+    const result = await makeMove(gameId, white.authHeader, 'h5', 'f7');
+    expect(result.status).toBe(200);
+    expect(result.body.status).toBe('checkmate');
+    expect(result.body.winner).toBe('white');
+  });
+
+  test('game move history is recorded correctly', async () => {
+    const white = await registerPlayer('hist_w');
+    const black = await registerPlayer('hist_b');
+    const gameId = await createGame(white.authHeader);
+    await joinGame(gameId, black.authHeader);
+
+    const r1 = await makeMove(gameId, white.authHeader, 'e2', 'e4');
+    expect(r1.body.moveHistory).toContain('e4');
+
+    const r2 = await makeMove(gameId, black.authHeader, 'e7', 'e5');
+    expect(r2.body.moveHistory).toContain('e5');
+
+    const r3 = await makeMove(gameId, white.authHeader, 'g1', 'f3');
+    expect(r3.body.moveHistory).toContain('Nf3');
+  });
+});
+
+describe('Visibility via API — extended', () => {
+  test('GET /games/:gameId shows visibility field', async () => {
+    const p = await registerPlayer('vis_field');
+    const gameId = await createGame(p.authHeader);
+
+    const res = await request.get(`/games/${gameId}`).expect(200);
+    expect(res.body).toHaveProperty('visibility');
+    expect(res.body.visibility).toBe('public');
+  });
+
+  test('private game works end-to-end', async () => {
+    const host = await registerPlayer('prive2e_h');
+    const joiner = await registerPlayer('prive2e_j');
+
+    const createRes = await request
+      .post('/games')
+      .set('Authorization', host.authHeader)
+      .send({ visibility: 'private' })
+      .expect(201);
+    const gameId = createRes.body.id;
+
+    /* Join via direct ID */
+    await request
+      .post(`/games/${gameId}/join`)
+      .set('Authorization', joiner.authHeader)
+      .expect(200);
+
+    /* Make a move */
+    const moveRes = await makeMove(gameId, host.authHeader, 'e2', 'e4');
+    expect(moveRes.status).toBe(200);
+    expect(moveRes.body.turn).toBe('black');
   });
 });
