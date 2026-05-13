@@ -142,6 +142,7 @@ function initBoard(g: GameState): void {
 
   board = cloneBoard(g.board);
   lastMove = g.lastMove;
+  renderBoard();
   updateBoardDisplay();
   updateMoveHistory(g.moveHistory);
   updatePlayerInfo(g);
