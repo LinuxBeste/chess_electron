@@ -61,7 +61,7 @@
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/your-org/chess-electron.git
+git clone https://github.com/linuxbeste/chess-electron.git
 cd chess-electron
 
 # 2. Install dependencies
