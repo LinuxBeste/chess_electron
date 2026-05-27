@@ -482,3 +482,197 @@ describe('visibility — edge cases', () => {
     expect(result.success).toBe(true);
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  Match History (getPlayerGames)                                       */
+/* ------------------------------------------------------------------ */
+
+describe('getPlayerGames', () => {
+  test('returns empty array for player with no finished games', () => {
+    const pid = registerPlayer('ghost');
+    expect(game.getPlayerGames(pid)).toEqual([]);
+  });
+
+  test('returns finished games for a player', () => {
+    const host = registerPlayer('mh_host');
+    const joiner = registerPlayer('mh_joiner');
+    const g = game.createGame(host);
+    game.joinGame(g.id, joiner);
+    game.resignGame(g.id, host);
+
+    const games = game.getPlayerGames(host);
+    expect(games.length).toBe(1);
+    expect(games[0].id).toBe(g.id);
+    expect(games[0].status).toBe('resigned');
+  });
+
+  test('does not return active games', () => {
+    const host = registerPlayer('mh_active');
+    const joiner = registerPlayer('mh_active_j');
+    const g = game.createGame(host);
+    game.joinGame(g.id, joiner);
+
+    expect(game.getPlayerGames(host)).toEqual([]);
+  });
+
+  test('does not return waiting games', () => {
+    const host = registerPlayer('mh_wait');
+    game.createGame(host);
+    expect(game.getPlayerGames(host)).toEqual([]);
+  });
+
+  test('returns both finished games for a player across multiple games', () => {
+    const host = registerPlayer('mh_multi');
+    const j1 = registerPlayer('mh_multi_j1');
+    const j2 = registerPlayer('mh_multi_j2');
+
+    const g1 = game.createGame(host);
+    game.joinGame(g1.id, j1);
+    game.resignGame(g1.id, host);
+
+    const g2 = game.createGame(host);
+    game.joinGame(g2.id, j2);
+    game.resignGame(g2.id, j2);
+
+    const games = game.getPlayerGames(host);
+    expect(games.length).toBe(2);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Active Games (for spectating)                                        */
+/* ------------------------------------------------------------------ */
+
+describe('getActiveGames', () => {
+  test('returns active games only', () => {
+    const host = registerPlayer('ag_host');
+    const joiner = registerPlayer('ag_joiner');
+    const g = game.createGame(host);
+    game.joinGame(g.id, joiner);
+
+    const active = game.getActiveGames();
+    expect(active.some(a => a.id === g.id)).toBe(true);
+    expect(active.every(a => a.status === 'active')).toBe(true);
+  });
+
+  test('does not return waiting games', () => {
+    const host = registerPlayer('ag_wait');
+    game.createGame(host);
+
+    expect(game.getActiveGames().every(a => a.status === 'active')).toBe(true);
+  });
+
+  test('does not return finished games', () => {
+    const host = registerPlayer('ag_fin');
+    const joiner = registerPlayer('ag_fin_j');
+    const g = game.createGame(host);
+    game.joinGame(g.id, joiner);
+    game.resignGame(g.id, host);
+
+    expect(game.getActiveGames().some(a => a.id === g.id)).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Spectator Mode                                                       */
+/* ------------------------------------------------------------------ */
+
+describe('spectator registration', () => {
+  test('registerSpectator succeeds for active game', () => {
+    const host = registerPlayer('spec_host');
+    const joiner = registerPlayer('spec_joiner');
+    const g = game.createGame(host);
+    game.joinGame(g.id, joiner);
+
+    const ws = { readyState: 1, send: () => {} } as any;
+    expect(game.registerSpectator(g.id, ws)).toBe(true);
+  });
+
+  test('registerSpectator fails for waiting game', () => {
+    const host = registerPlayer('spec_wait');
+    const g = game.createGame(host);
+    const ws = { readyState: 1, send: () => {} } as any;
+    expect(game.registerSpectator(g.id, ws)).toBe(false);
+  });
+
+  test('registerSpectator fails for non-existent game', () => {
+    const ws = { readyState: 1, send: () => {} } as any;
+    expect(game.registerSpectator('fake', ws)).toBe(false);
+  });
+
+  test('registerSpectator fails for finished game', () => {
+    const host = registerPlayer('spec_fin');
+    const joiner = registerPlayer('spec_fin_j');
+    const g = game.createGame(host);
+    game.joinGame(g.id, joiner);
+    game.resignGame(g.id, host);
+
+    const ws = { readyState: 1, send: () => {} } as any;
+    expect(game.registerSpectator(g.id, ws)).toBe(false);
+  });
+
+  test('removeSpectator does not throw', () => {
+    const ws = { readyState: 1, send: () => {} } as any;
+    expect(() => game.removeSpectator('any-id', ws)).not.toThrow();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Board History (game review)                                          */
+/* ------------------------------------------------------------------ */
+
+describe('boardHistory', () => {
+  test('starts empty for new game', () => {
+    const host = registerPlayer('bh_empty');
+    const g = game.createGame(host);
+    expect(g.boardHistory).toEqual([]);
+  });
+
+  test('populates after each move', () => {
+    const host = registerPlayer('bh_pop');
+    const joiner = registerPlayer('bh_pop_j');
+    const g = game.createGame(host);
+    game.joinGame(g.id, joiner);
+
+    game.makeMove(g.id, host, 'e2', 'e4');
+    expect(g.boardHistory.length).toBe(1);
+    expect(g.boardHistory[0].move).toContain('e4');
+    expect(g.boardHistory[0].board).toBeDefined();
+
+    game.makeMove(g.id, joiner, 'e7', 'e5');
+    expect(g.boardHistory.length).toBe(2);
+  });
+
+  test('each entry has board snapshot and move notation', () => {
+    const host = registerPlayer('bh_entry');
+    const joiner = registerPlayer('bh_entry_j');
+    const g = game.createGame(host);
+    game.joinGame(g.id, joiner);
+
+    game.makeMove(g.id, host, 'e2', 'e4');
+    const entry = g.boardHistory[0];
+    expect(Array.isArray(entry.board)).toBe(true);
+    expect(typeof entry.move).toBe('string');
+    expect(entry.board.length).toBeGreaterThan(0);
+    expect(entry.board[0]).toHaveProperty('square');
+    expect(entry.board[0]).toHaveProperty('piece');
+    expect(entry.board[0]).toHaveProperty('color');
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Chat Messages                                                        */
+/* ------------------------------------------------------------------ */
+
+describe('chat messages', () => {
+  test('handleChatMessage does not throw for invalid player', () => {
+    const ws = { readyState: 1, send: () => {} } as any;
+    expect(() => game.handleChatMessage('any-game', 'fake-player', 'hello', ws)).not.toThrow();
+  });
+
+  test('handleChatMessage does not throw for non-existent game', () => {
+    const pid = registerPlayer('chat_ghost');
+    const ws = { readyState: 1, send: () => {} } as any;
+    expect(() => game.handleChatMessage('fake-game', pid, 'hello', ws)).not.toThrow();
+  });
+});

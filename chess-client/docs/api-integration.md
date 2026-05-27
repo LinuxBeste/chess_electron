@@ -9,12 +9,14 @@ All calls go through `src/renderer/api.ts`. Each function was written by reading
 | `register`           | POST   | `/auth/register`        | No   | `{ username }`                | `{ playerId, token }`|
 | `getMe`              | GET    | `/auth/me`              | Yes  | —                             | `{ id, username }`   |
 | `healthCheck`        | GET    | `/health`               | No   | —                             | `{ status, uptime, gamesActive, playersOnline }` |
-| `createGame`         | POST   | `/games`                | Yes  | —                             | `GameState`          |
+| `createGame`         | POST   | `/games`                | Yes  | `{ visibility? }`             | `GameState`          |
 | `getOpenGames`       | GET    | `/games`                | No   | —                             | `GameState[]`        |
+| `getActiveGames`     | GET    | `/games/active`         | No   | —                             | `GameState[]`        |
 | `getGame`            | GET    | `/games/:gameId`        | No   | —                             | `GameState`          |
 | `joinGame`           | POST   | `/games/:gameId/join`   | Yes  | —                             | `GameState`          |
 | `makeMove`           | POST   | `/games/:gameId/move`   | Yes  | `{ from, to, promotion? }`    | `GameState`          |
 | `resignGame`         | POST   | `/games/:gameId/resign` | Yes  | —                             | `GameState`          |
+| `getPlayerGames`     | GET    | `/players/:playerId/games`| Yes | —                             | `GameState[]`        |
 | `getLegalMoves`      | GET    | `/games/:gameId/moves`  | Yes  | —                             | `{ moves: [{from,to}] }`|
 
 ## WebSocket Events
@@ -36,7 +38,7 @@ Broadcast when a player makes a legal move.
 ```
 
 ### `type: "game_over"`
-Broadcast when the game ends (checkmate, stalemate, or resignation).
+Broadcast when the game ends (checkmate, stalemate, draw, or resignation).
 
 ```json
 {
@@ -50,6 +52,46 @@ Broadcast when the game ends (checkmate, stalemate, or resignation).
   "reason": "white wins by checkmate"
 }
 ```
+
+### `type: "game_started"`
+Broadcast to white when a second player joins.
+
+```json
+{
+  "type": "game_started",
+  "gameId": "uuid",
+  "game": { ... }
+}
+```
+
+### `type: "chat_message"`
+Broadcast to players and spectators when someone sends a chat message.
+
+```json
+{
+  "type": "chat_message",
+  "gameId": "uuid",
+  "playerId": "uuid",
+  "username": "alice",
+  "text": "Hello!",
+  "timestamp": 1700000000000
+}
+```
+
+### Client Messages (sent via WebSocket)
+
+| Type | Body | Description |
+|------|------|-------------|
+| `spectate` | `{ gameId }` | Start spectating a game |
+| `unspectate` | `{ gameId }` | Stop spectating |
+| `chat_message` | `{ gameId, text }` | Send a chat message |
+
+### Server Responses to Client Messages
+
+| Type | Body | Condition |
+|------|------|-----------|
+| `spectate_ok` | `{ gameId, game }` | Successfully spectating |
+| `spectate_error` | `{ gameId, error }` | Game not found or not active |
 
 ## Auth Flow
 
@@ -67,7 +109,7 @@ The client re-exports all API types from `../chess-api/src/types.ts` in `src/typ
 | `Color`             | `'white' \| 'black'`                  |
 | `PieceType`         | All six piece types                   |
 | `GameStatus`        | `waiting \| active \| checkmate \| stalemate \| draw \| resigned` |
-| `GameState`         | Full game snapshot (board, turn, status, players, moveHistory, etc.) |
+| `GameState`         | Full game snapshot (board, turn, status, players, moveHistory, boardHistory, halfMoveClock, visibility, etc.) |
 | `Board`             | `(Piece \| null)[][]` — 8×8 grid     |
 | `Move`              | A move with from/to, capture, castling, en-passant, promotion metadata |
 | `SerializedSquare`  | WS message board format: `{ square, piece, color }` |
