@@ -5,10 +5,13 @@ import { navigate } from '../router';
 import { el, getPieceSvg, deserializeBoard, squareToIndices, indicesToSquare, cloneBoard } from '../chess';
 import type { Board, GameState, LegalMoveHint, PieceType } from '../../types';
 import type { MoveMessage, GameOverMessage, GameStartedMessage } from '../socket';
+import { playMoveSound, playCaptureSound, playCheckSound, playGameOverSound } from '../sound';
+import { getSetting } from '../settings';
 
 /* All state resets on each mount() → cleanup() cycle */
 let game: GameState | null = null;
 let playerColor: 'white' | 'black' = 'white';
+let isSpectator = false;
 let board: Board = [];
 let selectedSquare: string | null = null;
 let legalHints: LegalMoveHint[] = [];
@@ -21,6 +24,10 @@ let dragState: {
 } | null = null;
 let clockInterval: number | null = null;
 let resignConfirmed = false;
+
+/* Review/Replay state */
+let reviewIndex: number | null = null;
+let reviewControlsEl: HTMLElement | null = null;
 
 let unsubMove: (() => void) | null = null;
 let unsubGameOver: (() => void) | null = null;
@@ -35,6 +42,7 @@ let blackNameEl: HTMLElement | null = null;
 let resignBtn: HTMLElement | null = null;
 let wrapperEl: HTMLElement | null = null;
 let waitingOverlay: HTMLElement | null = null;
+let replayBtn: HTMLElement | null = null;
 
 let whiteTime = 0;
 let blackTime = 0;
@@ -53,7 +61,9 @@ export const gameView = {
 
 function mountGame(container: HTMLElement): () => void {
     const hash = window.location.hash;
-    const gameId = hash.startsWith('#game/') ? hash.slice(6) : '';
+    const hashParts = hash.replace('#game/', '').split('?');
+    const gameId = hashParts[0] || '';
+    isSpectator = hashParts[1] === 'spectate=1';
 
     if (!gameId) {
       navigate('lobby');
@@ -85,10 +95,17 @@ function mountGame(container: HTMLElement): () => void {
       if (msg.gameId === gameId) handleWsGameStarted(msg);
     });
 
+    /* If spectating, subscribe to WS updates for this game */
+    if (isSpectator) {
+      socketManager.send({ type: 'spectate', gameId });
+    }
+
     return () => {
       cleanup();
     };
 };
+
+let unsubChat: (() => void) | null = null;
 
 function cleanup(): void {
   if (clockInterval !== null) clearInterval(clockInterval);
@@ -97,6 +114,7 @@ function cleanup(): void {
   if (unsubMove) unsubMove();
   if (unsubGameOver) unsubGameOver();
   if (unsubGameStarted) unsubGameStarted();
+  if (unsubChat) unsubChat();
   if (wrapperEl) wrapperEl.remove();
   game = null;
   selectedSquare = null;
@@ -112,6 +130,8 @@ function cleanup(): void {
   blackNameEl = null;
   resignBtn = null;
   wrapperEl = null;
+  reviewIndex = null;
+  reviewControlsEl = null;
 }
 
 async function fetchGame(gameId: string): Promise<void> {
@@ -135,7 +155,15 @@ function removeWaitingOverlay(): void {
 function initBoard(g: GameState): void {
   game = g;
   playerColor = g.players.white === store.get('playerId') ? 'white' : 'black';
-  if (g.status === 'resigned' || g.status === 'checkmate' || g.status === 'stalemate') {
+  if (isSpectator) {
+    playerColor = 'white';
+  }
+  const isFinished = g.status === 'resigned' || g.status === 'checkmate' || g.status === 'stalemate' || g.status === 'draw';
+  if (isFinished && !window.location.hash.startsWith('#result/')) {
+    enterReviewMode();
+    return;
+  }
+  if (isFinished) {
     navigate('result', g.id);
     return;
   }
@@ -213,6 +241,16 @@ function buildLayout(container: HTMLElement, gameId: string): HTMLElement {
   blackBar.appendChild(blackClockEl);
   centerCol.appendChild(blackBar);
 
+  /* Spectator badge */
+  if (isSpectator) {
+    const specBadge = el('div', [], {
+      style: 'font-size:12px;font-weight:600;color:#22c55e;background:rgba(34,197,94,0.1);padding:4px 12px;border-radius:6px;letter-spacing:0.5px;text-transform:uppercase',
+    }, 'Spectating');
+    centerCol.appendChild(specBadge);
+    /* Hide resign button for spectators */
+    if (resignBtn) resignBtn.style.display = 'none';
+  }
+
   /* Chess board container */
   boardEl = el('div', ['chess-board'], {
     style: 'position:relative;width:min(60vh,480px);height:min(60vh,480px);border-radius:8px;box-shadow:inset 0 2px 8px rgba(0,0,0,0.3),0 4px 24px rgba(0,0,0,0.4);overflow:hidden;user-select:none',
@@ -236,29 +274,126 @@ function buildLayout(container: HTMLElement, gameId: string): HTMLElement {
   centerCol.appendChild(whiteBar);
 
   /* Resign button */
+  const btnRow = el('div', [], {
+    style: 'display:flex;gap:8px;align-items:center',
+  });
+
   resignBtn = el('button', [], {
     style: 'background:transparent;border:none;color:rgba(220,80,80,0.7);font-size:13px;font-weight:500;cursor:pointer;padding:4px 8px;transition:color 150ms ease;letter-spacing:0.3px',
   }, 'Resign');
   resignBtn.addEventListener('mouseenter', () => { if (resignBtn) resignBtn.style.color = 'rgba(220,80,80,1)'; });
   resignBtn.addEventListener('mouseleave', () => { if (resignBtn) resignBtn.style.color = 'rgba(220,80,80,0.7)'; });
   resignBtn.addEventListener('click', () => handleResign());
-  centerCol.appendChild(resignBtn);
+  btnRow.appendChild(resignBtn);
+
+  /* Review controls (hidden by default, shown when game ends) */
+  reviewControlsEl = el('div', [], {
+    style: 'display:none;gap:8px;align-items:center;margin-left:auto',
+  });
+  const prevBtn = el('button', [], {
+    style: 'padding:6px 12px;background:#222228;color:#e0e0e0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:background 150ms ease',
+  }, '\u25C0 Prev');
+  const nextBtn = el('button', [], {
+    style: 'padding:6px 12px;background:#222228;color:#e0e0e0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:background 150ms ease',
+  }, 'Next \u25B6');
+  const reviewLabel = el('span', [], {
+    style: 'font-size:12px;font-weight:500;color:#888;letter-spacing:0.3px;min-width:60px;text-align:center',
+  }, 'Review');
+
+  prevBtn.addEventListener('mouseenter', () => { prevBtn.style.background = '#2c2c38'; });
+  prevBtn.addEventListener('mouseleave', () => { prevBtn.style.background = '#222228'; });
+  nextBtn.addEventListener('mouseenter', () => { nextBtn.style.background = '#2c2c38'; });
+  nextBtn.addEventListener('mouseleave', () => { nextBtn.style.background = '#222228'; });
+
+  prevBtn.addEventListener('click', () => reviewStep(-1));
+  nextBtn.addEventListener('click', () => reviewStep(1));
+
+  reviewControlsEl.appendChild(prevBtn);
+  reviewControlsEl.appendChild(reviewLabel);
+  reviewControlsEl.appendChild(nextBtn);
+  btnRow.appendChild(reviewControlsEl);
+
+  centerCol.appendChild(btnRow);
 
   wrapper.appendChild(centerCol);
 
-  /* Right column: move history */
+  /* Right column: move history + chat */
   const rightCol = el('div', [], {
-    style: 'width:220px;flex-shrink:0;display:flex;flex-direction:column',
+    style: 'width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:12px',
   });
+
+  /* Move history */
   const histTitle = el('h3', [], {
     style: 'font-size:14px;font-weight:700;color:#888;margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase',
   }, 'Moves');
   rightCol.appendChild(histTitle);
 
   moveHistoryEl = el('div', [], {
-    style: 'flex:1;overflow-y:auto;background:#1a1a1f;border-radius:12px;border:1px solid rgba(255,255,255,0.06);padding:12px;min-height:200px;max-height:calc(100vh - 200px)',
+    style: 'flex:1;overflow-y:auto;background:#1a1a1f;border-radius:12px;border:1px solid rgba(255,255,255,0.06);padding:12px;min-height:150px;max-height:calc(50vh - 100px)',
   });
   rightCol.appendChild(moveHistoryEl);
+
+  /* Chat panel */
+  const chatTitle = el('h3', [], {
+    style: 'font-size:14px;font-weight:700;color:#888;margin-top:8px;margin-bottom:8px;letter-spacing:0.5px;text-transform:uppercase',
+  }, 'Chat');
+  rightCol.appendChild(chatTitle);
+
+  const chatMsgs = el('div', [], {
+    style: 'flex:1;overflow-y:auto;background:#1a1a1f;border-radius:12px;border:1px solid rgba(255,255,255,0.06);padding:8px;min-height:80px;max-height:150px;font-size:12px',
+  });
+
+  const chatInputRow = el('div', [], {
+    style: 'display:flex;gap:6px;margin-top:6px',
+  });
+  const chatInput = el('input', [], {
+    type: 'text',
+    placeholder: 'Type a message...',
+    style: 'flex:1;padding:8px 10px;background:#222228;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e0e0e0;font-size:12px;outline:none;box-sizing:border-box;transition:border-color 150ms ease',
+  }) as HTMLInputElement;
+  chatInput.addEventListener('focus', () => { chatInput.style.borderColor = '#4f8ef7'; });
+  chatInput.addEventListener('blur', () => { chatInput.style.borderColor = 'rgba(255,255,255,0.1)'; });
+
+  const chatSendBtn = el('button', [], {
+    style: 'padding:8px 12px;background:#4f8ef7;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:background 150ms ease',
+  }, 'Send');
+
+  chatInputRow.appendChild(chatInput);
+  chatInputRow.appendChild(chatSendBtn);
+  rightCol.appendChild(chatMsgs);
+  rightCol.appendChild(chatInputRow);
+
+  /* Chat send handler */
+  function sendChat(): void {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    socketManager.send({ type: 'chat_message', gameId, text });
+    chatInput.value = '';
+  }
+  chatSendBtn.addEventListener('click', sendChat);
+  chatInput.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter') sendChat();
+  });
+
+  /* Listen for chat messages on WS */
+  const unsubChat = socketManager.onChat((msg) => {
+    if (msg.gameId !== gameId) return;
+    const isMe = msg.playerId === store.get('playerId');
+    const msgEl = el('div', [], {
+      style: `padding:4px 6px;margin-bottom:4px;border-radius:4px;background:${isMe ? 'rgba(79,142,247,0.08)' : 'transparent'}`,
+    });
+    const nameEl = el('span', [], {
+      style: `font-weight:600;color:${isMe ? '#4f8ef7' : '#888'};margin-right:6px`,
+    }, isMe ? 'You' : msg.username);
+    const textEl = el('span', [], {
+      style: 'color:#e0e0e0',
+    }, msg.text);
+    msgEl.appendChild(nameEl);
+    msgEl.appendChild(textEl);
+    chatMsgs.appendChild(msgEl);
+    chatMsgs.scrollTop = chatMsgs.scrollHeight;
+  });
+
   wrapper.appendChild(rightCol);
 
   container.appendChild(wrapper);
@@ -274,7 +409,8 @@ function renderBoard(): void {
   const sqSize = size / 8;
 
   /* Flip board so player's home rank is at the bottom */
-  const isWhiteBottom = playerColor === 'white';
+  const alwaysBottom = getSetting('alwaysWhiteBottom');
+  const isWhiteBottom = alwaysBottom ? true : (playerColor === 'white');
 
   for (let displayRank = 0; displayRank < 8; displayRank++) {
     const boardRank = isWhiteBottom ? displayRank : 7 - displayRank;
@@ -287,7 +423,7 @@ function renderBoard(): void {
         'data-rank': boardRank.toString(),
         'data-file': boardFile.toString(),
         'data-square': indicesToSquare(boardRank, boardFile),
-        style: `position:absolute;top:${displayRank * sqSize}px;left:${displayFile * sqSize}px;width:${sqSize}px;height:${sqSize}px;background:${isLight ? '#3d3d52' : '#2c2c38'};display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 150ms ease`,
+        style: `position:absolute;top:${displayRank * sqSize}px;left:${displayFile * sqSize}px;width:${sqSize}px;height:${sqSize}px;background:${isLight ? 'var(--sq-light, #3d3d52)' : 'var(--sq-dark, #2c2c38)'};display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 150ms ease`,
       });
 
       /* File labels a-h along bottom edge, rank labels 8-1 along left edge */
@@ -333,10 +469,12 @@ function applyHighlights(): void {
     const rank = parseInt(sq.getAttribute('data-rank') || '0', 10);
     const isLight = (rank + file) % 2 === 0;
     /* Map display position for light/dark calculation */
+    const alwaysBottom = getSetting('alwaysWhiteBottom');
+    const isWhiteBottom = alwaysBottom ? true : (playerColor === 'white');
     const displayRank = isWhiteBottom ? rank : 7 - rank;
     const displayFile = isWhiteBottom ? file : 7 - file;
     const origLight = (displayRank + displayFile) % 2 === 0;
-    sq.style.background = origLight ? '#3d3d52' : '#2c2c38';
+    sq.style.background = origLight ? 'var(--sq-light, #3d3d52)' : 'var(--sq-dark, #2c2c38)';
     sq.style.boxShadow = 'none';
   });
 
@@ -421,13 +559,15 @@ function handleBoardClick(e: MouseEvent): void {
 
 function selectSquare(square: string): void {
   selectedSquare = square;
-  /* Fetch legal moves for this piece if not already cached */
-  if (game) {
-    api.getLegalMoves(game.id).then(({ moves }) => {
-      legalHints = moves.filter(m => m.from === square);
-      applyHighlights();
-    }).catch(() => {});
+  if (!getSetting('showLegalHints') || !game) {
+    legalHints = [];
+    applyHighlights();
+    return;
   }
+  api.getLegalMoves(game.id).then(({ moves }) => {
+    legalHints = moves.filter(m => m.from === square);
+    applyHighlights();
+  }).catch(() => {});
 }
 
 function clearSelection(): void {
@@ -645,8 +785,17 @@ async function executeMove(from: string, to: string, promotion?: PieceType): Pro
     updateMoveHistory(updated.moveHistory);
     updatePlayerInfo(updated);
 
+    if (getSetting('soundEnabled')) {
+      if (oldBoard[toR]?.[toF]) {
+        playCaptureSound();
+      } else {
+        playMoveSound();
+      }
+    }
+
     /* Check for game over */
-    if (updated.status === 'checkmate' || updated.status === 'stalemate' || updated.status === 'resigned') {
+    if (updated.status === 'checkmate' || updated.status === 'stalemate' || updated.status === 'resigned' || updated.status === 'draw') {
+      if (getSetting('soundEnabled')) playGameOverSound();
       navigate('result', updated.id);
     } else if (updated.turn === playerColor) {
       fetchLegalMoves(game.id);
@@ -691,6 +840,17 @@ function handleWsMove(msg: MoveMessage): void {
   lastMove = msg.lastMove;
   if (game) game.turn = msg.turn;
   updateBoardDisplay();
+
+  if (getSetting('soundEnabled') && playerColor !== msg.turn) {
+    if (lastMove && board[squareToIndices(lastMove.to)[0]]?.[squareToIndices(lastMove.to)[1]]) {
+      playCaptureSound();
+    } else {
+      playMoveSound();
+    }
+    if (msg.status === 'check') {
+      setTimeout(() => playCheckSound(), 100);
+    }
+  }
 
   /* Animate opponent's move if we have one — slide the piece */
   if (msg.lastMove && playerColor !== msg.turn) {
@@ -739,6 +899,7 @@ function handleWsGameOver(msg: GameOverMessage): void {
   lastMove = msg.lastMove;
   updateBoardDisplay();
   store.set('currentGame', game);
+  if (getSetting('soundEnabled')) playGameOverSound();
   setTimeout(() => navigate('result', msg.gameId), 500);
 }
 
@@ -848,10 +1009,62 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+/* ─── Review / Replay ─── */
+
+function enterReviewMode(): void {
+  reviewIndex = game && game.boardHistory.length > 0 ? game.boardHistory.length - 1 : null;
+  if (reviewControlsEl) reviewControlsEl.style.display = 'flex';
+  if (resignBtn) resignBtn.style.display = 'none';
+  updateReviewLabel();
+  applyReviewBoard();
+}
+
+function reviewStep(direction: number): void {
+  if (reviewIndex === null || !game) return;
+  const newIndex = reviewIndex + direction;
+  if (newIndex < -1 || newIndex >= game.boardHistory.length) return;
+  reviewIndex = newIndex;
+  updateReviewLabel();
+  applyReviewBoard();
+}
+
+function updateReviewLabel(): void {
+  const label = reviewControlsEl?.querySelector('span');
+  if (!label || !game) return;
+  if (reviewIndex === -1) {
+    label.textContent = 'Start';
+  } else if (reviewIndex !== null && game.boardHistory[reviewIndex]) {
+    label.textContent = `${reviewIndex + 1}/${game.boardHistory.length}`;
+  } else {
+    label.textContent = 'End';
+  }
+}
+
+function applyReviewBoard(): void {
+  if (!game || reviewIndex === null) return;
+  if (reviewIndex === -1) {
+    board = cloneBoard(game.board);
+    lastMove = null;
+  } else {
+    const snapshot = game.boardHistory[reviewIndex];
+    board = deserializeBoard(snapshot.board);
+    const prevSnapshot = reviewIndex > 0 ? game.boardHistory[reviewIndex - 1] : null;
+    lastMove = prevSnapshot ? extractLastMove(prevSnapshot.move, snapshot.move) : null;
+  }
+  updateBoardDisplay();
+}
+
+function extractLastMove(prevNotation: string, curNotation: string): { from: string; to: string } | null {
+  if (!game) return null;
+  const idx = game.moveHistory.indexOf(curNotation);
+  if (idx < 0) return null;
+  return game.lastMove || null;
+}
+
 /* ─── Resign ─── */
 
 function handleResign(): void {
-  if (!resignConfirmed) {
+  if (getSetting('confirmResign') && !resignConfirmed) {
     resignConfirmed = true;
     if (resignBtn) resignBtn.textContent = 'Are you sure?';
     setTimeout(() => {

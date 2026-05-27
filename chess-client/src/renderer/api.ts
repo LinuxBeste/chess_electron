@@ -110,6 +110,17 @@ export function getOpenGames(): Promise<GameState[]> {
   return request('/games');
 }
 
+/* GET /games/active — no auth required.
+ * Returns active games available for spectating. */
+export function getActiveGames(): Promise<GameState[]> {
+  return request('/games/active');
+}
+
+/* GET /games — no auth, returns all games (for combined view). */
+export function getGameList(): Promise<GameState[]> {
+  return request('/games');
+}
+
 /* GET /games/:gameId — no auth required.
  * Returns a single GameState.
  * Confirmed in ../chess-api/src/routes.ts line 73-80
@@ -149,6 +160,12 @@ export function makeMove(
  * and ../chess-api/docs/api.md lines 120-124. */
 export function resignGame(gameId: string): Promise<GameState> {
   return request(`/games/${gameId}/resign`, { method: 'POST' });
+}
+
+/* GET /players/:playerId/games — auth required.
+ * Returns completed games for the authenticated player. */
+export function getPlayerGames(playerId: string): Promise<GameState[]> {
+  return request(`/players/${playerId}/games`);
 }
 
 /* GET /games/:gameId/moves — auth required.

@@ -24,6 +24,35 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+    @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+    @keyframes scaleIn { from { opacity:0;transform:scale(0.8) } to { opacity:1;transform:scale(1) } }
+    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
+
+    /* ─── Board Themes ─── */
+    :root {
+      --sq-light: #3d3d52;
+      --sq-dark: #2c2c38;
+    }
+    [data-theme="classic"] {
+      --sq-light: #f0d9b5;
+      --sq-dark: #b58863;
+    }
+    [data-theme="blue"] {
+      --sq-light: #dee3e6;
+      --sq-dark: #8ca2ad;
+    }
+    [data-theme="green"] {
+      --sq-light: #eeeed2;
+      --sq-dark: #769656;
+    }
+    [data-theme="gray"] {
+      --sq-light: #c8c8c8;
+      --sq-dark: #6b6b6b;
+    }
+    [data-theme="amber"] {
+      --sq-light: #f5deb3;
+      --sq-dark: #b8860b;
+    }
   </style>
 </head>
 <body>

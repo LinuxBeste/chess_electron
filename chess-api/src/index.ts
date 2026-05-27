@@ -57,9 +57,34 @@ export function createServer(): http.Server {
     /* Register the connection so the player receives game events */
     game.registerWSConnection(player.id, ws);
 
+    let spectatingGameId: string | null = null;
+
+    /* Handle incoming WS messages (spectate, unspectate, chat, etc.) */
+    ws.on('message', (raw: Buffer) => {
+      try {
+        const msg = JSON.parse(raw.toString());
+        if (msg.type === 'spectate' && typeof msg.gameId === 'string') {
+          if (game.registerSpectator(msg.gameId, ws)) {
+            spectatingGameId = msg.gameId;
+            ws.send(JSON.stringify({ type: 'spectate_ok', gameId: msg.gameId }));
+          } else {
+            ws.send(JSON.stringify({ type: 'spectate_error', error: 'Game not found or not active' }));
+          }
+        } else if (msg.type === 'unspectate' && spectatingGameId) {
+          game.removeSpectator(spectatingGameId, ws);
+          spectatingGameId = null;
+        } else if (msg.type === 'chat_message' && typeof msg.gameId === 'string' && typeof msg.text === 'string') {
+          game.handleChatMessage(msg.gameId, player.id, (msg.text as string).trim(), ws);
+        }
+      } catch { /* Ignore malformed messages */ }
+    });
+
     /* Clean up when the connection drops */
     ws.on('close', () => {
       game.removeWSConnection(player.id, ws);
+      if (spectatingGameId) {
+        game.removeSpectator(spectatingGameId, ws);
+      }
     });
   });
 

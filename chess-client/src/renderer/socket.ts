@@ -43,7 +43,16 @@ export interface GameOverMessage {
   reason: string;
 }
 
-type WsMessage = MoveMessage | GameOverMessage | GameStartedMessage;
+export interface ChatMessage {
+  type: 'chat_message';
+  gameId: string;
+  playerId: string;
+  username: string;
+  text: string;
+  timestamp: number;
+}
+
+type WsMessage = MoveMessage | GameOverMessage | GameStartedMessage | ChatMessage;
 
 /** Handler type for move events */
 export type MoveHandler = (msg: MoveMessage) => void;
@@ -53,6 +62,9 @@ export type GameOverHandler = (msg: GameOverMessage) => void;
 
 /** Handler type for game-started events */
 export type GameStartedHandler = (msg: GameStartedMessage) => void;
+
+/** Handler type for chat messages */
+export type ChatHandler = (msg: ChatMessage) => void;
 
 /** Maximum number of reconnect attempts before giving up */
 const MAX_RETRIES = 5;
@@ -70,6 +82,7 @@ class SocketManager {
   private moveHandlers = new Set<MoveHandler>();
   private gameOverHandlers = new Set<GameOverHandler>();
   private gameStartedHandlers = new Set<GameStartedHandler>();
+  private chatHandlers = new Set<ChatHandler>();
   private serverUrl = 'http://localhost:3000';
 
   /** Set a custom server URL for the WebSocket connection */
@@ -122,6 +135,9 @@ class SocketManager {
           case 'game_started':
             this.gameStartedHandlers.forEach(h => h(msg as GameStartedMessage));
             break;
+          case 'chat_message':
+            this.chatHandlers.forEach(h => h(msg as ChatMessage));
+            break;
         }
       } catch {
         /* Silently drop malformed messages — they're not from our server */
@@ -166,6 +182,13 @@ class SocketManager {
     }, delay);
   }
 
+  /** Send a JSON message through the WebSocket */
+  send(msg: Record<string, unknown>): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
+    }
+  }
+
   /** onMove/onGameOver return unsubscribe functions */
   onMove(handler: MoveHandler): () => void {
     this.moveHandlers.add(handler);
@@ -180,6 +203,11 @@ class SocketManager {
   onGameStarted(handler: GameStartedHandler): () => void {
     this.gameStartedHandlers.add(handler);
     return () => { this.gameStartedHandlers.delete(handler); };
+  }
+
+  onChat(handler: ChatHandler): () => void {
+    this.chatHandlers.add(handler);
+    return () => { this.chatHandlers.delete(handler); };
   }
 }
 

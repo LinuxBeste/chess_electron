@@ -49,6 +49,9 @@ class Store {
         (h as (value: StateMap[K]) => void)(value);
       }
     }
+    if (key === 'token' || key === 'playerId' || key === 'username') {
+      this.persistSession();
+    }
   }
 
   /* Auto-dismiss toast after 4s; tracks by incrementing ID for removal */
@@ -61,6 +64,34 @@ class Store {
       const cur = this.get('toasts');
       this.set('toasts', cur.filter(t => t.id !== id));
     }, 4000);
+  }
+
+  /* Persist session to localStorage on change */
+  persistSession(): void {
+    const token = this.get('token');
+    const playerId = this.get('playerId');
+    const username = this.get('username');
+    if (token && playerId && username) {
+      localStorage.setItem('chess_session', JSON.stringify({ token, playerId, username }));
+    } else {
+      localStorage.removeItem('chess_session');
+    }
+  }
+
+  /* Restore session from localStorage */
+  restoreSession(): { token: string; playerId: string; username: string } | null {
+    const raw = localStorage.getItem('chess_session');
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      localStorage.removeItem('chess_session');
+      return null;
+    }
+  }
+
+  clearSession(): void {
+    localStorage.removeItem('chess_session');
   }
 }
 
