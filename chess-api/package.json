@@ -6,7 +6,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "test": "jest --forceExit --detectOpenHandles"
+    "test": "jest --forceExit --detectOpenHandles", 
+"typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "cors": "^2.8.6",
