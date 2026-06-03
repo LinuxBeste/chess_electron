@@ -3,5 +3,5 @@
   "compilerOptions": {
     "noEmit": false
   },
-  "include": ["src/renderer/**/*.ts", "src/types.ts"]
+  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx", "src/types.ts"]
 }

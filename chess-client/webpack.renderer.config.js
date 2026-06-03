@@ -5,19 +5,19 @@ module.exports = {
   mode: 'production',
   target: 'web',
   entry: {
-    renderer: './src/renderer/index.ts',
+    renderer: './src/renderer/index.tsx',
   },
   output: {
     path: path.resolve(__dirname, 'dist/renderer'),
     filename: '[name].js',
   },
   resolve: {
-    extensions: ['.ts', '.js'],
+    extensions: ['.ts', '.tsx', '.js'],
   },
   module: {
     rules: [
       {
-        test: /\.ts$/,
+        test: /\.tsx?$/,
         use: {
           loader: 'ts-loader',
           options: {
