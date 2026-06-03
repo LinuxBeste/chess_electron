@@ -5,6 +5,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:dev": "bash start.sh --native",
+    "start:docker": "bash start.sh",
     "dev": "ts-node src/index.ts",
     "test": "jest --forceExit --detectOpenHandles", 
     "typecheck": "tsc --noEmit"
