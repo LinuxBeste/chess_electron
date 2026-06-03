@@ -18,29 +18,28 @@
 ## Architecture
 
 ```
-┌───────────────────────────────────────────────────────┐
-│                      Electron App                               │
-│  ┌─────────────────────────┐   IPC   ┌───────────────┐  │
-│  │    Renderer Process         │◄──────►│ Main Process     │  │
-│  │  (webpack / vanilla Dom)    │         │ (Node + TS)      │  │
-│  │                             │         │ window mgmt,     │  │
-│  │  views: login, lobby,       │         │ .env loading,    │  │
-│  │  game, result               │         │ preload bridge   │  │
-│  └───────────┬─────────────┘         └───────┬───────┘  │
-└──────────────┼─────────────────────────────┼──────────┘
-                 │ HTTP REST + WebSocket             │
-  ┌────────────▼─────────────────────────────▼──────────┐
-  │                     chess-api                                 │
-  │  ┌───────────┐  ┌───────────┐  ┌───────────────────┐  │
-  │  │  Express    │  │     ws      │  │   Chess Engine       │  │
-  │  │  REST API   │  │  WebSocket  │  │  (pure functions)    │  │
-  │  │  :3000      │  │  :3000      │  │  ~800 lines, FIDE    │  │
-  │  └───────────┘  └───────────┘  └───────────────────┘  │
-  │                                                               │
-  │  Stores: games (Map), players (Map), tokenIndex               │
-  │  Persistence: in-memory (resets on restart)                   │
-  │  Container: Docker (multi-stage, node:20-alpine)              │
-  └─────────────────────────────────────────────────────┘
+┌───────────────────────────────────────┐
+│           Electron App                │
+│  ┌─────────────────┐   IPC   ┌──────┐│
+│  │ Renderer Process │◄──────►│ Main ││
+│  │ (vanilla DOM)    │         │ Proc ││
+│  │                  │         │      ││
+│  │ login, lobby,    │         │ .env ││
+│  │ game, result     │         │preld ││
+│  └────────┬────────┘         └──┬───┘│
+└───────────┼─────────────────────┼─────┘
+            │ HTTP + WebSocket    │
+      ┌─────▼─────────────────────▼─────┐
+      │           chess-api             │
+      │ ┌────────┐ ┌────────┐ ┌───────┐│
+      │ │ Express│ │   ws   │ │ Chess ││
+      │ │ REST   │ │WebSock │ │Engine ││
+      │ │ :3000  │ │ :3000  │ │ ~800L ││
+      │ └────────┘ └────────┘ └───────┘│
+      │                                │
+      │ in-memory (resets on restart)  │
+      │ Docker (node:20-alpine)        │
+      └────────────────────────────────┘
 ```
 
 ---
