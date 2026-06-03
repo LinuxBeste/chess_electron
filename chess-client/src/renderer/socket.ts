@@ -41,6 +41,7 @@ export interface GameOverMessage {
   status: string;
   result: string;
   reason: string;
+  winner?: 'white' | 'black';
 }
 
 export interface ChatMessage {

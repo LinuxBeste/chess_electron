@@ -11,6 +11,52 @@ import { gameView } from './views/game';
 import { resultView } from './views/result';
 
 const container = document.getElementById('app')!;
+const navbar = el('nav', ['navbar']);
+let navbarUnsub: (() => void) | null = null;
+
+function buildNavbar(): void {
+  navbar.innerHTML = '';
+  const brand = el('span', ['navbar-brand'], {}, '♚ ', el('span', [], {}, 'Chess'));
+  navbar.appendChild(brand);
+
+  const center = el('span', ['navbar-center']);
+  navbar.appendChild(center);
+
+  const actions = el('div', ['navbar-actions']);
+  const token = store.get('token');
+  const username = store.get('username');
+
+  if (token && username) {
+    const playerInfo = el('span', ['navbar-player']);
+    const dot = el('span', ['navbar-dot', store.get('wsStatus') === 'connected' ? 'online' : 'offline']);
+    playerInfo.appendChild(dot);
+    playerInfo.append(username);
+    actions.appendChild(playerInfo);
+
+    const settingsBtn = el('button', ['navbar-btn'], {}, 'Settings');
+    settingsBtn.addEventListener('click', () => {
+      import('./settings').then(m => m.showSettingsDialog());
+    });
+    actions.appendChild(settingsBtn);
+
+    const disconnectBtn = el('button', ['navbar-btn'], {}, 'Logout');
+    disconnectBtn.addEventListener('click', () => {
+      store.set('token', null);
+      store.set('playerId', null);
+      store.set('username', null);
+      store.clearSession();
+      store.set('currentGame', null);
+      window.location.hash = '#login';
+    });
+    actions.appendChild(disconnectBtn);
+  }
+  navbar.appendChild(actions);
+}
+
+store.subscribe('username', () => buildNavbar());
+store.subscribe('wsStatus', () => buildNavbar());
+buildNavbar();
+document.body.prepend(navbar);
 
 /* If session exists, validate the token before auto-navigating.
  * The server stores tokens in-memory only — a restart wipes them,
@@ -45,7 +91,7 @@ setBaseUrl(serverUrl);
 socketManager.setServerUrl(serverUrl);
 
 /* Persistent toast bar above all views */
-const toastBar = el('div', ['toast-bar'], { style: 'position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;flex-direction:column;align-items:center;pointer-events:none;padding:8px 16px 0' });
+const toastBar = el('div', ['toast-bar']);
 document.body.appendChild(toastBar);
 
 /* Sync DOM toasts with store array — add new, remove dismissed */
@@ -60,18 +106,12 @@ store.subscribe('toasts', (toasts: ToastMessage[]) => {
   }
   for (const t of toasts) {
     if (!toastElements.has(t.id)) {
-      const bar = el('div', ['toast'], {
-        style: `background:${t.type === 'error' ? 'rgba(220,50,50,0.95)' : 'rgba(79,142,247,0.95)'};color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:500;margin-bottom:6px;box-shadow:0 4px 16px rgba(0,0,0,0.3);animation:toastIn 200ms ease;pointer-events:auto;max-width:480px;text-align:center`,
-      }, t.text);
+      const bar = el('div', ['toast', `toast-${t.type}`], {}, t.text);
       toastBar.appendChild(bar);
       toastElements.set(t.id, bar);
     }
   }
 });
-
-const styleSheet = document.createElement('style');
-styleSheet.textContent = `@keyframes toastIn { from { opacity:0; transform:translateY(-12px) } to { opacity:1; transform:translateY(0) } }`;
-document.head.appendChild(styleSheet);
 
 initRouter(container, {
   login: loginView,

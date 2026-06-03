@@ -51,13 +51,9 @@ export const resultView = {
     }
 
     /* Full-page overlay */
-    const overlay = el('div', [], {
-      style: 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;animation:fadeIn 200ms ease',
-    });
+    const overlay = el('div', ['modal-overlay']);
 
-    const card = el('div', [], {
-      style: 'background:#1a1a1f;border-radius:12px;border:1px solid rgba(255,255,255,0.06);box-shadow:0 16px 48px rgba(0,0,0,0.5);padding:48px 40px;text-align:center;max-width:400px;width:90%;animation:scaleIn 300ms cubic-bezier(0.34,1.56,0.64,1)',
-    });
+    const card = el('div', ['modal-card'], { style: 'padding:48px 40px' });
 
     /* Win=blue, loss=red, draw=muted */
     const outcomeColor = won ? '#4f8ef7' : lost ? 'rgba(220,80,80,0.9)' : '#888';
@@ -73,37 +69,27 @@ export const resultView = {
       card.appendChild(reason);
     }
 
-    const btnRow = el('div', [], {
-      style: 'display:flex;gap:12px;justify-content:center;flex-wrap:wrap',
-    });
+    const btnRow = el('div', ['game-btn-row'], { style: 'flex-wrap:wrap' });
 
-    const lobbyBtn = el('button', [], {
-      style: 'padding:12px 24px;background:#4f8ef7;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;transition:background 150ms ease,transform 150ms ease;letter-spacing:0.3px',
+    const lobbyBtn = el('button', ['btn', 'btn-primary'], {
+      style: 'padding:12px 24px;font-size:15px',
     }, 'Back to Lobby');
-    lobbyBtn.addEventListener('mouseenter', () => { lobbyBtn.style.background = '#5d9af8'; });
-    lobbyBtn.addEventListener('mouseleave', () => { lobbyBtn.style.background = '#4f8ef7'; });
-    lobbyBtn.addEventListener('mousedown', () => { lobbyBtn.style.transform = 'scale(0.97)'; });
-    lobbyBtn.addEventListener('mouseup', () => { lobbyBtn.style.transform = 'scale(1)'; });
     lobbyBtn.addEventListener('click', () => navigate('lobby'));
     btnRow.appendChild(lobbyBtn);
 
     if (game && game.boardHistory && game.boardHistory.length > 0) {
-      const reviewBtn = el('button', [], {
-        style: 'padding:12px 24px;background:transparent;color:#4f8ef7;border:1px solid #4f8ef7;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;transition:background 150ms ease,color 150ms ease;letter-spacing:0.3px',
+      const reviewBtn = el('button', ['btn', 'btn-secondary'], {
+        style: 'padding:12px 24px;font-size:15px',
       }, 'Review Game');
-      reviewBtn.addEventListener('mouseenter', () => { reviewBtn.style.background = '#4f8ef7'; reviewBtn.style.color = '#fff'; });
-      reviewBtn.addEventListener('mouseleave', () => { reviewBtn.style.background = 'transparent'; reviewBtn.style.color = '#4f8ef7'; });
       reviewBtn.addEventListener('click', () => {
         navigate('game', game.id);
       });
       btnRow.appendChild(reviewBtn);
     }
 
-    const copyBtn = el('button', [], {
-      style: 'padding:12px 24px;background:transparent;color:#888;border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;transition:background 150ms ease,color 150ms ease;letter-spacing:0.3px',
+    const copyBtn = el('button', ['btn', 'btn-ghost'], {
+      style: 'padding:12px 24px;font-size:15px',
     }, 'Copy Game ID');
-    copyBtn.addEventListener('mouseenter', () => { copyBtn.style.background = 'rgba(255,255,255,0.05)'; copyBtn.style.color = '#e0e0e0'; });
-    copyBtn.addEventListener('mouseleave', () => { copyBtn.style.background = 'transparent'; copyBtn.style.color = '#888'; });
     copyBtn.addEventListener('click', () => {
       const id = game?.id || gameId;
       if (id) {
@@ -126,8 +112,3 @@ export const resultView = {
     };
   },
 };
-
-/* Inject animations */
-const resultStyle = document.createElement('style');
-resultStyle.textContent = `@keyframes fadeIn { from { opacity:0 } to { opacity:1 } } @keyframes scaleIn { from { opacity:0;transform:scale(0.8) } to { opacity:1;transform:scale(1) } }`;
-document.head.appendChild(resultStyle);

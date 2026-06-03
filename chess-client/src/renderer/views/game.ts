@@ -3,7 +3,7 @@ import * as api from '../api';
 import { socketManager } from '../socket';
 import { navigate } from '../router';
 import { el, getPieceSvg, deserializeBoard, squareToIndices, indicesToSquare, cloneBoard, createInitialBoard } from '../chess';
-import type { Board, GameState, LegalMoveHint, PieceType, SerializedSquare } from '../../types';
+import type { Board, GameState, GameStatus, LegalMoveHint, PieceType, SerializedSquare } from '../../types';
 import type { MoveMessage, GameOverMessage, GameStartedMessage } from '../socket';
 import { playMoveSound, playCaptureSound, playCheckSound, playGameOverSound } from '../sound';
 import { getSetting } from '../settings';
@@ -98,7 +98,7 @@ function mountGame(container: HTMLElement): () => void {
 
     /* If spectating, subscribe to WS updates for this game */
     if (isSpectator) {
-      socketManager.send({ type: 'spectate', gameId });
+      sendSpectateWhenConnected(gameId);
     }
 
     return () => {
@@ -116,6 +116,9 @@ function cleanup(): void {
   if (unsubGameOver) { unsubGameOver(); unsubGameOver = null; }
   if (unsubGameStarted) { unsubGameStarted(); unsubGameStarted = null; }
   if (unsubChat) { unsubChat(); unsubChat = null; }
+  if (isSpectator) {
+    socketManager.send({ type: 'unspectate' });
+  }
   if (wrapperEl) wrapperEl.remove();
   game = null;
   selectedSquare = null;
@@ -133,6 +136,20 @@ function cleanup(): void {
   wrapperEl = null;
   reviewIndex = null;
   reviewControlsEl = null;
+}
+
+function sendSpectateWhenConnected(gameId: string): void {
+  const status = store.get('wsStatus');
+  if (status === 'connected') {
+    socketManager.send({ type: 'spectate', gameId });
+    return;
+  }
+  const unsub = store.subscribe('wsStatus', (newStatus) => {
+    if (newStatus === 'connected') {
+      socketManager.send({ type: 'spectate', gameId });
+      unsub();
+    }
+  });
 }
 
 async function fetchGame(gameId: string): Promise<void> {
@@ -178,30 +195,16 @@ function initBoard(g: GameState): void {
 
   /* Show waiting overlay if game hasn't started yet */
   if (g.status === 'waiting' && boardEl) {
-    waitingOverlay = el('div', [], {
-      style: 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border-radius:8px;z-index:5',
-    });
-    const waitingText = el('div', [], {
-      style: 'font-size:18px;font-weight:500;color:#e0e0e0;letter-spacing:0.3px',
-    }, 'Waiting for opponent...');
+    waitingOverlay = el('div', ['waiting-overlay']);
+    const waitingText = el('div', ['waiting-text'], {}, 'Waiting for opponent...');
     waitingOverlay.appendChild(waitingText);
 
-    const idRow = el('div', [], {
-      style: 'display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);padding:8px 14px;border-radius:8px',
-    });
-    const idLabel = el('span', [], {
-      style: 'font-size:12px;font-weight:400;color:#888;letter-spacing:0.2px',
-    }, 'Game ID:');
+    const idRow = el('div', ['waiting-id-row']);
+    const idLabel = el('span', ['waiting-id-label'], {}, 'Game ID:');
     idRow.appendChild(idLabel);
-    const idValue = el('span', [], {
-      style: 'font-size:13px;font-weight:500;color:#e0e0e0;letter-spacing:0.3px;font-family:monospace',
-    }, g.id);
+    const idValue = el('span', ['waiting-id-value'], {}, g.id);
     idRow.appendChild(idValue);
-    const copyIdBtn = el('button', [], {
-      style: 'padding:4px 10px;font-size:11px;font-weight:500;color:#4f8ef7;background:transparent;border:1px solid #4f8ef7;border-radius:4px;cursor:pointer;letter-spacing:0.2px;transition:background 150ms ease,color 150ms ease',
-    }, 'Copy');
-    copyIdBtn.addEventListener('mouseenter', () => { copyIdBtn.style.background = '#4f8ef7'; copyIdBtn.style.color = '#fff'; });
-    copyIdBtn.addEventListener('mouseleave', () => { copyIdBtn.style.background = 'transparent'; copyIdBtn.style.color = '#4f8ef7'; });
+    const copyIdBtn = el('button', ['btn', 'btn-secondary', 'btn-xs'], {}, 'Copy');
     copyIdBtn.addEventListener('click', () => {
       navigator.clipboard.writeText(g.id).then(() => {
         copyIdBtn.textContent = 'Copied';
@@ -220,39 +223,21 @@ function initBoard(g: GameState): void {
 }
 
 function buildLayout(container: HTMLElement, gameId: string): HTMLElement {
-  const wrapper = el('div', [], {
-    style: 'display:flex;align-items:center;justify-content:center;height:100%;padding:24px;gap:24px',
-  });
+  const wrapper = el('div', ['game-layout']);
 
   /* Center column: board + player info */
-  const centerCol = el('div', [], {
-    style: 'display:flex;flex-direction:column;align-items:center;gap:12px',
-  });
+  const centerCol = el('div', ['game-center']);
 
   /* Black player bar */
-  const blackBar = el('div', [], {
-    style: 'display:flex;align-items:center;justify-content:space-between;width:100%;max-width:480px;padding:10px 16px;background:#1a1a1f;border-radius:8px;border:1px solid rgba(255,255,255,0.06)',
-  });
-  blackNameEl = el('span', [], { style: 'font-size:14px;font-weight:500;color:#e0e0e0;letter-spacing:0.2px' }, 'Black');
-  blackClockEl = el('span', [], { style: 'font-size:14px;font-weight:300;color:#888;font-variant-numeric:tabular-nums' }, '0:00');
+  const blackBar = el('div', ['player-bar']);
+  blackNameEl = el('span', ['player-name'], {}, 'Black');
+  blackClockEl = el('span', ['player-clock'], {}, '0:00');
   blackBar.appendChild(blackNameEl);
   blackBar.appendChild(blackClockEl);
   centerCol.appendChild(blackBar);
 
-  /* Spectator badge */
-  if (isSpectator) {
-    const specBadge = el('div', [], {
-      style: 'font-size:12px;font-weight:600;color:#22c55e;background:rgba(34,197,94,0.1);padding:4px 12px;border-radius:6px;letter-spacing:0.5px;text-transform:uppercase',
-    }, 'Spectating');
-    centerCol.appendChild(specBadge);
-    /* Hide resign button for spectators */
-    if (resignBtn) resignBtn.style.display = 'none';
-  }
-
   /* Chess board container */
-  boardEl = el('div', ['chess-board'], {
-    style: 'position:relative;width:min(60vh,480px);height:min(60vh,480px);border-radius:8px;box-shadow:inset 0 2px 8px rgba(0,0,0,0.3),0 4px 24px rgba(0,0,0,0.4);overflow:hidden;user-select:none',
-  });
+  boardEl = el('div', ['board-container']);
   renderBoard();
   boardEl.addEventListener('click', handleBoardClick);
   boardEl.addEventListener('mousedown', handleBoardMouseDown);
@@ -262,46 +247,33 @@ function buildLayout(container: HTMLElement, gameId: string): HTMLElement {
   centerCol.appendChild(boardEl);
 
   /* White player bar */
-  const whiteBar = el('div', [], {
-    style: 'display:flex;align-items:center;justify-content:space-between;width:100%;max-width:480px;padding:10px 16px;background:#1a1a1f;border-radius:8px;border:1px solid rgba(255,255,255,0.06)',
-  });
-  whiteNameEl = el('span', [], { style: 'font-size:14px;font-weight:500;color:#e0e0e0;letter-spacing:0.2px' }, 'White');
-  whiteClockEl = el('span', [], { style: 'font-size:14px;font-weight:300;color:#888;font-variant-numeric:tabular-nums' }, '0:00');
+  const whiteBar = el('div', ['player-bar']);
+  whiteNameEl = el('span', ['player-name'], {}, 'White');
+  whiteClockEl = el('span', ['player-clock'], {}, '0:00');
   whiteBar.appendChild(whiteNameEl);
   whiteBar.appendChild(whiteClockEl);
   centerCol.appendChild(whiteBar);
 
   /* Resign button */
-  const btnRow = el('div', [], {
-    style: 'display:flex;gap:8px;align-items:center',
-  });
+  const btnRow = el('div', ['game-btn-row']);
 
-  resignBtn = el('button', [], {
-    style: 'background:transparent;border:none;color:rgba(220,80,80,0.7);font-size:13px;font-weight:500;cursor:pointer;padding:4px 8px;transition:color 150ms ease;letter-spacing:0.3px',
-  }, 'Resign');
-  resignBtn.addEventListener('mouseenter', () => { if (resignBtn) resignBtn.style.color = 'rgba(220,80,80,1)'; });
-  resignBtn.addEventListener('mouseleave', () => { if (resignBtn) resignBtn.style.color = 'rgba(220,80,80,0.7)'; });
+  resignBtn = el('button', ['btn', 'btn-danger', 'btn-sm'], {}, 'Resign');
   resignBtn.addEventListener('click', () => handleResign());
   btnRow.appendChild(resignBtn);
 
-  /* Review controls (hidden by default, shown when game ends) */
-  reviewControlsEl = el('div', [], {
-    style: 'display:none;gap:8px;align-items:center;margin-left:auto',
-  });
-  const prevBtn = el('button', [], {
-    style: 'padding:6px 12px;background:#222228;color:#e0e0e0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:background 150ms ease',
-  }, '\u25C0 Prev');
-  const nextBtn = el('button', [], {
-    style: 'padding:6px 12px;background:#222228;color:#e0e0e0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:background 150ms ease',
-  }, 'Next \u25B6');
-  const reviewLabel = el('span', [], {
-    style: 'font-size:12px;font-weight:500;color:#888;letter-spacing:0.3px;min-width:60px;text-align:center',
-  }, 'Review');
+  /* Spectator badge and leave button */
+  if (isSpectator) {
+    const specBadge = el('div', ['badge', 'badge-spectate', 'spectating-badge'], {}, 'Spectating');
+    centerCol.insertBefore(specBadge, boardEl);
+    resignBtn.textContent = 'Leave';
+    resignBtn.className = 'btn btn-secondary btn-sm';
+  }
 
-  prevBtn.addEventListener('mouseenter', () => { prevBtn.style.background = '#2c2c38'; });
-  prevBtn.addEventListener('mouseleave', () => { prevBtn.style.background = '#222228'; });
-  nextBtn.addEventListener('mouseenter', () => { nextBtn.style.background = '#2c2c38'; });
-  nextBtn.addEventListener('mouseleave', () => { nextBtn.style.background = '#222228'; });
+  /* Review controls (hidden by default, shown when game ends) */
+  reviewControlsEl = el('div', ['review-controls']);
+  const prevBtn = el('button', ['btn', 'btn-ghost', 'btn-sm'], {}, '\u25C0 Prev');
+  const nextBtn = el('button', ['btn', 'btn-ghost', 'btn-sm'], {}, 'Next \u25B6');
+  const reviewLabel = el('span', ['review-label'], {}, 'Review');
 
   prevBtn.addEventListener('click', () => reviewStep(-1));
   nextBtn.addEventListener('click', () => reviewStep(1));
@@ -316,44 +288,36 @@ function buildLayout(container: HTMLElement, gameId: string): HTMLElement {
   wrapper.appendChild(centerCol);
 
   /* Right column: move history + chat */
-  const rightCol = el('div', [], {
-    style: 'width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:12px',
-  });
+  const rightCol = el('div', ['sidebar']);
 
   /* Move history */
-  const histTitle = el('h3', [], {
-    style: 'font-size:14px;font-weight:700;color:#888;margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase',
-  }, 'Moves');
+  const histTitle = el('h3', ['sidebar-title'], {}, 'Moves');
   rightCol.appendChild(histTitle);
 
-  moveHistoryEl = el('div', [], {
-    style: 'flex:1;overflow-y:auto;background:#1a1a1f;border-radius:12px;border:1px solid rgba(255,255,255,0.06);padding:12px;min-height:150px;max-height:calc(50vh - 100px)',
+  moveHistoryEl = el('div', ['sidebar-panel'], {
+    style: 'min-height:150px;max-height:calc(50vh - 100px)',
   });
   rightCol.appendChild(moveHistoryEl);
 
   /* Chat panel */
-  const chatTitle = el('h3', [], {
-    style: 'font-size:14px;font-weight:700;color:#888;margin-top:8px;margin-bottom:8px;letter-spacing:0.5px;text-transform:uppercase',
+  const chatTitle = el('h3', ['sidebar-title'], {
+    style: 'margin-top:8px',
   }, 'Chat');
   rightCol.appendChild(chatTitle);
 
-  const chatMsgs = el('div', [], {
-    style: 'flex:1;overflow-y:auto;background:#1a1a1f;border-radius:12px;border:1px solid rgba(255,255,255,0.06);padding:8px;min-height:80px;max-height:150px;font-size:12px',
+  const chatMsgs = el('div', ['sidebar-panel'], {
+    style: 'min-height:80px;max-height:150px;font-size:12px;padding:8px',
   });
 
-  const chatInputRow = el('div', [], {
-    style: 'display:flex;gap:6px;margin-top:6px',
-  });
-  const chatInput = el('input', [], {
+  const chatInputRow = el('div', ['chat-input-row']);
+  const chatInput = el('input', ['input'], {
     type: 'text',
     placeholder: 'Type a message...',
-    style: 'flex:1;padding:8px 10px;background:#222228;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e0e0e0;font-size:12px;outline:none;box-sizing:border-box;transition:border-color 150ms ease',
+    style: 'flex:1;font-size:12px',
   }) as HTMLInputElement;
-  chatInput.addEventListener('focus', () => { chatInput.style.borderColor = '#4f8ef7'; });
-  chatInput.addEventListener('blur', () => { chatInput.style.borderColor = 'rgba(255,255,255,0.1)'; });
 
-  const chatSendBtn = el('button', [], {
-    style: 'padding:8px 12px;background:#4f8ef7;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:background 150ms ease',
+  const chatSendBtn = el('button', ['btn', 'btn-primary'], {
+    style: 'padding:8px 12px;font-size:12px',
   }, 'Send');
 
   chatInputRow.appendChild(chatInput);
@@ -377,15 +341,11 @@ function buildLayout(container: HTMLElement, gameId: string): HTMLElement {
   unsubChat = socketManager.onChat((msg) => {
     if (msg.gameId !== gameId) return;
     const isMe = msg.playerId === store.get('playerId');
-    const msgEl = el('div', [], {
-      style: `padding:4px 6px;margin-bottom:4px;border-radius:4px;background:${isMe ? 'rgba(79,142,247,0.08)' : 'transparent'}`,
-    });
-    const nameEl = el('span', [], {
-      style: `font-weight:600;color:${isMe ? '#4f8ef7' : '#888'};margin-right:6px`,
+    const msgEl = el('div', ['chat-msg', isMe ? 'chat-msg-self' : '']);
+    const nameEl = el('span', ['chat-name'], {
+      style: `color:${isMe ? '#4f8ef7' : '#888'}`,
     }, isMe ? 'You' : msg.username);
-    const textEl = el('span', [], {
-      style: 'color:#e0e0e0',
-    }, msg.text);
+    const textEl = el('span', ['chat-text'], {}, msg.text);
     msgEl.appendChild(nameEl);
     msgEl.appendChild(textEl);
     chatMsgs.appendChild(msgEl);
@@ -417,24 +377,20 @@ function renderBoard(): void {
       const boardFile = isWhiteBottom ? displayFile : 7 - displayFile;
 
       const isLight = (displayRank + displayFile) % 2 === 0;
-      const sq = el('div', ['square'], {
+      const sq = el('div', ['square', isLight ? 'sq-light' : 'sq-dark'], {
         'data-rank': boardRank.toString(),
         'data-file': boardFile.toString(),
         'data-square': indicesToSquare(boardRank, boardFile),
-        style: `position:absolute;top:${displayRank * sqSize}px;left:${displayFile * sqSize}px;width:${sqSize}px;height:${sqSize}px;background:${isLight ? 'var(--sq-light, #3d3d52)' : 'var(--sq-dark, #2c2c38)'};display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 150ms ease`,
+        style: `position:absolute;top:${displayRank * sqSize}px;left:${displayFile * sqSize}px;width:${sqSize}px;height:${sqSize}px`,
       });
 
       /* File labels a-h along bottom edge, rank labels 8-1 along left edge */
       if (displayRank === 7) {
-        const label = el('span', [], {
-          style: 'position:absolute;bottom:2px;right:3px;font-size:10px;color:rgba(255,255,255,0.2);font-weight:300;pointer-events:none;letter-spacing:0',
-        }, String.fromCharCode(97 + displayFile));
+        const label = el('span', ['sq-label', 'sq-label-file'], {}, String.fromCharCode(97 + displayFile));
         sq.appendChild(label);
       }
       if (displayFile === 0) {
-        const label = el('span', [], {
-          style: 'position:absolute;top:2px;left:3px;font-size:10px;color:rgba(255,255,255,0.2);font-weight:300;pointer-events:none;letter-spacing:0',
-        }, (8 - displayRank).toString());
+        const label = el('span', ['sq-label', 'sq-label-rank'], {}, (8 - displayRank).toString());
         sq.appendChild(label);
       }
 
@@ -459,59 +415,48 @@ function renderBoard(): void {
 function applyHighlights(): void {
   if (!boardEl) return;
   const squares = boardEl.querySelectorAll<HTMLElement>('.square');
-  const isWhiteBottom = playerColor === 'white';
 
-  /* Reset all square backgrounds to default */
+  /* Reset all squares */
   squares.forEach(sq => {
+    sq.classList.remove('hl-last-from', 'hl-last-to', 'hl-selected');
+    sq.style.boxShadow = 'none';
     const file = parseInt(sq.getAttribute('data-file') || '0', 10);
     const rank = parseInt(sq.getAttribute('data-rank') || '0', 10);
-    const isLight = (rank + file) % 2 === 0;
-    /* Map display position for light/dark calculation */
     const alwaysBottom = getSetting('alwaysWhiteBottom');
     const isWhiteBottom = alwaysBottom ? true : (playerColor === 'white');
     const displayRank = isWhiteBottom ? rank : 7 - rank;
     const displayFile = isWhiteBottom ? file : 7 - file;
-    const origLight = (displayRank + displayFile) % 2 === 0;
-    sq.style.background = origLight ? 'var(--sq-light, #3d3d52)' : 'var(--sq-dark, #2c2c38)';
-    sq.style.boxShadow = 'none';
+    const isLight = (displayRank + displayFile) % 2 === 0;
+    sq.classList.toggle('sq-light', isLight);
+    sq.classList.toggle('sq-dark', !isLight);
   });
 
   /* Last move highlight — subtle warm tint */
   if (lastMove) {
     const fromSq = boardEl.querySelector(`[data-square="${lastMove.from}"]`) as HTMLElement;
     const toSq = boardEl.querySelector(`[data-square="${lastMove.to}"]`) as HTMLElement;
-    if (fromSq) fromSq.style.background = 'rgba(255,200,100,0.15)';
-    if (toSq) toSq.style.background = 'rgba(255,200,100,0.2)';
+    if (fromSq) fromSq.classList.add('hl-last-from');
+    if (toSq) toSq.classList.add('hl-last-to');
   }
 
   /* Selected square — soft blue overlay */
   if (selectedSquare) {
     const selSq = boardEl.querySelector(`[data-square="${selectedSquare}"]`) as HTMLElement;
-    if (selSq) selSq.style.background = 'rgba(79,142,247,0.25)';
+    if (selSq) selSq.classList.add('hl-selected');
   }
 
   /* Remove stale hints first */
-  boardEl.querySelectorAll('.legal-hint').forEach(d => d.remove());
+  boardEl.querySelectorAll('.legal-dot, .legal-capture').forEach(d => d.remove());
 
   /* Legal move hints */
   const playerId = store.get('playerId');
-  /* Differentiate capture targets (full circle) from empty squares (small dot) */
   for (const hint of legalHints) {
     const hintSq = boardEl.querySelector(`[data-square="${hint.to}"]`) as HTMLElement;
     if (!hintSq) continue;
     const [r, f] = squareToIndices(hint.to);
     const hasPiece = board[r] && board[r][f] !== null;
-    if (hasPiece) {
-      const dot = el('div', ['legal-hint'], {
-        style: 'position:absolute;width:100%;height:100%;border-radius:50%;background:rgba(79,142,247,0.4);pointer-events:none;z-index:2',
-      });
-      hintSq.appendChild(dot);
-    } else {
-      const dot = el('div', ['legal-hint'], {
-        style: 'position:absolute;width:12px;height:12px;border-radius:50%;background:rgba(79,142,247,0.3);pointer-events:none;z-index:2',
-      });
-      hintSq.appendChild(dot);
-    }
+    const dot = el('div', hasPiece ? ['legal-capture'] : ['legal-dot']);
+    hintSq.appendChild(dot);
   }
 
   /* Note: check glow removed because the server doesn't expose an "in check" flag.
@@ -647,10 +592,9 @@ function handleDocumentMouseMove(e: MouseEvent): void {
     const hoverSq = boardEl.querySelector(`[data-rank="${boardRank}"][data-file="${boardFile}"]`) as HTMLElement;
     if (hoverSq) {
       const isLegal = legalHints.some(h => h.to === indicesToSquare(boardRank, boardFile));
-      boardEl.querySelectorAll('.square').forEach(s => (s as HTMLElement).style.outline = '');
+      boardEl.querySelectorAll('.square').forEach(s => s.classList.remove('hl-hover'));
       if (isLegal) {
-        hoverSq.style.outline = '2px solid rgba(79,142,247,0.6)';
-        hoverSq.style.outlineOffset = '-2px';
+        hoverSq.classList.add('hl-hover');
       }
     }
   }
@@ -667,7 +611,7 @@ function handleDocumentMouseUp(e: MouseEvent): void {
     if (boardEl) {
       const origSq = boardEl.querySelector(`[data-square="${fromSquare}"]`) as HTMLElement;
       if (origSq) origSq.style.opacity = '1';
-      boardEl.querySelectorAll('.square').forEach(s => (s as HTMLElement).style.outline = '');
+      boardEl.querySelectorAll('.square').forEach(s => s.classList.remove('hl-hover'));
   }
 
   dragState = null;
@@ -723,24 +667,14 @@ let pendingPromotion: { from: string; to: string } | null = null;
 
 function showPromotionDialog(from: string, to: string): void {
   pendingPromotion = { from, to };
-  const overlay = el('div', [], {
-    style: 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:2000;animation:fadeIn 150ms ease',
-  });
-  const card = el('div', [], {
-    style: 'background:#1a1a1f;border-radius:12px;border:1px solid rgba(255,255,255,0.06);padding:24px;text-align:center',
-  });
-  const title = el('div', [], {
-    style: 'font-size:14px;font-weight:500;color:#888;margin-bottom:16px;letter-spacing:0.3px',
-  }, 'Choose promotion piece');
+  const overlay = el('div', ['modal-overlay']);
+  const card = el('div', ['modal-card'], { style: 'padding:24px' });
+  const title = el('div', ['promo-title'], {}, 'Choose promotion piece');
   card.appendChild(title);
-  const pieceRow = el('div', [], { style: 'display:flex;gap:12px;justify-content:center' });
+  const pieceRow = el('div', ['promo-row']);
   for (const pt of ['queen', 'rook', 'bishop', 'knight'] as PieceType[]) {
-    const btn = el('div', [], {
-      style: 'width:56px;height:56px;cursor:pointer;border-radius:8px;padding:8px;background:#222228;transition:background 150ms ease',
-    });
+    const btn = el('div', ['promo-piece']);
     btn.innerHTML = getPieceSvg(pt, playerColor);
-    btn.addEventListener('mouseenter', () => { btn.style.background = '#2c2c38'; });
-    btn.addEventListener('mouseleave', () => { btn.style.background = '#222228'; });
     btn.addEventListener('click', () => {
       overlay.remove();
       if (pendingPromotion) {
@@ -896,6 +830,8 @@ function handleWsGameOver(msg: GameOverMessage): void {
   board = deserializeBoard(msg.board);
   lastMove = msg.lastMove;
   updateBoardDisplay();
+  game.status = msg.status as GameStatus;
+  if (msg.winner) game.winner = msg.winner;
   store.set('currentGame', game);
   if (getSetting('soundEnabled')) playGameOverSound();
   setTimeout(() => navigate('result', msg.gameId), 500);
@@ -922,43 +858,34 @@ function updateMoveHistory(moves: string[]): void {
   moveHistoryEl.innerHTML = '';
 
   if (moves.length === 0) {
-    moveHistoryEl.appendChild(el('div', [], {
-      style: 'font-size:13px;font-weight:300;color:#555;text-align:center;padding:20px',
-    }, 'No moves yet'));
+    moveHistoryEl.appendChild(el('div', ['empty-state'], {}, 'No moves yet'));
     return;
   }
 
-  const table = el('div', [], {
-    style: 'display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 12px;font-size:13px;width:100%',
-  });
+  const table = el('div', ['history-grid']);
 
-  const headerNum = el('div', [], { style: 'color:#555;font-weight:300;font-size:11px' }, '#');
-  const headerW = el('div', [], { style: 'color:#555;font-weight:300;font-size:11px' }, 'White');
-  const headerB = el('div', [], { style: 'color:#555;font-weight:300;font-size:11px' }, 'Black');
+  const headerNum = el('div', ['history-header'], {}, '#');
+  const headerW = el('div', ['history-header'], {}, 'White');
+  const headerB = el('div', ['history-header'], {}, 'Black');
   table.appendChild(headerNum);
   table.appendChild(headerW);
   table.appendChild(headerB);
 
   for (let i = 0; i < moves.length; i += 2) {
     const moveNum = Math.floor(i / 2) + 1;
-    const isLast = i === moves.length - 1 || i === moves.length - 2;
+    const isLastWhite = i >= moves.length - 1;
+    const isLastBlack = i + 1 >= moves.length - 1;
 
-    const numEl = el('div', [], {
-      style: `color:#555;font-weight:300;font-size:11px;${isLast ? 'font-weight:500;color:#888' : ''}`,
-    }, `${moveNum}.`);
+    const numEl = el('div', ['history-num'], {}, `${moveNum}.`);
 
     const wMove = moves[i];
-    const wEl = el('div', [], {
-      style: `color:#e0e0e0;font-weight:500;letter-spacing:0.2px;${isLast && i >= moves.length - 2 ? 'background:rgba(79,142,247,0.12);border-radius:4px;padding:2px 6px' : ''}`,
-    }, wMove);
+    const wEl = el('div', ['history-move', isLastWhite ? 'history-latest' : ''], {}, wMove);
     table.appendChild(numEl);
     table.appendChild(wEl);
 
     const bMove = moves[i + 1];
     if (bMove) {
-      const bEl = el('div', [], {
-        style: `color:#e0e0e0;font-weight:500;letter-spacing:0.2px;${isLast && i + 1 >= moves.length - 1 ? 'background:rgba(79,142,247,0.12);border-radius:4px;padding:2px 6px' : ''}`,
-      }, bMove);
+      const bEl = el('div', ['history-move', isLastBlack ? 'history-latest' : ''], {}, bMove);
       table.appendChild(bEl);
     }
   }
@@ -1009,7 +936,7 @@ function formatTime(seconds: number): string {
 
 function enterReviewMode(): void {
   reviewIndex = game && game.boardHistory.length > 0 ? game.boardHistory.length - 1 : null;
-  if (reviewControlsEl) reviewControlsEl.style.display = 'flex';
+  if (reviewControlsEl) reviewControlsEl.classList.add('active');
   if (resignBtn) resignBtn.style.display = 'none';
   updateReviewLabel();
   applyReviewBoard();
@@ -1068,6 +995,13 @@ function extractLastMove(prevBoard: SerializedSquare[], curBoard: SerializedSqua
 /* ─── Resign ─── */
 
 function handleResign(): void {
+  if (isSpectator) {
+    socketManager.send({ type: 'unspectate' });
+    store.set('currentGame', null);
+    navigate('lobby');
+    return;
+  }
+
   if (getSetting('confirmResign') && !resignConfirmed) {
     resignConfirmed = true;
     if (resignBtn) resignBtn.textContent = 'Are you sure?';
