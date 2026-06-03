@@ -56,9 +56,40 @@ function createWindow(): void {
   }
 }
 
-/* IPC handler to open an additional window for multi-player testing */
+/* IPC handler to open an additional window for multi-player testing.
+   Uses a unique session partition so the new window has its own
+   localStorage — the user can log in as a different player. */
+let windowCounter = 0;
 ipcMain.on('open-new-window', () => {
-  createWindow();
+  windowCounter++;
+  const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+
+  const win = new BrowserWindow({
+    width: Math.min(1280, Math.round(screenWidth * 0.8)),
+    height: Math.min(900, Math.round(screenHeight * 0.85)),
+    minWidth: 960,
+    minHeight: 700,
+    backgroundColor: '#0e0e10',
+    show: false,
+    title: `Chess (${windowCounter})`,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+      partition: `persist:chess-window-${windowCounter}`,
+    },
+  });
+
+  win.once('ready-to-show', () => {
+    win.show();
+  });
+
+  win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+
+  if (process.env.NODE_ENV === 'development' || process.argv.includes('--devtools')) {
+    win.webContents.openDevTools();
+  }
 });
 
 app.whenReady().then(createWindow);
