@@ -3454,3 +3454,85 @@ describe('getGameStatus — edge cases', () => {
     expect(status).toBe('check');
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  50-Move Rule                                                        */
+/* ------------------------------------------------------------------ */
+
+describe('50-move rule', () => {
+  test('updateHalfMoveClock resets to 0 on pawn move', () => {
+    const move: Move = {
+      from: 'e2', to: 'e4', piece: { type: 'pawn', color: 'white' },
+    };
+    expect(chess.updateHalfMoveClock(move, 42)).toBe(0);
+  });
+
+  test('updateHalfMoveClock resets to 0 on capture', () => {
+    const move: Move = {
+      from: 'd5', to: 'e6', piece: { type: 'queen', color: 'white' },
+      captured: { type: 'pawn', color: 'black' },
+    };
+    expect(chess.updateHalfMoveClock(move, 37)).toBe(0);
+  });
+
+  test('updateHalfMoveClock increments by 1 otherwise', () => {
+    const move: Move = {
+      from: 'g1', to: 'f3', piece: { type: 'knight', color: 'white' },
+    };
+    expect(chess.updateHalfMoveClock(move, 5)).toBe(6);
+  });
+
+  test('getGameStatus returns draw when halfMoveClock >= 100', () => {
+    const board = boardFromFenLike([
+      'k.......',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      'K.......',
+    ]);
+    const { status } = chess.getGameStatus(board, 'white', null, {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    }, 100);
+    expect(status).toBe('draw');
+  });
+
+  test('getGameStatus returns active when halfMoveClock < 100', () => {
+    const board = boardFromFenLike([
+      'k.......',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      'K.......',
+    ]);
+    const { status } = chess.getGameStatus(board, 'white', null, {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    }, 99);
+    expect(status).toBe('active');
+  });
+
+  test('getGameStatus ignores halfMoveClock when not provided', () => {
+    const board = boardFromFenLike([
+      'k.......',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      'K.......',
+    ]);
+    const { status } = chess.getGameStatus(board, 'white', null, {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    });
+    expect(status).toBe('active');
+  });
+});

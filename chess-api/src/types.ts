@@ -53,12 +53,14 @@ export interface GameState {
   status: GameStatus;
   players: { white?: string; black?: string };
   moveHistory: string[];
+  boardHistory: { board: SerializedSquare[]; move: string }[];
   enPassantTarget: string | null;
   castlingRights: CastlingRights;
   lastMove: { from: string; to: string } | null;
   winner: Color | null;
   createdAt: number;
   visibility: 'public' | 'private';
+  halfMoveClock: number;
 }
 
 /* A registered human player.  `tokens` is a list of bearer tokens so the

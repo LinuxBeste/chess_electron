@@ -12,6 +12,15 @@ import { resultView } from './views/result';
 
 const container = document.getElementById('app')!;
 
+/* If session exists, start at lobby instead of login */
+const session = store.restoreSession();
+if (session) {
+  store.set('token', session.token);
+  store.set('playerId', session.playerId);
+  store.set('username', session.username);
+  if (!window.location.hash) window.location.hash = '#lobby';
+}
+
 /* Configure server URL from Electron preload config or default to localhost */
 const serverUrl = window.electronAPI?.serverUrl || 'http://localhost:3000';
 setBaseUrl(serverUrl);

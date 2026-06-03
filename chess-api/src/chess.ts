@@ -697,14 +697,30 @@ export function getGameStatus(
   color: Color,
   enPassantTarget: string | null,
   castlingRights: CastlingRights,
-): { status: 'active' | 'check' | 'checkmate' | 'stalemate' } {
+  halfMoveClock?: number,
+): { status: 'active' | 'check' | 'checkmate' | 'stalemate' | 'draw' } {
   const inCheck = isInCheck(board, color);
   const legalMoves = getLegalMoves(board, color, enPassantTarget, castlingRights);
 
   if (legalMoves.length === 0) {
     return { status: inCheck ? 'checkmate' : 'stalemate' };
   }
+  /* 50-move rule: 100 half-moves without a pawn move or capture */
+  if (halfMoveClock !== undefined && halfMoveClock >= 100) {
+    return { status: 'draw' };
+  }
   return { status: inCheck ? 'check' : 'active' };
+}
+
+/**
+ * Calculate the updated half-move clock after a move.
+ * Resets to 0 on pawn move or capture, otherwise increments by 1.
+ */
+export function updateHalfMoveClock(move: Move, currentClock: number): number {
+  if (move.piece.type === 'pawn' || move.captured) {
+    return 0;
+  }
+  return currentClock + 1;
 }
 
 /**

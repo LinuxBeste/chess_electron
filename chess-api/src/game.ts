@@ -23,6 +23,9 @@ const tokenIndex = new Map<string, string>();
  * devices) while broadcasting game events to all of them. */
 const wsConnections = new Map<string, Set<WebSocket>>();
 
+/* Spectator WebSocket connections per game. Non-players can watch active games. */
+const spectatorConnections = new Map<string, Set<WebSocket>>();
+
 /**
  * Register a new player with a display-only username.
  *
@@ -113,6 +116,37 @@ function sendToPlayer(playerId: string, message: Record<string, unknown>): void 
 }
 
 /**
+ * Register a WebSocket as a spectator of a game.
+ */
+export function registerSpectator(gameId: string, ws: WebSocket): boolean {
+  const game = games.get(gameId);
+  if (!game || game.status !== 'active') return false;
+  if (!spectatorConnections.has(gameId)) {
+    spectatorConnections.set(gameId, new Set());
+  }
+  spectatorConnections.get(gameId)!.add(ws);
+  return true;
+}
+
+/**
+ * Remove a spectator WebSocket connection.
+ */
+export function removeSpectator(gameId: string, ws: WebSocket): void {
+  spectatorConnections.get(gameId)?.delete(ws);
+}
+
+function sendToSpectators(gameId: string, message: Record<string, unknown>): void {
+  const conns = spectatorConnections.get(gameId);
+  if (!conns) return;
+  const data = JSON.stringify(message);
+  for (const ws of conns) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(data);
+    }
+  }
+}
+
+/**
  * Send a message to both participants of a game.
  *
  * Called after every move, resignation, or game-end event.  Both players
@@ -124,6 +158,8 @@ function broadcastToGame(gameId: string, message: Record<string, unknown>): void
   const { white, black } = game.players;
   if (white) sendToPlayer(white, message);
   if (black) sendToPlayer(black, message);
+  /* Also forward to spectators */
+  sendToSpectators(gameId, message);
 }
 
 /**
@@ -163,6 +199,7 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
     status: 'waiting',
     players: { white: playerId },
     moveHistory: [],
+    boardHistory: [],
     enPassantTarget: null,
     /* Both sides start with full castling rights */
     castlingRights: {
@@ -173,6 +210,7 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
     winner: null,
     createdAt: Date.now(),
     visibility,
+    halfMoveClock: 0,
   };
   games.set(id, game);
   return game;
@@ -182,6 +220,10 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
  * List all games that are waiting for a second player and public.
  * Private games are excluded — they must be joined by direct ID.
  */
+export function getActiveGames(): GameState[] {
+  return Array.from(games.values()).filter(g => g.status === 'active');
+}
+
 export function getOpenGames(): GameState[] {
   return Array.from(games.values()).filter(g => g.status === 'waiting' && g.visibility === 'public');
 }
@@ -306,9 +348,12 @@ export function makeMove(
   /* Generate algebraic notation for the move history */
   const notation = chess.moveToAlgebraic(matchedMove, matchedMove.captured, legalMoves);
 
+  /* Update half-move clock for 50-move rule */
+  const newHalfMoveClock = chess.updateHalfMoveClock(matchedMove, game.halfMoveClock);
+
   /* Determine the next turn and check for game-ending conditions */
   const nextTurn: Color = game.turn === 'white' ? 'black' : 'white';
-  const { status: rawStatus } = chess.getGameStatus(newBoard, nextTurn, enPassantTarget, castlingRights);
+  const { status: rawStatus } = chess.getGameStatus(newBoard, nextTurn, enPassantTarget, castlingRights, newHalfMoveClock);
 
   let newStatus = rawStatus;
   let winner: Color | null = null;
@@ -317,8 +362,8 @@ export function makeMove(
     /* The player who just moved wins */
     newStatus = 'checkmate';
     winner = game.turn;
-  } else if (rawStatus === 'stalemate') {
-    newStatus = 'stalemate';
+  } else if (rawStatus === 'stalemate' || rawStatus === 'draw') {
+    newStatus = rawStatus;
   } else {
     /* 'check' is informational only — game continues as 'active' */
     newStatus = 'active';
@@ -329,14 +374,17 @@ export function makeMove(
   game.turn = nextTurn;
   game.status = newStatus;
   game.moveHistory.push(notation);
+  game.boardHistory.push({ board: chess.serializeBoard(newBoard), move: notation });
   game.enPassantTarget = enPassantTarget;
   game.castlingRights = castlingRights;
   game.lastMove = { from, to };
+  game.halfMoveClock = newHalfMoveClock;
   if (winner) game.winner = winner;
 
   /* Build and broadcast the WebSocket event to both players */
+  const isTerminal = newStatus === 'checkmate' || newStatus === 'stalemate' || newStatus === 'draw';
   const message: Record<string, unknown> = {
-    type: newStatus === 'checkmate' || newStatus === 'stalemate' ? 'game_over' : 'move',
+    type: isTerminal ? 'game_over' : 'move',
     gameId,
     board: chess.serializeBoard(newBoard),
     turn: nextTurn,
@@ -350,6 +398,9 @@ export function makeMove(
   } else if (newStatus === 'stalemate') {
     message.result = 'stalemate';
     message.reason = 'Draw by stalemate';
+  } else if (newStatus === 'draw') {
+    message.result = 'draw';
+    message.reason = 'Draw by 50-move rule';
   }
 
   broadcastToGame(gameId, message);
@@ -419,6 +470,61 @@ export function getLegalMovesForPlayer(
 
   const legalMoves = chess.getLegalMoves(game.board, playerColor, game.enPassantTarget, game.castlingRights);
   return { success: true, moves: legalMoves.map(m => ({ from: m.from, to: m.to })) };
+}
+
+/**
+ * Get completed games for a player (games they participated in that have ended).
+ */
+export function getPlayerGames(playerId: string): GameState[] {
+  return Array.from(games.values()).filter(g => {
+    const isPlayer = g.players.white === playerId || g.players.black === playerId;
+    const isFinished = g.status === 'checkmate' || g.status === 'stalemate' || g.status === 'resigned' || g.status === 'draw';
+    return isPlayer && isFinished;
+  });
+}
+
+/**
+ * Store recent chat messages per game (in-memory, last 50 messages).
+ */
+const chatHistory = new Map<string, { playerId: string; username: string; text: string; timestamp: number }[]>();
+
+/**
+ * Handle a chat message from a player in a game.
+ * Validates the player is part of the game or is spectating, then broadcasts.
+ */
+export function handleChatMessage(gameId: string, playerId: string, text: string, ws: WebSocket): void {
+  if (!text) return;
+  const player = players.get(playerId);
+  if (!player) return;
+  const game = games.get(gameId);
+  if (!game) return;
+
+  const isPlayer = game.players.white === playerId || game.players.black === playerId;
+  const isSpectating = spectatorConnections.get(gameId)?.has(ws);
+
+  if (!isPlayer && !isSpectating) return;
+
+  if (!chatHistory.has(gameId)) {
+    chatHistory.set(gameId, []);
+  }
+  const history = chatHistory.get(gameId)!;
+  history.push({ playerId, username: player.username, text, timestamp: Date.now() });
+  if (history.length > 50) history.shift();
+
+  const message: Record<string, unknown> = {
+    type: 'chat_message',
+    gameId,
+    playerId,
+    username: player.username,
+    text,
+    timestamp: Date.now(),
+  };
+
+  /* Send to players and spectators */
+  const { white, black } = game.players;
+  if (white) sendToPlayer(white, message);
+  if (black) sendToPlayer(black, message);
+  sendToSpectators(gameId, message);
 }
 
 /**

@@ -30,7 +30,7 @@ export const resultView = {
             lost = true;
           }
         }
-      } else if (game.status === 'stalemate') {
+      } else if (game.status === 'stalemate' || game.status === 'draw') {
         outcomeText = 'Draw';
       }
 
@@ -43,6 +43,9 @@ export const resultView = {
           break;
         case 'stalemate':
           reasonText = 'by stalemate';
+          break;
+        case 'draw':
+          reasonText = 'by 50-move rule';
           break;
       }
     }
@@ -71,7 +74,7 @@ export const resultView = {
     }
 
     const btnRow = el('div', [], {
-      style: 'display:flex;gap:12px;justify-content:center',
+      style: 'display:flex;gap:12px;justify-content:center;flex-wrap:wrap',
     });
 
     const lobbyBtn = el('button', [], {
@@ -83,6 +86,18 @@ export const resultView = {
     lobbyBtn.addEventListener('mouseup', () => { lobbyBtn.style.transform = 'scale(1)'; });
     lobbyBtn.addEventListener('click', () => navigate('lobby'));
     btnRow.appendChild(lobbyBtn);
+
+    if (game && game.boardHistory && game.boardHistory.length > 0) {
+      const reviewBtn = el('button', [], {
+        style: 'padding:12px 24px;background:transparent;color:#4f8ef7;border:1px solid #4f8ef7;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;transition:background 150ms ease,color 150ms ease;letter-spacing:0.3px',
+      }, 'Review Game');
+      reviewBtn.addEventListener('mouseenter', () => { reviewBtn.style.background = '#4f8ef7'; reviewBtn.style.color = '#fff'; });
+      reviewBtn.addEventListener('mouseleave', () => { reviewBtn.style.background = 'transparent'; reviewBtn.style.color = '#4f8ef7'; });
+      reviewBtn.addEventListener('click', () => {
+        navigate('game', game.id);
+      });
+      btnRow.appendChild(reviewBtn);
+    }
 
     const copyBtn = el('button', [], {
       style: 'padding:12px 24px;background:transparent;color:#888;border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;transition:background 150ms ease,color 150ms ease;letter-spacing:0.3px',

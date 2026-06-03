@@ -59,6 +59,8 @@ Returns the authenticated player's info. Requires auth.
 
 Create a new game. The creator plays white. Requires auth.
 
+Optional body field: `visibility` (`'public' | 'private'`, defaults to `'public'`).
+
 **Response (201):**
 ```json
 {
@@ -68,6 +70,7 @@ Create a new game. The creator plays white. Requires auth.
   "status": "waiting",
   "players": { "white": "playerId" },
   "moveHistory": [],
+  "boardHistory": [],
   "enPassantTarget": null,
   "castlingRights": {
     "white": { "kingside": true, "queenside": true },
@@ -75,13 +78,24 @@ Create a new game. The creator plays white. Requires auth.
   },
   "lastMove": null,
   "winner": null,
-  "createdAt": 1700000000000
+  "halfMoveClock": 0,
+  "createdAt": 1700000000000,
+  "visibility": "public"
 }
 ```
 
 ### GET /games
 
-List all open (waiting) games.
+List all open (waiting) public games.
+
+**Response:**
+```json
+[ { ...GameState }, ... ]
+```
+
+### GET /games/active
+
+List all active games (for spectating). No auth required.
 
 **Response:**
 ```json
@@ -123,6 +137,17 @@ Resign from a game. Requires auth.
 
 **Response:** GameState with status `resigned` and winner set.
 
+### GET /players/:playerId/games
+
+Get completed games for the authenticated player (match history). Requires auth. Can only view your own history.
+
+**Response (200):**
+```json
+[ { ...GameState }, ... ]
+```
+
+**Response (403):** `{ "error": "Can only view your own match history" }`
+
 ### GET /games/:gameId/moves
 
 Get all legal moves for the authenticated player in a game. Requires auth.
@@ -145,7 +170,43 @@ Connect to the WebSocket endpoint at the same host/port with the token as a quer
 ws://localhost:3000/?token=<bearer-token>
 ```
 
+### Client Messages
+
+**Spectate a game:**
+```json
+{
+  "type": "spectate",
+  "gameId": "uuid"
+}
+```
+
+**Unspectate a game:**
+```json
+{
+  "type": "unspectate",
+  "gameId": "uuid"
+}
+```
+
+**Send a chat message:**
+```json
+{
+  "type": "chat_message",
+  "gameId": "uuid",
+  "text": "Hello!"
+}
+```
+
 ### Server Messages
+
+**On game started:**
+```json
+{
+  "type": "game_started",
+  "gameId": "uuid",
+  "game": { ...GameState }
+}
+```
 
 **On a move:**
 ```json
@@ -159,7 +220,7 @@ ws://localhost:3000/?token=<bearer-token>
 }
 ```
 
-**On game end (checkmate/stalemate/resign):**
+**On game end (checkmate/stalemate/resign/draw):**
 ```json
 {
   "type": "game_over",
@@ -173,6 +234,36 @@ ws://localhost:3000/?token=<bearer-token>
 }
 ```
 
+**Chat message broadcast:**
+```json
+{
+  "type": "chat_message",
+  "gameId": "uuid",
+  "playerId": "uuid",
+  "username": "alice",
+  "text": "Hello!",
+  "timestamp": 1700000000000
+}
+```
+
+**Spectator acknowledgement:**
+```json
+{
+  "type": "spectate_ok",
+  "gameId": "uuid",
+  "game": { ...GameState }
+}
+```
+
+**Spectator error:**
+```json
+{
+  "type": "spectate_error",
+  "gameId": "uuid",
+  "error": "Game not found or not active"
+}
+```
+
 ## Game Status Values
 
 | Status     | Description |
@@ -181,4 +272,5 @@ ws://localhost:3000/?token=<bearer-token>
 | `active`   | Both players joined, game in progress |
 | `checkmate`| King is in check with no legal moves |
 | `stalemate`| No legal moves but king is not in check |
+| `draw`     | Draw by 50-move rule |
 | `resigned` | A player resigned |

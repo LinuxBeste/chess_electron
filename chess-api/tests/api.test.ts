@@ -692,3 +692,97 @@ describe('Visibility via API — extended', () => {
     expect(moveRes.body.turn).toBe('black');
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  Active Games (spectating)                                            */
+/* ------------------------------------------------------------------ */
+
+describe('GET /games/active', () => {
+  test('lists active games', async () => {
+    const p1 = await registerPlayer('act1');
+    const p2 = await registerPlayer('act2');
+    const gameId = await createGame(p1.authHeader);
+    await joinGame(gameId, p2.authHeader);
+
+    const res = await request.get('/games/active').expect(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.some((g: any) => g.id === gameId)).toBe(true);
+  });
+
+  test('does not include waiting games', async () => {
+    await registerPlayer('act3');
+    const p2 = await registerPlayer('act4');
+    await createGame(p2.authHeader);
+
+    const res = await request.get('/games/active').expect(200);
+    if (res.body.length > 0) {
+      expect(res.body.every((g: any) => g.status === 'active')).toBe(true);
+    }
+  });
+
+  test('does not include finished games', async () => {
+    const p1 = await registerPlayer('act5');
+    const p2 = await registerPlayer('act6');
+    const gameId = await createGame(p1.authHeader);
+    await joinGame(gameId, p2.authHeader);
+
+    await request
+      .post(`/games/${gameId}/resign`)
+      .set('Authorization', p1.authHeader)
+      .expect(200);
+
+    const res = await request.get('/games/active').expect(200);
+    expect(res.body.some((g: any) => g.id === gameId)).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Match History (getPlayerGames)                                       */
+/* ------------------------------------------------------------------ */
+
+describe('GET /players/:playerId/games', () => {
+  test('returns match history for authenticated player', async () => {
+    const p1 = await registerPlayer('mh1');
+    const p2 = await registerPlayer('mh2');
+    const gameId = await createGame(p1.authHeader);
+    await joinGame(gameId, p2.authHeader);
+    await request
+      .post(`/games/${gameId}/resign`)
+      .set('Authorization', p1.authHeader)
+      .expect(200);
+
+    const res = await request
+      .get(`/players/${p1.playerId}/games`)
+      .set('Authorization', p1.authHeader)
+      .expect(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.every((g: any) => g.status !== 'active' && g.status !== 'waiting')).toBe(true);
+  });
+
+  test('returns 403 when accessing another player history', async () => {
+    const p1 = await registerPlayer('mh_forbid1');
+    const p2 = await registerPlayer('mh_forbid2');
+
+    await request
+      .get(`/players/${p2.playerId}/games`)
+      .set('Authorization', p1.authHeader)
+      .expect(403);
+  });
+
+  test('returns empty array when no finished games', async () => {
+    const p = await registerPlayer('mh_empty');
+
+    const res = await request
+      .get(`/players/${p.playerId}/games`)
+      .set('Authorization', p.authHeader)
+      .expect(200);
+    expect(res.body).toEqual([]);
+  });
+
+  test('returns 401 without auth', async () => {
+    await request
+      .get('/players/some-id/games')
+      .expect(401);
+  });
+});

@@ -71,6 +71,11 @@ router.get('/games', (_req: Request, res: Response) => {
   res.json(game.getOpenGames());
 });
 
+/* List all active games (for spectating) */
+router.get('/games/active', (_req: Request, res: Response) => {
+  res.json(game.getActiveGames());
+});
+
 /* Get a specific game by ID */
 router.get('/games/:gameId', (req: Request, res: Response) => {
   const g = game.getGame(req.params.gameId);
@@ -120,6 +125,16 @@ router.post('/games/:gameId/resign', authMiddleware, (req: Request, res: Respons
     return;
   }
   res.json(result.state);
+});
+
+/* Get match history for the authenticated player */
+router.get('/players/:playerId/games', authMiddleware, (req: Request, res: Response) => {
+  if (req.player.id !== req.params.playerId) {
+    res.status(403).json({ error: 'Can only view your own match history' });
+    return;
+  }
+  const playerGames = game.getPlayerGames(req.params.playerId);
+  res.json(playerGames);
 });
 
 /* Get all legal moves for the authenticated player in a game */
