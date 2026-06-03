@@ -74,17 +74,8 @@ function mountGame(container: HTMLElement): () => void {
     game = stored && stored.id === gameId ? stored : null;
     resignConfirmed = false;
 
-    /* Build layout */
-    wrapperEl = buildLayout(container, gameId);
-
-    /* Fetch game state if not already loaded */
-    if (!game) {
-      fetchGame(gameId);
-    } else {
-      initBoard(game);
-    }
-
-    /* WS listeners */
+    /* Register WS listeners BEFORE any game init so we don't miss
+     * early messages (e.g. game_started when P2 joins immediately). */
     unsubMove = socketManager.onMove((msg) => {
       if (msg.gameId === gameId) handleWsMove(msg);
     });
@@ -94,6 +85,16 @@ function mountGame(container: HTMLElement): () => void {
     unsubGameStarted = socketManager.onGameStarted((msg) => {
       if (msg.gameId === gameId) handleWsGameStarted(msg);
     });
+
+    /* Build layout */
+    wrapperEl = buildLayout(container, gameId);
+
+    /* Fetch game state if not already loaded */
+    if (!game) {
+      fetchGame(gameId);
+    } else {
+      initBoard(game);
+    }
 
     /* If spectating, subscribe to WS updates for this game */
     if (isSpectator) {
@@ -111,10 +112,10 @@ function cleanup(): void {
   if (clockInterval !== null) clearInterval(clockInterval);
   document.removeEventListener('mousemove', handleDocumentMouseMove);
   document.removeEventListener('mouseup', handleDocumentMouseUp);
-  if (unsubMove) unsubMove();
-  if (unsubGameOver) unsubGameOver();
-  if (unsubGameStarted) unsubGameStarted();
-  if (unsubChat) unsubChat();
+  if (unsubMove) { unsubMove(); unsubMove = null; }
+  if (unsubGameOver) { unsubGameOver(); unsubGameOver = null; }
+  if (unsubGameStarted) { unsubGameStarted(); unsubGameStarted = null; }
+  if (unsubChat) { unsubChat(); unsubChat = null; }
   if (wrapperEl) wrapperEl.remove();
   game = null;
   selectedSquare = null;

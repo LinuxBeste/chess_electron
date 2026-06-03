@@ -12,12 +12,30 @@ import { resultView } from './views/result';
 
 const container = document.getElementById('app')!;
 
-/* If session exists, start at lobby instead of login */
+/* If session exists, validate the token before auto-navigating.
+ * The server stores tokens in-memory only — a restart wipes them,
+ * leaving the client with a stale token that causes "Invalid token"
+ * errors on the first authenticated request. */
 const session = store.restoreSession();
 if (session) {
   store.set('token', session.token);
   store.set('playerId', session.playerId);
   store.set('username', session.username);
+
+  /* Validate the restored token by calling an authenticated endpoint.
+   * If the server doesn't recognize it, clear the session and show login. */
+  import('./api').then(({ getMe }) => {
+    getMe().catch(() => {
+      store.set('token', null);
+      store.set('playerId', null);
+      store.set('username', null);
+      store.clearSession();
+      if (window.location.hash.startsWith('#lobby') || window.location.hash.startsWith('#game') || window.location.hash.startsWith('#result')) {
+        window.location.hash = '#login';
+      }
+    });
+  });
+
   if (!window.location.hash) window.location.hash = '#lobby';
 }
 
