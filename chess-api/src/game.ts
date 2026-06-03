@@ -395,6 +395,7 @@ export function makeMove(
   if (newStatus === 'checkmate') {
     message.result = 'checkmate';
     message.reason = `${winner} wins by checkmate`;
+    message.winner = winner;
   } else if (newStatus === 'stalemate') {
     message.result = 'stalemate';
     message.reason = 'Draw by stalemate';
@@ -442,6 +443,7 @@ export function resignGame(
     status: 'resigned',
     result: 'resigned',
     reason: `${resigningColor} resigned`,
+    winner,
   });
 
   return { success: true, state: game };
