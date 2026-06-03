@@ -55,8 +55,10 @@ The store (`store.ts`) is a simple observable map. Views subscribe to keys and r
 
 - `contextIsolation: true` — renderer has no direct Node.js access
 - `nodeIntegration: false` — no require() in renderer
-- CSP headers restrict font loading to Google Fonts and API connections to localhost:3000
-- Preload exposes only `platform` string — nothing else
+- CSP headers restrict font loading to Google Fonts and API connections to the configured server URL
+- Preload exposes `platform`, `openNewWindow`, and `serverUrl` — minimal surface area
+- The `.env` file at the project root sets `CHESS_SERVER_URL` (read at runtime by the main process and preload)
+- **Session validation** — On startup, a restored session is validated by calling `GET /auth/me`. If the server rejects the token (e.g. after a server restart wiped the in-memory token store), the session is cleared and the user is redirected to the login view. This prevents "Invalid token" errors on the first authenticated request.
 
 ## Routing
 

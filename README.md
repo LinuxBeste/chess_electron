@@ -92,6 +92,8 @@ This runs `pnpm -r dev`, starting the API and building the client concurrently.
 4. Open a second window (`New Window` button) to register a second player and join the game.
 5. Make moves by dragging pieces or clicking source then destination. Pawn promotions show a piece-selection dialog.
 
+> **Note:** The API server stores auth tokens **in-memory only**. If the server restarts, all sessions are invalidated. The client detects this on startup by validating the saved token against `GET /auth/me` and redirects to the login view if the token is stale.
+
 ---
 
 ## Environment variables

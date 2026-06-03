@@ -99,6 +99,7 @@ Broadcast to players and spectators when someone sends a chat message.
 2. Store both in the observable store
 3. All subsequent authenticated requests read `store.get('token')` and inject it as `Authorization: Bearer <token>`
 4. WebSocket connection includes token as query parameter
+5. **Session validation** — On app startup, a restored session is validated by calling `GET /auth/me`. If the server rejects the token (server restart wipes the in-memory token store), the session is cleared and the user sees the login view instead of auto-navigating to the lobby.
 
 ## Type Mapping
 
