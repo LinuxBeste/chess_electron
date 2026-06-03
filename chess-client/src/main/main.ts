@@ -1,40 +1,36 @@
 import { app, BrowserWindow, screen, ipcMain } from 'electron';
 import * as path from 'path';
-import * as fs from 'fs';
+import dotenv from 'dotenv';
 
-/* Disable GPU acceleration for environments without a GPU (Docker, remote, VMs) */
-app.disableHardwareAcceleration();
+/* Load .env from project root */
+dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
-/* Load .env from project root for CHESS_SERVER_URL config */
-let serverUrl = 'http://localhost:3000';
-try {
-  const envPath = path.join(__dirname, '..', '..', '.env');
-  const envContent = fs.readFileSync(envPath, 'utf-8');
-  for (const line of envContent.split('\n')) {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith('#')) {
-      const eqIdx = trimmed.indexOf('=');
-      if (eqIdx !== -1) {
-        const key = trimmed.slice(0, eqIdx).trim();
-        const val = trimmed.slice(eqIdx + 1).trim();
-        if (key === 'CHESS_SERVER_URL' && val) serverUrl = val;
-      }
-    }
-  }
-} catch {} /* .env file missing — use default */
+/* Disable GPU acceleration unless DISABLE_HARDWARE_ACCEL is explicitly 'false' */
+if (process.env.DISABLE_HARDWARE_ACCEL !== 'false') {
+  app.disableHardwareAcceleration();
+}
+
+/* ─── Env-driven config ─── */
+const serverUrl = process.env.CHESS_SERVER_URL || 'http://localhost:3000';
+const devtoolsEnabled = process.env.DEVTOOLS === 'true' || process.env.NODE_ENV === 'development' || process.argv.includes('--devtools');
+const windowTitle = process.env.WINDOW_TITLE || 'Chess';
+const defaultWidth = parseInt(process.env.WINDOW_WIDTH || '1280', 10);
+const defaultHeight = parseInt(process.env.WINDOW_HEIGHT || '900', 10);
+const minWidth = parseInt(process.env.WINDOW_MIN_WIDTH || '960', 10);
+const minHeight = parseInt(process.env.WINDOW_MIN_HEIGHT || '700', 10);
 
 /* Window sized for a chess board + side panels, not full-screen by default */
 function createWindow(): void {
   const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
 
   const win = new BrowserWindow({
-    width: Math.min(1280, Math.round(screenWidth * 0.8)),
-    height: Math.min(900, Math.round(screenHeight * 0.85)),
-    minWidth: 960,
-    minHeight: 700,
+    width: Math.min(defaultWidth, Math.round(screenWidth * 0.8)),
+    height: Math.min(defaultHeight, Math.round(screenHeight * 0.85)),
+    minWidth,
+    minHeight,
     backgroundColor: '#0e0e10',
     show: false,
-    title: 'Chess',
+    title: windowTitle,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -50,8 +46,7 @@ function createWindow(): void {
 
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 
-  /* Open DevTools in development mode to surface errors */
-  if (process.env.NODE_ENV === 'development' || process.argv.includes('--devtools')) {
+  if (devtoolsEnabled) {
     win.webContents.openDevTools();
   }
 }
@@ -65,13 +60,13 @@ ipcMain.on('open-new-window', () => {
   const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
 
   const win = new BrowserWindow({
-    width: Math.min(1280, Math.round(screenWidth * 0.8)),
-    height: Math.min(900, Math.round(screenHeight * 0.85)),
-    minWidth: 960,
-    minHeight: 700,
+    width: Math.min(defaultWidth, Math.round(screenWidth * 0.8)),
+    height: Math.min(defaultHeight, Math.round(screenHeight * 0.85)),
+    minWidth,
+    minHeight,
     backgroundColor: '#0e0e10',
     show: false,
-    title: `Chess (${windowCounter})`,
+    title: `${windowTitle} (${windowCounter})`,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -87,7 +82,7 @@ ipcMain.on('open-new-window', () => {
 
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 
-  if (process.env.NODE_ENV === 'development' || process.argv.includes('--devtools')) {
+  if (devtoolsEnabled) {
     win.webContents.openDevTools();
   }
 });

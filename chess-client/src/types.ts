@@ -68,6 +68,12 @@ declare global {
       platform: string;
       openNewWindow: () => void;
       serverUrl: string;
+      wsUrl: string;
+      defaultUsername: string;
+      autoConnect: boolean;
+      defaultTheme: string;
+      defaultSound: boolean;
+      defaultHints: boolean;
     };
   }
 }

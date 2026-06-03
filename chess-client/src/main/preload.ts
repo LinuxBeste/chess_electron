@@ -11,26 +11,19 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import * as fs from 'fs';
 import * as path from 'path';
+import dotenv from 'dotenv';
 
-/* Read CHESS_SERVER_URL from .env file at project root */
-let serverUrl = 'http://localhost:3000';
-try {
-  const envPath = path.join(__dirname, '..', '..', '.env');
-  const envContent = fs.readFileSync(envPath, 'utf-8');
-  for (const line of envContent.split('\n')) {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith('#')) {
-      const eqIdx = trimmed.indexOf('=');
-      if (eqIdx !== -1) {
-        const key = trimmed.slice(0, eqIdx).trim();
-        const val = trimmed.slice(eqIdx + 1).trim();
-        if (key === 'CHESS_SERVER_URL' && val) serverUrl = val;
-      }
-    }
-  }
-} catch {} /* .env missing — use default */
+/* Load .env from project root */
+dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
+
+const serverUrl = process.env.CHESS_SERVER_URL || 'http://localhost:3000';
+const wsUrl = process.env.CHESS_WS_URL || '';
+const defaultUsername = process.env.DEFAULT_USERNAME || '';
+const autoConnect = process.env.AUTO_CONNECT !== 'false';
+const defaultTheme = process.env.THEME || 'default';
+const defaultSound = process.env.SOUND_ENABLED !== 'false';
+const defaultHints = process.env.SHOW_LEGAL_HINTS !== 'false';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   /** Platform string (darwin/win32/linux) for OS-specific UI adjustments */
@@ -41,4 +34,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   /** Server URL for the chess API — from .env CHESS_SERVER_URL or default */
   serverUrl,
+
+  /** WebSocket URL override (defaults to serverUrl with http→ws) */
+  wsUrl,
+
+  /** Pre-fill login username */
+  defaultUsername,
+
+  /** Whether to auto-connect WebSocket on startup */
+  autoConnect,
+
+  /** Default board theme */
+  defaultTheme,
+
+  /** Default sound enabled state */
+  defaultSound,
+
+  /** Default legal hints enabled state */
+  defaultHints,
 });

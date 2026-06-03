@@ -48,6 +48,28 @@ class Store {
       this.set('toasts', cur.filter((t: any) => t.id !== id));
     }, 4000);
   }
+
+  persistSession(): void {
+    const token = this.get('token');
+    const playerId = this.get('playerId');
+    const username = this.get('username');
+    if (token && playerId && username) {
+      localStorage.setItem('chess_session', JSON.stringify({ token, playerId, username }));
+    }
+  }
+
+  restoreSession(): { token: string; playerId: string; username: string } | null {
+    try {
+      const raw = localStorage.getItem('chess_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  clearSession(): void {
+    localStorage.removeItem('chess_session');
+  }
 }
 
 describe('Store', () => {
@@ -120,5 +142,90 @@ describe('Store', () => {
     store.subscribe('wsStatus', handler);
     store.set('wsStatus', 'connected');
     expect(handler).toHaveBeenCalledWith('connected');
+  });
+});
+
+describe('session persistence', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  test('persistSession saves token, playerId, username', () => {
+    const store = new Store();
+    store.set('token', 'tok_123');
+    store.set('playerId', 'p1');
+    store.set('username', 'Alice');
+    store.persistSession();
+    const raw = localStorage.getItem('chess_session');
+    expect(raw).toBeTruthy();
+    const parsed = JSON.parse(raw!);
+    expect(parsed.token).toBe('tok_123');
+    expect(parsed.playerId).toBe('p1');
+    expect(parsed.username).toBe('Alice');
+  });
+
+  test('persistSession overwrites previous session', () => {
+    const store = new Store();
+    store.set('token', 'tok_old');
+    store.set('playerId', 'p_old');
+    store.set('username', 'Old');
+    store.persistSession();
+    store.set('token', 'tok_new');
+    store.set('playerId', 'p_new');
+    store.set('username', 'New');
+    store.persistSession();
+    const raw = localStorage.getItem('chess_session');
+    const parsed = JSON.parse(raw!);
+    expect(parsed.token).toBe('tok_new');
+    expect(parsed.username).toBe('New');
+  });
+
+  test('restoreSession returns null when no session saved', () => {
+    const store = new Store();
+    const result = store.restoreSession();
+    expect(result).toBeNull();
+  });
+
+  test('restoreSession returns saved session data', () => {
+    const store = new Store();
+    store.set('token', 'tok_abc');
+    store.set('playerId', 'p99');
+    store.set('username', 'Bob');
+    store.persistSession();
+    const session = store.restoreSession();
+    expect(session).not.toBeNull();
+    expect(session!.token).toBe('tok_abc');
+    expect(session!.playerId).toBe('p99');
+    expect(session!.username).toBe('Bob');
+  });
+
+  test('restoreSession handles corrupted JSON gracefully', () => {
+    localStorage.setItem('chess_session', 'corrupted');
+    const store = new Store();
+    const result = store.restoreSession();
+    expect(result).toBeNull();
+  });
+
+  test('clearSession removes saved session data', () => {
+    const store = new Store();
+    store.set('token', 'tok_xyz');
+    store.set('playerId', 'p7');
+    store.set('username', 'Charlie');
+    store.persistSession();
+    store.clearSession();
+    const result = store.restoreSession();
+    expect(result).toBeNull();
+  });
+
+  test('restoreSession returns correct types', () => {
+    const store = new Store();
+    store.set('token', 'tok_abc');
+    store.set('playerId', 'p99');
+    store.set('username', 'Bob');
+    store.persistSession();
+    const session = store.restoreSession();
+    expect(typeof session!.token).toBe('string');
+    expect(typeof session!.playerId).toBe('string');
+    expect(typeof session!.username).toBe('string');
   });
 });

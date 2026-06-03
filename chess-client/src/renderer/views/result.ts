@@ -25,7 +25,7 @@ export const resultView = {
           if (winnerIsMe) {
             outcomeText = 'You Won';
             won = true;
-          } else {
+          } else if (myId && (game.players.white === myId || game.players.black === myId)) {
             outcomeText = 'You Lost';
             lost = true;
           }

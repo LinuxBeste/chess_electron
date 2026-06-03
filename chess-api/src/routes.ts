@@ -31,6 +31,17 @@ function authMiddleware(req: Request, res: Response, next: () => void): void {
   next();
 }
 
+/**
+ * Rate-limit middleware: applies per-player request throttling.
+ * Returns 429 if the player exceeds the configured limit. */
+function rateLimitMiddleware(req: Request, res: Response, next: () => void): void {
+  if (!game.checkRateLimit(req.player.id)) {
+    res.status(429).json({ error: 'Too many requests. Please slow down.' });
+    return;
+  }
+  next();
+}
+
 /* Health check — no auth required */
 router.get('/health', (_req: Request, res: Response) => {
   const { gamesActive, playersOnline } = game.getStats();
@@ -97,7 +108,7 @@ router.post('/games/:gameId/join', authMiddleware, (req: Request, res: Response)
 });
 
 /* Make a move in a game */
-router.post('/games/:gameId/move', authMiddleware, (req: Request, res: Response) => {
+router.post('/games/:gameId/move', authMiddleware, rateLimitMiddleware, (req: Request, res: Response) => {
   const { from, to, promotion } = req.body;
   if (!from || !to) {
     res.status(400).json({ error: 'from and to are required' });
@@ -118,7 +129,7 @@ router.post('/games/:gameId/move', authMiddleware, (req: Request, res: Response)
 });
 
 /* Resign from a game */
-router.post('/games/:gameId/resign', authMiddleware, (req: Request, res: Response) => {
+router.post('/games/:gameId/resign', authMiddleware, rateLimitMiddleware, (req: Request, res: Response) => {
   const result = game.resignGame(req.params.gameId, req.player.id);
   if (!result.success) {
     res.status(400).json({ error: result.error });

@@ -23,15 +23,25 @@ export const loginView = {
     }, 'Play chess online');
     card.appendChild(subtitle);
 
+    const defaultUsername = window.electronAPI?.defaultUsername || '';
     const input = el('input', ['input-clean'], {
       type: 'text',
       placeholder: 'Enter your username',
+      value: defaultUsername,
       autocomplete: 'off',
       autocapitalize: 'off',
       autocorrect: 'off',
       spellcheck: 'false',
     });
     card.appendChild(input);
+
+    /* Auto-submit if default username is configured via env */
+    if (defaultUsername && window.electronAPI?.autoConnect !== false) {
+      setTimeout(() => {
+        const event = new KeyboardEvent('keydown', { key: 'Enter' });
+        input.dispatchEvent(event);
+      }, 300);
+    }
 
     const button = el('button', ['btn', 'btn-primary'], {
       style: 'margin-top:24px;width:100%;padding:14px;font-size:16px',

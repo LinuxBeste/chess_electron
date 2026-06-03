@@ -3,6 +3,7 @@ import { socketManager } from './socket';
 import { initRouter } from './router';
 import { el } from './chess';
 import { setBaseUrl } from './api';
+import { type AppSettings, loadSettings, saveSettings, applyTheme } from './settings';
 import type { ToastMessage } from '../types';
 
 import { loginView } from './views/login';
@@ -85,10 +86,31 @@ if (session) {
   if (!window.location.hash) window.location.hash = '#lobby';
 }
 
+/* Apply env-driven defaults for settings that haven't been saved yet */
+const existing = loadSettings();
+const envTheme = window.electronAPI?.defaultTheme;
+const envSound = window.electronAPI?.defaultSound;
+const envHints = window.electronAPI?.defaultHints;
+const needsUpdate =
+  (envTheme !== undefined && envTheme !== existing.boardTheme) ||
+  (envSound !== undefined && envSound !== existing.soundEnabled) ||
+  (envHints !== undefined && envHints !== existing.showLegalHints);
+if (needsUpdate) {
+  saveSettings({
+    ...existing,
+    ...(envTheme !== undefined ? { boardTheme: envTheme as AppSettings['boardTheme'] } : {}),
+    ...(envSound !== undefined ? { soundEnabled: envSound } : {}),
+    ...(envHints !== undefined ? { showLegalHints: envHints } : {}),
+  });
+} else {
+  applyTheme(existing.boardTheme);
+}
+
 /* Configure server URL from Electron preload config or default to localhost */
 const serverUrl = window.electronAPI?.serverUrl || 'http://localhost:3000';
 setBaseUrl(serverUrl);
-socketManager.setServerUrl(serverUrl);
+const wsUrl = window.electronAPI?.wsUrl || serverUrl;
+socketManager.setServerUrl(wsUrl);
 
 /* Persistent toast bar above all views */
 const toastBar = el('div', ['toast-bar']);

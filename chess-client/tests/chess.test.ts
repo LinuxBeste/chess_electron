@@ -25,6 +25,18 @@ function cloneBoard(board: (null | { type: string; color: string })[][]): (null 
   return board.map(row => row.map(cell => (cell ? { ...cell } : null)));
 }
 
+function createInitialBoard(): (null | { type: string; color: string })[][] {
+  const board: (null | { type: string; color: string })[][] = Array.from({ length: 8 }, () => Array(8).fill(null));
+  const backRank = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
+  for (let f = 0; f < 8; f++) {
+    board[0][f] = { type: backRank[f], color: 'black' };
+    board[1][f] = { type: 'pawn', color: 'black' };
+    board[6][f] = { type: 'pawn', color: 'white' };
+    board[7][f] = { type: backRank[f], color: 'white' };
+  }
+  return board;
+}
+
 function findKing(board: (null | { type: string; color: string })[][], color: 'white' | 'black'): [number, number] | null {
   for (let r = 0; r < 8; r++) {
     for (let f = 0; f < 8; f++) {
@@ -106,6 +118,83 @@ describe('chess client helpers', () => {
       { square: 'e1', piece: 'queen', color: 'white' },
     ]);
     expect(findKing(board, 'white')).toBeNull();
+  });
+
+  test('createInitialBoard returns standard starting position', () => {
+    const board = createInitialBoard();
+    /* Back rank white */
+    expect(board[7][0]?.type).toBe('rook');
+    expect(board[7][0]?.color).toBe('white');
+    expect(board[7][1]?.type).toBe('knight');
+    expect(board[7][1]?.color).toBe('white');
+    expect(board[7][2]?.type).toBe('bishop');
+    expect(board[7][2]?.color).toBe('white');
+    expect(board[7][3]?.type).toBe('queen');
+    expect(board[7][3]?.color).toBe('white');
+    expect(board[7][4]?.type).toBe('king');
+    expect(board[7][4]?.color).toBe('white');
+    expect(board[7][5]?.type).toBe('bishop');
+    expect(board[7][5]?.color).toBe('white');
+    expect(board[7][6]?.type).toBe('knight');
+    expect(board[7][6]?.color).toBe('white');
+    expect(board[7][7]?.type).toBe('rook');
+    expect(board[7][7]?.color).toBe('white');
+
+    /* White pawns */
+    for (let f = 0; f < 8; f++) {
+      expect(board[6][f]?.type).toBe('pawn');
+      expect(board[6][f]?.color).toBe('white');
+    }
+
+    /* Empty middle ranks */
+    for (let r = 2; r < 6; r++) {
+      for (let f = 0; f < 8; f++) {
+        expect(board[r][f]).toBeNull();
+      }
+    }
+
+    /* Black pawns */
+    for (let f = 0; f < 8; f++) {
+      expect(board[1][f]?.type).toBe('pawn');
+      expect(board[1][f]?.color).toBe('black');
+    }
+
+    /* Back rank black */
+    expect(board[0][0]?.type).toBe('rook');
+    expect(board[0][0]?.color).toBe('black');
+    expect(board[0][1]?.type).toBe('knight');
+    expect(board[0][1]?.color).toBe('black');
+    expect(board[0][2]?.type).toBe('bishop');
+    expect(board[0][2]?.color).toBe('black');
+    expect(board[0][3]?.type).toBe('queen');
+    expect(board[0][3]?.color).toBe('black');
+    expect(board[0][4]?.type).toBe('king');
+    expect(board[0][4]?.color).toBe('black');
+    expect(board[0][5]?.type).toBe('bishop');
+    expect(board[0][5]?.color).toBe('black');
+    expect(board[0][6]?.type).toBe('knight');
+    expect(board[0][6]?.color).toBe('black');
+    expect(board[0][7]?.type).toBe('rook');
+    expect(board[0][7]?.color).toBe('black');
+  });
+
+  test('createInitialBoard returns 8x8 board', () => {
+    const board = createInitialBoard();
+    expect(board).toHaveLength(8);
+    for (let r = 0; r < 8; r++) {
+      expect(board[r]).toHaveLength(8);
+    }
+  });
+
+  test('createInitialBoard total pieces count', () => {
+    const board = createInitialBoard();
+    let count = 0;
+    for (let r = 0; r < 8; r++) {
+      for (let f = 0; f < 8; f++) {
+        if (board[r][f]) count++;
+      }
+    }
+    expect(count).toBe(32);
   });
 
   test('getPieceSvg returns correct unicode for each piece', () => {

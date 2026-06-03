@@ -18,6 +18,11 @@ const players = new Map<string, Player>();
  * authenticated request — O(n) instead of O(1). */
 const tokenIndex = new Map<string, string>();
 
+/* Env-driven limits with defaults */
+const MAX_GAMES_PER_PLAYER = parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '1', 10);
+const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10);
+const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10);
+
 /* WebSocket connections per player.  Using a Set allows a player to have
  * multiple simultaneous connections (e.g., browser tabs on different
  * devices) while broadcasting game events to all of them. */
@@ -163,18 +168,34 @@ function broadcastToGame(gameId: string, message: Record<string, unknown>): void
 }
 
 /**
- * Check whether a player is already participating in an active game.
- *
- * Enforces the one-active-game-per-player rule.  This prevents players
- * from joining multiple games and stalling them, and simplifies the
- * concurrency model significantly. */
-function isPlayerInActiveGame(playerId: string): boolean {
+ * Count how many active games a player is currently participating in.
+ * MAX_GAMES_PER_PLAYER (env) controls the limit (default 1). */
+function countActiveGamesForPlayer(playerId: string): number {
+  let count = 0;
   for (const g of games.values()) {
     if (g.status === 'active' && (g.players.white === playerId || g.players.black === playerId)) {
-      return true;
+      count++;
     }
   }
-  return false;
+  return count;
+}
+
+/**
+ * Simple in-memory rate limiter per player.
+ * Tracks request timestamps within a sliding window. */
+const rateLimitBuckets = new Map<string, number[]>();
+
+export function checkRateLimit(playerId: string): boolean {
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  let timestamps = rateLimitBuckets.get(playerId) ?? [];
+  timestamps = timestamps.filter(t => t > windowStart);
+  if (timestamps.length >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+  timestamps.push(now);
+  rateLimitBuckets.set(playerId, timestamps);
+  return true;
 }
 
 /**
@@ -253,7 +274,8 @@ export function joinGame(
   if (!game) return { success: false, error: 'Game not found' };
   if (game.status !== 'waiting') return { success: false, error: 'Game is not open for joining' };
   if (game.players.white === playerId) return { success: false, error: 'Cannot join your own game' };
-  if (isPlayerInActiveGame(playerId)) return { success: false, error: 'Already in an active game' };
+  const activeCount = countActiveGamesForPlayer(playerId);
+  if (activeCount >= MAX_GAMES_PER_PLAYER) return { success: false, error: `Already in ${activeCount} active game(s) (max ${MAX_GAMES_PER_PLAYER})` };
 
   /* Black joins and the game immediately becomes active */
   game.players.black = playerId;
