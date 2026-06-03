@@ -100,6 +100,17 @@ start_tunnel() {
   fi
 }
 
+cleanup() {
+  echo
+  echo "Shutting down ..."
+  docker compose down 2>/dev/null || true
+}
+
+stop_docker() {
+  cleanup
+  exit 0
+}
+
 if [[ "${MODE:-docker}" == "native" ]]; then
   echo "Starting chess-api natively on port $PORT ..."
   if [[ ! -d dist ]]; then
@@ -113,5 +124,12 @@ else
   docker compose up --build -d
   start_tunnel "$PORT"
   echo "Server running at http://localhost:$PORT"
-  echo "Stop with: docker compose down"
+  echo
+  echo "Press q to stop and remove the container"
+  while true; do
+    read -rsn 1 key
+    if [[ "$key" == "q" ]]; then
+      stop_docker
+    fi
+  done
 fi
