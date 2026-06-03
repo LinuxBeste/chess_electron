@@ -2,8 +2,8 @@ import { store } from '../store';
 import * as api from '../api';
 import { socketManager } from '../socket';
 import { navigate } from '../router';
-import { el, getPieceSvg, deserializeBoard, squareToIndices, indicesToSquare, cloneBoard } from '../chess';
-import type { Board, GameState, LegalMoveHint, PieceType } from '../../types';
+import { el, getPieceSvg, deserializeBoard, squareToIndices, indicesToSquare, cloneBoard, createInitialBoard } from '../chess';
+import type { Board, GameState, LegalMoveHint, PieceType, SerializedSquare } from '../../types';
 import type { MoveMessage, GameOverMessage, GameStartedMessage } from '../socket';
 import { playMoveSound, playCaptureSound, playCheckSound, playGameOverSound } from '../sound';
 import { getSetting } from '../settings';
@@ -215,10 +215,7 @@ function initBoard(g: GameState): void {
 
   startClock();
 
-  /* If it's the player's turn, fetch legal moves (for hints) */
-  if (g.turn === playerColor && g.status === 'active') {
-    fetchLegalMoves(g.id);
-  }
+
 }
 
 function buildLayout(container: HTMLElement, gameId: string): HTMLElement {
@@ -376,7 +373,7 @@ function buildLayout(container: HTMLElement, gameId: string): HTMLElement {
   });
 
   /* Listen for chat messages on WS */
-  const unsubChat = socketManager.onChat((msg) => {
+  unsubChat = socketManager.onChat((msg) => {
     if (msg.gameId !== gameId) return;
     const isMe = msg.playerId === store.get('playerId');
     const msgEl = el('div', [], {
@@ -797,8 +794,6 @@ async function executeMove(from: string, to: string, promotion?: PieceType): Pro
     if (updated.status === 'checkmate' || updated.status === 'stalemate' || updated.status === 'resigned' || updated.status === 'draw') {
       if (getSetting('soundEnabled')) playGameOverSound();
       navigate('result', updated.id);
-    } else if (updated.turn === playerColor) {
-      fetchLegalMoves(game.id);
     }
   } catch (err: any) {
     /* Revert optimistic update */
@@ -836,13 +831,15 @@ function updateBoardDisplay(): void {
 
 function handleWsMove(msg: MoveMessage): void {
   if (!game) return;
+  const [toR, toF] = squareToIndices(msg.lastMove.to);
+  const wasCapture = board[toR]?.[toF] !== null;
   board = deserializeBoard(msg.board);
   lastMove = msg.lastMove;
   if (game) game.turn = msg.turn;
   updateBoardDisplay();
 
   if (getSetting('soundEnabled') && playerColor !== msg.turn) {
-    if (lastMove && board[squareToIndices(lastMove.to)[0]]?.[squareToIndices(lastMove.to)[1]]) {
+    if (wasCapture) {
       playCaptureSound();
     } else {
       playMoveSound();
@@ -914,9 +911,7 @@ function handleWsGameStarted(msg: GameStartedMessage): void {
   updateMoveHistory(msg.game.moveHistory);
   updatePlayerInfo(msg.game);
   startClock();
-  if (msg.game.turn === playerColor) {
-    fetchLegalMoves(msg.game.id);
-  }
+
 }
 
 /* ─── Move History ─── */
@@ -1043,22 +1038,30 @@ function updateReviewLabel(): void {
 function applyReviewBoard(): void {
   if (!game || reviewIndex === null) return;
   if (reviewIndex === -1) {
-    board = cloneBoard(game.board);
+    board = createInitialBoard();
     lastMove = null;
   } else {
     const snapshot = game.boardHistory[reviewIndex];
     board = deserializeBoard(snapshot.board);
-    const prevSnapshot = reviewIndex > 0 ? game.boardHistory[reviewIndex - 1] : null;
-    lastMove = prevSnapshot ? extractLastMove(prevSnapshot.move, snapshot.move) : null;
+    const prevBoard = reviewIndex > 0 ? game.boardHistory[reviewIndex - 1].board : null;
+    lastMove = prevBoard ? extractLastMove(prevBoard, snapshot.board) : null;
   }
   updateBoardDisplay();
 }
 
-function extractLastMove(prevNotation: string, curNotation: string): { from: string; to: string } | null {
-  if (!game) return null;
-  const idx = game.moveHistory.indexOf(curNotation);
-  if (idx < 0) return null;
-  return game.lastMove || null;
+function extractLastMove(prevBoard: SerializedSquare[], curBoard: SerializedSquare[]): { from: string; to: string } | null {
+  const prevMap = new Map(prevBoard.map(sq => [sq.square, sq]));
+  const curMap = new Map(curBoard.map(sq => [sq.square, sq]));
+  let from: string | null = null;
+  let to: string | null = null;
+  for (const sq of prevBoard) {
+    if (!curMap.has(sq.square)) from = sq.square;
+  }
+  for (const sq of curBoard) {
+    if (!prevMap.has(sq.square)) to = sq.square;
+  }
+  if (from && to) return { from, to };
+  return null;
 }
 
 /* ─── Resign ─── */
@@ -1082,16 +1085,6 @@ function handleResign(): void {
     store.toast(err.message || 'Failed to resign');
   });
   resignConfirmed = false;
-}
-
-/* ─── Legal Moves ─── */
-
-async function fetchLegalMoves(gameId: string): Promise<void> {
-  try {
-    const { moves } = await api.getLegalMoves(gameId);
-    /* Store but don't show until a piece is selected */
-    legalHints = [];
-  } catch {}
 }
 
 /* Inject check glow keyframes */

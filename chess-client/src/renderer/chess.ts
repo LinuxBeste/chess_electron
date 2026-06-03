@@ -10,13 +10,25 @@
  * feedback for user interactions.
  */
 
-import type { Board, SerializedSquare, Piece } from '../types';
+import type { Board, SerializedSquare, Piece, PieceType } from '../types';
 
 /**
  * Convert algebraic square notation to [rank, file] indices.
  * 'a' → file 0, '1' → rank 7 (matching the API's coordinate system
  * confirmed in ../chess-api/src/chess.ts lines 28-32).
  */
+export function createInitialBoard(): Board {
+  const board: Board = Array.from({ length: 8 }, () => Array(8).fill(null));
+  const backRank: PieceType[] = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
+  for (let f = 0; f < 8; f++) {
+    board[0][f] = { type: backRank[f], color: 'black' };
+    board[1][f] = { type: 'pawn', color: 'black' };
+    board[6][f] = { type: 'pawn', color: 'white' };
+    board[7][f] = { type: backRank[f], color: 'white' };
+  }
+  return board;
+}
+
 export function squareToIndices(square: string): [number, number] {
   const file = square.charCodeAt(0) - 97;
   const rank = 8 - parseInt(square[1], 10);

@@ -79,6 +79,11 @@ export function createServer(): http.Server {
       } catch { /* Ignore malformed messages */ }
     });
 
+    /* Prevent crash on WS errors — cleanup happens in 'close' */
+    ws.on('error', () => {
+      ws.close();
+    });
+
     /* Clean up when the connection drops */
     ws.on('close', () => {
       game.removeWSConnection(player.id, ws);
