@@ -1,3 +1,5 @@
 packages:
   - "chess-api"
   - "chess-client"
+allowBuilds:
+  electron: false
