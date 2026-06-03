@@ -449,14 +449,16 @@ function applyHighlights(): void {
   boardEl.querySelectorAll('.legal-dot, .legal-capture').forEach(d => d.remove());
 
   /* Legal move hints */
-  const playerId = store.get('playerId');
-  for (const hint of legalHints) {
-    const hintSq = boardEl.querySelector(`[data-square="${hint.to}"]`) as HTMLElement;
-    if (!hintSq) continue;
-    const [r, f] = squareToIndices(hint.to);
-    const hasPiece = board[r] && board[r][f] !== null;
-    const dot = el('div', hasPiece ? ['legal-capture'] : ['legal-dot']);
-    hintSq.appendChild(dot);
+  if (getSetting('showLegalHints')) {
+    const playerId = store.get('playerId');
+    for (const hint of legalHints) {
+      const hintSq = boardEl.querySelector(`[data-square="${hint.to}"]`) as HTMLElement;
+      if (!hintSq) continue;
+      const [r, f] = squareToIndices(hint.to);
+      const hasPiece = board[r] && board[r][f] !== null;
+      const dot = el('div', hasPiece ? ['legal-capture'] : ['legal-dot']);
+      hintSq.appendChild(dot);
+    }
   }
 
   /* Note: check glow removed because the server doesn't expose an "in check" flag.
@@ -502,7 +504,7 @@ function handleBoardClick(e: MouseEvent): void {
 
 function selectSquare(square: string): void {
   selectedSquare = square;
-  if (!getSetting('showLegalHints') || !game) {
+  if (!game) {
     legalHints = [];
     applyHighlights();
     return;
