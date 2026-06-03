@@ -4,8 +4,6 @@ dist
 *.md
 docs
 tests
-tsconfig.json
-tsconfig.jest.json
 jest.config.ts
 docker-compose.yml
 start.sh
