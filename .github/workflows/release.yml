@@ -114,6 +114,7 @@ jobs:
           body: ${{ steps.notes.outputs.notes }}
           draft: false
           prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
+          update: true
 
   package:
     name: Package (${{ matrix.os }})
