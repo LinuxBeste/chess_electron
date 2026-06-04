@@ -70,8 +70,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
       - run: npx electron-builder --linux --publish=never
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: chess-client-linux
@@ -98,7 +96,6 @@ jobs:
       - run: pnpm run build
       - run: npx electron-builder --mac --publish=never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -129,8 +126,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
       - run: npx electron-builder --win --publish=never
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: chess-client-windows
