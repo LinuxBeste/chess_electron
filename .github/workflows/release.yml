@@ -4,24 +4,37 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
 
 permissions:
   contents: write
   packages: write
 
+env:
+  REGISTRY: ghcr.io
+
 jobs:
   docker:
     name: Publish Docker image
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
+
+      - name: Load build env
+        run: |
+          if [ -f chess-api/.env.build ]; then
+            set -a; source chess-api/.env.build; set +a
+          fi
 
       - name: Extract version from tag
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/chess-api
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/chess-api
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -30,7 +43,7 @@ jobs:
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -42,13 +55,22 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  release:
+  create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [docker]
-
+    outputs:
+      upload_url: ${{ steps.release.outputs.upload_url }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Determine release tag
+        id: tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ github.event.inputs.version }}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes
         id: notes
@@ -60,47 +82,31 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Create release
+        id: release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.tag }}
           body: ${{ steps.notes.outputs.notes }}
           draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
 
-  package-linux:
-    name: Package Linux (AppImage + deb)
-    runs-on: ubuntu-latest
-    needs: [release]
-
-    defaults:
-      run:
-        working-directory: chess-client
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: latest
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run build
-      - run: npx electron-builder --linux --publish=never
-
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v2
-        with:
-          files: chess-client/release/*
-          fail_on_unmatched_files: false
-
-  package-macos:
-    name: Package macOS (dmg)
-    runs-on: macos-latest
-    needs: [release]
+  package:
+    name: Package (${{ matrix.os }})
+    needs: [create-release]
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            runner: ubuntu-latest
+            builder-args: --linux
+          - os: macos
+            runner: macos-latest
+            builder-args: --mac
+          - os: windows
+            runner: windows-latest
+            builder-args: --win
 
     defaults:
       run:
@@ -118,43 +124,33 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - name: Load build env
+        shell: bash
+        run: |
+          if [ -f .env.build ]; then
+            set -a; source .env.build; set +a
+          fi
+          echo "APP_VERSION=${APP_VERSION:-1.0.0}" >> "$GITHUB_ENV"
+          echo "SERVER_URL=${SERVER_URL:-http://localhost:25566}" >> "$GITHUB_ENV"
+
       - run: pnpm install --frozen-lockfile
+
       - run: pnpm run build
-      - run: npx electron-builder --mac --publish=never
+        env:
+          SERVER_URL: ${{ env.SERVER_URL }}
+
+      - run: npx electron-builder ${{ matrix.builder-args }} --publish=never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: chess-client/release/*
-          fail_on_unmatched_files: false
-
-  package-windows:
-    name: Package Windows (NSIS installer)
-    runs-on: windows-latest
-    needs: [release]
-
-    defaults:
-      run:
-        working-directory: chess-client
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: latest
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run build
-      - run: npx electron-builder --win --publish=never
-
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v2
-        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
           files: chess-client/release/*
           fail_on_unmatched_files: false
