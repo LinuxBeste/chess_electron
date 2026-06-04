@@ -134,7 +134,6 @@ jobs:
           - os: macos
             runner: macos-latest
             builder-args: --mac
-            sign: true
           - os: windows
             runner: windows-latest
             builder-args: --win
@@ -171,12 +170,6 @@ jobs:
           SERVER_URL: ${{ env.SERVER_URL }}
 
       - run: npx electron-builder ${{ matrix.builder-args }} --publish=never
-        env:
-          CSC_LINK: ${{ matrix.sign && secrets.CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.sign && secrets.CSC_KEY_PASSWORD || '' }}
-          APPLE_ID: ${{ matrix.sign && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.sign && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ matrix.sign && secrets.APPLE_TEAM_ID || '' }}
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
