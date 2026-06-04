@@ -32,6 +32,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './src/renderer/index.html',
       inject: true,
+      favicon: './assets/icon.png',
     }),
   ],
 };

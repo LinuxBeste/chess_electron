@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#1a1a2e"/>
+  <g transform="translate(256,280) scale(1.6)">
+    <path d="M-12-100 Q-12-120 0-130 Q12-120 12-100 Q12-85 5-75 Q20-65 20-45 Q20-30 12-20 Q25-10 25 5 Q25 25 5 30 L-5 30 Q-25 25-25 5 Q-25-10-12-20 Q-20-30-20-45 Q-20-65-5-75 Q-12-85-12-100Z" fill="#e8e8e8" stroke="#ccc" stroke-width="3"/>
+    <rect x="-12" y="30" width="24" height="8" rx="2" fill="#e8e8e8"/>
+    <rect x="-20" y="38" width="40" height="10" rx="3" fill="#e8e8e8"/>
+  </g>
+</svg>
