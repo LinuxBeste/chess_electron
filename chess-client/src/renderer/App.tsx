@@ -5,7 +5,7 @@ import ToastContainer from './components/ToastContainer';
 import ErrorBoundary from './components/ErrorBoundary';
 import { store } from './store';
 import { socketManager } from './socket';
-import { setBaseUrl } from './api';
+import { setBaseUrl, getMe } from './api';
 import { type AppSettings, loadSettings, saveSettings, applyTheme } from './settings';
 import { setSoundVolume } from './sound';
 
@@ -51,13 +51,11 @@ export default function App() {
       store.set('token', session.token);
       store.set('playerId', session.playerId);
       store.set('username', session.username);
-      import('./api').then(({ getMe }) => {
-        getMe().catch(() => {
-          store.set('token', null);
-          store.set('playerId', null);
-          store.set('username', null);
-          store.clearSession();
-        });
+      getMe().catch(() => {
+        store.set('token', null);
+        store.set('playerId', null);
+        store.set('username', null);
+        store.clearSession();
       });
     }
 
