@@ -80,7 +80,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          tag_name: ${{ needs.create-release.outputs.tag }}
           files: chess-api-docker.tar.gz
 
   create-release:
@@ -88,6 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.release.outputs.upload_url }}
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -180,7 +181,7 @@ jobs:
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          tag_name: ${{ needs.create-release.outputs.tag }}
           files: |
             chess-client/release/*.AppImage
             chess-client/release/*.deb
