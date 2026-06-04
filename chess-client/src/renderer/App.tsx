@@ -1,5 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react';
-import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ToastContainer from './components/ToastContainer';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -75,23 +75,21 @@ export default function App() {
   }, []);
 
   return (
-    <HashRouter>
-      <ErrorBoundary>
-        <Navbar />
-        <ToastContainer />
-        <div id="app-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <Suspense fallback={<Loading />}>
-            <Routes>
-              <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/lobby" element={<LobbyPage />} />
-              <Route path="/game/:gameId" element={<GamePage />} />
-              <Route path="/result/:gameId" element={<ResultPage />} />
-              <Route path="/result" element={<ResultPage />} />
-            </Routes>
-          </Suspense>
-        </div>
-      </ErrorBoundary>
-    </HashRouter>
+    <ErrorBoundary>
+      <Navbar />
+      <ToastContainer />
+      <div id="app-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Suspense fallback={<Loading />}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/lobby" element={<LobbyPage />} />
+            <Route path="/game/:gameId" element={<GamePage />} />
+            <Route path="/result/:gameId" element={<ResultPage />} />
+            <Route path="/result" element={<ResultPage />} />
+          </Routes>
+        </Suspense>
+      </div>
+    </ErrorBoundary>
   );
 }
