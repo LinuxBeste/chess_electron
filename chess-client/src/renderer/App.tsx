@@ -5,7 +5,7 @@ import ToastContainer from './components/ToastContainer';
 import ErrorBoundary from './components/ErrorBoundary';
 import { store } from './store';
 import { socketManager } from './socket';
-import { setBaseUrl, getMe } from './api';
+import { ApiError, setBaseUrl, getMe } from './api';
 import { type AppSettings, loadSettings, saveSettings, applyTheme } from './settings';
 import { setSoundVolume } from './sound';
 
@@ -53,12 +53,14 @@ export default function App() {
       store.set('token', session.token);
       store.set('playerId', session.playerId);
       store.set('username', session.username);
-      getMe().catch(() => {
-        store.set('token', null);
-        store.set('playerId', null);
-        store.set('username', null);
-        store.clearSession();
-        navigate('/login', { replace: true });
+      getMe().catch((err) => {
+        if (err instanceof ApiError && err.status === 401) {
+          store.set('token', null);
+          store.set('playerId', null);
+          store.set('username', null);
+          store.clearSession();
+          navigate('/login', { replace: true });
+        }
       });
     }
 
