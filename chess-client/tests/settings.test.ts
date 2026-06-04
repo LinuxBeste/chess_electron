@@ -4,22 +4,34 @@ const SETTINGS_KEY = 'chess_settings';
 
 interface AppSettings {
   soundEnabled: boolean;
+  soundVolume: number;
   animationsEnabled: boolean;
-  boardTheme: 'default' | 'classic' | 'blue' | 'green';
+  boardTheme: string;
   alwaysWhiteBottom: boolean;
   showLegalHints: boolean;
-  moveAnimationSpeed: 'fast' | 'normal' | 'slow';
+  showCoordinates: boolean;
+  highlightLastMove: boolean;
+  autoPromoteQueen: boolean;
+  moveAnimationSpeed: string;
   confirmResign: boolean;
+  confirmDraw: boolean;
+  pieceSet: string;
 }
 
 const defaultSettings: AppSettings = {
   soundEnabled: true,
+  soundVolume: 100,
   animationsEnabled: true,
   boardTheme: 'default',
   alwaysWhiteBottom: false,
   showLegalHints: true,
+  showCoordinates: true,
+  highlightLastMove: true,
+  autoPromoteQueen: false,
   moveAnimationSpeed: 'normal',
   confirmResign: true,
+  confirmDraw: false,
+  pieceSet: 'svg',
 };
 
 function getLightColor(theme: string): string {
@@ -101,12 +113,18 @@ describe('settings color functions', () => {
 describe('settings defaults', () => {
   test('default settings are correct', () => {
     expect(defaultSettings.soundEnabled).toBe(true);
+    expect(defaultSettings.soundVolume).toBe(100);
     expect(defaultSettings.animationsEnabled).toBe(true);
     expect(defaultSettings.boardTheme).toBe('default');
     expect(defaultSettings.alwaysWhiteBottom).toBe(false);
     expect(defaultSettings.showLegalHints).toBe(true);
+    expect(defaultSettings.showCoordinates).toBe(true);
+    expect(defaultSettings.highlightLastMove).toBe(true);
+    expect(defaultSettings.autoPromoteQueen).toBe(false);
     expect(defaultSettings.moveAnimationSpeed).toBe('normal');
     expect(defaultSettings.confirmResign).toBe(true);
+    expect(defaultSettings.confirmDraw).toBe(false);
+    expect(defaultSettings.pieceSet).toBe('svg');
   });
 });
 

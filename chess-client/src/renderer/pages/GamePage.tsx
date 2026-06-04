@@ -187,10 +187,10 @@ export default function GamePage() {
     const clickedPiece = boardRef.current[r]?.[f];
     if (square === selectedSquare) { setSelectedSquare(null); setLegalHints([]); return; }
     if (selectedSquare && legalHints.some(h => h.from === selectedSquare && h.to === square)) {
-      if (checkPromotion(selectedSquare, square)) {
+      if (checkPromotion(selectedSquare, square) && !getSetting('autoPromoteQueen')) {
         setPromotion({ from: selectedSquare, to: square });
       } else {
-        executeMove(selectedSquare, square);
+        executeMove(selectedSquare, square, checkPromotion(selectedSquare, square) ? 'queen' : undefined);
       }
       return;
     }
@@ -217,10 +217,10 @@ export default function GamePage() {
     if (!from) { setSelectedSquare(null); setLegalHints([]); return; }
     const isLegal = legalHints.some(h => h.from === from && h.to === to);
     if (isLegal) {
-      if (checkPromotion(from, to)) {
+      if (checkPromotion(from, to) && !getSetting('autoPromoteQueen')) {
         setPromotion({ from, to });
       } else {
-        executeMove(from, to);
+        executeMove(from, to, checkPromotion(from, to) ? 'queen' : undefined);
       }
     } else {
       setSelectedSquare(null);

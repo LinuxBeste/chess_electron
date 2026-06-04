@@ -1,15 +1,22 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ToastContainer from './components/ToastContainer';
-import LoginPage from './pages/LoginPage';
-import LobbyPage from './pages/LobbyPage';
-import GamePage from './pages/GamePage';
-import ResultPage from './pages/ResultPage';
+import ErrorBoundary from './components/ErrorBoundary';
 import { store } from './store';
 import { socketManager } from './socket';
 import { setBaseUrl } from './api';
 import { type AppSettings, loadSettings, saveSettings, applyTheme } from './settings';
+import { setSoundVolume } from './sound';
+
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const LobbyPage = lazy(() => import('./pages/LobbyPage'));
+const GamePage = lazy(() => import('./pages/GamePage'));
+const ResultPage = lazy(() => import('./pages/ResultPage'));
+
+function Loading() {
+  return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 24, color: '#888' }}>Loading...</div>;
+}
 
 export default function App() {
   useEffect(() => {
@@ -36,6 +43,7 @@ export default function App() {
     } else {
       applyTheme(existing.boardTheme);
     }
+    setSoundVolume(existing.soundVolume);
 
     const session = store.restoreSession();
     if (session) {
@@ -62,18 +70,22 @@ export default function App() {
 
   return (
     <HashRouter>
-      <Navbar />
-      <ToastContainer />
-      <div id="app-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/lobby" element={<LobbyPage />} />
-          <Route path="/game/:gameId" element={<GamePage />} />
-          <Route path="/result/:gameId" element={<ResultPage />} />
-          <Route path="/result" element={<ResultPage />} />
-        </Routes>
-      </div>
+      <ErrorBoundary>
+        <Navbar />
+        <ToastContainer />
+        <div id="app-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Suspense fallback={<Loading />}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/lobby" element={<LobbyPage />} />
+              <Route path="/game/:gameId" element={<GamePage />} />
+              <Route path="/result/:gameId" element={<ResultPage />} />
+              <Route path="/result" element={<ResultPage />} />
+            </Routes>
+          </Suspense>
+        </div>
+      </ErrorBoundary>
     </HashRouter>
   );
 }

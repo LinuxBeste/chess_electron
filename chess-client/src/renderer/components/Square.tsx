@@ -15,6 +15,7 @@ interface SquareProps {
   isLegalHint: boolean;
   isLegalCapture: boolean;
   isHovered: boolean;
+  showCoordinates: boolean;
   alwaysBottom: boolean;
   playerColor: 'white' | 'black';
   onClick: (square: string) => void;
@@ -25,7 +26,7 @@ interface SquareProps {
 export default function Square({
   rank, file, displayRank, displayFile, piece, isLight, sqSize,
   isSelected, isLastMoveFrom, isLastMoveTo, isLegalHint, isLegalCapture,
-  isHovered, onClick, onPointerDown, onPointerEnter,
+  isHovered, showCoordinates, onClick, onPointerDown, onPointerEnter,
 }: SquareProps) {
   const squareName = indicesToSquare(rank, file);
   const classes = [
@@ -54,10 +55,10 @@ export default function Square({
       onPointerDown={(e) => onPointerDown(squareName, e)}
       onPointerEnter={() => onPointerEnter(squareName)}
     >
-      {displayRank === 7 && (
+      {showCoordinates && displayRank === 7 && (
         <span className="sq-label sq-label-file">{String.fromCharCode(97 + displayFile)}</span>
       )}
-      {displayFile === 0 && (
+      {showCoordinates && displayFile === 0 && (
         <span className="sq-label sq-label-rank">{8 - displayRank}</span>
       )}
       {piece && (

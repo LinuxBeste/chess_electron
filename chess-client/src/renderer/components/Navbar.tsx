@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useStoreValue } from '../hooks/useStore';
 import { store } from '../store';
 import { useNavigate } from 'react-router-dom';
+import SettingsDialog from './SettingsDialog';
 
 export default function Navbar() {
+  const [showSettings, setShowSettings] = useState(false);
   const username = useStoreValue('username');
   const token = useStoreValue('token');
   const wsStatus = useStoreValue('wsStatus');
@@ -19,9 +22,7 @@ export default function Navbar() {
               <span className={`navbar-dot ${wsStatus === 'connected' ? 'online' : 'offline'}`} />
               {username}
             </span>
-            <button className="navbar-btn" onClick={() => {
-              import('../settings').then(m => m.showSettingsDialog());
-            }}>Settings</button>
+            <button className="navbar-btn" onClick={() => setShowSettings(true)}>Settings</button>
             <button className="navbar-btn" onClick={() => {
               store.set('token', null);
               store.set('playerId', null);
@@ -33,6 +34,7 @@ export default function Navbar() {
           </>
         ) : null}
       </div>
+      {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
     </nav>
   );
 }

@@ -1,9 +1,9 @@
-/**
- * Simple sound effects using Web Audio API.
- * Generates tones programmatically — no audio files required.
- */
-
 let audioCtx: AudioContext | null = null;
+let cachedVolume = 1;
+
+export function setSoundVolume(pct: number): void {
+  cachedVolume = Math.max(0, Math.min(1, pct / 100));
+}
 
 function getCtx(): AudioContext {
   if (!audioCtx) {
@@ -21,7 +21,7 @@ function playTone(freq: number, duration: number, type: OscillatorType = 'sine',
   const gain = ctx.createGain();
   osc.type = type;
   osc.frequency.setValueAtTime(freq, ctx.currentTime);
-  gain.gain.setValueAtTime(volume, ctx.currentTime);
+  gain.gain.setValueAtTime(volume * cachedVolume, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
   osc.connect(gain);
   gain.connect(ctx.destination);

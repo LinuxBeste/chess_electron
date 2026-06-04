@@ -40,6 +40,8 @@ export default function Board({
 
   const sqSize = boardSize / 8;
   const alwaysBottom = getSetting('alwaysWhiteBottom');
+  const showCoordinates = getSetting('showCoordinates');
+  const highlightLastMove = getSetting('highlightLastMove');
   const isWhiteBottom = alwaysBottom ? true : playerColor === 'white';
 
   const handleClick = useCallback((square: string) => {
@@ -122,11 +124,12 @@ export default function Board({
               isLight={(dr + df) % 2 === 0}
               sqSize={sqSize}
               isSelected={selectedSquare === squareName}
-              isLastMoveFrom={lastMove?.from === squareName}
-              isLastMoveTo={lastMove?.to === squareName}
+              isLastMoveFrom={highlightLastMove && lastMove?.from === squareName}
+              isLastMoveTo={highlightLastMove && lastMove?.to === squareName}
               isLegalHint={getIsLegalHint(squareName)}
               isLegalCapture={getIsLegalCapture(squareName)}
               isHovered={hoverSquare === squareName && getIsLegalHint(squareName)}
+              showCoordinates={showCoordinates}
               alwaysBottom={alwaysBottom}
               playerColor={playerColor}
               onClick={handleClick}
