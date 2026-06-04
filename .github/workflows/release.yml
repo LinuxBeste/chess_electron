@@ -34,7 +34,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/chess-api
+          images: ${{ env.REGISTRY }}/${{ lower(github.repository_owner) }}/chess-api
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -59,8 +59,8 @@ jobs:
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
           TAG="${VERSION:-latest}"
-          docker pull "${{ env.REGISTRY }}/${{ github.repository_owner }}/chess-api:$TAG"
-          docker save "${{ env.REGISTRY }}/${{ github.repository_owner }}/chess-api:$TAG" | gzip > chess-api-docker.tar.gz
+          docker pull "${{ env.REGISTRY }}/${{ lower(github.repository_owner) }}/chess-api:$TAG"
+          docker save "${{ env.REGISTRY }}/${{ lower(github.repository_owner) }}/chess-api:$TAG" | gzip > chess-api-docker.tar.gz
           ls -lh chess-api-docker.tar.gz
 
       - uses: actions/upload-artifact@v4
