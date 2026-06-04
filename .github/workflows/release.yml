@@ -52,7 +52,6 @@ jobs:
         with:
           context: chess-api
           push: true
-          load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
@@ -60,6 +59,7 @@ jobs:
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
           TAG="${VERSION:-latest}"
+          docker pull "${{ env.REGISTRY }}/${{ github.repository_owner }}/chess-api:$TAG"
           docker save "${{ env.REGISTRY }}/${{ github.repository_owner }}/chess-api:$TAG" | gzip > chess-api-docker.tar.gz
           ls -lh chess-api-docker.tar.gz
 
