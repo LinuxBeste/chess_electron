@@ -30,11 +30,15 @@ jobs:
             set -a; source chess-api/.env.build; set +a
           fi
 
+      - name: Lowercase owner
+        id: owner
+        run: echo "owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: Extract version from tag
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ lower(github.repository_owner) }}/chess-api
+          images: ${{ env.REGISTRY }}/${{ steps.owner.outputs.owner }}/chess-api
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -59,8 +63,9 @@ jobs:
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
           TAG="${VERSION:-latest}"
-          docker pull "${{ env.REGISTRY }}/${{ lower(github.repository_owner) }}/chess-api:$TAG"
-          docker save "${{ env.REGISTRY }}/${{ lower(github.repository_owner) }}/chess-api:$TAG" | gzip > chess-api-docker.tar.gz
+          OWNER="${{ steps.owner.outputs.owner }}"
+          docker pull "${{ env.REGISTRY }}/${OWNER}/chess-api:$TAG"
+          docker save "${{ env.REGISTRY }}/${OWNER}/chess-api:$TAG" | gzip > chess-api-docker.tar.gz
           ls -lh chess-api-docker.tar.gz
 
       - uses: actions/upload-artifact@v4
