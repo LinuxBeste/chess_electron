@@ -17,7 +17,11 @@
     "package:linux": "pnpm run build && electron-builder --linux",
     "package:mac": "pnpm run build && electron-builder --mac",
     "package:win": "pnpm run build && electron-builder --win",
-    "package:all": "pnpm run build && electron-builder --linux --mac --win"
+    "package:all": "pnpm run build && electron-builder --linux --mac --win",
+    "build:linux": "pnpm run build && electron-builder --linux",
+    "build:mac": "pnpm run build && electron-builder --mac",
+    "build:win": "pnpm run build && electron-builder --win",
+    "build:all": "pnpm run build && electron-builder --linux --mac --win"
   },
   "devDependencies": {
     "@jest/globals": "^30.4.1",
