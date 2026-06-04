@@ -52,13 +52,16 @@ jobs:
         with:
           context: chess-api
           push: true
+          load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Save image tarball
         run: |
-          IMG="${{ env.REGISTRY }}/${{ github.repository_owner }}/chess-api:${{ steps.meta.outputs.version || 'latest' }}"
-          docker save "$IMG" | gzip > chess-api-docker.tar.gz
+          VERSION="${{ steps.meta.outputs.version }}"
+          TAG="${VERSION:-latest}"
+          docker save "${{ env.REGISTRY }}/${{ github.repository_owner }}/chess-api:$TAG" | gzip > chess-api-docker.tar.gz
+          ls -lh chess-api-docker.tar.gz
 
       - uses: actions/upload-artifact@v4
         with:
