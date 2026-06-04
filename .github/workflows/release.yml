@@ -55,6 +55,31 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      - name: Save image tarball
+        run: |
+          IMG="${{ env.REGISTRY }}/${{ github.repository_owner }}/chess-api:${{ steps.meta.outputs.version || 'latest' }}"
+          docker save "$IMG" | gzip > chess-api-docker.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chess-api-docker
+          path: chess-api-docker.tar.gz
+          retention-days: 1
+
+  upload-docker:
+    name: Upload Docker image to release
+    runs-on: ubuntu-latest
+    needs: [docker, create-release]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: chess-api-docker
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          files: chess-api-docker.tar.gz
+
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
@@ -152,5 +177,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          files: chess-client/release/*
+          files: |
+            chess-client/release/*.AppImage
+            chess-client/release/*.deb
+            chess-client/release/*.dmg
+            chess-client/release/*.exe
+            chess-client/release/*.zip
           fail_on_unmatched_files: false
