@@ -22,6 +22,9 @@ yarn-error.log*
 # Web build output
 dist/
 
+# Electron release artifacts
+chess-client/release/
+
 package-lock.json
 
 FEATURES.md
