@@ -2,6 +2,7 @@ version: '3.8'
 services:
   chess-api:
     build: .
+    image: chess-api
     ports:
       - "${PORT:-25566}:3000"
     restart: unless-stopped
