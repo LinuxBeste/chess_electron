@@ -22,10 +22,10 @@
 |           Electron App                |
 |  +-----------------+   IPC   +------+ |
 |  | Renderer Process |<------>| Main | |
-|  | (vanilla DOM)    |        | Proc | |
+|  | (React 18)       |        | Proc | |
 |  |                  |        |      | |
-|  | login, lobby,    |        | .env | |
-|  | game, result     |        |preld | |
+|  | react-router     |        | .env | |
+|  | lazy routes      |        |preld | |
 |  +--------+---------+        +--+---+ |
 +-----------+---------------------+-----+
             | HTTP + WebSocket    |
@@ -87,9 +87,11 @@ This runs `pnpm -r dev`, starting the API and building the client concurrently.
 
 1. Open the app — the **login** screen appears.
 2. Enter a username and click **Enter** — a player account is created and the token stored locally.
-3. The **lobby** shows open games. Click **New Game** to create one. Toggle **Private** to share the game ID directly.
+3. The **lobby** shows open games and active games for spectating. Click **New Game** to create one. Toggle **Private** to share the game ID directly.
 4. Open a second window (`New Window` button) to register a second player and join the game.
-5. Make moves by dragging pieces or clicking source then destination. Pawn promotions show a piece-selection dialog.
+5. Make moves by dragging pieces or clicking source then destination. Pawn promotions show a piece-selection dialog (can be set to auto-queen in settings).
+6. Finished games can be **reviewed** move-by-move using the Prev/Next buttons, or viewed in the sidebar move history.
+7. Click **Settings** in the navbar to adjust sound, volume, board theme, coordinates, gameplay options, and more.
 
 > **Note:** The API server stores auth tokens **in-memory only**. If the server restarts, all sessions are invalidated. The client detects this on startup by validating the saved token against `GET /auth/me` and redirects to the login view if the token is stale.
 
@@ -97,18 +99,35 @@ This runs `pnpm -r dev`, starting the API and building the client concurrently.
 
 ## Environment variables
 
-The client reads `chess-client/.env` at startup (git-ignored).
+Full documentation: [`docs/environment.md`](./docs/environment.md)
+
+### chess-client (`chess-client/.env`)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CHESS_SERVER_URL` | `http://localhost:3000` | API base URL the Electron app connects to |
+| `CHESS_SERVER_URL` | `http://localhost:3000` | API base URL |
+| `CHESS_WS_URL` | *(same as server)* | WebSocket URL override |
+| `DEFAULT_USERNAME` | *(empty)* | Pre-fills login; auto-submits if set |
+| `AUTO_CONNECT` | `true` | Auto-connect WebSocket on startup |
+| `THEME` | `default` | Board theme (default, classic, blue, green, gray, amber) |
+| `SOUND_ENABLED` | `true` | Enable sound by default |
+| `SHOW_LEGAL_HINTS` | `true` | Show legal move hints by default |
+| `DEVTOOLS` | `false` | Open DevTools on window creation |
+| `WINDOW_TITLE` | `Chess` | Window title |
+| `WINDOW_WIDTH` | `1280` | Default window width |
+| `WINDOW_HEIGHT` | `900` | Default window height |
 
-The API accepts these environment variables:
+### chess-api
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3000` | HTTP/WS server port |
-| `NODE_ENV` | — | Set to `test` to skip server startup |
+| `CORS_ORIGIN` | `*` | Allowed CORS origin |
+| `WS_HEARTBEAT_INTERVAL` | `30000` | WebSocket ping interval (ms) |
+| `LOG_LEVEL` | `info` | Log level |
+| `MAX_GAMES_PER_PLAYER` | `1` | Max concurrent games per player |
+| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window (ms) |
+| `RATE_LIMIT_MAX_REQUESTS` | `30` | Max requests per window per player |
 
 ---
 
@@ -144,25 +163,46 @@ The API accepts these environment variables:
 │   │   │   ├── main.ts             # Window creation, IPC, .env loading
 │   │   │   └── preload.ts          # contextBridge (serverUrl, openNewWindow)
 │   │   ├── renderer/
-│   │   │   ├── index.ts            # App entry: toast system, WS auto-connect
-│   │   │   ├── index.html          # Shell HTML (dark theme, Inter font)
-│   │   │   ├── router.ts           # Hash-based SPA router (4 views)
-│   │   │   ├── store.ts            # Typed observable state store
+│   │   │   ├── index.tsx           # createRoot + render <App />
+│   │   │   ├── index.html          # Shell HTML (dark theme, Inter font, CSS)
+│   │   │   ├── App.tsx             # HashRouter, lazy routes, env init, session restore
+│   │   │   ├── store.ts            # Typed observable state store (singleton)
 │   │   │   ├── api.ts              # Typed REST client (bearer auth)
-│   │   │   ├── socket.ts           # WebSocket manager (auto-reconnect)
-│   │   │   ├── chess.ts            # Client helpers (board parse, Unicode pieces, el())
-│   │   │   └── views/
-│   │   │       ├── login.ts        # Username registration form
-│   │   │       ├── lobby.ts        # Game list, create/join cards
-│   │   │       ├── game.ts         # Board, drag-and-drop, clock, history
-│   │   │       └── result.ts       # Outcome overlay (win/lose/draw)
-│   │   └── types.ts                # Re-exports from chess-api, UI types
+│   │   │   ├── socket.ts           # WebSocket manager (auto-reconnect, exponential backoff)
+│   │   │   ├── chess.ts            # Client helpers (board parse, SVG pieces)
+│   │   │   ├── sound.ts            # Web Audio tone generator (volume control)
+│   │   │   ├── settings.ts         # Settings persistence (localStorage, theme)
+│   │   │   ├── types.ts            # Re-exports from chess-api + UI types
+│   │   │   ├── hooks/
+│   │   │   │   └── useStore.ts     # React hook bridging observable store
+│   │   │   ├── components/
+│   │   │   │   ├── Board.tsx        # 8×8 grid with pointer-event drag-and-drop
+│   │   │   │   ├── Square.tsx      # Single square with piece, highlights, labels
+│   │   │   │   ├── Navbar.tsx      # User info, WS status dot, settings/logout
+│   │   │   │   ├── ToastContainer.tsx  # Auto-dismiss toast messages
+│   │   │   │   ├── MoveHistory.tsx  # Auto-scrolling move table
+│   │   │   │   ├── Chat.tsx         # WebSocket chat
+│   │   │   │   ├── PromotionDialog.tsx  # Modal piece selection
+│   │   │   │   ├── SettingsDialog.tsx   # 4-tab settings (General/Board/Display/Gameplay)
+│   │   │   │   └── ErrorBoundary.tsx    # React error boundary
+│   │   │   └── pages/
+│   │   │       ├── LoginPage.tsx    # Username registration
+│   │   │       ├── LobbyPage.tsx    # Open/live games, create/join, match history
+│   │   │       ├── GamePage.tsx     # Board, drag-drop, clocks, review, promotion
+│   │   │       └── ResultPage.tsx   # Outcome display, game ID copy
 │   ├── tests/
-│   │   ├── api.test.ts
-│   │   ├── chess.test.ts
-│   │   ├── router.test.ts
-│   │   ├── socket.test.ts
-│   │   └── store.test.ts
+│   │   ├── api.test.ts             # REST client pure-logic tests
+│   │   ├── chess.test.ts           # Board helpers (createInitialBoard, etc.)
+│   │   ├── result.test.ts          # Outcome derivation (won/lost/draw)
+│   │   ├── router.test.ts          # Route parsing
+│   │   ├── settings.test.ts        # Color functions, defaults, persistence
+│   │   ├── socket.test.ts          # WS URL construction, reconnect
+│   │   ├── sound.test.ts           # Tone parameters per sound function
+│   │   ├── store.test.ts           # Session persistence
+│   │   ├── setup.ts                # localStorage mock for Node test env
+│   │   ├── ErrorBoundary.test.tsx  # Error catch + fallback UI
+│   │   ├── SettingsDialog.test.tsx # All 4 tabs, close, overlay, toggles
+│   │   └── ToastContainer.test.tsx # Toast render, auto-removal
 │   ├── webpack.main.config.js      # Main process bundle (ts-loader)
 │   ├── webpack.renderer.config.js  # Renderer bundle + HtmlWebpackPlugin
 │   ├── tsconfig.json               # Base config (noEmit, includes chess-api types)
@@ -190,6 +230,8 @@ The API accepts these environment variables:
 | `pnpm --filter chess-api dev` | Start API server with `ts-node` (hot reload) |
 | `pnpm --filter chess-client dev` | Build webpack bundles + launch Electron |
 | `pnpm --filter chess-client package` | Package platform installer via electron-builder |
+| `pnpm --filter chess-client build:renderer` | Webpack build (renderer only) |
+| `pnpm --filter chess-client build:main` | Webpack build (main process only) |
 
 ---
 
@@ -206,11 +248,13 @@ All authenticated endpoints require `Authorization: Bearer <token>`.
 | `GET` | `/auth/me` | ✓ | Current player identity |
 | `POST` | `/games` | ✓ | Create game as white (body: `visibility`) |
 | `GET` | `/games` | — | List open public games |
+| `GET` | `/games/active` | — | List active (in-progress) games for spectating |
 | `GET` | `/games/:id` | — | Full game state |
 | `POST` | `/games/:id/join` | ✓ | Join as black |
 | `POST` | `/games/:id/move` | ✓ | Submit move (`from`, `to`, `promotion?`) |
 | `POST` | `/games/:id/resign` | ✓ | Resign from game |
 | `GET` | `/games/:id/moves` | ✓ | Legal moves for current turn |
+| `GET` | `/players/:id/games` | ✓ | Completed games for a player |
 
 ### WebSocket events
 
@@ -221,6 +265,9 @@ Connect to `ws://host:port/?token=<bearer-token>`.
 | `move` | Legal move submitted | `board` (serialized), `turn`, `lastMove` |
 | `game_started` | Black joins | Full `GameState` |
 | `game_over` | Checkmate, stalemate, or resign | `board`, `result`, `reason` |
+| `chat_message` | Player or spectator sends chat | `playerId`, `username`, `text` |
+
+Client-to-server events: `spectate`, `unspectate`, `chat_message`.
 
 Full request/response examples with curl are in [`chess-api/docs/examples.md`](./chess-api/docs/examples.md), including a complete Scholar's Mate walkthrough.
 
@@ -283,15 +330,14 @@ The API server must be deployed separately — either via Docker or directly on 
 
 ## TypeScript
 
-Three tsconfigs in `chess-client/`:
+Two tsconfigs in `chess-client/`:
 
-| Config | Target | Entry | Purpose |
-|--------|--------|-------|---------|
-| `tsconfig.json` | ES2020 + DOM | — | Base config (noEmit), shared settings |
-| `tsconfig.main.json` | ES2020 | `src/main/` | Main + preload (Electron Node process) |
-| `tsconfig.renderer.json` | ES2020 + DOM | `src/renderer/` | Renderer (browser context) |
+| Config | Target | Entry | JSX | Purpose |
+|--------|--------|-------|-----|---------|
+| `tsconfig.json` | ES2020 + DOM | — | `react-jsx` | Base config (noEmit), includes renderer + types |
+| `tsconfig.main.json` | ES2020 | `src/main/` | — | Main + preload (Electron Node process) |
 
-The renderer tsconfig includes `chess-api/src/types.ts` so client types (`Board`, `Piece`, `Move`, etc.) are re-exported directly from the server's canonical definitions.
+`tsconfig.json` includes `chess-api/src/types.ts` so client types (`Board`, `Piece`, `Move`, etc.) are re-exported directly from the server's canonical definitions.
 
 Full type-check:
 
@@ -308,6 +354,7 @@ pnpm typecheck
 - [`chess-api/docs/chess-logic.md`](./chess-api/docs/chess-logic.md) — Engine internals: move generation, checkmate detection
 - [`chess-api/docs/deployment.md`](./chess-api/docs/deployment.md) — Docker build, environment variables, production config
 - [`chess-api/docs/examples.md`](./chess-api/docs/examples.md) — curl examples with a complete Scholar's Mate game
+- [`docs/environment.md`](./docs/environment.md) — Full environment variable reference for both packages
 
 ---
 
