@@ -22,8 +22,8 @@ export default function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedUrl = localStorage.getItem('chess_server_url');
-    const serverUrl = storedUrl || window.electronAPI?.serverUrl || 'http://localhost:3000';
+    const defaultUrl = 'http://localhost:3000';
+    const serverUrl = window.electronAPI?.serverUrl || defaultUrl;
     setBaseUrl(serverUrl);
     const wsUrl = window.electronAPI?.wsUrl || serverUrl;
     socketManager.setServerUrl(wsUrl);
@@ -62,6 +62,15 @@ export default function App() {
           store.set('username', null);
           store.clearSession();
           navigate('/login', { replace: true });
+        } else if (serverUrl !== defaultUrl) {
+          localStorage.removeItem('chess_server_url');
+          setBaseUrl(defaultUrl);
+          socketManager.setServerUrl(defaultUrl);
+          getMe().then(() => {
+            navigate('/lobby', { replace: true });
+          }).catch(() => {
+            store.toast('Failed to connect to server. Check the Server URL.', 'error');
+          });
         } else {
           store.toast('Failed to connect to server. Check the Server URL.', 'error');
         }
