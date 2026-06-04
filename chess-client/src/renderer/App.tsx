@@ -1,5 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ToastContainer from './components/ToastContainer';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -19,6 +19,8 @@ function Loading() {
 }
 
 export default function App() {
+  const navigate = useNavigate();
+
   useEffect(() => {
     const storedUrl = localStorage.getItem('chess_server_url');
     const serverUrl = storedUrl || window.electronAPI?.serverUrl || 'http://localhost:3000';
@@ -56,12 +58,17 @@ export default function App() {
         store.set('playerId', null);
         store.set('username', null);
         store.clearSession();
+        navigate('/login', { replace: true });
       });
     }
 
     const unsubToken = store.subscribe('token', (token) => {
-      if (token) socketManager.connect();
-      else socketManager.disconnect();
+      if (token) {
+        socketManager.connect();
+      } else {
+        socketManager.disconnect();
+        navigate('/login', { replace: true });
+      }
     });
 
     return () => unsubToken();

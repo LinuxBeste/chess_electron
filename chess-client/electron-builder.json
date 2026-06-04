@@ -6,7 +6,8 @@
   },
   "files": [
     "dist/**/*",
-    "assets/**/*"
+    "assets/**/*",
+    ".env"
   ],
   "icon": "assets/icon.png",
   "linux": {

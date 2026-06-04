@@ -56,6 +56,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!res.ok) {
+    if (res.status === 401 && store.get('token')) {
+      store.set('token', null);
+      store.set('playerId', null);
+      store.set('username', null);
+      store.clearSession();
+    }
     let msg = `Request failed with status ${res.status}`;
     try {
       const body = await res.json();

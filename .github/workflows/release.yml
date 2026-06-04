@@ -170,9 +170,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Create .env for build
+        shell: bash
+        run: |
+          echo "CHESS_SERVER_URL=${SERVER_URL:-http://localhost:3000}" > .env
+
       - run: pnpm run build
-        env:
-          SERVER_URL: ${{ env.SERVER_URL }}
 
       - run: npx electron-builder ${{ matrix.builder-args }} --publish=never
 
