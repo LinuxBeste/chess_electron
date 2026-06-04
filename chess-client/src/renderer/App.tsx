@@ -62,6 +62,8 @@ export default function App() {
           store.set('username', null);
           store.clearSession();
           navigate('/login', { replace: true });
+        } else {
+          store.toast('Failed to connect to server. Check the Server URL.', 'error');
         }
       });
     }
