@@ -10,7 +10,8 @@
   ],
   "linux": {
     "target": ["AppImage", "deb"],
-    "category": "Game"
+    "category": "Game",
+    "maintainer": "Chess App <chess@example.com>"
   },
   "mac": {
     "target": ["dmg"],

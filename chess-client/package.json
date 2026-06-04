@@ -2,6 +2,8 @@
   "name": "chess-client",
   "version": "1.0.0",
   "description": "Premium desktop chess client",
+  "author": "Chess App <chess@example.com>",
+  "homepage": "https://github.com/your-org/chess-app",
   "main": "dist/main/main.js",
   "scripts": {
     "build:main": "webpack --config webpack.main.config.js",
@@ -11,7 +13,11 @@
     "dev": "pnpm run build && electron .",
     "typecheck": "tsc --noEmit",
     "test": "jest --forceExit",
-    "package": "pnpm run build && electron-builder"
+    "package": "pnpm run build && electron-builder",
+    "package:linux": "pnpm run build && electron-builder --linux",
+    "package:mac": "pnpm run build && electron-builder --mac",
+    "package:win": "pnpm run build && electron-builder --win",
+    "package:all": "pnpm run build && electron-builder --linux --mac --win"
   },
   "devDependencies": {
     "@jest/globals": "^30.4.1",

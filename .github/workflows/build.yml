@@ -1,0 +1,138 @@
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      client:
+        description: 'Build client packages'
+        type: boolean
+        default: true
+      docker:
+        description: 'Build Docker image'
+        type: boolean
+        default: true
+      platform:
+        description: 'Client target platform'
+        type: choice
+        options:
+          - all
+          - linux
+          - macos
+          - windows
+        default: all
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker:
+    if: ${{ inputs.docker }}
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: chess-api
+          push: false
+          tags: chess-api:${{ github.sha }}
+
+      - name: Save image
+        run: docker save chess-api:${{ github.sha }} | gzip > chess-api.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chess-api-docker
+          path: chess-api.tar.gz
+          retention-days: 7
+
+  client-linux:
+    if: ${{ inputs.client && (inputs.platform == 'all' || inputs.platform == 'linux') }}
+    name: Client (Linux)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chess-client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: npx electron-builder --linux --publish=never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chess-client-linux
+          path: chess-client/release/*
+          retention-days: 7
+
+  client-macos:
+    if: ${{ inputs.client && (inputs.platform == 'all' || inputs.platform == 'macos') }}
+    name: Client (macOS)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: chess-client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: npx electron-builder --mac --publish=never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chess-client-macos
+          path: chess-client/release/*
+          retention-days: 7
+
+  client-windows:
+    if: ${{ inputs.client && (inputs.platform == 'all' || inputs.platform == 'windows') }}
+    name: Client (Windows)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: chess-client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: npx electron-builder --win --publish=never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chess-client-windows
+          path: chess-client/release/*
+          retention-days: 7
