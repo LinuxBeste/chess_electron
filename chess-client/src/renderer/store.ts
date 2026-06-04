@@ -73,8 +73,6 @@ class Store {
     const username = this.get('username');
     if (token && playerId && username) {
       localStorage.setItem('chess_session', JSON.stringify({ token, playerId, username }));
-    } else {
-      localStorage.removeItem('chess_session');
     }
   }
 

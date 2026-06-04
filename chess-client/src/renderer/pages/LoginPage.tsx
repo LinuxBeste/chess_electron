@@ -26,6 +26,10 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
+    if (store.get('token')) {
+      navigate('/lobby', { replace: true });
+      return;
+    }
     const def = window.electronAPI?.defaultUsername;
     if (def && window.electronAPI?.autoConnect !== false) {
       handleSubmit();

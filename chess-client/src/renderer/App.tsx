@@ -53,7 +53,9 @@ export default function App() {
       store.set('token', session.token);
       store.set('playerId', session.playerId);
       store.set('username', session.username);
-      getMe().catch((err) => {
+      getMe().then(() => {
+        navigate('/lobby', { replace: true });
+      }).catch((err) => {
         if (err instanceof ApiError && err.status === 401) {
           store.set('token', null);
           store.set('playerId', null);
