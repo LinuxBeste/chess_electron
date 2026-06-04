@@ -20,7 +20,8 @@ function Loading() {
 
 export default function App() {
   useEffect(() => {
-    const serverUrl = window.electronAPI?.serverUrl || 'http://localhost:3000';
+    const storedUrl = localStorage.getItem('chess_server_url');
+    const serverUrl = storedUrl || window.electronAPI?.serverUrl || 'http://localhost:3000';
     setBaseUrl(serverUrl);
     const wsUrl = window.electronAPI?.wsUrl || serverUrl;
     socketManager.setServerUrl(wsUrl);
