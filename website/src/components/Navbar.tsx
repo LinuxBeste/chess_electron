@@ -33,8 +33,9 @@ export default function Navbar({ theme, onToggleTheme }: Props) {
         scrolled ? 'bg-bg/90 border-b border-border backdrop-blur-md' : 'bg-transparent'
       }`}
     >
-      <Link to="/" className="text-lg font-bold text-text tracking-tight">
-        <span className="text-accent mr-0.5">♚</span> Chess
+      <Link to="/" className="text-lg font-bold text-text tracking-tight flex items-center gap-3">
+        <span><span className="text-accent mr-0.5">♚</span> Chess</span>
+        <span className="text-xs font-normal text-muted hidden sm:inline">Where every move matters.</span>
       </Link>
       <nav className="flex items-center gap-3 md:gap-5">
         {links.map((link) => (

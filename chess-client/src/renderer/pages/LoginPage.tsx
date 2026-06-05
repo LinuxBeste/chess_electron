@@ -79,8 +79,8 @@ export default function LoginPage() {
         <h1 style={{ fontSize: 36, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.5px', marginBottom: 4 }}>
           Chess
         </h1>
-        <p style={{ fontSize: 14, fontWeight: 300, color: 'var(--muted)', marginBottom: 8, letterSpacing: '0.3px' }}>
-          Play chess online
+        <p style={{ fontSize: 14, fontWeight: 300, color: 'var(--muted)', marginBottom: 24, letterSpacing: '0.3px' }}>
+          Where every move matters.
         </p>
         <input
           className="input-clean"

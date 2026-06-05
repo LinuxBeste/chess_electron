@@ -24,9 +24,8 @@ export default function Home() {
           </h1>
 
           <p className="text-muted text-lg md:text-xl leading-relaxed mb-8 max-w-lg mx-auto">
-            A beautiful desktop app for real-time chess. Challenge your friends,
-            track your games, and enjoy a smooth drag-and-drop experience —
-            all built from scratch.
+            Where every move matters. Challenge your friends, track your games, and
+            experience smooth drag-and-drop chess — all in a beautiful desktop app.
           </p>
 
           <div className="flex gap-4 flex-wrap justify-center mb-14">

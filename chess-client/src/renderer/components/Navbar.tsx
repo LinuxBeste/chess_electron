@@ -23,6 +23,7 @@ export default function Navbar() {
     <nav className="navbar">
       <span className="navbar-brand">
         ♚ <span>Chess</span>
+        <span className="navbar-tagline">Where every move matters.</span>
       </span>
       <div className="navbar-center" />
       <div className="navbar-actions">
