@@ -1,3 +1,15 @@
+/**
+ * Lightweight observable store for shared application state.
+ *
+ * Unlike useState (component-local) or a full state-management library,
+ * this store lets any module subscribe to specific keys and get notified
+ * on changes — used for cross-cutting concerns like auth tokens, the
+ * current game, WebSocket status, and toast messages.
+ *
+ * Session persistence is handled automatically when token/playerId/username
+ * are updated.
+ */
+
 import type { GameState, ViewName, WsStatus, ToastMessage } from '../types';
 
 interface StateMap {

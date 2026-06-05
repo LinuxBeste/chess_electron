@@ -12,11 +12,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet" />
     <style>
+      /* -- Global reset: remove default margins/paddings, use border-box
+         for predictable sizing across all elements. -- */
       * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
       }
+      /* -- Root takes full viewport, overflow hidden so pages manage
+         their own scroll.  Dark theme by default; the subtle radial gradient
+         adds depth without visual noise. -- */
       html,
       body {
         height: 100%;
@@ -52,6 +57,9 @@
       }
 
       /* ─── Design Tokens ─── */
+      /* -- CSS custom properties (design tokens) so visual changes propagate
+         throughout the app without touching every rule.  The [data-theme="*"]
+         variants override the default purple/gray palette. -- */
       :root {
         --sq-light: #3d3d52;
         --sq-dark: #2c2c38;
@@ -125,6 +133,9 @@
       }
 
       /* ─── Shared Animations ─── */
+      /* -- Subtle, short-duration animations used for overlays, toasts,
+         and hover effects.  Kept together to avoid duplication and to
+         make it easy to tune timing globally. -- */
       @keyframes fadeIn {
         from {
           opacity: 0;

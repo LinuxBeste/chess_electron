@@ -1,3 +1,15 @@
+/**
+ * GamePage — online multiplayer chess game view.
+ *
+ * Connects to a game via REST (for initial state) and WebSocket (for
+ * real-time updates).  Board state, moves, and game-over events arrive
+ * through the socket; the player's own moves are sent via REST and
+ * confirmed/overridden by the server's WebSocket broadcast.
+ *
+ * Supports spectating via ?spectate=1 query parameter (read-only view).
+ * Move review after game-over uses the server's boardHistory snapshots.
+ */
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { store } from '../store';
@@ -38,12 +50,18 @@ export default function GamePage() {
   const [resignConfirmed, setResignConfirmed] = useState(false);
   const [waiting, setWaiting] = useState(false);
 
+  /* Spectator mode = read-only; no move interaction.  The ?spectate=1
+     query param is set by LobbyPage when clicking "Spectate". */
   const isSpectator = searchParams.get('spectate') === '1';
+  /* Refs that always reflect the latest state — used inside WebSocket
+     event handlers (which are registered once and would otherwise capture
+     stale values from the initial render). */
   const boardRef = useRef(board);
   boardRef.current = board;
   const gameRef = useRef(game);
   gameRef.current = game;
 
+  /* True when the current player can make a move */
   const isActive = !!game && game.turn === playerColor && game.status === 'active' && !isSpectator;
 
   useEffect(() => {

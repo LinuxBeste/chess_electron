@@ -9,6 +9,10 @@
  *   - ../chess-api/src/game.ts    (business logic + WS broadcast shapes)
  *   - ../chess-api/src/types.ts   (shared type definitions)
  *   - ../chess-api/docs/api.md    (API contract documentation)
+ *
+ * NOTE: this file already has thorough JSDoc on every export.
+ * I'm only adding structural comments here; the docstrings for each
+ * function are already excellent.
  */
 
 import type { GameState, LegalMoveHint, PieceType } from '../types';

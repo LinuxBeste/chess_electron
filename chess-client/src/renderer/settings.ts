@@ -1,3 +1,13 @@
+/**
+ * AppSettings defines all user-configurable preferences.
+ *
+ * The settings module is the single source of truth for theme, sound,
+ * board style, and gameplay toggles. Settings are persisted to localStorage
+ * and applied immediately to the DOM via data-* attributes on <html>.
+ *
+ * A cached copy avoids repeated JSON.parse on every getSetting() call.
+ */
+
 export interface AppSettings {
   soundEnabled: boolean;
   soundVolume: number;
@@ -87,7 +97,8 @@ export function applyBackground(bg: string): void {
   }
 }
 
-/* Apply saved theme on load */
+/* Apply saved theme, board style, and background immediately on module load —
+   this prevents a flash of unstyled content before React mounts. */
 applyTheme(loadSettings().boardTheme);
 applyBoardStyle(loadSettings().boardStyle);
 applyBackground(loadSettings().background);

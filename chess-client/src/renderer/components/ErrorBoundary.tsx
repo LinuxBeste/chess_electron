@@ -1,3 +1,11 @@
+/**
+ * ErrorBoundary — React class component that catches render-phase errors
+ * in its subtree and displays a fallback UI instead of a white screen.
+ *
+ * Class component is required (React error boundaries can't be function
+ * components).  getDerivedStateFromError is the standard React pattern.
+ */
+
 import { Component, type ReactNode } from 'react';
 
 interface Props {

@@ -1,3 +1,14 @@
+/**
+ * LocalGamePage — full pass-and-play chess on a single screen.
+ *
+ * Unlike the online game flow (where the server validates moves), this file
+ * implements its own move generation, check/checkmate/stalemate detection,
+ * and promotion handling — all client-side, no network required.
+ *
+ * The board history + review index allows players to step through
+ * the game after it ends (similar to analysing a finished match).
+ */
+
 import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Board from '../components/Board';
@@ -23,11 +34,16 @@ export default function LocalGamePage() {
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
   const [boardHistory, setBoardHistory] = useState<{ board: BoardType; move: string }[]>([]);
 
+  /* Refs that always reflect current state — used inside closures that would
+     otherwise capture stale values from the render cycle */
   const boardRef = useRef(board);
   boardRef.current = board;
   const turnRef = useRef(turn);
   turnRef.current = turn;
 
+  /* Generate pseudo-legal moves — every possible destination for the given
+     colour's pieces, ignoring whether the move leaves the king in check.
+     Actual legality is filtered separately in getLegalMoves(). */
   function getPseudoLegalMoves(b: BoardType, color: 'white' | 'black'): Move[] {
     const result: Move[] = [];
     for (let r = 0; r < 8; r++) {
@@ -45,6 +61,9 @@ export default function LocalGamePage() {
     return result;
   }
 
+  /* Per-piece ray/path generator.  Sliding pieces (bishop/rook/queen) iterate
+     until blocked; knights/king/pawns have fixed direction sets.  En passant
+     and castling are NOT implemented here — the local game is basic 1v1. */
   function getMovesForPiece(b: BoardType, r: number, f: number, piece: { type: PieceType; color: 'white' | 'black' }): [number, number][] {
     const targets: [number, number][] = [];
     const dirs: Record<string, [number, number][]> = {
@@ -104,6 +123,7 @@ export default function LocalGamePage() {
     return targets;
   }
 
+  /* Check if the given colour's king is under attack by any enemy piece */
   function isInCheck(b: BoardType, color: 'white' | 'black'): boolean {
     const kingPos = findKingPos(b, color);
     if (!kingPos) return false;
@@ -123,6 +143,8 @@ export default function LocalGamePage() {
     return null;
   }
 
+  /* Filter pseudo-legal moves: simulate each on a clone, keep only those
+     that don't leave the moving side's king in check. */
   function getLegalMoves(b: BoardType, color: 'white' | 'black'): Move[] {
     const pseudo = getPseudoLegalMoves(b, color);
     return pseudo.filter((m) => {
@@ -135,6 +157,8 @@ export default function LocalGamePage() {
     });
   }
 
+  /* Terminal conditions: in check + no legal moves → checkmate;
+     not in check + no legal moves → stalemate (draw). */
   function isCheckmate(b: BoardType, color: 'white' | 'black'): boolean {
     return isInCheck(b, color) && getLegalMoves(b, color).length === 0;
   }
@@ -150,6 +174,9 @@ export default function LocalGamePage() {
     return !!piece && piece.type === 'pawn' && (tr === 0 || tr === 7);
   }
 
+  /* Commit a move to the board: clone, apply, check for terminal states,
+     then switch turn.  Sound effects are delayed by 100 ms so the board
+     re-renders first (avoiding audio clipping). */
   function executeMove(from: string, to: string, promotionPiece?: PieceType) {
     const newBoard = cloneBoard(boardRef.current);
     const [fr, ff] = squareToIndices(from);

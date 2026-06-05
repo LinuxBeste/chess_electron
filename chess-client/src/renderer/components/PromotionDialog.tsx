@@ -1,3 +1,11 @@
+/**
+ * PromotionDialog — modal overlay asking the player to choose a
+ * promotion piece when a pawn reaches the last rank.
+ *
+ * Excludes pawn and king from the choices (FIDE rules).
+ * The order (queen first) reflects the most common choice.
+ */
+
 import type { PieceType } from '../../types';
 import { getPieceSvg } from '../chess';
 
@@ -6,6 +14,7 @@ interface PromotionDialogProps {
   onSelect: (piece: PieceType) => void;
 }
 
+/* FIDE promotion options (ordered by frequency of choice) */
 const pieces: PieceType[] = ['queen', 'rook', 'bishop', 'knight'];
 
 export default function PromotionDialog({ color, onSelect }: PromotionDialogProps) {

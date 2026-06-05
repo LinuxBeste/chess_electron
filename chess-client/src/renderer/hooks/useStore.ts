@@ -1,3 +1,14 @@
+/**
+ * useStore — React binding for the observable Store.
+ *
+ * Subscribes to the given key on mount, re-renders the component when
+ * the value changes, and unsubscribes on unmount (the subscribe function
+ * returns an unsubscribe callback which useEffect's cleanup calls).
+ *
+ * The StateMap type mirrors the store's internal map so callers get
+ * full type inference on the returned value.
+ */
+
 import { useState, useEffect } from 'react';
 import { store } from '../store';
 

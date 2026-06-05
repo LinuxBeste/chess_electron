@@ -1,3 +1,11 @@
+/**
+ * ToastContainer — renders a stack of transient notification messages
+ * at the top of the viewport.
+ *
+ * Reads from the observable store's `toasts` array.  Each toast has
+ * a 4-second auto-dismiss timer managed by the store itself.
+ */
+
 import { useStoreValue } from '../hooks/useStore';
 
 export default function ToastContainer() {

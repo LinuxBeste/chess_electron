@@ -1,3 +1,12 @@
+/**
+ * App — root component with lazy-loaded routes, session restore, and
+ * one-time initialisation (server URL, settings, socket lifecycle).
+ *
+ * Routing uses React Router v6 with lazy imports (code-split at page
+ * boundaries) so the initial bundle stays small.  HashRouter is used
+ * in index.tsx for Electron compatibility (file:// protocol).
+ */
+
 import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
@@ -9,6 +18,7 @@ import { ApiError, setBaseUrl, getMe } from './api';
 import { type AppSettings, loadSettings, saveSettings, applyTheme } from './settings';
 import { setSoundVolume } from './sound';
 
+/* Code-split page bundles — each page is loaded only when first navigated to */
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const LobbyPage = lazy(() => import('./pages/LobbyPage'));
 const GamePage = lazy(() => import('./pages/GamePage'));
@@ -28,13 +38,24 @@ function Loading() {
 export default function App() {
   const navigate = useNavigate();
 
+  /* One-shot initialisation on app mount:
+     - Resolve server URL from Electron preload, localStorage, or default
+     - Load persisted settings and override with Electron env vars if present
+     - Restore last session (token + playerId) and validate against server
+     - Subscribe to token changes so the WebSocket connects/disconnects
+       automatically */
   useEffect(() => {
+    /* Server URL resolution: Electron preload takes precedence, then
+       a stored override in localStorage, then the hardcoded default */
     const storedUrl = localStorage.getItem('chess_server_url');
     const serverUrl = storedUrl || window.electronAPI?.serverUrl || 'http://localhost:3000';
     setBaseUrl(serverUrl);
     const wsUrl = window.electronAPI?.wsUrl || serverUrl;
     socketManager.setServerUrl(wsUrl);
 
+    /* Merge Electron-provided defaults (if any) into persisted settings.
+       This lets the Electron wrapper force specific themes for the standalone app
+       without requiring users to open the settings dialog. */
     const existing = loadSettings();
     const envTheme = window.electronAPI?.defaultTheme;
     const envSound = window.electronAPI?.defaultSound;
@@ -55,6 +76,8 @@ export default function App() {
     }
     setSoundVolume(existing.soundVolume);
 
+    /* Restore persisted session and validate credentials against the server.
+       If the token is stale (401), clear session and redirect to login. */
     const session = store.restoreSession();
     if (session) {
       store.set('token', session.token);
@@ -77,6 +100,8 @@ export default function App() {
         });
     }
 
+    /* Subscribe to token changes: connect WebSocket when we have a token,
+       disconnect and redirect to login when logged out */
     const unsubToken = store.subscribe('token', (token) => {
       if (token) {
         socketManager.connect();

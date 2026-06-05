@@ -1,3 +1,12 @@
+/**
+ * LobbyPage — game discovery and creation hub.
+ *
+ * Polls the server every 3 s for open games and active (in-progress) games.
+ * Also loads the current player's match history on mount.
+ * The three-column layout shows: open games, live games for spectating,
+ * and a right sidebar with local-play / create / join / history cards.
+ */
+
 import { useState, useEffect, useCallback } from 'react';
 import { store } from '../store';
 import * as api from '../api';
@@ -14,6 +23,8 @@ export default function LobbyPage() {
   const [statusMsg, setStatusMsg] = useState('');
   const [liveStatus, setLiveStatus] = useState('');
 
+  /* Poll the server for open and active games. Errors are surfaced as status
+     messages so the UI degrades gracefully when the server is unreachable. */
   const poll = useCallback(async () => {
     try {
       const games = await api.getOpenGames();
@@ -33,6 +44,7 @@ export default function LobbyPage() {
     return () => clearInterval(interval);
   }, [poll]);
 
+  /* Load the player's last 10 completed games for the match-history panel */
   useEffect(() => {
     const pid = store.get('playerId');
     if (pid) {
@@ -45,6 +57,7 @@ export default function LobbyPage() {
     }
   }, []);
 
+  /* If the player was in an active game (e.g. after a page refresh), resume it */
   useEffect(() => {
     checkActiveGame();
   }, []);

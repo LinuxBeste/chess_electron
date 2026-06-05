@@ -1,3 +1,11 @@
+/**
+ * MoveHistory — renders a grid of numbered moves (#, White, Black).
+ *
+ * Moves come in as a flat string array (e.g. ["e2-e4", "e7-e5", ...]).
+ * Pairs are grouped into rows; the most recent move in each column
+ * gets the `history-latest` highlight class for quick visual scanning.
+ */
+
 import { useEffect, useRef } from 'react';
 
 interface MoveHistoryProps {
@@ -7,6 +15,7 @@ interface MoveHistoryProps {
 export default function MoveHistory({ moves }: MoveHistoryProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  /* Auto-scroll the container to show the latest move */
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;

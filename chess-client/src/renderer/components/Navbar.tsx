@@ -1,3 +1,11 @@
+/**
+ * Navbar — top bar with branding, connection status indicator,
+ * username display, settings trigger, and logout.
+ *
+ * Uses the observable store (useStoreValue) so it re-renders when
+ * auth state or connection status changes without prop drilling.
+ */
+
 import { useState } from 'react';
 import { useStoreValue } from '../hooks/useStore';
 import { store } from '../store';

@@ -1,3 +1,11 @@
+/**
+ * Chat — in-game text chat via WebSocket.
+ *
+ * Messages arrive through the socketManager.onChat subscription and
+ * are rendered with a "You"/opponent distinction using the local playerId.
+ * Sending uses the socketManager.send() method with a chat_message type.
+ */
+
 import { useState, useRef, useEffect } from 'react';
 import { socketManager } from '../socket';
 import { store } from '../store';
@@ -17,6 +25,8 @@ export default function Chat({ gameId }: ChatProps) {
   const [input, setInput] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
 
+  /* Subscribe to incoming chat messages.  The unsubscribe function is
+     returned from useEffect's cleanup to prevent duplicates on re-render. */
   useEffect(() => {
     const unsub = socketManager.onChat((msg) => {
       setMessages((prev) => [...prev, msg as ChatMessage]);
@@ -24,6 +34,7 @@ export default function Chat({ gameId }: ChatProps) {
     return () => unsub();
   }, []);
 
+  /* Auto-scroll to bottom when a new message arrives */
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;

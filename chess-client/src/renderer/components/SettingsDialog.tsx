@@ -1,3 +1,11 @@
+/**
+ * SettingsDialog — tabbed modal overlay for all user-configurable preferences.
+ *
+ * Each tab (General / Board / Display / Gameplay) renders its own sub-component
+ * for organisational clarity. Settings are read from localStorage via loadSettings()
+ * and written back via saveSettings(), which also triggers DOM theme updates.
+ */
+
 import { useState } from 'react';
 import { type AppSettings, defaultSettings, loadSettings, saveSettings } from '../settings';
 import { setSoundVolume } from '../sound';
@@ -8,6 +16,7 @@ interface Props {
 
 type TabId = 'general' | 'board' | 'display' | 'gameplay';
 
+/* Tab definitions drive both the tab bar and the conditional rendering below */
 const tabs: { id: TabId; label: string }[] = [
   { id: 'general', label: 'General' },
   { id: 'board', label: 'Board' },
@@ -54,6 +63,8 @@ const backgroundOptions = [
   { value: 'none', label: 'None' },
 ];
 
+/* Board colour lookup — duplicated here from CSS custom properties so the
+   mini preview grid in the Board tab can render server-side-colour squares */
 function getLightColor(theme: string): string {
   switch (theme) {
     case 'classic':
@@ -88,6 +99,8 @@ function getDarkColor(theme: string): string {
   }
 }
 
+/* Reusable form controls — each renders a label + description + a single interactive widget.
+   Grouped here instead of a generic library to keep the dependency tree flat. */
 function ToggleRow({
   label,
   desc,
@@ -352,11 +365,13 @@ function GameplayTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: 
 
 export default function SettingsDialog({ onClose }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('general');
+  /* Local copy of settings; changes are persisted immediately via saveSettings() */
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
 
   function updateSettings(s: AppSettings) {
     setSettings(s);
     saveSettings(s);
+    /* Volume changes take effect immediately — the sound module caches the value */
     setSoundVolume(s.soundVolume);
   }
 
@@ -364,6 +379,7 @@ export default function SettingsDialog({ onClose }: Props) {
     updateSettings({ ...defaultSettings });
   }
 
+  /* Close when clicking the dark backdrop, not when clicking inside the modal card */
   function handleOverlayClick(e: React.MouseEvent) {
     if (e.target === e.currentTarget) onClose();
   }

@@ -9,6 +9,9 @@
  * Implements automatic reconnection with exponential backoff capped at 10s,
  * up to 5 attempts.  Incoming JSON is parsed and dispatched to registered
  * listeners by the `type` field.
+ *
+ * Listener registration returns an unsubscribe function — consumers are
+ * responsible for calling it on unmount (preventing leaks).
  */
 
 import { store } from './store';

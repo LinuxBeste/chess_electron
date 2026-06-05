@@ -1,3 +1,12 @@
+/**
+ * Board — renders an 8×8 grid of Square components with drag-and-drop,
+ * highlight overlays, and responsive sizing via ResizeObserver.
+ *
+ * Coordinate mapping: visual rows/cols (displayRank/displayFile) are flipped
+ * when the board is rotated (black's perspective), but the underlying
+ * logical board array (rank/file) stays fixed.
+ */
+
 import { useRef, useCallback, useState, useEffect } from 'react';
 import Square from './Square';
 import { squareToIndices, indicesToSquare } from '../chess';
@@ -34,6 +43,8 @@ export default function Board({
   const [hoverSquare, setHoverSquare] = useState<string | null>(null);
   const [dragFrom, setDragFrom] = useState<string | null>(null);
 
+  /* Track the board DOM element's width so square sizing is always exact.
+     A ResizeObserver is more reliable than window resize events. */
   useEffect(() => {
     const el = boardRef.current;
     if (!el) return;
@@ -50,6 +61,8 @@ export default function Board({
   const alwaysBottom = getSetting('alwaysWhiteBottom');
   const showCoordinates = getSetting('showCoordinates');
   const highlightLastMove = getSetting('highlightLastMove');
+  /* When alwaysWhiteBottom is on, white is always at the visual bottom
+     regardless of player colour.  Otherwise the active player's side is at the bottom. */
   const isWhiteBottom = alwaysBottom ? true : playerColor === 'white';
 
   const handleClick = useCallback(
@@ -59,6 +72,10 @@ export default function Board({
     [onSquareClick],
   );
 
+  /* Pointer-event-based drag-and-drop.  Uses pointer capture semantics
+     so the drag continues even if the pointer leaves the board element.
+     Coordinates are transformed from visual (display) space to logical
+     (board array) space via isWhiteBottom. */
   const handlePointerDown = useCallback(
     (square: string, _e: React.PointerEvent) => {
       if (!isActive) return;
@@ -71,6 +88,7 @@ export default function Board({
     [isActive, board, playerColor, onDragStart],
   );
 
+  /* Track which square the pointer is hovering over during a drag */
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (!dragFrom || !boardRef.current) return;
@@ -90,6 +108,8 @@ export default function Board({
     [dragFrom, sqSize, isWhiteBottom],
   );
 
+  /* End the drag: convert pointer position back to a board square.
+     If the pointer is outside the board, the move is cancelled. */
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
       if (!dragFrom || !boardRef.current) {

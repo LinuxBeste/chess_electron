@@ -1,3 +1,12 @@
+/**
+ * Shared type definitions for the chess client.
+ *
+ * Most game-domain types (Piece, Board, GameState, Move, etc.) are
+ * re-exported from ../chess-api/src/types to keep a single source of truth
+ * between client and server.  UI-only types (DragState, ToastMessage,
+ * WsStatus, LegalMoveHint) are defined here locally.
+ */
+
 /* Color for the two sides — used everywhere in board state and moves */
 export type { Color } from '../../chess-api/src/types';
 

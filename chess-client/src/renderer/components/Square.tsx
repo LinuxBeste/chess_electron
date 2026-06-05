@@ -1,3 +1,14 @@
+/**
+ * Square — a single cell on the chess board.
+ *
+ * Renders the piece (if any), coordinate labels (rank/file),
+ * legal-move dots/capture rings, and highlights for selection,
+ * last move, and drag hover.
+ *
+ * Positioning is done via absolute coordinates (top/left) based on
+ * displayRank/displayFile, which are already perspective-adjusted.
+ */
+
 import { getPieceSvg, indicesToSquare } from '../chess';
 import type { Piece } from '../../types';
 
@@ -43,6 +54,8 @@ export default function Square({
   onPointerEnter,
 }: SquareProps) {
   const squareName = indicesToSquare(rank, file);
+  /* Build CSS class list dynamically — .filter(Boolean) removes falsey values,
+     so only active modifiers are included in the final class string. */
   const classes = [
     'square',
     isLight ? 'sq-light' : 'sq-dark',
@@ -71,6 +84,9 @@ export default function Square({
       onPointerDown={(e) => onPointerDown(squareName, e)}
       onPointerEnter={() => onPointerEnter(squareName)}
     >
+      {/* Coordinate labels: file letters (a–h) on the bottom row only,
+          rank numbers (1–8) on the leftmost column only.  Positioned
+          via CSS classes inside the square. */}
       {showCoordinates && displayRank === 7 && (
         <span className="sq-label sq-label-file">{String.fromCharCode(97 + displayFile)}</span>
       )}

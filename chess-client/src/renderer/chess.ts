@@ -1,5 +1,6 @@
 /**
- * Client-side chess helpers: board parsing, legal move hints, SVG piece paths.
+ * Client-side chess helpers: board creation, coordinate conversion,
+ * deserialisation from WebSocket messages, and SVG piece rendering.
  *
  * The board rendering converts a 2D Board array or a SerializedSquare[]
  * (from WebSocket messages) into DOM elements.  Legal move hints are
@@ -8,14 +9,16 @@
  * This file does NOT implement chess logic — that lives in the server's
  * chess.ts.  The client only needs to render the board and provide visual
  * feedback for user interactions.
+ *
+ * NOTE: the "SVG pieces" here are actually Unicode chess characters;
+ * they're light, text-based, and scale cleanly at any resolution.
  */
 
 import type { Board, SerializedSquare, PieceType } from '../types';
 
 /**
- * Convert algebraic square notation to [rank, file] indices.
- * 'a' → file 0, '1' → rank 7 (matching the API's coordinate system
- * confirmed in ../chess-api/src/chess.ts lines 28-32).
+ * Create the standard 8×8 starting position.
+ * Rank 0 = back rank (black), rank 7 = back rank (white).
  */
 export function createInitialBoard(): Board {
   const board: Board = Array.from({ length: 8 }, () => Array(8).fill(null));
