@@ -112,6 +112,7 @@ export function createServer(): http.Server {
     /* Clean up when the connection drops */
     ws.on('close', () => {
       game.removeWSConnection(player.id, ws);
+      game.cleanupPlayerWaitingGames(player.id);
       if (spectatingGameId) {
         game.removeSpectator(spectatingGameId, ws);
       }

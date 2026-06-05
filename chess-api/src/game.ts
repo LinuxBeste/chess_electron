@@ -119,6 +119,27 @@ export function removeWSConnection(playerId: string, ws: WebSocket): void {
 }
 
 /**
+ * Clean up any waiting games created by a player who just disconnected.
+ * If the player has no more open WS connections (all tabs closed), remove
+ * every game they created that is still in 'waiting' status so the server
+ * doesn't accumulate orphaned open games.
+ */
+export function cleanupPlayerWaitingGames(playerId: string): void {
+  const conns = wsConnections.get(playerId);
+  if (conns && conns.size > 0) return; /* still connected elsewhere */
+
+  const toDelete: string[] = [];
+  for (const [id, g] of games) {
+    if (g.status === 'waiting' && g.players.white === playerId) {
+      toDelete.push(id);
+    }
+  }
+  for (const id of toDelete) {
+    games.delete(id);
+  }
+}
+
+/**
  * Send a JSON message to all WebSocket connections owned by a player.
  *
  * Uses Record<string, unknown> instead of `any` to maintain type safety
