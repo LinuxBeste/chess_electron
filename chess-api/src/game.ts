@@ -20,7 +20,7 @@ const players = new Map<string, Player>();
 const tokenIndex = new Map<string, string>();
 
 /* Env-driven limits with defaults */
-const MAX_GAMES_PER_PLAYER = parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '1', 10);
+const MAX_GAMES_PER_PLAYER = parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '5', 10);
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10);
 const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10);
 
@@ -255,6 +255,26 @@ export function getOpenGames(): GameState[] {
  */
 export function getGame(gameId: string): GameState | null {
   return games.get(gameId) ?? null;
+}
+
+/**
+ * Abort a waiting game (creator only).
+ *
+ * Removes the game from the server entirely and notifies any connected
+ * player via WebSocket so their UI can clean up.
+ */
+export function abortGame(gameId: string, playerId: string): { success: boolean; error?: string } {
+  const game = games.get(gameId);
+  if (!game) return { success: false, error: 'Game not found' };
+  if (game.status !== 'waiting') return { success: false, error: 'Can only abort a waiting game' };
+  if (game.players.white !== playerId) return { success: false, error: 'Only the creator can abort the game' };
+
+  /* Notify any connected player(s) before removing */
+  if (game.players.white) sendToPlayer(game.players.white, { type: 'game_aborted', gameId });
+  if (game.players.black) sendToPlayer(game.players.black, { type: 'game_aborted', gameId });
+
+  games.delete(gameId);
+  return { success: true };
 }
 
 /**

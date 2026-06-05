@@ -103,18 +103,22 @@ describe('game lifecycle', () => {
     expect(result.success).toBe(false);
   });
 
-  test('player cannot join a second game while active', () => {
-    const host1 = registerPlayer('h10');
-    const host2 = registerPlayer('h11');
-    const joiner = registerPlayer('j12');
+  test('player can join multiple active games (up to MAX_GAMES_PER_PLAYER)', () => {
+    const hosts = Array.from({ length: 6 }, (_, i) => registerPlayer(`h${i}_host`));
+    const joiner = registerPlayer('j_multi');
 
-    const g1 = game.createGame(host1);
-    game.joinGame(g1.id, joiner); /* joiner is now in active game */
+    /* Join 5 games — should succeed */
+    for (let i = 0; i < 5; i++) {
+      const g = game.createGame(hosts[i]);
+      const result = game.joinGame(g.id, joiner);
+      expect(result.success).toBe(true);
+    }
 
-    const g2 = game.createGame(host2);
-    const result = game.joinGame(g2.id, joiner); /* try to join another */
-    expect(result.success).toBe(false);
-    expect(result.error).toMatch(/active game/i);
+    /* 6th join should fail */
+    const g6 = game.createGame(hosts[5]);
+    const result6 = game.joinGame(g6.id, joiner);
+    expect(result6.success).toBe(false);
+    expect(result6.error).toMatch(/active game/i);
   });
 
   test('game stats count active games and online players', () => {

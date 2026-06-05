@@ -30,7 +30,7 @@ import type {
   SerializedSquare,
   GameStatus,
 } from '../../types';
-import type { MoveMessage, GameOverMessage, GameStartedMessage } from '../socket';
+import type { MoveMessage, GameOverMessage, GameStartedMessage, GameAbortedMessage } from '../socket';
 
 export default function GamePage() {
   const { gameId } = useParams<{ gameId: string }>();
@@ -114,6 +114,9 @@ export default function GamePage() {
     const unsubGameStarted = socketManager.onGameStarted((msg) => {
       if (msg.gameId === gameId) handleWsGameStarted(msg);
     });
+    const unsubGameAborted = socketManager.onGameAborted((msg) => {
+      if (msg.gameId === gameId) handleWsGameAborted(msg);
+    });
 
     if (initialGame) {
       initGame(initialGame);
@@ -139,6 +142,7 @@ export default function GamePage() {
       unsubMove();
       unsubGameOver();
       unsubGameStarted();
+      unsubGameAborted();
       if (isSpectator) {
         socketManager.send({ type: 'unspectate' });
       }
@@ -256,6 +260,11 @@ export default function GamePage() {
 
   function handleWsGameStarted(msg: GameStartedMessage) {
     applyGameStarted(msg.game);
+  }
+
+  function handleWsGameAborted(_msg: GameAbortedMessage) {
+    store.set('currentGame', null);
+    navigate('/lobby');
   }
 
   const requestLegalMoves = useCallback(async (square: string) => {
@@ -394,7 +403,10 @@ export default function GamePage() {
     setMenuOpen(false);
   }
 
-  function handleAbort() {
+  async function handleAbort() {
+    try {
+      if (gameId) await api.abortGame(gameId);
+    } catch {}
     store.set('currentGame', null);
     navigate('/lobby');
   }

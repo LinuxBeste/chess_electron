@@ -56,7 +56,12 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-type WsMessage = MoveMessage | GameOverMessage | GameStartedMessage | ChatMessage;
+export interface GameAbortedMessage {
+  type: 'game_aborted';
+  gameId: string;
+}
+
+type WsMessage = MoveMessage | GameOverMessage | GameStartedMessage | ChatMessage | GameAbortedMessage;
 
 /** Handler type for move events */
 export type MoveHandler = (msg: MoveMessage) => void;
@@ -69,6 +74,9 @@ export type GameStartedHandler = (msg: GameStartedMessage) => void;
 
 /** Handler type for chat messages */
 export type ChatHandler = (msg: ChatMessage) => void;
+
+/** Handler type for game-aborted events */
+export type GameAbortedHandler = (msg: GameAbortedMessage) => void;
 
 /** Maximum number of reconnect attempts before giving up */
 const MAX_RETRIES = 5;
@@ -87,6 +95,7 @@ class SocketManager {
   private gameOverHandlers = new Set<GameOverHandler>();
   private gameStartedHandlers = new Set<GameStartedHandler>();
   private chatHandlers = new Set<ChatHandler>();
+  private gameAbortedHandlers = new Set<GameAbortedHandler>();
   private serverUrl = 'http://localhost:3000';
 
   /** Set a custom server URL for the WebSocket connection */
@@ -141,6 +150,9 @@ class SocketManager {
             break;
           case 'chat_message':
             this.chatHandlers.forEach((h) => h(msg as ChatMessage));
+            break;
+          case 'game_aborted':
+            this.gameAbortedHandlers.forEach((h) => h(msg as GameAbortedMessage));
             break;
         }
       } catch {
@@ -219,6 +231,13 @@ class SocketManager {
     this.chatHandlers.add(handler);
     return () => {
       this.chatHandlers.delete(handler);
+    };
+  }
+
+  onGameAborted(handler: GameAbortedHandler): () => void {
+    this.gameAbortedHandlers.add(handler);
+    return () => {
+      this.gameAbortedHandlers.delete(handler);
     };
   }
 }

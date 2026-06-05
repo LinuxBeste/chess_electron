@@ -139,6 +139,13 @@ export function getGame(gameId: string): Promise<GameState> {
   return request(`/games/${gameId}`);
 }
 
+/* POST /games/:gameId/abort — auth required.
+ * Aborts a waiting game (creator only).  The game is deleted from the
+ * server and connected players are notified via WebSocket. */
+export function abortGame(gameId: string): Promise<{ success: boolean }> {
+  return request(`/games/${gameId}/abort`, { method: 'POST' });
+}
+
 /* POST /games/:gameId/join — auth required.
  * Body: none.  Returns GameState.
  * Confirmed in ../chess-api/src/routes.ts line 83-90

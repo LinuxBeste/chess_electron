@@ -97,6 +97,16 @@ router.get('/games/:gameId', (req: Request, res: Response) => {
   res.json(g);
 });
 
+/* Abort a waiting game (creator only) */
+router.post('/games/:gameId/abort', authMiddleware, (req: Request, res: Response) => {
+  const result = game.abortGame(req.params.gameId, req.player.id);
+  if (!result.success) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({ success: true });
+});
+
 /* Join a game as the black player */
 router.post('/games/:gameId/join', authMiddleware, (req: Request, res: Response) => {
   const result = game.joinGame(req.params.gameId, req.player.id);
