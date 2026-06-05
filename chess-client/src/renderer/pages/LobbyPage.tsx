@@ -12,7 +12,6 @@ import { store } from '../store';
 import * as api from '../api';
 import { useNavigate } from 'react-router-dom';
 import type { GameState } from '../../types';
-import MatchHistoryDialog from '../components/MatchHistoryDialog';
 
 export default function LobbyPage() {
   const navigate = useNavigate();
@@ -24,7 +23,6 @@ export default function LobbyPage() {
   const [spectateId, setSpectateId] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
   const [liveStatus, setLiveStatus] = useState('');
-  const [showHistory, setShowHistory] = useState(false);
 
   /* Poll the server for open and active games. Errors are surfaced as status
      messages so the UI degrades gracefully when the server is unreachable. */
@@ -322,16 +320,7 @@ export default function LobbyPage() {
           </button>
         </div>
 
-        <button
-          className="btn btn-ghost"
-          style={{ width: '100%', fontSize: 13, padding: 14 }}
-          onClick={() => setShowHistory(true)}
-        >
-          Match History
-        </button>
       </div>
-
-      {showHistory && <MatchHistoryDialog onClose={() => setShowHistory(false)} />}
     </div>
   );
 }

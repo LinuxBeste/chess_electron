@@ -11,9 +11,11 @@ import { useStoreValue } from '../hooks/useStore';
 import { store } from '../store';
 import { useNavigate } from 'react-router-dom';
 import SettingsDialog from './SettingsDialog';
+import MatchHistoryDialog from './MatchHistoryDialog';
 
 export default function Navbar() {
   const [showSettings, setShowSettings] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const username = useStoreValue('username');
   const token = useStoreValue('token');
   const wsStatus = useStoreValue('wsStatus');
@@ -36,6 +38,9 @@ export default function Navbar() {
             <button className="navbar-btn" onClick={() => setShowSettings(true)}>
               Settings
             </button>
+            <button className="navbar-btn" onClick={() => setShowHistory(true)}>
+              History
+            </button>
             <button
               className="navbar-btn"
               onClick={() => {
@@ -53,6 +58,7 @@ export default function Navbar() {
         ) : null}
       </div>
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+      {showHistory && <MatchHistoryDialog onClose={() => setShowHistory(false)} />}
     </nav>
   );
 }
