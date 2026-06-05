@@ -76,11 +76,11 @@ export default function LoginPage() {
           boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         }}
       >
-        <h1 style={{ fontSize: 36, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.5px', marginBottom: 4 }}>
-          Chess
+        <h1 style={{ fontSize: 32, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.5px', marginBottom: 4 }}>
+          Where every <span style={{ color: 'var(--accent)' }}>move</span> matters.
         </h1>
-        <p style={{ fontSize: 14, fontWeight: 300, color: 'var(--muted)', marginBottom: 24, letterSpacing: '0.3px' }}>
-          Where every move matters.
+        <p style={{ fontSize: 13, fontWeight: 300, color: 'var(--muted)', marginBottom: 24, letterSpacing: '0.3px' }}>
+          ♚ Chess
         </p>
         <input
           className="input-clean"
