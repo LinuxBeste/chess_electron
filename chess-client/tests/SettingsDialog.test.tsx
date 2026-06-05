@@ -8,7 +8,6 @@ describe('SettingsDialog', () => {
     render(<SettingsDialog onClose={() => {}} />);
     expect(screen.getByText('Sound Effects')).toBeTruthy();
     expect(screen.getByText('Sound Volume')).toBeTruthy();
-    expect(screen.getByText('Animations')).toBeTruthy();
     expect(screen.getByText('Piece Set')).toBeTruthy();
   });
 
@@ -16,6 +15,8 @@ describe('SettingsDialog', () => {
     render(<SettingsDialog onClose={() => {}} />);
     fireEvent.click(screen.getByText('Board'));
     expect(screen.getByText('Board Theme')).toBeTruthy();
+    expect(screen.getByText('Board Style')).toBeTruthy();
+    expect(screen.getByText('Board Size')).toBeTruthy();
     expect(screen.getByText('Show Coordinates')).toBeTruthy();
     expect(screen.getByText('Preview')).toBeTruthy();
   });
@@ -24,8 +25,8 @@ describe('SettingsDialog', () => {
     render(<SettingsDialog onClose={() => {}} />);
     fireEvent.click(screen.getByText('Display'));
     expect(screen.getByText('Always White at Bottom')).toBeTruthy();
-    expect(screen.getByText('Show Legal Move Hints')).toBeTruthy();
-    expect(screen.getByText('Highlight Last Move')).toBeTruthy();
+    expect(screen.getByText('Compact Mode')).toBeTruthy();
+    expect(screen.getByText('Background Pattern')).toBeTruthy();
   });
 
   test('switches to gameplay tab on click', () => {
@@ -34,6 +35,13 @@ describe('SettingsDialog', () => {
     expect(screen.getByText('Auto-Promote to Queen')).toBeTruthy();
     expect(screen.getByText('Confirm Resign')).toBeTruthy();
     expect(screen.getByText('Confirm Draw')).toBeTruthy();
+  });
+
+  test('switches to clock tab on click', () => {
+    render(<SettingsDialog onClose={() => {}} />);
+    fireEvent.click(screen.getByText('Clock'));
+    expect(screen.getByText('Time Control')).toBeTruthy();
+    expect(screen.getByText('Preview')).toBeTruthy();
   });
 
   test('calls onClose when close button clicked', () => {

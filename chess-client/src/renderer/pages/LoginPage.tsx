@@ -3,11 +3,14 @@ import { store } from '../store';
 import * as api from '../api';
 import { setBaseUrl } from '../api';
 import { socketManager } from '../socket';
+import { getSetting } from '../settings';
 import { useNavigate } from 'react-router-dom';
 
 export default function LoginPage() {
   const [username, setUsername] = useState(() => window.electronAPI?.defaultUsername || '');
+  const alwaysAsk = getSetting('alwaysAskServerUrl');
   const [serverUrl, setServerUrl] = useState(() => {
+    if (alwaysAsk) return '';
     return localStorage.getItem('chess_server_url') || window.electronAPI?.serverUrl || 'http://localhost:3000';
   });
   const [loading, setLoading] = useState(false);
@@ -16,10 +19,12 @@ export default function LoginPage() {
 
   function handleServerUrlChange(url: string) {
     setServerUrl(url);
-    localStorage.setItem('chess_server_url', url);
     setBaseUrl(url);
     const wsUrl = window.electronAPI?.wsUrl || url;
     socketManager.setServerUrl(wsUrl);
+    if (!alwaysAsk) {
+      localStorage.setItem('chess_server_url', url);
+    }
     if (store.get('token')) {
       socketManager.disconnect();
     }

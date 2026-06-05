@@ -16,6 +16,44 @@ interface AppSettings {
   confirmResign: boolean;
   confirmDraw: boolean;
   pieceSet: string;
+  moveSound: string;
+  captureSound: string;
+  notificationEnabled: boolean;
+  pieceAnimation: string;
+  animateBoardFlip: boolean;
+  reduceMotion: boolean;
+  pieceDropShadow: boolean;
+  boardStyle: string;
+  boardSize: string;
+  boardBorder: boolean;
+  boardCoordinateStyle: string;
+  highlightCheck: boolean;
+  showMoveHistory: boolean;
+  showCapturedPieces: boolean;
+  showMaterialDifference: boolean;
+  showMoveArrows: boolean;
+  compactMode: boolean;
+  uiDensity: string;
+  showPlayerNames: boolean;
+  showGameInfo: boolean;
+  showGameResultPopup: boolean;
+  autoFlipBoard: boolean;
+  background: string;
+  showThreats: boolean;
+  showOpponentClock: boolean;
+  clockStyle: string;
+  clockDecimalPlaces: number;
+  premove: boolean;
+  clickToMove: boolean;
+  showMovePreview: boolean;
+  moveNotation: string;
+  enableKeyboardNavigation: boolean;
+  enableOpeningBook: boolean;
+  confirmAbort: boolean;
+  autoNextGame: boolean;
+  showTimestampsInHistory: boolean;
+  timeControlMinutes: number;
+  timeControlIncrement: number;
 }
 
 const defaultSettings: AppSettings = {
@@ -32,39 +70,65 @@ const defaultSettings: AppSettings = {
   confirmResign: true,
   confirmDraw: false,
   pieceSet: 'svg',
+  moveSound: 'default',
+  captureSound: 'default',
+  notificationEnabled: true,
+  pieceAnimation: 'slide',
+  animateBoardFlip: true,
+  reduceMotion: false,
+  pieceDropShadow: true,
+  boardStyle: 'default',
+  boardSize: 'medium',
+  boardBorder: false,
+  boardCoordinateStyle: 'standard',
+  highlightCheck: true,
+  showMoveHistory: true,
+  showCapturedPieces: true,
+  showMaterialDifference: true,
+  showMoveArrows: true,
+  compactMode: false,
+  uiDensity: 'normal',
+  showPlayerNames: true,
+  showGameInfo: true,
+  showGameResultPopup: true,
+  autoFlipBoard: false,
+  background: 'default',
+  showThreats: false,
+  showOpponentClock: true,
+  clockStyle: 'digital',
+  clockDecimalPlaces: 0,
+  premove: false,
+  clickToMove: false,
+  showMovePreview: true,
+  moveNotation: 'short',
+  enableKeyboardNavigation: false,
+  enableOpeningBook: false,
+  confirmAbort: false,
+  autoNextGame: false,
+  showTimestampsInHistory: false,
+  timeControlMinutes: 5,
+  timeControlIncrement: 0,
 };
 
 function getLightColor(theme: string): string {
   switch (theme) {
-    case 'classic':
-      return '#f0d9b5';
-    case 'blue':
-      return '#dee3e6';
-    case 'green':
-      return '#eeeed2';
-    case 'gray':
-      return '#c8c8c8';
-    case 'amber':
-      return '#f5deb3';
-    default:
-      return '#3d3d52';
+    case 'classic': return '#f0d9b5';
+    case 'blue': return '#dee3e6';
+    case 'green': return '#eeeed2';
+    case 'gray': return '#c8c8c8';
+    case 'amber': return '#f5deb3';
+    default: return '#3d3d52';
   }
 }
 
 function getDarkColor(theme: string): string {
   switch (theme) {
-    case 'classic':
-      return '#b58863';
-    case 'blue':
-      return '#8ca2ad';
-    case 'green':
-      return '#769656';
-    case 'gray':
-      return '#6b6b6b';
-    case 'amber':
-      return '#b8860b';
-    default:
-      return '#2c2c38';
+    case 'classic': return '#b58863';
+    case 'blue': return '#8ca2ad';
+    case 'green': return '#769656';
+    case 'gray': return '#6b6b6b';
+    case 'amber': return '#b8860b';
+    default: return '#2c2c38';
   }
 }
 
@@ -137,6 +201,44 @@ describe('settings defaults', () => {
     expect(defaultSettings.confirmResign).toBe(true);
     expect(defaultSettings.confirmDraw).toBe(false);
     expect(defaultSettings.pieceSet).toBe('svg');
+    expect(defaultSettings.moveSound).toBe('default');
+    expect(defaultSettings.captureSound).toBe('default');
+    expect(defaultSettings.notificationEnabled).toBe(true);
+    expect(defaultSettings.pieceAnimation).toBe('slide');
+    expect(defaultSettings.animateBoardFlip).toBe(true);
+    expect(defaultSettings.reduceMotion).toBe(false);
+    expect(defaultSettings.pieceDropShadow).toBe(true);
+    expect(defaultSettings.boardStyle).toBe('default');
+    expect(defaultSettings.boardSize).toBe('medium');
+    expect(defaultSettings.boardBorder).toBe(false);
+    expect(defaultSettings.boardCoordinateStyle).toBe('standard');
+    expect(defaultSettings.highlightCheck).toBe(true);
+    expect(defaultSettings.showMoveHistory).toBe(true);
+    expect(defaultSettings.showCapturedPieces).toBe(true);
+    expect(defaultSettings.showMaterialDifference).toBe(true);
+    expect(defaultSettings.showMoveArrows).toBe(true);
+    expect(defaultSettings.compactMode).toBe(false);
+    expect(defaultSettings.uiDensity).toBe('normal');
+    expect(defaultSettings.showPlayerNames).toBe(true);
+    expect(defaultSettings.showGameInfo).toBe(true);
+    expect(defaultSettings.showGameResultPopup).toBe(true);
+    expect(defaultSettings.autoFlipBoard).toBe(false);
+    expect(defaultSettings.background).toBe('default');
+    expect(defaultSettings.showThreats).toBe(false);
+    expect(defaultSettings.showOpponentClock).toBe(true);
+    expect(defaultSettings.clockStyle).toBe('digital');
+    expect(defaultSettings.clockDecimalPlaces).toBe(0);
+    expect(defaultSettings.premove).toBe(false);
+    expect(defaultSettings.clickToMove).toBe(false);
+    expect(defaultSettings.showMovePreview).toBe(true);
+    expect(defaultSettings.moveNotation).toBe('short');
+    expect(defaultSettings.enableKeyboardNavigation).toBe(false);
+    expect(defaultSettings.enableOpeningBook).toBe(false);
+    expect(defaultSettings.confirmAbort).toBe(false);
+    expect(defaultSettings.autoNextGame).toBe(false);
+    expect(defaultSettings.showTimestampsInHistory).toBe(false);
+    expect(defaultSettings.timeControlMinutes).toBe(5);
+    expect(defaultSettings.timeControlIncrement).toBe(0);
   });
 });
 

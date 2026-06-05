@@ -65,9 +65,9 @@ export default function LobbyPage() {
   async function checkActiveGame() {
     try {
       const game = store.get('currentGame');
-      if (game && (game.status === 'active' || game.status === 'waiting')) {
+      if (game && game.status === 'active') {
         const fresh = await api.getGame(game.id);
-        if (fresh.status === 'active' || fresh.status === 'waiting') {
+        if (fresh.status === 'active') {
           store.set('currentGame', fresh);
           navigate(`/game/${fresh.id}`);
         }

@@ -170,6 +170,22 @@ export default function GamePage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [menuOpen]);
 
+  /* REST polling fallback for the waiting state — if the WebSocket
+     game_started event is missed (e.g. reconnect race), this picks up
+     the transition so P1 doesn't stay stuck on the waiting overlay. */
+  useEffect(() => {
+    if (!gameId || !waiting) return;
+    const interval = setInterval(async () => {
+      try {
+        const fresh = await api.getGame(gameId);
+        if (fresh.status === 'active') {
+          applyGameStarted(fresh);
+        }
+      } catch {}
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [gameId, waiting]);
+
   function initGame(g: GameState) {
     setGame(g);
     const pc = g.players.white === store.get('playerId') ? 'white' : 'black';
@@ -225,17 +241,21 @@ export default function GamePage() {
     setTimeout(() => navigate(`/result/${msg.gameId}`), 500);
   }
 
-  function handleWsGameStarted(msg: GameStartedMessage) {
-    setGame(msg.game);
-    store.set('currentGame', msg.game);
-    setBoard(cloneBoard(msg.game.board));
-    setLastMove(msg.game.lastMove);
-    setMoves(msg.game.moveHistory);
+  function applyGameStarted(g: GameState) {
+    setGame(g);
+    store.set('currentGame', g);
+    setBoard(cloneBoard(g.board));
+    setLastMove(g.lastMove);
+    setMoves(g.moveHistory);
     setWaiting(false);
     const ms = getSetting('timeControlMinutes') * 60 * 1000;
     setWhiteTime(ms);
     setBlackTime(ms);
     setTimeout_(null);
+  }
+
+  function handleWsGameStarted(msg: GameStartedMessage) {
+    applyGameStarted(msg.game);
   }
 
   const requestLegalMoves = useCallback(async (square: string) => {

@@ -7,7 +7,7 @@
  * in index.tsx for Electron compatibility (file:// protocol).
  */
 
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, lazy, Suspense, useRef } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ToastContainer from './components/ToastContainer';
@@ -15,7 +15,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { store } from './store';
 import { socketManager } from './socket';
 import { ApiError, setBaseUrl, getMe } from './api';
-import { type AppSettings, loadSettings, saveSettings, applyTheme } from './settings';
+import { type AppSettings, loadSettings, saveSettings, applyTheme, getSetting } from './settings';
 import { setSoundVolume } from './sound';
 
 /* Code-split page bundles — each page is loaded only when first navigated to */
@@ -112,6 +112,40 @@ export default function App() {
     });
 
     return () => unsubToken();
+  }, []);
+
+  /* Auto-logout: track user activity and clear session after inactivity period */
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const idleMinutes = getSetting('autoLogoutMinutes');
+    if (idleMinutes <= 0) return;
+
+    function resetIdleTimer() {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      idleTimer.current = setTimeout(() => {
+        if (store.get('token')) {
+          store.set('token', null);
+          store.set('playerId', null);
+          store.set('username', null);
+          store.clearSession();
+          store.set('currentGame', null);
+        }
+      }, idleMinutes * 60 * 1000);
+    }
+
+    const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'mousemove'];
+    for (const ev of events) {
+      window.addEventListener(ev, resetIdleTimer, { passive: true });
+    }
+    resetIdleTimer();
+
+    return () => {
+      for (const ev of events) {
+        window.removeEventListener(ev, resetIdleTimer);
+      }
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+    };
   }, []);
 
   return (
