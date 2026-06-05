@@ -12,17 +12,19 @@ import { store } from '../store';
 import * as api from '../api';
 import { useNavigate } from 'react-router-dom';
 import type { GameState } from '../../types';
+import MatchHistoryDialog from '../components/MatchHistoryDialog';
 
 export default function LobbyPage() {
   const navigate = useNavigate();
   const [openGames, setOpenGames] = useState<GameState[]>([]);
   const [liveGames, setLiveGames] = useState<GameState[]>([]);
-  const [matchHistory, setMatchHistory] = useState<GameState[]>([]);
+
   const [isPrivate, setIsPrivate] = useState(false);
   const [joinId, setJoinId] = useState('');
   const [spectateId, setSpectateId] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
   const [liveStatus, setLiveStatus] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
 
   /* Poll the server for open and active games. Errors are surfaced as status
      messages so the UI degrades gracefully when the server is unreachable. */
@@ -44,19 +46,6 @@ export default function LobbyPage() {
     const interval = setInterval(poll, 3000);
     return () => clearInterval(interval);
   }, [poll]);
-
-  /* Load the player's last 10 completed games for the match-history panel */
-  useEffect(() => {
-    const pid = store.get('playerId');
-    if (pid) {
-      api
-        .getPlayerGames(pid)
-        .then((games) => {
-          setMatchHistory(games.slice(-10).reverse());
-        })
-        .catch(() => {});
-    }
-  }, []);
 
   /* If the player was in an active game (e.g. after a page refresh), resume it */
   useEffect(() => {
@@ -333,67 +322,16 @@ export default function LobbyPage() {
           </button>
         </div>
 
-        <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
-          <h2 className="card-title">Match History</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minHeight: 0, overflowY: 'auto' }}>
-            {matchHistory.length === 0 ? (
-              <div style={{ fontSize: 13, fontWeight: 300, color: '#555', textAlign: 'center', padding: 12 }}>
-                No completed games yet
-              </div>
-            ) : (
-              matchHistory.map((g) => {
-                const isWhite = g.players.white === myId;
-                const won = g.winner === (isWhite ? 'white' : 'black');
-                const resultText = g.status === 'draw' ? 'Draw' : won ? 'Won' : 'Lost';
-                const resultColor = g.status === 'draw' ? 'var(--muted)' : won ? 'var(--accent)' : 'var(--danger)';
-                const opponent = isWhite ? g.players.black || '?' : g.players.white || '?';
-                return (
-                  <div
-                    key={g.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '6px 8px',
-                      borderRadius: 6,
-                      background: 'rgba(255,255,255,0.02)',
-                      fontSize: 13,
-                    }}
-                  >
-                    <span style={{ color: 'var(--text)', fontWeight: 500, letterSpacing: '0.2px' }}>
-                      vs {opponent.slice(0, 8)}
-                    </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ color: resultColor, fontWeight: 600, letterSpacing: '0.3px' }}>{resultText}</span>
-                      <button
-                        className="btn btn-ghost btn-xs"
-                        style={{ fontSize: 11, padding: '2px 8px' }}
-                        onClick={() => navigate(`/game/${g.id}`)}
-                      >
-                        Review
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-          <button
-            className="btn btn-ghost"
-            style={{ marginTop: 10, width: '100%', fontSize: 12 }}
-            onClick={() => {
-              const pid = store.get('playerId');
-              if (pid)
-                api
-                  .getPlayerGames(pid)
-                  .then((games) => setMatchHistory(games.slice(-10).reverse()))
-                  .catch(() => {});
-            }}
-          >
-            Refresh
-          </button>
-        </div>
+        <button
+          className="btn btn-ghost"
+          style={{ width: '100%', fontSize: 13, padding: 14 }}
+          onClick={() => setShowHistory(true)}
+        >
+          Match History
+        </button>
       </div>
+
+      {showHistory && <MatchHistoryDialog onClose={() => setShowHistory(false)} />}
     </div>
   );
 }
