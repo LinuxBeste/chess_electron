@@ -3,6 +3,9 @@ export interface AppSettings {
   soundVolume: number;
   animationsEnabled: boolean;
   boardTheme: 'default' | 'classic' | 'blue' | 'green' | 'gray' | 'amber';
+  boardStyle: 'default' | 'rounded' | 'framed';
+  background: 'default' | 'dots' | 'grid' | 'none';
+  pieceAnimation: 'none' | 'slide' | 'pop';
   alwaysWhiteBottom: boolean;
   showLegalHints: boolean;
   showCoordinates: boolean;
@@ -21,6 +24,9 @@ export const defaultSettings: AppSettings = {
   soundVolume: 100,
   animationsEnabled: true,
   boardTheme: 'default',
+  boardStyle: 'default',
+  background: 'default',
+  pieceAnimation: 'slide',
   alwaysWhiteBottom: false,
   showLegalHints: true,
   showCoordinates: true,
@@ -49,6 +55,8 @@ export function saveSettings(settings: AppSettings): void {
   cachedSettings = settings;
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   applyTheme(settings.boardTheme);
+  applyBoardStyle(settings.boardStyle);
+  applyBackground(settings.background);
 }
 
 export function getSetting<K extends keyof AppSettings>(key: K): AppSettings[K] {
@@ -63,5 +71,23 @@ export function applyTheme(theme: string): void {
   }
 }
 
+export function applyBoardStyle(style: string): void {
+  const root = document.documentElement;
+  root.removeAttribute('data-board-style');
+  if (style !== 'default') {
+    root.setAttribute('data-board-style', style);
+  }
+}
+
+export function applyBackground(bg: string): void {
+  const root = document.documentElement;
+  root.removeAttribute('data-background');
+  if (bg !== 'default') {
+    root.setAttribute('data-background', bg);
+  }
+}
+
 /* Apply saved theme on load */
 applyTheme(loadSettings().boardTheme);
+applyBoardStyle(loadSettings().boardStyle);
+applyBackground(loadSettings().background);

@@ -1,8 +1,10 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
+const isDev = process.env.NODE_ENV === 'development';
+
 module.exports = {
-  mode: 'production',
+  mode: isDev ? 'development' : 'production',
   target: 'web',
   entry: {
     renderer: './src/renderer/index.tsx',
@@ -10,6 +12,15 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'dist/renderer'),
     filename: '[name].js',
+  },
+  devtool: isDev ? 'eval-source-map' : false,
+  devServer: {
+    port: 3000,
+    hot: true,
+    historyApiFallback: true,
+    static: {
+      directory: path.resolve(__dirname, 'dist/renderer'),
+    },
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js'],

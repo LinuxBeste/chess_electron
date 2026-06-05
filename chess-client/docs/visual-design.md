@@ -15,6 +15,34 @@
 | Muted text      | `#888`       | Labels, secondary text           |
 | Board shadow    | `rgba(0,0,0,0.4)` | Board drop shadow          |
 
+### Board Themes (via `data-theme` attribute)
+
+| Theme    | Light square | Dark square |
+|----------|-------------|-------------|
+| default  | `#3d3d52`   | `#2c2c38`   |
+| classic  | `#f0d9b5`   | `#b58863`   |
+| blue     | `#dee3e6`   | `#8ca2ad`   |
+| green    | `#eeeed2`   | `#769656`   |
+| gray     | `#c8c8c8`   | `#6b6b6b`   |
+| amber    | `#f5deb3`   | `#b8860b`   |
+
+### Board Styles (via `data-board-style`)
+
+| Style     | Description                  |
+|-----------|------------------------------|
+| default   | Flat square corners          |
+| rounded   | 4px radius on each square    |
+| framed    | 3px border around the board  |
+
+### Background Patterns (via `data-background`)
+
+| Pattern | Description                        |
+|---------|------------------------------------|
+| default | Radial gradient from top center    |
+| dots    | Dot grid pattern (20px spacing)    |
+| grid    | Line grid pattern (40px spacing)   |
+| none    | Solid background color only        |
+
 ## Typography
 
 - Font: Inter (loaded from Google Fonts)
@@ -50,16 +78,15 @@
 ### Buttons (primary)
 - Background: `#4f8ef7`
 - Hover: `#5d9af8`
-- Active: `scale(0.98)`
+- Active: `scale(0.97)`
 
 ### Buttons (secondary)
 - Transparent background with accent border
 - Hover fills with accent color
 
 ### Input
-- Borderless with animated bottom border
-- Focus: border transitions from dim to accent blue
-- Error: border transitions to red, auto-resets after 2s
+- Dark elevated background with light border
+- Focus: border transitions to accent blue
 
 ### Toast
 - Fixed position top-center
@@ -67,7 +94,18 @@
 - Info background: `rgba(79,142,247,0.95)`
 - Auto-dismiss after 4 seconds
 
+### Settings Dialog
+- 4 tabs: General, Board, Display, Gameplay
+- Settings persisted to localStorage under `chess_settings`
+- Select rows, toggle rows, and slider rows
+- Live preview of board theme colors
+
 ### Scrollbars
 - Thin (6px)
 - Track: transparent
 - Thumb: `rgba(255,255,255,0.1)`, hover: `rgba(255,255,255,0.2)`
+
+### Local 1v1 Game
+- Player bars with timer display
+- Review controls (prev/next) after game over
+- Promotion dialog with 4 piece choices

@@ -35,6 +35,25 @@ const pieceSetOptions = [
   { value: 'svg', label: 'SVG Decorative' },
 ];
 
+const pieceAnimOptions = [
+  { value: 'none', label: 'None' },
+  { value: 'slide', label: 'Slide' },
+  { value: 'pop', label: 'Pop' },
+];
+
+const boardStyleOptions = [
+  { value: 'default', label: 'Default' },
+  { value: 'rounded', label: 'Rounded' },
+  { value: 'framed', label: 'Framed' },
+];
+
+const backgroundOptions = [
+  { value: 'default', label: 'Default' },
+  { value: 'dots', label: 'Dots' },
+  { value: 'grid', label: 'Grid' },
+  { value: 'none', label: 'None' },
+];
+
 function getLightColor(theme: string): string {
   switch (theme) {
     case 'classic':
@@ -198,6 +217,13 @@ function GeneralTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (
         value={settings.pieceSet}
         onChange={(v) => onUpdate({ ...settings, pieceSet: v as any })}
       />
+      <SelectRow
+        label="Piece Animation"
+        desc="How pieces animate when moved"
+        options={pieceAnimOptions}
+        value={settings.pieceAnimation}
+        onChange={(v) => onUpdate({ ...settings, pieceAnimation: v as any })}
+      />
     </>
   );
 }
@@ -211,6 +237,13 @@ function BoardTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (s:
         options={themeOptions}
         value={settings.boardTheme}
         onChange={(v) => onUpdate({ ...settings, boardTheme: v as any })}
+      />
+      <SelectRow
+        label="Board Style"
+        desc="Visual style of the board squares"
+        options={boardStyleOptions}
+        value={settings.boardStyle}
+        onChange={(v) => onUpdate({ ...settings, boardStyle: v as any })}
       />
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 16 }}>
         <div
@@ -280,6 +313,13 @@ function DisplayTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (
         desc="Highlight the from and to squares of the last move"
         checked={settings.highlightLastMove}
         onChange={(v) => onUpdate({ ...settings, highlightLastMove: v })}
+      />
+      <SelectRow
+        label="Background Pattern"
+        desc="Decorative pattern behind the board"
+        options={backgroundOptions}
+        value={settings.background}
+        onChange={(v) => onUpdate({ ...settings, background: v as any })}
       />
     </>
   );

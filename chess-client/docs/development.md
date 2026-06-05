@@ -3,24 +3,29 @@
 ## Prerequisites
 
 - Node.js 20+
+- pnpm
 - chess-api server running on localhost:3000
 
 ## Setup
 
 ```bash
 cd chess-client
-npm install
+pnpm install
 ```
 
 ## Commands
 
-| Command               | Description                        |
-|-----------------------|------------------------------------|
-| `npm run typecheck`   | TypeScript type checking only      |
-| `npm run build`       | Build main + renderer bundles      |
-| `npm run dev`         | Build and launch Electron          |
-| `npm run start`       | Launch Electron (build first)      |
-| `npm run package`     | Build and package with electron-builder |
+| Command               | Description                            |
+|-----------------------|----------------------------------------|
+| `pnpm run typecheck`  | TypeScript type checking only           |
+| `pnpm run build:renderer` | Build renderer bundle              |
+| `pnpm run build:main` | Build Electron main process             |
+| `pnpm run build`      | Build main + renderer bundles           |
+| `pnpm run build:web`  | Build renderer for standalone web       |
+| `pnpm run dev:web`    | Dev server for browser (port 3000)      |
+| `pnpm run dev`        | Build and launch Electron               |
+| `pnpm run start`      | Launch Electron (build first)           |
+| `pnpm run package`    | Build and package with electron-builder |
 
 ## Project Conventions
 
@@ -30,14 +35,12 @@ npm install
 - Descriptive variable names over abbreviated ones
 - Comments explain *why*, not *what* — the code itself says what it does
 - No banner/heading comments (`// === SECTION ===`)
-- Inline comments document API confirmations (which source file + line number)
 
-### Adding a New View
+### Adding a New Page
 
-1. Create `src/renderer/views/your-view.ts` exporting `{ mount(container): () => void }`
-2. Register it in `src/renderer/index.ts` by importing and passing to `initRouter`
-3. Add the route pattern in `src/renderer/router.ts` `getViewFromHash()`
-4. Add the view name to the `ViewName` type in `src/types.ts`
+1. Create `src/renderer/pages/YourPage.tsx` exporting a default React component
+2. Add a route in `src/renderer/App.tsx` inside the `<Routes>` block
+3. Use lazy import for code-splitting: `const YourPage = lazy(() => import('./pages/YourPage'))`
 
 ### API Client Conventions
 
@@ -47,10 +50,16 @@ Every function in `api.ts`:
 - Returns a typed promise matching the response shape
 - Uses the shared `request()` helper (never raw `fetch`)
 
-### WebSocket Message Types
+### Settings
 
-Add new message types to `socket.ts`:
-1. Define the interface extending `{ type: string }`
-2. Add it to the `WsMessage` union
-3. Add a handler set and a subscription method
-4. Dispatch in the `onmessage` switch
+Settings are stored in localStorage under `chess_settings`. The schema is defined in `settings.ts` with type `AppSettings`. New settings:
+1. Add the field to the `AppSettings` interface and `defaultSettings` in `settings.ts`
+2. Add a UI control in `SettingsDialog.tsx` in the appropriate tab
+3. If it requires CSS, use a `data-*` attribute on `<html>` (see `boardStyle`, `background`, `boardTheme`)
+
+### Web vs Electron
+
+- The renderer targets `'web'` in webpack — same build works in browser and Electron
+- `window.electronAPI` is optional (typed as `electronAPI?: {...}`) and always accessed with `?.`
+- In browser: all Electron-specific features gracefully degrade
+- In Electron: the preload script exposes `electronAPI` via `contextBridge`

@@ -96,9 +96,9 @@ export default function LobbyPage() {
 
   return (
     <div
-      style={{ display: 'flex', gap: 24, padding: 24, flex: 1, maxWidth: 960, margin: '0 auto', overflow: 'hidden' }}
+      style={{ display: 'flex', gap: 24, padding: '20px 32px', flex: 1, width: '100%', minHeight: 0, overflow: 'hidden' }}
     >
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         <h2 className="card-title">Open Games</h2>
         {statusMsg && (
           <div
@@ -113,7 +113,7 @@ export default function LobbyPage() {
             {statusMsg}
           </div>
         )}
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
+        <div style={{ flex: '1 1 0', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4, minHeight: 0 }}>
           {openGames
             .filter((g) => g.visibility !== 'private')
             .map((game) => {
@@ -220,7 +220,21 @@ export default function LobbyPage() {
         </div>
       </div>
 
-      <div style={{ width: 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
+      <div style={{ width: 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', minHeight: 0 }}>
+        <div className="card" style={{ padding: 24 }}>
+          <h2 className="card-title">Local 1v1</h2>
+          <p style={{ fontSize: 13, fontWeight: 300, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.5 }}>
+            Play against a friend on the same screen. No server needed.
+          </p>
+          <button
+            className="btn btn-primary"
+            style={{ width: '100%', padding: 14, fontSize: 16 }}
+            onClick={() => navigate('/local')}
+          >
+            Start Local Game
+          </button>
+        </div>
+
         <div className="card" style={{ padding: 24 }}>
           <h2 className="card-title">Create Game</h2>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -268,9 +282,9 @@ export default function LobbyPage() {
           </button>
         </div>
 
-        <div className="card" style={{ padding: 24 }}>
+        <div className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
           <h2 className="card-title">Match History</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minHeight: 0, overflowY: 'auto' }}>
             {matchHistory.length === 0 ? (
               <div style={{ fontSize: 13, fontWeight: 300, color: '#555', textAlign: 'center', padding: 12 }}>
                 No completed games yet
