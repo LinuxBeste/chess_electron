@@ -39,6 +39,13 @@ const MAX_GAMES_PER_PLAYER = parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '20', 
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10);
 const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10);
 
+/* Waiting-game TTL: orphaned waiting games older than this are swept.
+ * Default 10 minutes, overridable via env.  Set to 0 to disable. */
+const WAITING_TTL_MS = parseInt(process.env.WAITING_TTL_MS ?? String(10 * 60 * 1000), 10);
+
+/* Interval handle for the periodic waiting-game sweep (started on module load) */
+let sweepTimer: ReturnType<typeof setInterval> | null = null;
+
 /* WebSocket connections per player.  Using a Set allows a player to have
  * multiple simultaneous connections (e.g., browser tabs on different
  * devices) while broadcasting game events to all of them. */
@@ -618,4 +625,52 @@ export function getStats(): { gamesActive: number; playersOnline: number } {
     if (g.status === 'active') gamesActive++;
   }
   return { gamesActive, playersOnline: wsConnections.size };
+}
+
+/* ─── Periodic sweep of stale waiting games ─── */
+
+/**
+ * Remove waiting games whose `createdAt` is older than WAITING_TTL_MS.
+ * Called periodically by the sweep timer and can also be invoked manually.
+ */
+export function sweepStaleWaitingGames(): number {
+  if (WAITING_TTL_MS <= 0) return 0;
+  const cutoff = Date.now() - WAITING_TTL_MS;
+  const toDelete: string[] = [];
+  for (const [id, g] of games) {
+    if (g.status === 'waiting' && g.createdAt < cutoff) {
+      toDelete.push(id);
+    }
+  }
+  for (const id of toDelete) {
+    games.delete(id);
+  }
+  return toDelete.length;
+}
+
+/**
+ * Start the periodic sweep timer (runs every WAITING_TTL_MS / 2 so no
+ * game exceeds 1.5× the configured TTL).  Called automatically on module
+ * load in non-test environments.
+ */
+export function startWaitingGameSweep(): void {
+  if (WAITING_TTL_MS <= 0) return;
+  if (sweepTimer) return;
+  sweepTimer = setInterval(sweepStaleWaitingGames, Math.max(WAITING_TTL_MS / 2, 10_000));
+}
+
+/**
+ * Stop the periodic sweep timer (useful in tests).
+ */
+export function stopWaitingGameSweep(): void {
+  if (sweepTimer) {
+    clearInterval(sweepTimer);
+    sweepTimer = null;
+  }
+}
+
+/* Auto-start the sweep on module load unless we're in a test environment */
+const isTestEnv = typeof process.env.JEST_WORKER_ID !== 'undefined' || process.env.NODE_ENV === 'test';
+if (!isTestEnv) {
+  startWaitingGameSweep();
 }
