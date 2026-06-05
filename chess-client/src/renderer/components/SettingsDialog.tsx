@@ -14,7 +14,7 @@ interface Props {
   onClose: () => void;
 }
 
-type TabId = 'general' | 'board' | 'display' | 'gameplay';
+type TabId = 'general' | 'board' | 'display' | 'gameplay' | 'clock';
 
 /* Tab definitions drive both the tab bar and the conditional rendering below */
 const tabs: { id: TabId; label: string }[] = [
@@ -22,6 +22,7 @@ const tabs: { id: TabId; label: string }[] = [
   { id: 'board', label: 'Board' },
   { id: 'display', label: 'Display' },
   { id: 'gameplay', label: 'Gameplay' },
+  { id: 'clock', label: 'Clock' },
 ];
 
 const themeOptions = [
@@ -363,6 +364,98 @@ function GameplayTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: 
   );
 }
 
+const decimalOptions = [
+  { value: '0', label: '0 (5:00)' },
+  { value: '1', label: '1 (5:00.0)' },
+  { value: '2', label: '2 (5:00.00)' },
+];
+
+const timePresets = [
+  { min: 1, inc: 0, label: 'Bullet 1+0' },
+  { min: 3, inc: 0, label: 'Blitz 3+0' },
+  { min: 3, inc: 2, label: 'Blitz 3+2' },
+  { min: 5, inc: 0, label: 'Blitz 5+0' },
+  { min: 10, inc: 0, label: 'Rapid 10+0' },
+  { min: 10, inc: 5, label: 'Rapid 10+5' },
+  { min: 30, inc: 0, label: 'Classical 30+0' },
+];
+
+function ClockTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (s: AppSettings) => void }) {
+  return (
+    <>
+      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#888', marginBottom: 10 }}>
+        Time Control
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+        {timePresets.map((p) => {
+          const active = settings.timeControlMinutes === p.min && settings.timeControlIncrement === p.inc;
+          return (
+            <button
+              key={p.label}
+              className={`btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ fontSize: 11, padding: '4px 10px' }}
+              onClick={() => onUpdate({ ...settings, timeControlMinutes: p.min, timeControlIncrement: p.inc })}
+            >
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+        <div style={{ flex: 1 }}>
+          <div className="settings-label" style={{ marginBottom: 4 }}>Initial time (min)</div>
+          <input
+            className="input"
+            type="number"
+            min={0.1}
+            max={180}
+            step={1}
+            value={settings.timeControlMinutes}
+            onChange={(e) => onUpdate({ ...settings, timeControlMinutes: Math.max(0.1, Number(e.target.value)) })}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div className="settings-label" style={{ marginBottom: 4 }}>Increment (sec)</div>
+          <input
+            className="input"
+            type="number"
+            min={0}
+            max={60}
+            step={1}
+            value={settings.timeControlIncrement}
+            onChange={(e) => onUpdate({ ...settings, timeControlIncrement: Math.max(0, Number(e.target.value)) })}
+          />
+        </div>
+      </div>
+
+      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#888', marginBottom: 10, marginTop: 8 }}>
+        Display
+      </div>
+      <SelectRow
+        label="Decimal places"
+        desc="Show fractions of a second on the clock"
+        options={decimalOptions}
+        value={String(settings.clockDecimalPlaces)}
+        onChange={(v) => onUpdate({ ...settings, clockDecimalPlaces: Number(v) as 0 | 1 | 2 })}
+      />
+      <div style={{ marginTop: 16, padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8, textAlign: 'center' }}>
+        <div style={{ fontSize: 11, fontWeight: 300, color: '#888', marginBottom: 4 }}>Preview</div>
+        <div style={{ fontSize: 24, fontWeight: 300, fontVariantNumeric: 'tabular-nums', color: '#e0e0e0', letterSpacing: '1px' }}>
+          {formatClockPreview(settings.timeControlMinutes, settings.clockDecimalPlaces)}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function formatClockPreview(minutes: number, decimals: number): string {
+  const totalSec = minutes * 60;
+  const m = Math.floor(totalSec / 60);
+  const s = Math.floor(totalSec % 60);
+  const dec = decimals > 0 ? '.' + '0'.repeat(decimals) : '';
+  return `${m}:${String(s).padStart(2, '0')}${dec}`;
+}
+
 export default function SettingsDialog({ onClose }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('general');
   /* Local copy of settings; changes are persisted immediately via saveSettings() */
@@ -434,6 +527,7 @@ export default function SettingsDialog({ onClose }: Props) {
           {activeTab === 'board' && <BoardTab settings={settings} onUpdate={updateSettings} />}
           {activeTab === 'display' && <DisplayTab settings={settings} onUpdate={updateSettings} />}
           {activeTab === 'gameplay' && <GameplayTab settings={settings} onUpdate={updateSettings} />}
+          {activeTab === 'clock' && <ClockTab settings={settings} onUpdate={updateSettings} />}
         </div>
 
         <div style={{ padding: '0 24px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>

@@ -9,7 +9,7 @@
  * the game after it ends (similar to analysing a finished match).
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Board from '../components/Board';
 import MoveHistory from '../components/MoveHistory';
@@ -29,8 +29,9 @@ export default function LocalGamePage() {
   const [moves, setMoves] = useState<string[]>([]);
   const [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null);
   const [gameOver, setGameOver] = useState<{ status: string; winner?: string } | null>(null);
-  const [whiteTime, setWhiteTime] = useState(0);
-  const [blackTime, setBlackTime] = useState(0);
+  const initialMs = getSetting('timeControlMinutes') * 60 * 1000;
+  const [whiteTime, setWhiteTime] = useState(initialMs);
+  const [blackTime, setBlackTime] = useState(initialMs);
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
   const [boardHistory, setBoardHistory] = useState<{ board: BoardType; move: string }[]>([]);
 
@@ -40,6 +41,35 @@ export default function LocalGamePage() {
   boardRef.current = board;
   const turnRef = useRef(turn);
   turnRef.current = turn;
+  const gameOverRef = useRef(gameOver);
+  gameOverRef.current = gameOver;
+
+  /* Countdown timer: decrement the active player every 50ms and detect timeout */
+  useEffect(() => {
+    if (gameOver) return;
+    const interval = setInterval(() => {
+      if (turnRef.current === 'white') {
+        setWhiteTime((t) => {
+          const next = t - 50;
+          if (next <= 0) {
+            setGameOver({ status: 'timeout', winner: 'black' });
+            return 0;
+          }
+          return next;
+        });
+      } else {
+        setBlackTime((t) => {
+          const next = t - 50;
+          if (next <= 0) {
+            setGameOver({ status: 'timeout', winner: 'white' });
+            return 0;
+          }
+          return next;
+        });
+      }
+    }, 50);
+    return () => clearInterval(interval);
+  }, [gameOver]);
 
   /* Generate pseudo-legal moves — every possible destination for the given
      colour's pieces, ignoring whether the move leaves the king in check.
@@ -199,7 +229,10 @@ export default function LocalGamePage() {
     }
 
     const nextTurn = turnRef.current === 'white' ? 'black' : 'white';
-    setWhiteTime((t) => t + 1);
+    /* Apply increment to the player who just moved */
+    const incMs = getSetting('timeControlIncrement') * 1000;
+    if (turnRef.current === 'white') setWhiteTime((t) => t + incMs);
+    else setBlackTime((t) => t + incMs);
     setMoves((prev) => [...prev, `${from}-${to}`]);
     setBoardHistory((prev) => [...prev, { board: cloneBoard(newBoard), move: `${from}-${to}` }]);
 
@@ -337,16 +370,20 @@ export default function LocalGamePage() {
     setMoves([]);
     setPromotion(null);
     setGameOver(null);
-    setWhiteTime(0);
-    setBlackTime(0);
+    const resetMs = getSetting('timeControlMinutes') * 60 * 1000;
+    setWhiteTime(resetMs);
+    setBlackTime(resetMs);
     setReviewIndex(null);
     setBoardHistory([]);
   }
 
-  function formatTime(seconds: number): string {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+  function formatTime(ms: number): string {
+    const totalSec = Math.max(0, ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = Math.floor(totalSec % 60);
+    const decimals = getSetting('clockDecimalPlaces');
+    const dec = decimals > 0 ? '.' + String(Math.floor((totalSec % 1) * 10 ** decimals)).padStart(decimals, '0') : '';
+    return `${m}:${String(s).padStart(2, '0')}${dec}`;
   }
 
   return (
@@ -377,10 +414,12 @@ export default function LocalGamePage() {
                   ? `${gameOver.winner === 'white' ? 'White' : 'Black'} wins!`
                   : gameOver.status === 'stalemate'
                     ? 'Stalemate — Draw'
-                    : 'Game Over'}
+                    : gameOver.status === 'timeout'
+                      ? `${gameOver.winner === 'white' ? 'Black' : 'White'} ran out of time`
+                      : 'Game Over'}
               </div>
               <div style={{ marginTop: 8, fontSize: 13, color: 'var(--muted)' }}>
-                {gameOver.status === 'checkmate' ? 'Checkmate' : gameOver.status === 'stalemate' ? 'No legal moves' : ''}
+                {gameOver.status === 'checkmate' ? 'Checkmate' : gameOver.status === 'stalemate' ? 'No legal moves' : gameOver.status === 'timeout' ? 'Timeout' : ''}
               </div>
             </div>
           )}

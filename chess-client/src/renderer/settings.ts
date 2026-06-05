@@ -25,6 +25,9 @@ export interface AppSettings {
   confirmResign: boolean;
   confirmDraw: boolean;
   pieceSet: 'emoji' | 'svg';
+  timeControlMinutes: number;
+  timeControlIncrement: number;
+  clockDecimalPlaces: 0 | 1 | 2;
 }
 
 const SETTINGS_KEY = 'chess_settings';
@@ -46,6 +49,9 @@ export const defaultSettings: AppSettings = {
   confirmResign: true,
   confirmDraw: false,
   pieceSet: 'svg',
+  timeControlMinutes: 5,
+  timeControlIncrement: 0,
+  clockDecimalPlaces: 0,
 };
 
 let cachedSettings: AppSettings = { ...defaultSettings };

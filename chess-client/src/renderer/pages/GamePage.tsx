@@ -43,13 +43,15 @@ export default function GamePage() {
   const [legalHints, setLegalHints] = useState<LegalMoveHint[]>([]);
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
   const [moves, setMoves] = useState<string[]>([]);
-  const [whiteTime, setWhiteTime] = useState(0);
-  const [blackTime, setBlackTime] = useState(0);
+  const initialMs = getSetting('timeControlMinutes') * 60 * 1000;
+  const [whiteTime, setWhiteTime] = useState(initialMs);
+  const [blackTime, setBlackTime] = useState(initialMs);
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
   const [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null);
   const [resignConfirmed, setResignConfirmed] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [timeout, setTimeout_] = useState<'white' | 'black' | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   /* Spectator mode = read-only; no move interaction.  The ?spectate=1
@@ -62,9 +64,32 @@ export default function GamePage() {
   boardRef.current = board;
   const gameRef = useRef(game);
   gameRef.current = game;
+  const timeoutRef = useRef(timeout);
+  timeoutRef.current = timeout;
+
+  /* Countdown timer — decrement the active player every 50ms */
+  useEffect(() => {
+    if (!game || game.status !== 'active' || timeout) return;
+    const interval = setInterval(() => {
+      if (gameRef.current && gameRef.current.turn === 'white') {
+        setWhiteTime((t) => {
+          const next = t - 50;
+          if (next <= 0) { setTimeout_('black'); return 0; }
+          return next;
+        });
+      } else {
+        setBlackTime((t) => {
+          const next = t - 50;
+          if (next <= 0) { setTimeout_('white'); return 0; }
+          return next;
+        });
+      }
+    }, 50);
+    return () => clearInterval(interval);
+  }, [game, timeout]);
 
   /* True when the current player can make a move */
-  const isActive = !!game && game.turn === playerColor && game.status === 'active' && !isSpectator;
+  const isActive = !!game && game.turn === playerColor && game.status === 'active' && !isSpectator && !timeout;
 
   useEffect(() => {
     if (!gameId) {
@@ -133,15 +158,6 @@ export default function GamePage() {
     }
   }, [game?.status]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!gameRef.current) return;
-      if (gameRef.current.turn === 'white') setWhiteTime((t) => t + 1);
-      else setBlackTime((t) => t + 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   /* Close menu on click outside */
   useEffect(() => {
     if (!menuOpen) return;
@@ -163,6 +179,9 @@ export default function GamePage() {
     setMoves(g.moveHistory);
     setWaiting(g.status === 'waiting');
     setReviewIndex(null);
+    const ms = getSetting('timeControlMinutes') * 60 * 1000;
+    setWhiteTime(ms);
+    setBlackTime(ms);
   }
 
   async function fetchGame(gid: string) {
@@ -184,6 +203,9 @@ export default function GamePage() {
     setBoard(newBoard);
     setLastMove(msg.lastMove);
     setGame((prev) => (prev ? { ...prev, turn: msg.turn } : null));
+    const incMs = getSetting('timeControlIncrement') * 1000;
+    if (msg.turn === 'black') setWhiteTime((t) => t + incMs);
+    else setBlackTime((t) => t + incMs);
 
     if (getSetting('soundEnabled') && playerColor !== msg.turn) {
       if (wasCapture) playCaptureSound();
@@ -210,8 +232,10 @@ export default function GamePage() {
     setLastMove(msg.game.lastMove);
     setMoves(msg.game.moveHistory);
     setWaiting(false);
-    setWhiteTime(0);
-    setBlackTime(0);
+    const ms = getSetting('timeControlMinutes') * 60 * 1000;
+    setWhiteTime(ms);
+    setBlackTime(ms);
+    setTimeout_(null);
   }
 
   const requestLegalMoves = useCallback(async (square: string) => {
@@ -316,6 +340,10 @@ export default function GamePage() {
       setBoard(cloneBoard(updated.board));
       setLastMove(updated.lastMove);
       setMoves(updated.moveHistory);
+      /* Apply increment to the player who just moved (opposite of updated.turn) */
+      const incMs = getSetting('timeControlIncrement') * 1000;
+      if (updated.turn === 'black') setWhiteTime((t) => t + incMs);
+      else setBlackTime((t) => t + incMs);
       if (getSetting('soundEnabled')) {
         if (oldBoard[toR]?.[toF]) playCaptureSound();
         else playMoveSound();
@@ -407,13 +435,16 @@ export default function GamePage() {
     return from && to ? { from, to } : null;
   }
 
-  function formatTime(seconds: number): string {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+  function formatTime(ms: number): string {
+    const totalSec = Math.max(0, ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = Math.floor(totalSec % 60);
+    const decimals = getSetting('clockDecimalPlaces');
+    const dec = decimals > 0 ? '.' + String(Math.floor((totalSec % 1) * 10 ** decimals)).padStart(decimals, '0') : '';
+    return `${m}:${String(s).padStart(2, '0')}${dec}`;
   }
 
-  const isFinished = game && ['checkmate', 'stalemate', 'resigned', 'draw'].includes(game.status);
+  const isFinished = (game && ['checkmate', 'stalemate', 'resigned', 'draw'].includes(game.status)) || !!timeout;
   const showReview = isFinished && !window.location.hash.startsWith('#result/');
 
   return (
