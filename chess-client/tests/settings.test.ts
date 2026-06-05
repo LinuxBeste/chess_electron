@@ -36,23 +36,35 @@ const defaultSettings: AppSettings = {
 
 function getLightColor(theme: string): string {
   switch (theme) {
-    case 'classic': return '#f0d9b5';
-    case 'blue': return '#dee3e6';
-    case 'green': return '#eeeed2';
-    case 'gray': return '#c8c8c8';
-    case 'amber': return '#f5deb3';
-    default: return '#3d3d52';
+    case 'classic':
+      return '#f0d9b5';
+    case 'blue':
+      return '#dee3e6';
+    case 'green':
+      return '#eeeed2';
+    case 'gray':
+      return '#c8c8c8';
+    case 'amber':
+      return '#f5deb3';
+    default:
+      return '#3d3d52';
   }
 }
 
 function getDarkColor(theme: string): string {
   switch (theme) {
-    case 'classic': return '#b58863';
-    case 'blue': return '#8ca2ad';
-    case 'green': return '#769656';
-    case 'gray': return '#6b6b6b';
-    case 'amber': return '#b8860b';
-    default: return '#2c2c38';
+    case 'classic':
+      return '#b58863';
+    case 'blue':
+      return '#8ca2ad';
+    case 'green':
+      return '#769656';
+    case 'gray':
+      return '#6b6b6b';
+    case 'amber':
+      return '#b8860b';
+    default:
+      return '#2c2c38';
   }
 }
 

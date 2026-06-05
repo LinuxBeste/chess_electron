@@ -10,7 +10,7 @@
  * feedback for user interactions.
  */
 
-import type { Board, SerializedSquare, Piece, PieceType } from '../types';
+import type { Board, SerializedSquare, PieceType } from '../types';
 
 /**
  * Convert algebraic square notation to [rank, file] indices.
@@ -57,7 +57,7 @@ export function deserializeBoard(serialized: SerializedSquare[]): Board {
   const board: Board = Array.from({ length: 8 }, () => Array(8).fill(null));
   for (const sq of serialized) {
     const [rank, file] = squareToIndices(sq.square);
-    board[rank][file] = { type: sq.piece as any, color: sq.color as any };
+    board[rank][file] = { type: sq.piece as PieceType, color: sq.color as 'white' | 'black' };
   }
   return board;
 }
@@ -67,7 +67,7 @@ export function deserializeBoard(serialized: SerializedSquare[]): Board {
  * Each cell's Piece is spread so mutations to the clone don't affect the original.
  */
 export function cloneBoard(board: Board): Board {
-  return board.map(row => row.map(cell => (cell ? { ...cell } : null)));
+  return board.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
 }
 
 /**

@@ -15,8 +15,9 @@ export default function ResultPage() {
   if (game) {
     if (game.status === 'checkmate' || game.status === 'resigned') {
       if (game.winner) {
-        const winnerIsMe = (game.winner === 'white' && game.players.white === myId) ||
-                          (game.winner === 'black' && game.players.black === myId);
+        const winnerIsMe =
+          (game.winner === 'white' && game.players.white === myId) ||
+          (game.winner === 'black' && game.players.black === myId);
         if (winnerIsMe) {
           outcomeText = 'You Won';
           won = true;
@@ -30,10 +31,18 @@ export default function ResultPage() {
     }
 
     switch (game.status) {
-      case 'checkmate': reasonText = 'by checkmate'; break;
-      case 'resigned': reasonText = won ? 'by resignation' : 'opponent resigned'; break;
-      case 'stalemate': reasonText = 'by stalemate'; break;
-      case 'draw': reasonText = 'by 50-move rule'; break;
+      case 'checkmate':
+        reasonText = 'by checkmate';
+        break;
+      case 'resigned':
+        reasonText = won ? 'by resignation' : 'opponent resigned';
+        break;
+      case 'stalemate':
+        reasonText = 'by stalemate';
+        break;
+      case 'draw':
+        reasonText = 'by 50-move rule';
+        break;
     }
   }
 
@@ -51,24 +60,41 @@ export default function ResultPage() {
           </p>
         )}
         <div className="game-btn-row" style={{ flexWrap: 'wrap', justifyContent: 'center' }}>
-          <button className="btn btn-primary" style={{ padding: '12px 24px', fontSize: 15 }} onClick={() => navigate('/lobby')}>
+          <button
+            className="btn btn-primary"
+            style={{ padding: '12px 24px', fontSize: 15 }}
+            onClick={() => navigate('/lobby')}
+          >
             Back to Lobby
           </button>
           {game && game.boardHistory && game.boardHistory.length > 0 && (
-            <button className="btn btn-secondary" style={{ padding: '12px 24px', fontSize: 15 }} onClick={() => navigate(`/game/${game.id}`)}>
+            <button
+              className="btn btn-secondary"
+              style={{ padding: '12px 24px', fontSize: 15 }}
+              onClick={() => navigate(`/game/${game.id}`)}
+            >
               Review Game
             </button>
           )}
-          <button className="btn btn-ghost" style={{ padding: '12px 24px', fontSize: 15 }} onClick={() => {
-            const id = game?.id || gameId;
-            if (id) {
-              navigator.clipboard.writeText(id).then(() => {
-                const btn = document.activeElement as HTMLElement;
-                btn.textContent = 'Copied ✓';
-                setTimeout(() => { btn.textContent = 'Copy Game ID'; }, 2000);
-              }).catch(() => store.toast('Failed to copy'));
-            }
-          }}>
+          <button
+            className="btn btn-ghost"
+            style={{ padding: '12px 24px', fontSize: 15 }}
+            onClick={() => {
+              const id = game?.id || gameId;
+              if (id) {
+                navigator.clipboard
+                  .writeText(id)
+                  .then(() => {
+                    const btn = document.activeElement as HTMLElement;
+                    btn.textContent = 'Copied ✓';
+                    setTimeout(() => {
+                      btn.textContent = 'Copy Game ID';
+                    }, 2000);
+                  })
+                  .catch(() => store.toast('Failed to copy'));
+              }
+            }}
+          >
             Copy Game ID
           </button>
         </div>

@@ -12,7 +12,7 @@ type StateMap = {
 };
 
 export function useStoreValue<K extends keyof StateMap>(key: K): StateMap[K] {
-  const [val, setVal] = useState<StateMap[K]>(store.get(key as any) as StateMap[K]);
-  useEffect(() => store.subscribe(key as any, (v: any) => setVal(v as StateMap[K])), [key]);
+  const [val, setVal] = useState<StateMap[K]>(store.get(key));
+  useEffect(() => store.subscribe(key, (v: StateMap[K]) => setVal(v)), [key]);
   return val;
 }

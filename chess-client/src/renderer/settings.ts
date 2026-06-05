@@ -16,7 +16,7 @@ export interface AppSettings {
 
 const SETTINGS_KEY = 'chess_settings';
 
-const defaultSettings: AppSettings = {
+export const defaultSettings: AppSettings = {
   soundEnabled: true,
   soundVolume: 100,
   animationsEnabled: true,

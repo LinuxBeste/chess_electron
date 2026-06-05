@@ -23,7 +23,17 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 16, padding: 24 }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100vh',
+            gap: 16,
+            padding: 24,
+          }}
+        >
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#e0e0e0' }}>Something went wrong</h1>
           <p style={{ fontSize: 14, color: '#888', maxWidth: 400, textAlign: 'center' }}>
             {this.state.error?.message || 'An unexpected error occurred'}

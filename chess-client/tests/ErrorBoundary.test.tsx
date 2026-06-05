@@ -19,18 +19,30 @@ describe('ErrorBoundary', () => {
   });
 
   test('renders children when no error', () => {
-    render(<ErrorBoundary><Good /></ErrorBoundary>);
+    render(
+      <ErrorBoundary>
+        <Good />
+      </ErrorBoundary>,
+    );
     expect(screen.getByText('All good')).toBeTruthy();
   });
 
   test('catches error and shows fallback', () => {
-    render(<ErrorBoundary><Bomb /></ErrorBoundary>);
+    render(
+      <ErrorBoundary>
+        <Bomb />
+      </ErrorBoundary>,
+    );
     expect(screen.getByText('Something went wrong')).toBeTruthy();
     expect(screen.getByText('Boom!')).toBeTruthy();
   });
 
   test('reload app button exists', () => {
-    render(<ErrorBoundary><Bomb /></ErrorBoundary>);
+    render(
+      <ErrorBoundary>
+        <Bomb />
+      </ErrorBoundary>,
+    );
     expect(screen.getByText('Reload App')).toBeTruthy();
   });
 });

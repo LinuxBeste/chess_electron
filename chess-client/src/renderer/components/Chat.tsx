@@ -19,7 +19,7 @@ export default function Chat({ gameId }: ChatProps) {
 
   useEffect(() => {
     const unsub = socketManager.onChat((msg) => {
-      setMessages(prev => [...prev, msg as ChatMessage]);
+      setMessages((prev) => [...prev, msg as ChatMessage]);
     });
     return () => unsub();
   }, []);
@@ -39,12 +39,10 @@ export default function Chat({ gameId }: ChatProps) {
 
   return (
     <>
-      <h3 className="sidebar-title" style={{ marginTop: 8 }}>Chat</h3>
-      <div
-        ref={listRef}
-        className="sidebar-panel"
-        style={{ minHeight: 80, maxHeight: 150, fontSize: 12, padding: 8 }}
-      >
+      <h3 className="sidebar-title" style={{ marginTop: 8 }}>
+        Chat
+      </h3>
+      <div ref={listRef} className="sidebar-panel" style={{ minHeight: 80, maxHeight: 150, fontSize: 12, padding: 8 }}>
         {messages.map((msg, i) => {
           const isMe = msg.playerId === store.get('playerId');
           return (
@@ -64,10 +62,14 @@ export default function Chat({ gameId }: ChatProps) {
           placeholder="Type a message..."
           style={{ flex: 1, fontSize: 12 }}
           value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') send(); }}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') send();
+          }}
         />
-        <button className="btn btn-primary" style={{ padding: '8px 12px', fontSize: 12 }} onClick={send}>Send</button>
+        <button className="btn btn-primary" style={{ padding: '8px 12px', fontSize: 12 }} onClick={send}>
+          Send
+        </button>
       </div>
     </>
   );

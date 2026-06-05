@@ -4,4 +4,8 @@ import App from './App';
 
 const container = document.getElementById('app')!;
 const root = createRoot(container);
-root.render(<HashRouter><App /></HashRouter>);
+root.render(
+  <HashRouter>
+    <App />
+  </HashRouter>,
+);

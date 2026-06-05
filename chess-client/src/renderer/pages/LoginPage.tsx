@@ -44,7 +44,9 @@ export default function LoginPage() {
       const input = inputRef.current;
       if (input) {
         input.style.borderBottomColor = 'rgba(220,50,50,0.6)';
-        setTimeout(() => { input.style.borderBottomColor = ''; }, 2000);
+        setTimeout(() => {
+          input.style.borderBottomColor = '';
+        }, 2000);
       }
       return;
     }
@@ -64,9 +66,22 @@ export default function LoginPage() {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 24 }}>
-      <div className="card" style={{ padding: '48px 40px', width: '100%', maxWidth: 400, textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
-        <h1 style={{ fontSize: 36, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.5px', marginBottom: 4 }}>Chess</h1>
-        <p style={{ fontSize: 14, fontWeight: 300, color: 'var(--muted)', marginBottom: 8, letterSpacing: '0.3px' }}>Play chess online</p>
+      <div
+        className="card"
+        style={{
+          padding: '48px 40px',
+          width: '100%',
+          maxWidth: 400,
+          textAlign: 'center',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        }}
+      >
+        <h1 style={{ fontSize: 36, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.5px', marginBottom: 4 }}>
+          Chess
+        </h1>
+        <p style={{ fontSize: 14, fontWeight: 300, color: 'var(--muted)', marginBottom: 8, letterSpacing: '0.3px' }}>
+          Play chess online
+        </p>
         <input
           className="input-clean"
           type="text"
@@ -76,7 +91,7 @@ export default function LoginPage() {
           autoCorrect="off"
           spellCheck={false}
           value={serverUrl}
-          onChange={e => handleServerUrlChange(e.target.value)}
+          onChange={(e) => handleServerUrlChange(e.target.value)}
           style={{ fontSize: 12, marginBottom: 8, opacity: 0.65 }}
         />
         <input
@@ -89,8 +104,10 @@ export default function LoginPage() {
           autoCorrect="off"
           spellCheck={false}
           value={username}
-          onChange={e => setUsername(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
+          onChange={(e) => setUsername(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSubmit();
+          }}
         />
         <button
           className="btn btn-primary"

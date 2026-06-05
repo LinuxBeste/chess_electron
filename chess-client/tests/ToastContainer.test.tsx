@@ -11,13 +11,17 @@ describe('ToastContainer', () => {
 
   test('renders toast after store.toast is called', () => {
     render(<ToastContainer />);
-    act(() => { store.toast('Test error', 'error'); });
+    act(() => {
+      store.toast('Test error', 'error');
+    });
     expect(screen.getByText('Test error')).toBeTruthy();
   });
 
   test('renders info toast with correct class', () => {
     render(<ToastContainer />);
-    act(() => { store.toast('Info message', 'info'); });
+    act(() => {
+      store.toast('Info message', 'info');
+    });
     const el = screen.getByText('Info message');
     expect(el.className).toContain('toast-info');
   });
@@ -25,9 +29,13 @@ describe('ToastContainer', () => {
   test('auto-removes toast after timeout', () => {
     jest.useFakeTimers();
     render(<ToastContainer />);
-    act(() => { store.toast('Auto remove', 'error'); });
+    act(() => {
+      store.toast('Auto remove', 'error');
+    });
     expect(screen.getByText('Auto remove')).toBeTruthy();
-    act(() => { jest.advanceTimersByTime(4000); });
+    act(() => {
+      jest.advanceTimersByTime(4000);
+    });
     expect(screen.queryByText('Auto remove')).toBeNull();
     jest.useRealTimers();
   });

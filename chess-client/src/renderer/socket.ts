@@ -128,16 +128,16 @@ class SocketManager {
 
         switch (msg.type) {
           case 'move':
-            this.moveHandlers.forEach(h => h(msg as MoveMessage));
+            this.moveHandlers.forEach((h) => h(msg as MoveMessage));
             break;
           case 'game_over':
-            this.gameOverHandlers.forEach(h => h(msg as GameOverMessage));
+            this.gameOverHandlers.forEach((h) => h(msg as GameOverMessage));
             break;
           case 'game_started':
-            this.gameStartedHandlers.forEach(h => h(msg as GameStartedMessage));
+            this.gameStartedHandlers.forEach((h) => h(msg as GameStartedMessage));
             break;
           case 'chat_message':
-            this.chatHandlers.forEach(h => h(msg as ChatMessage));
+            this.chatHandlers.forEach((h) => h(msg as ChatMessage));
             break;
         }
       } catch {
@@ -193,22 +193,30 @@ class SocketManager {
   /** onMove/onGameOver return unsubscribe functions */
   onMove(handler: MoveHandler): () => void {
     this.moveHandlers.add(handler);
-    return () => { this.moveHandlers.delete(handler); };
+    return () => {
+      this.moveHandlers.delete(handler);
+    };
   }
 
   onGameOver(handler: GameOverHandler): () => void {
     this.gameOverHandlers.add(handler);
-    return () => { this.gameOverHandlers.delete(handler); };
+    return () => {
+      this.gameOverHandlers.delete(handler);
+    };
   }
 
   onGameStarted(handler: GameStartedHandler): () => void {
     this.gameStartedHandlers.add(handler);
-    return () => { this.gameStartedHandlers.delete(handler); };
+    return () => {
+      this.gameStartedHandlers.delete(handler);
+    };
   }
 
   onChat(handler: ChatHandler): () => void {
     this.chatHandlers.add(handler);
-    return () => { this.chatHandlers.delete(handler); };
+    return () => {
+      this.chatHandlers.delete(handler);
+    };
   }
 }
 

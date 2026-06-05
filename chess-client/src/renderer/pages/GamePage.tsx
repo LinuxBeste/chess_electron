@@ -7,10 +7,17 @@ import Board from '../components/Board';
 import MoveHistory from '../components/MoveHistory';
 import Chat from '../components/Chat';
 import PromotionDialog from '../components/PromotionDialog';
-import { deserializeBoard, cloneBoard, createInitialBoard, squareToIndices, indicesToSquare } from '../chess';
+import { deserializeBoard, cloneBoard, createInitialBoard, squareToIndices } from '../chess';
 import { getSetting } from '../settings';
 import { playMoveSound, playCaptureSound, playCheckSound, playGameOverSound } from '../sound';
-import type { Board as BoardType, GameState, PieceType, LegalMoveHint, SerializedSquare, GameStatus } from '../../types';
+import type {
+  Board as BoardType,
+  GameState,
+  PieceType,
+  LegalMoveHint,
+  SerializedSquare,
+  GameStatus,
+} from '../../types';
 import type { MoveMessage, GameOverMessage, GameStartedMessage } from '../socket';
 
 export default function GamePage() {
@@ -40,7 +47,10 @@ export default function GamePage() {
   const isActive = !!game && game.turn === playerColor && game.status === 'active' && !isSpectator;
 
   useEffect(() => {
-    if (!gameId) { navigate('/lobby'); return; }
+    if (!gameId) {
+      navigate('/lobby');
+      return;
+    }
     window.location.hash = `#game/${gameId}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
   }, []);
 
@@ -106,8 +116,8 @@ export default function GamePage() {
   useEffect(() => {
     const interval = setInterval(() => {
       if (!gameRef.current) return;
-      if (gameRef.current.turn === 'white') setWhiteTime(t => t + 1);
-      else setBlackTime(t => t + 1);
+      if (gameRef.current.turn === 'white') setWhiteTime((t) => t + 1);
+      else setBlackTime((t) => t + 1);
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -141,7 +151,7 @@ export default function GamePage() {
     const newBoard = deserializeBoard(msg.board);
     setBoard(newBoard);
     setLastMove(msg.lastMove);
-    setGame(prev => prev ? { ...prev, turn: msg.turn } : null);
+    setGame((prev) => (prev ? { ...prev, turn: msg.turn } : null));
 
     if (getSetting('soundEnabled') && playerColor !== msg.turn) {
       if (wasCapture) playCaptureSound();
@@ -176,57 +186,74 @@ export default function GamePage() {
     if (!gameRef.current) return;
     try {
       const { moves } = await api.getLegalMoves(gameRef.current.id);
-      setLegalHints(moves.filter(m => m.from === square));
+      setLegalHints(moves.filter((m) => m.from === square));
     } catch {}
   }, []);
 
-  const handleSquareClick = useCallback(async (square: string) => {
-    if (dragFrom.current) return;
-    if (!gameRef.current || gameRef.current.turn !== playerColor || gameRef.current.status !== 'active') return;
-    const [r, f] = squareToIndices(square);
-    const clickedPiece = boardRef.current[r]?.[f];
-    if (square === selectedSquare) { setSelectedSquare(null); setLegalHints([]); return; }
-    if (selectedSquare && legalHints.some(h => h.from === selectedSquare && h.to === square)) {
-      if (checkPromotion(selectedSquare, square) && !getSetting('autoPromoteQueen')) {
-        setPromotion({ from: selectedSquare, to: square });
-      } else {
-        executeMove(selectedSquare, square, checkPromotion(selectedSquare, square) ? 'queen' : undefined);
+  const handleSquareClick = useCallback(
+    async (square: string) => {
+      if (dragFrom.current) return;
+      if (!gameRef.current || gameRef.current.turn !== playerColor || gameRef.current.status !== 'active') return;
+      const [r, f] = squareToIndices(square);
+      const clickedPiece = boardRef.current[r]?.[f];
+      if (square === selectedSquare) {
+        setSelectedSquare(null);
+        setLegalHints([]);
+        return;
       }
-      return;
-    }
-    if (clickedPiece && clickedPiece.color === playerColor) {
-      setSelectedSquare(square);
-      requestLegalMoves(square);
-      return;
-    }
-    setSelectedSquare(null);
-    setLegalHints([]);
-  }, [selectedSquare, legalHints, playerColor]);
+      if (selectedSquare && legalHints.some((h) => h.from === selectedSquare && h.to === square)) {
+        if (checkPromotion(selectedSquare, square) && !getSetting('autoPromoteQueen')) {
+          setPromotion({ from: selectedSquare, to: square });
+        } else {
+          executeMove(selectedSquare, square, checkPromotion(selectedSquare, square) ? 'queen' : undefined);
+        }
+        return;
+      }
+      if (clickedPiece && clickedPiece.color === playerColor) {
+        setSelectedSquare(square);
+        requestLegalMoves(square);
+        return;
+      }
+      setSelectedSquare(null);
+      setLegalHints([]);
+    },
+    [selectedSquare, legalHints, playerColor],
+  );
 
   const dragFrom = useRef<string | null>(null);
 
-  const handleDragStart = useCallback((from: string) => {
-    dragFrom.current = from;
-    setSelectedSquare(from);
-    requestLegalMoves(from);
-  }, [requestLegalMoves]);
+  const handleDragStart = useCallback(
+    (from: string) => {
+      dragFrom.current = from;
+      setSelectedSquare(from);
+      requestLegalMoves(from);
+    },
+    [requestLegalMoves],
+  );
 
-  const handleDragEnd = useCallback((to: string) => {
-    const from = dragFrom.current;
-    dragFrom.current = null;
-    if (!from) { setSelectedSquare(null); setLegalHints([]); return; }
-    const isLegal = legalHints.some(h => h.from === from && h.to === to);
-    if (isLegal) {
-      if (checkPromotion(from, to) && !getSetting('autoPromoteQueen')) {
-        setPromotion({ from, to });
-      } else {
-        executeMove(from, to, checkPromotion(from, to) ? 'queen' : undefined);
+  const handleDragEnd = useCallback(
+    (to: string) => {
+      const from = dragFrom.current;
+      dragFrom.current = null;
+      if (!from) {
+        setSelectedSquare(null);
+        setLegalHints([]);
+        return;
       }
-    } else {
-      setSelectedSquare(null);
-      setLegalHints([]);
-    }
-  }, [legalHints]);
+      const isLegal = legalHints.some((h) => h.from === from && h.to === to);
+      if (isLegal) {
+        if (checkPromotion(from, to) && !getSetting('autoPromoteQueen')) {
+          setPromotion({ from, to });
+        } else {
+          executeMove(from, to, checkPromotion(from, to) ? 'queen' : undefined);
+        }
+      } else {
+        setSelectedSquare(null);
+        setLegalHints([]);
+      }
+    },
+    [legalHints],
+  );
 
   function checkPromotion(from: string, to: string): boolean {
     const [fr, ff] = squareToIndices(from);
@@ -292,10 +319,13 @@ export default function GamePage() {
       return;
     }
     if (!gameRef.current) return;
-    api.resignGame(gameRef.current.id).then(updated => {
-      store.set('currentGame', updated);
-      navigate(`/result/${updated.id}`);
-    }).catch((err: any) => store.toast(err.message || 'Failed to resign'));
+    api
+      .resignGame(gameRef.current.id)
+      .then((updated) => {
+        store.set('currentGame', updated);
+        navigate(`/result/${updated.id}`);
+      })
+      .catch((err: any) => store.toast(err.message || 'Failed to resign'));
     setResignConfirmed(false);
   }
 
@@ -315,13 +345,20 @@ export default function GamePage() {
     }
   }
 
-  function extractLastMove(prevBoard: SerializedSquare[], curBoard: SerializedSquare[]): { from: string; to: string } | null {
-    const prevMap = new Map(prevBoard.map(sq => [sq.square, sq]));
-    const curMap = new Map(curBoard.map(sq => [sq.square, sq]));
+  function extractLastMove(
+    prevBoard: SerializedSquare[],
+    curBoard: SerializedSquare[],
+  ): { from: string; to: string } | null {
+    const prevMap = new Map(prevBoard.map((sq) => [sq.square, sq]));
+    const curMap = new Map(curBoard.map((sq) => [sq.square, sq]));
     let from: string | null = null;
     let to: string | null = null;
-    for (const sq of prevBoard) { if (!curMap.has(sq.square)) from = sq.square; }
-    for (const sq of curBoard) { if (!prevMap.has(sq.square)) to = sq.square; }
+    for (const sq of prevBoard) {
+      if (!curMap.has(sq.square)) from = sq.square;
+    }
+    for (const sq of curBoard) {
+      if (!prevMap.has(sq.square)) to = sq.square;
+    }
     return from && to ? { from, to } : null;
   }
 
@@ -338,7 +375,7 @@ export default function GamePage() {
     <div className="game-layout">
       <div className="game-center">
         <div className="player-bar">
-          <span className="player-name">{(game?.players.black === store.get('playerId')) ? 'You (Black)' : 'Black'}</span>
+          <span className="player-name">{game?.players.black === store.get('playerId') ? 'You (Black)' : 'Black'}</span>
           <span className="player-clock">{formatTime(blackTime)}</span>
         </div>
         <Board
@@ -358,15 +395,25 @@ export default function GamePage() {
               <div className="waiting-id-row">
                 <span className="waiting-id-label">Game ID:</span>
                 <span className="waiting-id-value">{game.id}</span>
-                <button className="btn btn-secondary btn-xs" onClick={() => {
-                  navigator.clipboard.writeText(game.id).then(() => { /* copied */ }).catch(() => {});
-                }}>Copy</button>
+                <button
+                  className="btn btn-secondary btn-xs"
+                  onClick={() => {
+                    navigator.clipboard
+                      .writeText(game.id)
+                      .then(() => {
+                        /* copied */
+                      })
+                      .catch(() => {});
+                  }}
+                >
+                  Copy
+                </button>
               </div>
             </div>
           )}
         </Board>
         <div className="player-bar">
-          <span className="player-name">{(game?.players.white === store.get('playerId')) ? 'You (White)' : 'White'}</span>
+          <span className="player-name">{game?.players.white === store.get('playerId') ? 'You (White)' : 'White'}</span>
           <span className="player-clock">{formatTime(whiteTime)}</span>
         </div>
         <div className="game-btn-row">
@@ -379,11 +426,19 @@ export default function GamePage() {
           </button>
           {showReview && (
             <div className="review-controls active">
-              <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(-1)}>◀ Prev</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(-1)}>
+                ◀ Prev
+              </button>
               <span className="review-label">
-                {reviewIndex === -1 ? 'Start' : reviewIndex !== null && game ? `${reviewIndex + 1}/${game.boardHistory.length}` : 'End'}
+                {reviewIndex === -1
+                  ? 'Start'
+                  : reviewIndex !== null && game
+                    ? `${reviewIndex + 1}/${game.boardHistory.length}`
+                    : 'End'}
               </span>
-              <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(1)}>Next ▶</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(1)}>
+                Next ▶
+              </button>
             </div>
           )}
         </div>

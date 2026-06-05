@@ -37,14 +37,14 @@ describe('game visibility', () => {
     const pid = registerPlayer('p3');
     game.createGame(pid, 'public');
     const open = game.getOpenGames();
-    expect(open.some(g => g.players.white === pid)).toBe(true);
+    expect(open.some((g) => g.players.white === pid)).toBe(true);
   });
 
   test('private games do not appear in getOpenGames', () => {
     const pid = registerPlayer('p4');
     game.createGame(pid, 'private');
     const open = game.getOpenGames();
-    expect(open.some(g => g.players.white === pid)).toBe(false);
+    expect(open.some((g) => g.players.white === pid)).toBe(false);
   });
 
   test('private game still accessible by getGame with ID', () => {
@@ -453,8 +453,8 @@ describe('visibility — edge cases', () => {
 
     const open = game.getOpenGames();
     /* Public waiting games only */
-    expect(open.every(g => g.visibility === 'public')).toBe(true);
-    expect(open.every(g => g.status === 'waiting')).toBe(true);
+    expect(open.every((g) => g.visibility === 'public')).toBe(true);
+    expect(open.every((g) => g.status === 'waiting')).toBe(true);
   });
 
   test('multiple private games do not appear in open list', () => {
@@ -467,7 +467,7 @@ describe('visibility — edge cases', () => {
     game.createGame(p3, 'private');
 
     const open = game.getOpenGames();
-    expect(open.some(g => g.visibility === 'private')).toBe(false);
+    expect(open.some((g) => g.visibility === 'private')).toBe(false);
   });
 
   test('public game becomes joinable via direct ID', () => {
@@ -551,15 +551,15 @@ describe('getActiveGames', () => {
     game.joinGame(g.id, joiner);
 
     const active = game.getActiveGames();
-    expect(active.some(a => a.id === g.id)).toBe(true);
-    expect(active.every(a => a.status === 'active')).toBe(true);
+    expect(active.some((a) => a.id === g.id)).toBe(true);
+    expect(active.every((a) => a.status === 'active')).toBe(true);
   });
 
   test('does not return waiting games', () => {
     const host = registerPlayer('ag_wait');
     game.createGame(host);
 
-    expect(game.getActiveGames().every(a => a.status === 'active')).toBe(true);
+    expect(game.getActiveGames().every((a) => a.status === 'active')).toBe(true);
   });
 
   test('does not return finished games', () => {
@@ -569,7 +569,7 @@ describe('getActiveGames', () => {
     game.joinGame(g.id, joiner);
     game.resignGame(g.id, host);
 
-    expect(game.getActiveGames().some(a => a.id === g.id)).toBe(false);
+    expect(game.getActiveGames().some((a) => a.id === g.id)).toBe(false);
   });
 });
 

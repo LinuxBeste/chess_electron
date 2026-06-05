@@ -62,7 +62,10 @@ class Store {
     this.set('toasts', [...current, msg]);
     setTimeout(() => {
       const cur = this.get('toasts');
-      this.set('toasts', cur.filter(t => t.id !== id));
+      this.set(
+        'toasts',
+        cur.filter((t) => t.id !== id),
+      );
     }, 4000);
   }
 

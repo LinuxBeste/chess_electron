@@ -22,11 +22,7 @@ export default function MoveHistory({ moves }: MoveHistoryProps) {
   }
 
   return (
-    <div
-      ref={scrollRef}
-      className="sidebar-panel"
-      style={{ minHeight: 150, maxHeight: 'calc(50vh - 100px)' }}
-    >
+    <div ref={scrollRef} className="sidebar-panel" style={{ minHeight: 150, maxHeight: 'calc(50vh - 100px)' }}>
       <div className="history-grid">
         <div className="history-header">#</div>
         <div className="history-header">White</div>
@@ -42,7 +38,9 @@ export default function MoveHistory({ moves }: MoveHistoryProps) {
               <div className={`history-move ${isLastWhite ? 'history-latest' : ''}`}>{moves[wIdx]}</div>
               {bIdx < moves.length ? (
                 <div className={`history-move ${isLastBlack ? 'history-latest' : ''}`}>{moves[bIdx]}</div>
-              ) : <div />}
+              ) : (
+                <div />
+              )}
             </>
           );
         })}

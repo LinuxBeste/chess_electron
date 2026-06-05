@@ -13,7 +13,9 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <span className="navbar-brand">♚ <span>Chess</span></span>
+      <span className="navbar-brand">
+        ♚ <span>Chess</span>
+      </span>
       <div className="navbar-center" />
       <div className="navbar-actions">
         {token && username ? (
@@ -22,15 +24,22 @@ export default function Navbar() {
               <span className={`navbar-dot ${wsStatus === 'connected' ? 'online' : 'offline'}`} />
               {username}
             </span>
-            <button className="navbar-btn" onClick={() => setShowSettings(true)}>Settings</button>
-            <button className="navbar-btn" onClick={() => {
-              store.set('token', null);
-              store.set('playerId', null);
-              store.set('username', null);
-              store.clearSession();
-              store.set('currentGame', null);
-              navigate('/login');
-            }}>Logout</button>
+            <button className="navbar-btn" onClick={() => setShowSettings(true)}>
+              Settings
+            </button>
+            <button
+              className="navbar-btn"
+              onClick={() => {
+                store.set('token', null);
+                store.set('playerId', null);
+                store.set('username', null);
+                store.clearSession();
+                store.set('currentGame', null);
+                navigate('/login');
+              }}
+            >
+              Logout
+            </button>
           </>
         ) : null}
       </div>

@@ -36,9 +36,12 @@ export default function LobbyPage() {
   useEffect(() => {
     const pid = store.get('playerId');
     if (pid) {
-      api.getPlayerGames(pid).then(games => {
-        setMatchHistory(games.slice(-10).reverse());
-      }).catch(() => {});
+      api
+        .getPlayerGames(pid)
+        .then((games) => {
+          setMatchHistory(games.slice(-10).reverse());
+        })
+        .catch(() => {});
     }
   }, []);
 
@@ -92,48 +95,126 @@ export default function LobbyPage() {
   const myId = store.get('playerId');
 
   return (
-    <div style={{ display: 'flex', gap: 24, padding: 24, flex: 1, maxWidth: 960, margin: '0 auto', overflow: 'hidden' }}>
+    <div
+      style={{ display: 'flex', gap: 24, padding: 24, flex: 1, maxWidth: 960, margin: '0 auto', overflow: 'hidden' }}
+    >
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <h2 className="card-title">Open Games</h2>
-        {statusMsg && <div style={{ fontSize: 13, fontWeight: 300, color: statusMsg === 'Cannot connect to server' ? 'var(--danger)' : 'var(--muted)', textAlign: 'center', padding: 16 }}>{statusMsg}</div>}
+        {statusMsg && (
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 300,
+              color: statusMsg === 'Cannot connect to server' ? 'var(--danger)' : 'var(--muted)',
+              textAlign: 'center',
+              padding: 16,
+            }}
+          >
+            {statusMsg}
+          </div>
+        )}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
-          {openGames.filter(g => g.visibility !== 'private').map(game => {
-            const creatorId = game.players.white;
-            const creatorName = creatorId === myId ? 'You' : creatorId?.slice(0, 8) ?? 'Unknown';
-            return (
-              <div key={game.id} className="game-card card-elevated" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 2s ease-in-out infinite', flexShrink: 0 }} />
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>{creatorName}</span>
-                      {game.visibility === 'private' && <span className="badge badge-private">Private</span>}
+          {openGames
+            .filter((g) => g.visibility !== 'private')
+            .map((game) => {
+              const creatorId = game.players.white;
+              const creatorName = creatorId === myId ? 'You' : (creatorId?.slice(0, 8) ?? 'Unknown');
+              return (
+                <div
+                  key={game.id}
+                  className="game-card card-elevated"
+                  style={{
+                    padding: '14px 18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: 'var(--accent)',
+                        animation: 'pulse 2s ease-in-out infinite',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
+                          {creatorName}
+                        </span>
+                        {game.visibility === 'private' && <span className="badge badge-private">Private</span>}
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 300, color: 'var(--muted)', letterSpacing: '0.2px' }}>
+                        Waiting
+                      </span>
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 300, color: 'var(--muted)', letterSpacing: '0.2px' }}>Waiting</span>
                   </div>
+                  <button className="btn btn-sm btn-secondary" onClick={() => joinGame(game.id)}>
+                    Join
+                  </button>
                 </div>
-                <button className="btn btn-sm btn-secondary" onClick={() => joinGame(game.id)}>Join</button>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
 
-        <h2 className="card-title" style={{ marginTop: 16 }}>Live Games</h2>
-        {liveStatus && <div style={{ fontSize: 13, fontWeight: 300, color: 'var(--muted)', textAlign: 'center', padding: 16 }}>{liveStatus}</div>}
-        <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4, minHeight: 80 }}>
-          {liveGames.map(game => (
-            <div key={game.id} className="live-game-card card-elevated" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h2 className="card-title" style={{ marginTop: 16 }}>
+          Live Games
+        </h2>
+        {liveStatus && (
+          <div style={{ fontSize: 13, fontWeight: 300, color: 'var(--muted)', textAlign: 'center', padding: 16 }}>
+            {liveStatus}
+          </div>
+        )}
+        <div
+          style={{
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            paddingRight: 4,
+            minHeight: 80,
+          }}
+        >
+          {liveGames.map((game) => (
+            <div
+              key={game.id}
+              className="live-game-card card-elevated"
+              style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', animation: 'pulse 2s ease-in-out infinite', flexShrink: 0 }} />
-                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>Game in progress</span>
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: 'var(--success)',
+                    animation: 'pulse 2s ease-in-out infinite',
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
+                  Game in progress
+                </span>
               </div>
               <button
                 className="btn btn-sm"
                 style={{ color: 'var(--success)', borderColor: 'var(--success)', background: 'transparent' }}
-                onMouseEnter={e => { (e.target as HTMLElement).style.background = 'var(--success)'; (e.target as HTMLElement).style.color = '#fff'; }}
-                onMouseLeave={e => { (e.target as HTMLElement).style.background = 'transparent'; (e.target as HTMLElement).style.color = 'var(--success)'; }}
+                onMouseEnter={(e) => {
+                  (e.target as HTMLElement).style.background = 'var(--success)';
+                  (e.target as HTMLElement).style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  (e.target as HTMLElement).style.background = 'transparent';
+                  (e.target as HTMLElement).style.color = 'var(--success)';
+                }}
                 onClick={() => spectateGame(game.id)}
-              >Spectate</button>
+              >
+                Spectate
+              </button>
             </div>
           ))}
         </div>
@@ -143,49 +224,100 @@ export default function LobbyPage() {
         <div className="card" style={{ padding: 24 }}>
           <h2 className="card-title">Create Game</h2>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)', letterSpacing: '0.2px' }}>Private game</span>
-            <div
-              className={`toggle ${isPrivate ? 'active' : ''}`}
-              onClick={() => setIsPrivate(!isPrivate)}
-            >
+            <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)', letterSpacing: '0.2px' }}>
+              Private game
+            </span>
+            <div className={`toggle ${isPrivate ? 'active' : ''}`} onClick={() => setIsPrivate(!isPrivate)}>
               <div className="toggle-knob" />
             </div>
           </div>
-          <button className="btn btn-primary" style={{ width: '100%', padding: 14, fontSize: 16 }} onClick={createGame}>New Game</button>
+          <button className="btn btn-primary" style={{ width: '100%', padding: 14, fontSize: 16 }} onClick={createGame}>
+            New Game
+          </button>
           {window.electronAPI && (
-            <button className="btn btn-ghost" style={{ marginTop: 12, width: '100%', fontSize: 13 }} onClick={() => window.electronAPI?.openNewWindow()}>New Window</button>
+            <button
+              className="btn btn-ghost"
+              style={{ marginTop: 12, width: '100%', fontSize: 13 }}
+              onClick={() => window.electronAPI?.openNewWindow()}
+            >
+              New Window
+            </button>
           )}
         </div>
 
         <div className="card" style={{ padding: 24 }}>
           <h2 className="card-title">Join by ID</h2>
-          <input className="input" type="text" placeholder="Paste game ID..." value={joinId} onChange={e => setJoinId(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && joinId.trim()) joinGame(joinId.trim()); }} />
-          <button className="btn btn-secondary" style={{ marginTop: 12, width: '100%' }} onClick={() => { if (joinId.trim()) joinGame(joinId.trim()); }}>Join</button>
+          <input
+            className="input"
+            type="text"
+            placeholder="Paste game ID..."
+            value={joinId}
+            onChange={(e) => setJoinId(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && joinId.trim()) joinGame(joinId.trim());
+            }}
+          />
+          <button
+            className="btn btn-secondary"
+            style={{ marginTop: 12, width: '100%' }}
+            onClick={() => {
+              if (joinId.trim()) joinGame(joinId.trim());
+            }}
+          >
+            Join
+          </button>
         </div>
 
         <div className="card" style={{ padding: 24 }}>
           <h2 className="card-title">Match History</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
             {matchHistory.length === 0 ? (
-              <div style={{ fontSize: 13, fontWeight: 300, color: '#555', textAlign: 'center', padding: 12 }}>No completed games yet</div>
-            ) : matchHistory.map(g => {
-              const isWhite = g.players.white === myId;
-              const won = g.winner === (isWhite ? 'white' : 'black');
-              const resultText = g.status === 'draw' ? 'Draw' : (won ? 'Won' : 'Lost');
-              const resultColor = g.status === 'draw' ? 'var(--muted)' : (won ? 'var(--accent)' : 'var(--danger)');
-              const opponent = isWhite ? (g.players.black || '?') : (g.players.white || '?');
-              return (
-                <div key={g.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.02)', fontSize: 13 }}>
-                  <span style={{ color: 'var(--text)', fontWeight: 500, letterSpacing: '0.2px' }}>vs {opponent.slice(0, 8)}</span>
-                  <span style={{ color: resultColor, fontWeight: 600, letterSpacing: '0.3px' }}>{resultText}</span>
-                </div>
-              );
-            })}
+              <div style={{ fontSize: 13, fontWeight: 300, color: '#555', textAlign: 'center', padding: 12 }}>
+                No completed games yet
+              </div>
+            ) : (
+              matchHistory.map((g) => {
+                const isWhite = g.players.white === myId;
+                const won = g.winner === (isWhite ? 'white' : 'black');
+                const resultText = g.status === 'draw' ? 'Draw' : won ? 'Won' : 'Lost';
+                const resultColor = g.status === 'draw' ? 'var(--muted)' : won ? 'var(--accent)' : 'var(--danger)';
+                const opponent = isWhite ? g.players.black || '?' : g.players.white || '?';
+                return (
+                  <div
+                    key={g.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '6px 8px',
+                      borderRadius: 6,
+                      background: 'rgba(255,255,255,0.02)',
+                      fontSize: 13,
+                    }}
+                  >
+                    <span style={{ color: 'var(--text)', fontWeight: 500, letterSpacing: '0.2px' }}>
+                      vs {opponent.slice(0, 8)}
+                    </span>
+                    <span style={{ color: resultColor, fontWeight: 600, letterSpacing: '0.3px' }}>{resultText}</span>
+                  </div>
+                );
+              })
+            )}
           </div>
-          <button className="btn btn-ghost" style={{ marginTop: 10, width: '100%', fontSize: 12 }} onClick={() => {
-            const pid = store.get('playerId');
-            if (pid) api.getPlayerGames(pid).then(games => setMatchHistory(games.slice(-10).reverse())).catch(() => {});
-          }}>Refresh</button>
+          <button
+            className="btn btn-ghost"
+            style={{ marginTop: 10, width: '100%', fontSize: 12 }}
+            onClick={() => {
+              const pid = store.get('playerId');
+              if (pid)
+                api
+                  .getPlayerGames(pid)
+                  .then((games) => setMatchHistory(games.slice(-10).reverse()))
+                  .catch(() => {});
+            }}
+          >
+            Refresh
+          </button>
         </div>
       </div>
     </div>

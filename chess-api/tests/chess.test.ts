@@ -37,8 +37,18 @@ function boardFromFenLike(lines: string[]): Board {
       if (ch === '.' || ch === undefined) continue;
       const isWhite = ch === ch.toUpperCase();
       const typeMap: Record<string, 'king' | 'queen' | 'rook' | 'bishop' | 'knight' | 'pawn'> = {
-        K: 'king', Q: 'queen', R: 'rook', B: 'bishop', N: 'knight', P: 'pawn',
-        k: 'king', q: 'queen', r: 'rook', b: 'bishop', n: 'knight', p: 'pawn',
+        K: 'king',
+        Q: 'queen',
+        R: 'rook',
+        B: 'bishop',
+        N: 'knight',
+        P: 'pawn',
+        k: 'king',
+        q: 'queen',
+        r: 'rook',
+        b: 'bishop',
+        n: 'knight',
+        p: 'pawn',
       };
       board[r][f] = {
         type: typeMap[ch],
@@ -72,9 +82,7 @@ describe('board utilities', () => {
     /* Standard chess starts with exactly 16 pieces per side */
     const board = chess.createInitialBoard();
     let count = 0;
-    for (let r = 0; r < 8; r++)
-      for (let f = 0; f < 8; f++)
-        if (board[r][f]) count++;
+    for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) if (board[r][f]) count++;
     expect(count).toBe(32);
   });
 });
@@ -89,9 +97,9 @@ describe('pawn moves', () => {
     const board = chess.createInitialBoard();
     const moves = chess.generatePawnMoves(board, 6, 4, board[6][4]!, null);
     /* e3 = single push */
-    expect(moves.some(m => m.to === 'e3')).toBe(true);
+    expect(moves.some((m) => m.to === 'e3')).toBe(true);
     /* e4 = double push */
-    expect(moves.some(m => m.to === 'e4')).toBe(true);
+    expect(moves.some((m) => m.to === 'e4')).toBe(true);
   });
 
   test('double push blocked by piece in front', () => {
@@ -107,8 +115,8 @@ describe('pawn moves', () => {
       '........',
     ]);
     const moves = chess.generatePawnMoves(board, 6, 1, board[6][1]!, null);
-    expect(moves.some(m => m.to === 'b3')).toBe(true);
-    expect(moves.some(m => m.to === 'b4')).toBe(true);
+    expect(moves.some((m) => m.to === 'b3')).toBe(true);
+    expect(moves.some((m) => m.to === 'b4')).toBe(true);
   });
 
   test('blocked pawn cannot move forward', () => {
@@ -125,7 +133,7 @@ describe('pawn moves', () => {
     ]);
     const moves = chess.generatePawnMoves(board, 6, 1, board[6][1]!, null);
     /* No moves from b2 should exist — the pawn is stuck */
-    expect(moves.every(m => m.from !== 'b2')).toBe(true);
+    expect(moves.every((m) => m.from !== 'b2')).toBe(true);
   });
 
   test('pawn captures diagonally', () => {
@@ -143,11 +151,11 @@ describe('pawn moves', () => {
     ]);
     const moves = chess.generatePawnMoves(board, 6, 2, board[6][2]!, null);
     /* Diagonal capture: c3 → d4 */
-    expect(moves.some(m => m.to === 'd3' && m.captured)).toBe(true);
+    expect(moves.some((m) => m.to === 'd3' && m.captured)).toBe(true);
     /* Single push: c3 → c4 */
-    expect(moves.some(m => m.to === 'c3')).toBe(true);
+    expect(moves.some((m) => m.to === 'c3')).toBe(true);
     /* Double push: c3 → c4 */
-    expect(moves.some(m => m.to === 'c4')).toBe(true);
+    expect(moves.some((m) => m.to === 'c4')).toBe(true);
   });
 
   test('en passant capture', () => {
@@ -167,9 +175,9 @@ describe('pawn moves', () => {
     const whitePawn = board[3][4]!;
     const moves = chess.generatePawnMoves(board, 3, 4, whitePawn, 'd6');
     /* En-passant capture to d6 */
-    expect(moves.some(m => m.to === 'd6' && m.isEnPassant)).toBe(true);
+    expect(moves.some((m) => m.to === 'd6' && m.isEnPassant)).toBe(true);
     /* Normal single push to e6 should also be available */
-    expect(moves.some(m => m.to === 'e6')).toBe(true);
+    expect(moves.some((m) => m.to === 'e6')).toBe(true);
   });
 
   test('pawn promotion to queen at last rank', () => {
@@ -188,10 +196,10 @@ describe('pawn moves', () => {
     const pawn = board[1][2]!;
     const moves = chess.generatePawnMoves(board, 1, 2, pawn, null);
     /* All four promotion pieces must be present */
-    expect(moves.some(m => m.to === 'c8' && m.promotion === 'queen')).toBe(true);
-    expect(moves.some(m => m.to === 'c8' && m.promotion === 'rook')).toBe(true);
-    expect(moves.some(m => m.to === 'c8' && m.promotion === 'bishop')).toBe(true);
-    expect(moves.some(m => m.to === 'c8' && m.promotion === 'knight')).toBe(true);
+    expect(moves.some((m) => m.to === 'c8' && m.promotion === 'queen')).toBe(true);
+    expect(moves.some((m) => m.to === 'c8' && m.promotion === 'rook')).toBe(true);
+    expect(moves.some((m) => m.to === 'c8' && m.promotion === 'bishop')).toBe(true);
+    expect(moves.some((m) => m.to === 'c8' && m.promotion === 'knight')).toBe(true);
   });
 });
 
@@ -232,8 +240,8 @@ describe('knight moves', () => {
     const knight = board[7][0]!;
     const moves = chess.generateKnightMoves(board, 7, 0, knight);
     expect(moves).toHaveLength(2);
-    expect(moves.some(m => m.to === 'b3')).toBe(true);
-    expect(moves.some(m => m.to === 'c2')).toBe(true);
+    expect(moves.some((m) => m.to === 'b3')).toBe(true);
+    expect(moves.some((m) => m.to === 'c2')).toBe(true);
   });
 });
 
@@ -274,8 +282,8 @@ describe('bishop moves', () => {
     ]);
     const bishop = board[3][3]!;
     const moves = chess.generateBishopMoves(board, 3, 3, bishop);
-    expect(moves.some(m => m.to === 'c7')).toBe(false);
-    expect(moves.some(m => m.to === 'b8')).toBe(false);
+    expect(moves.some((m) => m.to === 'c7')).toBe(false);
+    expect(moves.some((m) => m.to === 'b8')).toBe(false);
   });
 });
 
@@ -343,7 +351,10 @@ describe('king moves', () => {
       '........',
     ]);
     const king = board[3][3]!;
-    const rights: CastlingRights = { white: { kingside: false, queenside: false }, black: { kingside: false, queenside: false } };
+    const rights: CastlingRights = {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    };
     const moves = chess.generateKingMoves(board, 3, 3, king, rights);
     expect(moves).toHaveLength(8);
   });
@@ -361,10 +372,13 @@ describe('king moves', () => {
       'R...K..R',
     ]);
     const king = board[7][4]!;
-    const rights: CastlingRights = { white: { kingside: true, queenside: true }, black: { kingside: false, queenside: false } };
+    const rights: CastlingRights = {
+      white: { kingside: true, queenside: true },
+      black: { kingside: false, queenside: false },
+    };
     const moves = chess.generateKingMoves(board, 7, 4, king, rights);
-    expect(moves.some(m => m.isCastling === 'kingside')).toBe(true);
-    expect(moves.some(m => m.isCastling === 'queenside')).toBe(true);
+    expect(moves.some((m) => m.isCastling === 'kingside')).toBe(true);
+    expect(moves.some((m) => m.isCastling === 'queenside')).toBe(true);
   });
 
   test('castling blocked when pieces in between', () => {
@@ -381,10 +395,13 @@ describe('king moves', () => {
       'R..BK..R',
     ]);
     const king = board[7][4]!;
-    const rights: CastlingRights = { white: { kingside: true, queenside: true }, black: { kingside: false, queenside: false } };
+    const rights: CastlingRights = {
+      white: { kingside: true, queenside: true },
+      black: { kingside: false, queenside: false },
+    };
     const moves = chess.generateKingMoves(board, 7, 4, king, rights);
-    expect(moves.some(m => m.isCastling === 'kingside')).toBe(true);
-    expect(moves.some(m => m.isCastling === 'queenside')).toBe(false);
+    expect(moves.some((m) => m.isCastling === 'kingside')).toBe(true);
+    expect(moves.some((m) => m.isCastling === 'queenside')).toBe(false);
   });
 });
 
@@ -585,12 +602,12 @@ describe('legal move constraints', () => {
       black: { kingside: false, queenside: false },
     });
     /* e2 stays on the e-file — still attacked by the rook */
-    expect(legalMoves.every(m => m.to !== 'e2')).toBe(true);
+    expect(legalMoves.every((m) => m.to !== 'e2')).toBe(true);
     /* These squares are off the e-file and safe */
-    expect(legalMoves.some(m => m.to === 'd1')).toBe(true);
-    expect(legalMoves.some(m => m.to === 'd2')).toBe(true);
-    expect(legalMoves.some(m => m.to === 'f1')).toBe(true);
-    expect(legalMoves.some(m => m.to === 'f2')).toBe(true);
+    expect(legalMoves.some((m) => m.to === 'd1')).toBe(true);
+    expect(legalMoves.some((m) => m.to === 'd2')).toBe(true);
+    expect(legalMoves.some((m) => m.to === 'f1')).toBe(true);
+    expect(legalMoves.some((m) => m.to === 'f2')).toBe(true);
   });
 
   test('must resolve check (block or capture)', () => {
@@ -612,9 +629,9 @@ describe('legal move constraints', () => {
       black: { kingside: false, queenside: false },
     });
     /* Bishop can block on e3 */
-    expect(legalMoves.some(m => m.from === 'c1' && m.to === 'e3')).toBe(true);
+    expect(legalMoves.some((m) => m.from === 'c1' && m.to === 'e3')).toBe(true);
     /* Bishop cannot make any other move (would leave king in check) */
-    expect(legalMoves.every(m => !(m.from === 'c1' && m.to !== 'e3'))).toBe(true);
+    expect(legalMoves.every((m) => !(m.from === 'c1' && m.to !== 'e3'))).toBe(true);
   });
 });
 
@@ -640,7 +657,7 @@ describe('applyMove', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    const captureMove = legalMoves.find(m => m.from === 'f4' && m.to === 'e5');
+    const captureMove = legalMoves.find((m) => m.from === 'f4' && m.to === 'e5');
     expect(captureMove).toBeDefined();
     /* The captured piece must be a black pawn */
     expect(captureMove!.captured).toBeDefined();
@@ -680,7 +697,7 @@ describe('applyMove', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    const epMove = legalMoves.find(m => m.from === 'e5' && m.to === 'd6' && m.isEnPassant);
+    const epMove = legalMoves.find((m) => m.from === 'e5' && m.to === 'd6' && m.isEnPassant);
     expect(epMove).toBeDefined();
 
     if (epMove) {
@@ -711,9 +728,12 @@ describe('applyMove', () => {
       '........',
       'R...K..R',
     ]);
-    const rights: CastlingRights = { white: { kingside: true, queenside: true }, black: { kingside: false, queenside: false } };
+    const rights: CastlingRights = {
+      white: { kingside: true, queenside: true },
+      black: { kingside: false, queenside: false },
+    };
     const legalMoves = chess.getLegalMoves(board, 'white', null, rights);
-    const ksCastle = legalMoves.find(m => m.isCastling === 'kingside');
+    const ksCastle = legalMoves.find((m) => m.isCastling === 'kingside');
     expect(ksCastle).toBeDefined();
 
     if (ksCastle) {
@@ -746,7 +766,7 @@ describe('serializeBoard', () => {
     const board = chess.createInitialBoard();
     const serialized = chess.serializeBoard(board);
     expect(serialized).toHaveLength(32);
-    const whitePawnE2 = serialized.find(s => s.square === 'e2');
+    const whitePawnE2 = serialized.find((s) => s.square === 'e2');
     expect(whitePawnE2).toBeDefined();
     expect(whitePawnE2!.piece).toBe('pawn');
     expect(whitePawnE2!.color).toBe('white');
@@ -839,8 +859,8 @@ describe('moveToAlgebraic', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    const nab3 = legal.find(m => m.from === 'a1' && m.to === 'b3')!;
-    const ncb3 = legal.find(m => m.from === 'c1' && m.to === 'b3')!;
+    const nab3 = legal.find((m) => m.from === 'a1' && m.to === 'b3')!;
+    const ncb3 = legal.find((m) => m.from === 'c1' && m.to === 'b3')!;
     expect(nab3).toBeDefined();
     expect(ncb3).toBeDefined();
     const a1n = chess.moveToAlgebraic(nab3, undefined, legal);
@@ -866,8 +886,8 @@ describe('moveToAlgebraic', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    const ra1a3 = legal.find(m => m.from === 'a1' && m.to === 'a3')!;
-    const ra8a3 = legal.find(m => m.from === 'a8' && m.to === 'a3')!;
+    const ra1a3 = legal.find((m) => m.from === 'a1' && m.to === 'a3')!;
+    const ra8a3 = legal.find((m) => m.from === 'a8' && m.to === 'a3')!;
     /* Both rooks can reach a3 */
     expect(ra1a3).toBeDefined();
     expect(ra8a3).toBeDefined();
@@ -901,8 +921,8 @@ describe('isSquareAttackedBy', () => {
       '........',
     ]);
     /* d4 at board[4][3] attacks c5 (board[3][2]) and e5 (board[3][4]) */
-    expect(chess.isSquareAttackedBy(board, 3, 2, 'white')).toBe(true);  /* c5 */
-    expect(chess.isSquareAttackedBy(board, 3, 4, 'white')).toBe(true);  /* e5 */
+    expect(chess.isSquareAttackedBy(board, 3, 2, 'white')).toBe(true); /* c5 */
+    expect(chess.isSquareAttackedBy(board, 3, 4, 'white')).toBe(true); /* e5 */
     /* Not attacked squares */
     expect(chess.isSquareAttackedBy(board, 4, 2, 'white')).toBe(false); /* c4 (diagonal behind) */
     expect(chess.isSquareAttackedBy(board, 5, 2, 'white')).toBe(false); /* c3 (two ranks back) */
@@ -924,8 +944,8 @@ describe('isSquareAttackedBy', () => {
       '........',
     ]);
     /* d5 at board[3][3] attacks c4 (board[4][2]) and e4 (board[4][4]) */
-    expect(chess.isSquareAttackedBy(board, 4, 2, 'black')).toBe(true);  /* c4 */
-    expect(chess.isSquareAttackedBy(board, 4, 4, 'black')).toBe(true);  /* e4 */
+    expect(chess.isSquareAttackedBy(board, 4, 2, 'black')).toBe(true); /* c4 */
+    expect(chess.isSquareAttackedBy(board, 4, 4, 'black')).toBe(true); /* e4 */
     /* Not attacked squares */
     expect(chess.isSquareAttackedBy(board, 3, 2, 'black')).toBe(false); /* c5 (behind) */
     expect(chess.isSquareAttackedBy(board, 2, 2, 'black')).toBe(false); /* c6 (two ranks back) */
@@ -938,8 +958,8 @@ describe('isSquareAttackedBy', () => {
      * Some squares attacked by knights are not pawn-attacked. */
     const board = chess.createInitialBoard();
     /* e2 pawn attacks d3 and f3 */
-    expect(chess.isSquareAttackedBy(board, 5, 3, 'white')).toBe(true);  /* d3 attacked by c2+e2 pawns */
-    expect(chess.isSquareAttackedBy(board, 5, 5, 'white')).toBe(true);  /* f3 attacked by e2 pawn + g1 knight */
+    expect(chess.isSquareAttackedBy(board, 5, 3, 'white')).toBe(true); /* d3 attacked by c2+e2 pawns */
+    expect(chess.isSquareAttackedBy(board, 5, 5, 'white')).toBe(true); /* f3 attacked by e2 pawn + g1 knight */
     /* A square NOT attacked by any white piece in the initial position:
      * b6 (board[2][1]) is safe — no white pawn or piece reaches it initially */
     expect(chess.isSquareAttackedBy(board, 2, 1, 'white')).toBe(false); /* b6 */
@@ -957,10 +977,10 @@ describe('isSquareAttackedBy', () => {
       '........',
     ]);
     /* Queen on d4 (board[4][3]) */
-    expect(chess.isSquareAttackedBy(board, 0, 3, 'white')).toBe(true);  /* d8 (along file) */
-    expect(chess.isSquareAttackedBy(board, 4, 7, 'white')).toBe(true);  /* h4 (along rank) */
-    expect(chess.isSquareAttackedBy(board, 7, 3, 'white')).toBe(true);  /* d1 (along file) */
-    expect(chess.isSquareAttackedBy(board, 4, 0, 'white')).toBe(true);  /* a4 (along rank) */
+    expect(chess.isSquareAttackedBy(board, 0, 3, 'white')).toBe(true); /* d8 (along file) */
+    expect(chess.isSquareAttackedBy(board, 4, 7, 'white')).toBe(true); /* h4 (along rank) */
+    expect(chess.isSquareAttackedBy(board, 7, 3, 'white')).toBe(true); /* d1 (along file) */
+    expect(chess.isSquareAttackedBy(board, 4, 0, 'white')).toBe(true); /* a4 (along rank) */
   });
 
   test('knight attacks in L-shape', () => {
@@ -975,14 +995,14 @@ describe('isSquareAttackedBy', () => {
       '........',
     ]);
     /* Knight on d4 attacks 8 squares */
-    expect(chess.isSquareAttackedBy(board, 1, 2, 'white')).toBe(true);  /* b5 */
-    expect(chess.isSquareAttackedBy(board, 1, 4, 'white')).toBe(true);  /* f5 */
-    expect(chess.isSquareAttackedBy(board, 2, 1, 'white')).toBe(true);  /* b6 */
-    expect(chess.isSquareAttackedBy(board, 2, 5, 'white')).toBe(true);  /* f6 */
-    expect(chess.isSquareAttackedBy(board, 4, 1, 'white')).toBe(true);  /* b3 */
-    expect(chess.isSquareAttackedBy(board, 4, 5, 'white')).toBe(true);  /* f3 */
-    expect(chess.isSquareAttackedBy(board, 5, 2, 'white')).toBe(true);  /* c2 */
-    expect(chess.isSquareAttackedBy(board, 5, 4, 'white')).toBe(true);  /* e2 */
+    expect(chess.isSquareAttackedBy(board, 1, 2, 'white')).toBe(true); /* b5 */
+    expect(chess.isSquareAttackedBy(board, 1, 4, 'white')).toBe(true); /* f5 */
+    expect(chess.isSquareAttackedBy(board, 2, 1, 'white')).toBe(true); /* b6 */
+    expect(chess.isSquareAttackedBy(board, 2, 5, 'white')).toBe(true); /* f6 */
+    expect(chess.isSquareAttackedBy(board, 4, 1, 'white')).toBe(true); /* b3 */
+    expect(chess.isSquareAttackedBy(board, 4, 5, 'white')).toBe(true); /* f3 */
+    expect(chess.isSquareAttackedBy(board, 5, 2, 'white')).toBe(true); /* c2 */
+    expect(chess.isSquareAttackedBy(board, 5, 4, 'white')).toBe(true); /* e2 */
     /* Not attacked */
     expect(chess.isSquareAttackedBy(board, 3, 3, 'white')).toBe(false); /* d4 (same square) */
   });
@@ -1013,14 +1033,14 @@ describe('en passant edge cases', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    expect(movesWithEp.some(m => m.from === 'e5' && m.to === 'd6' && m.isEnPassant)).toBe(true);
+    expect(movesWithEp.some((m) => m.from === 'e5' && m.to === 'd6' && m.isEnPassant)).toBe(true);
 
     /* Without en passant target (next turn) — opportunity is gone */
     const movesWithoutEp = chess.getLegalMoves(board, 'white', null, {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    expect(movesWithoutEp.every(m => !(m.from === 'e5' && m.to === 'd6'))).toBe(true);
+    expect(movesWithoutEp.every((m) => !(m.from === 'e5' && m.to === 'd6'))).toBe(true);
   });
 
   test('en passant removes correct pawn from board', () => {
@@ -1037,10 +1057,12 @@ describe('en passant edge cases', () => {
       '........',
       '........',
     ]);
-    const epMove = chess.getLegalMoves(board, 'white', 'd6', {
-      white: { kingside: false, queenside: false },
-      black: { kingside: false, queenside: false },
-    }).find(m => m.isEnPassant)!;
+    const epMove = chess
+      .getLegalMoves(board, 'white', 'd6', {
+        white: { kingside: false, queenside: false },
+        black: { kingside: false, queenside: false },
+      })
+      .find((m) => m.isEnPassant)!;
     expect(epMove).toBeDefined();
 
     const { newBoard } = chess.applyMove(board, epMove, {
@@ -1072,10 +1094,12 @@ describe('en passant edge cases', () => {
       '........',
       '........',
     ]);
-    const epMove = chess.getLegalMoves(board, 'black', 'e3', {
-      white: { kingside: false, queenside: false },
-      black: { kingside: false, queenside: false },
-    }).find(m => m.isEnPassant)!;
+    const epMove = chess
+      .getLegalMoves(board, 'black', 'e3', {
+        white: { kingside: false, queenside: false },
+        black: { kingside: false, queenside: false },
+      })
+      .find((m) => m.isEnPassant)!;
     expect(epMove).toBeDefined();
     expect(epMove.from).toBe('d4');
     expect(epMove.to).toBe('e3');
@@ -1120,7 +1144,7 @@ describe('en passant edge cases', () => {
       black: { kingside: false, queenside: false },
     });
     /* En passant is available */
-    expect(moves.some(m => m.isEnPassant)).toBe(true);
+    expect(moves.some((m) => m.isEnPassant)).toBe(true);
   });
 });
 
@@ -1154,7 +1178,7 @@ describe('castling constraints', () => {
     expect(chess.isSquareAttackedBy(board, 7, 4, 'black')).toBe(false);
     const legalMoves = chess.getLegalMoves(board, 'white', null, rights);
     /* Kingside castle blocked (f1 is attacked by bishop on a6) */
-    expect(legalMoves.some(m => m.isCastling === 'kingside')).toBe(false);
+    expect(legalMoves.some((m) => m.isCastling === 'kingside')).toBe(false);
   });
 
   test('cannot castle out of check', () => {
@@ -1175,8 +1199,8 @@ describe('castling constraints', () => {
       black: { kingside: false, queenside: false },
     };
     const legalMoves = chess.getLegalMoves(board, 'white', null, rights);
-    expect(legalMoves.some(m => m.isCastling === 'kingside')).toBe(false);
-    expect(legalMoves.some(m => m.isCastling === 'queenside')).toBe(false);
+    expect(legalMoves.some((m) => m.isCastling === 'kingside')).toBe(false);
+    expect(legalMoves.some((m) => m.isCastling === 'queenside')).toBe(false);
   });
 
   test('cannot castle into check', () => {
@@ -1198,7 +1222,7 @@ describe('castling constraints', () => {
       black: { kingside: false, queenside: false },
     };
     const legalMoves = chess.getLegalMoves(board, 'white', null, rights);
-    expect(legalMoves.some(m => m.isCastling === 'kingside')).toBe(false);
+    expect(legalMoves.some((m) => m.isCastling === 'kingside')).toBe(false);
   });
 
   test('castling forfeited after king moves', () => {
@@ -1218,7 +1242,7 @@ describe('castling constraints', () => {
       black: { kingside: false, queenside: false },
     };
     const legalBefore = chess.getLegalMoves(board, 'white', null, rights);
-    expect(legalBefore.some(m => m.isCastling === 'kingside')).toBe(true);
+    expect(legalBefore.some((m) => m.isCastling === 'kingside')).toBe(true);
 
     /* Simulate king moving to d1 and back — castling rights are lost */
     const rightsAfter: CastlingRights = {
@@ -1226,8 +1250,8 @@ describe('castling constraints', () => {
       black: { kingside: false, queenside: false },
     };
     const legalAfter = chess.getLegalMoves(board, 'white', null, rightsAfter);
-    expect(legalAfter.some(m => m.isCastling === 'kingside')).toBe(false);
-    expect(legalAfter.some(m => m.isCastling === 'queenside')).toBe(false);
+    expect(legalAfter.some((m) => m.isCastling === 'kingside')).toBe(false);
+    expect(legalAfter.some((m) => m.isCastling === 'queenside')).toBe(false);
   });
 });
 
@@ -1255,8 +1279,8 @@ describe('discovered and double check', () => {
       black: { kingside: false, queenside: false },
     });
     /* Bishop moves off the a-file reveal discovered check */
-    expect(legalMoves.some(m => m.from === 'a2' && m.to === 'b3')).toBe(true);
-    expect(legalMoves.some(m => m.from === 'a2' && m.to === 'b1')).toBe(true);
+    expect(legalMoves.some((m) => m.from === 'a2' && m.to === 'b3')).toBe(true);
+    expect(legalMoves.some((m) => m.from === 'a2' && m.to === 'b1')).toBe(true);
   });
 
   test('double check forces king to move', () => {
@@ -1278,13 +1302,13 @@ describe('discovered and double check', () => {
       black: { kingside: false, queenside: false },
     });
     /* All legal moves must be king moves (from e1) */
-    expect(legalMoves.every(m => m.from === 'e1')).toBe(true);
+    expect(legalMoves.every((m) => m.from === 'e1')).toBe(true);
     /* The king can still move to safe squares (d1, f1, f2 are safe) */
-    expect(legalMoves.some(m => m.to === 'd1')).toBe(true);
+    expect(legalMoves.some((m) => m.to === 'd1')).toBe(true);
     /* d2 is attacked by the black bishop at b4 — not safe */
-    expect(legalMoves.every(m => m.to !== 'd2')).toBe(true);
-    expect(legalMoves.some(m => m.to === 'f1')).toBe(true);
-    expect(legalMoves.some(m => m.to === 'f2')).toBe(true);
+    expect(legalMoves.every((m) => m.to !== 'd2')).toBe(true);
+    expect(legalMoves.some((m) => m.to === 'f1')).toBe(true);
+    expect(legalMoves.some((m) => m.to === 'f2')).toBe(true);
   });
 });
 
@@ -1331,14 +1355,14 @@ describe('legal move counts', () => {
       black: { kingside: false, queenside: false },
     });
     /* All moves are king moves from e1 */
-    expect(moves.every(m => m.from === 'e1')).toBe(true);
+    expect(moves.every((m) => m.from === 'e1')).toBe(true);
     /* e2 is attacked by rook along e-file */
-    expect(moves.every(m => m.to !== 'e2')).toBe(true);
+    expect(moves.every((m) => m.to !== 'e2')).toBe(true);
     /* d1, d2, f1, f2 are safe */
-    expect(moves.some(m => m.to === 'd1')).toBe(true);
-    expect(moves.some(m => m.to === 'd2')).toBe(true);
-    expect(moves.some(m => m.to === 'f1')).toBe(true);
-    expect(moves.some(m => m.to === 'f2')).toBe(true);
+    expect(moves.some((m) => m.to === 'd1')).toBe(true);
+    expect(moves.some((m) => m.to === 'd2')).toBe(true);
+    expect(moves.some((m) => m.to === 'f1')).toBe(true);
+    expect(moves.some((m) => m.to === 'f2')).toBe(true);
   });
 });
 
@@ -1362,7 +1386,7 @@ describe('promotion', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    const queenPromo = legalMoves.find(m => m.from === 'c7' && m.to === 'c8' && m.promotion === 'queen')!;
+    const queenPromo = legalMoves.find((m) => m.from === 'c7' && m.to === 'c8' && m.promotion === 'queen')!;
     expect(queenPromo).toBeDefined();
 
     const { newBoard } = chess.applyMove(board, queenPromo, {
@@ -1393,7 +1417,7 @@ describe('promotion', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    const capturePromo = legalMoves.find(m => m.from === 'c7' && m.to === 'b8' && m.promotion === 'queen')!;
+    const capturePromo = legalMoves.find((m) => m.from === 'c7' && m.to === 'b8' && m.promotion === 'queen')!;
     expect(capturePromo).toBeDefined();
     expect(capturePromo.captured).toBeDefined();
     expect(capturePromo.captured!.type).toBe('knight');
@@ -1422,14 +1446,13 @@ describe('castling rights on rook capture', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: true, queenside: true },
     };
-    const capturesH8 = chess.getLegalMoves(board, 'white', null, rights)
-      .find(m => m.to === 'h8' && m.captured);
+    const capturesH8 = chess.getLegalMoves(board, 'white', null, rights).find((m) => m.to === 'h8' && m.captured);
     expect(capturesH8).toBeDefined();
 
     if (capturesH8) {
       const { castlingRights: newRights } = chess.applyMove(board, capturesH8, rights);
       expect(newRights.black.kingside).toBe(false);
-      expect(newRights.black.queenside).toBe(true);  /* a8 rook untouched */
+      expect(newRights.black.queenside).toBe(true); /* a8 rook untouched */
     }
   });
 });
@@ -1455,9 +1478,9 @@ describe('pawn moves — edge and pinned', () => {
       black: { kingside: false, queenside: false },
     });
     /* a2 pawn can capture to b3 */
-    expect(moves.some(m => m.from === 'a2' && m.to === 'b3' && m.captured)).toBe(true);
+    expect(moves.some((m) => m.from === 'a2' && m.to === 'b3' && m.captured)).toBe(true);
     /* a2 pawn cannot capture to a3-left (off board) */
-    expect(moves.some(m => m.from === 'a2' && m.to === 'a1')).toBe(false);
+    expect(moves.some((m) => m.from === 'a2' && m.to === 'a1')).toBe(false);
   });
 
   test('pawn on h-file captures only to g-file', () => {
@@ -1475,8 +1498,8 @@ describe('pawn moves — edge and pinned', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    expect(moves.some(m => m.from === 'h2' && m.to === 'g3' && m.captured)).toBe(true);
-    expect(moves.some(m => m.to === 'i1')).toBe(false);
+    expect(moves.some((m) => m.from === 'h2' && m.to === 'g3' && m.captured)).toBe(true);
+    expect(moves.some((m) => m.to === 'i1')).toBe(false);
   });
 
   test('black pawn single push from starting position', () => {
@@ -1485,8 +1508,8 @@ describe('pawn moves — edge and pinned', () => {
       white: { kingside: true, queenside: true },
       black: { kingside: true, queenside: true },
     });
-    expect(moves.some(m => m.from === 'e7' && m.to === 'e6')).toBe(true);
-    expect(moves.some(m => m.from === 'e7' && m.to === 'e5')).toBe(true);
+    expect(moves.some((m) => m.from === 'e7' && m.to === 'e6')).toBe(true);
+    expect(moves.some((m) => m.from === 'e7' && m.to === 'e5')).toBe(true);
   });
 
   test('black pawn double push blocked', () => {
@@ -1501,7 +1524,7 @@ describe('pawn moves — edge and pinned', () => {
       'K.......',
     ]);
     const moves = chess.generatePawnMoves(board, 6, 0, board[6][0]!, null);
-    expect(moves.every(m => m.from !== 'a2')).toBe(true);
+    expect(moves.every((m) => m.from !== 'a2')).toBe(true);
   });
 
   test('black pawn capture promotion', () => {
@@ -1519,8 +1542,10 @@ describe('pawn moves — edge and pinned', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    expect(moves.some(m => m.from === 'b2' && m.to === 'a1' && m.captured?.type === 'knight' && m.promotion === 'queen')).toBe(true);
-    expect(moves.some(m => m.from === 'b2' && m.to === 'a1' && m.promotion === 'knight')).toBe(true);
+    expect(
+      moves.some((m) => m.from === 'b2' && m.to === 'a1' && m.captured?.type === 'knight' && m.promotion === 'queen'),
+    ).toBe(true);
+    expect(moves.some((m) => m.from === 'b2' && m.to === 'a1' && m.promotion === 'knight')).toBe(true);
   });
 
   test('pawn cannot move when pinned along file', () => {
@@ -1541,7 +1566,7 @@ describe('pawn moves — edge and pinned', () => {
       black: { kingside: false, queenside: false },
     });
     /* Pawn can still move — not pinned */
-    expect(moves.some(m => m.from === 'b2')).toBe(true);
+    expect(moves.some((m) => m.from === 'b2')).toBe(true);
   });
 
   test('pawn pinned by rook along file', () => {
@@ -1562,7 +1587,7 @@ describe('pawn moves — edge and pinned', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    const pawnMoves = moves.filter(m => m.from === 'a2');
+    const pawnMoves = moves.filter((m) => m.from === 'a2');
     for (const m of pawnMoves) {
       expect(m.to[0]).toBe('a'); /* must stay on the a-file */
     }
@@ -1587,15 +1612,15 @@ describe('pawn moves — edge and pinned', () => {
       black: { kingside: false, queenside: false },
     });
     /* Pawn can only move along the a-file (still blocking the rook) */
-    const pawnMoves = moves.filter(m => m.from === 'a2');
+    const pawnMoves = moves.filter((m) => m.from === 'a2');
     for (const m of pawnMoves) {
       expect(m.to[0]).toBe('a');
     }
     /* Pawn cannot move off the a-file */
-    expect(pawnMoves.every(m => m.to[0] === 'a')).toBe(true);
+    expect(pawnMoves.every((m) => m.to[0] === 'a')).toBe(true);
     /* King can move off the file */
-    expect(moves.some(m => m.from === 'a1' && m.to === 'b1')).toBe(true);
-    expect(moves.some(m => m.from === 'a1' && m.to === 'b2')).toBe(true);
+    expect(moves.some((m) => m.from === 'a1' && m.to === 'b1')).toBe(true);
+    expect(moves.some((m) => m.from === 'a1' && m.to === 'b2')).toBe(true);
   });
 });
 
@@ -1619,10 +1644,10 @@ describe('knight moves — edge and block', () => {
     const moves = chess.generateKnightMoves(board, 3, 0, knight);
     /* Knight on a5: b7, c6, c4, b3 */
     expect(moves).toHaveLength(4);
-    expect(moves.some(m => m.to === 'b7')).toBe(true);
-    expect(moves.some(m => m.to === 'c6')).toBe(true);
-    expect(moves.some(m => m.to === 'c4')).toBe(true);
-    expect(moves.some(m => m.to === 'b3')).toBe(true);
+    expect(moves.some((m) => m.to === 'b7')).toBe(true);
+    expect(moves.some((m) => m.to === 'c6')).toBe(true);
+    expect(moves.some((m) => m.to === 'c4')).toBe(true);
+    expect(moves.some((m) => m.to === 'b3')).toBe(true);
   });
 
   test('knight on h-file edge has 4 moves', () => {
@@ -1639,10 +1664,10 @@ describe('knight moves — edge and block', () => {
     const knight = board[3][7]!;
     const moves = chess.generateKnightMoves(board, 3, 7, knight);
     expect(moves).toHaveLength(4);
-    expect(moves.some(m => m.to === 'g7')).toBe(true);
-    expect(moves.some(m => m.to === 'f6')).toBe(true);
-    expect(moves.some(m => m.to === 'f4')).toBe(true);
-    expect(moves.some(m => m.to === 'g3')).toBe(true);
+    expect(moves.some((m) => m.to === 'g7')).toBe(true);
+    expect(moves.some((m) => m.to === 'f6')).toBe(true);
+    expect(moves.some((m) => m.to === 'f4')).toBe(true);
+    expect(moves.some((m) => m.to === 'g3')).toBe(true);
   });
 
   test('knight on near-edge b-file has 6 moves', () => {
@@ -1683,8 +1708,8 @@ describe('knight moves — edge and block', () => {
       white: { kingside: true, queenside: true },
       black: { kingside: true, queenside: true },
     });
-    expect(moves.some(m => m.from === 'b1' && m.to === 'c3')).toBe(true);
-    expect(moves.some(m => m.from === 'b1' && m.to === 'a3')).toBe(true);
+    expect(moves.some((m) => m.from === 'b1' && m.to === 'c3')).toBe(true);
+    expect(moves.some((m) => m.from === 'b1' && m.to === 'a3')).toBe(true);
   });
 
   test('knight on starting square g1 has 2 moves', () => {
@@ -1693,8 +1718,8 @@ describe('knight moves — edge and block', () => {
       white: { kingside: true, queenside: true },
       black: { kingside: true, queenside: true },
     });
-    expect(moves.some(m => m.from === 'g1' && m.to === 'f3')).toBe(true);
-    expect(moves.some(m => m.from === 'g1' && m.to === 'h3')).toBe(true);
+    expect(moves.some((m) => m.from === 'g1' && m.to === 'f3')).toBe(true);
+    expect(moves.some((m) => m.from === 'g1' && m.to === 'h3')).toBe(true);
   });
 
   test('knight pinned by bishop cannot move', () => {
@@ -1712,7 +1737,7 @@ describe('knight moves — edge and block', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    expect(moves.every(m => m.from !== 'd4')).toBe(true);
+    expect(moves.every((m) => m.from !== 'd4')).toBe(true);
   });
 });
 
@@ -1735,9 +1760,9 @@ describe('bishop moves — edge and pin', () => {
     const bishop = board[7][0]!;
     const moves = chess.generateBishopMoves(board, 7, 0, bishop);
     expect(moves).toHaveLength(7);
-    expect(moves.some(m => m.to === 'b2')).toBe(true);
-    expect(moves.some(m => m.to === 'c3')).toBe(true);
-    expect(moves.some(m => m.to === 'h8')).toBe(true);
+    expect(moves.some((m) => m.to === 'b2')).toBe(true);
+    expect(moves.some((m) => m.to === 'c3')).toBe(true);
+    expect(moves.some((m) => m.to === 'h8')).toBe(true);
   });
 
   test('bishop on edge a4 has 7 moves', () => {
@@ -1779,7 +1804,7 @@ describe('bishop moves — edge and pin', () => {
       white: { kingside: true, queenside: true },
       black: { kingside: true, queenside: true },
     });
-    expect(moves.every(m => m.from !== 'c1')).toBe(true);
+    expect(moves.every((m) => m.from !== 'c1')).toBe(true);
   });
 
   test('bishop on long diagonal a1-h8 reaches all 7 squares', () => {
@@ -1797,7 +1822,7 @@ describe('bishop moves — edge and pin', () => {
     const moves = chess.generateBishopMoves(board, 7, 0, bishop);
     expect(moves).toHaveLength(7);
     for (let i = 1; i <= 7; i++) {
-      expect(moves.some(m => m.to === chess.indicesToSquare(7 - i, i))).toBe(true);
+      expect(moves.some((m) => m.to === chess.indicesToSquare(7 - i, i))).toBe(true);
     }
   });
 
@@ -1815,8 +1840,10 @@ describe('bishop moves — edge and pin', () => {
     const bishop = board[6][1]!;
     const moves = chess.generateBishopMoves(board, 6, 1, bishop);
     /* Bishop on b2, black knight on a3. Bishop can capture a3 but can't go past it. */
-    expect(moves.some(m => m.to === 'a3' && m.captured)).toBe(true);
-    expect(moves.some(m => m.to === 'b4')).toBe(false); /* b4 is going the wrong direction, bishop on b2 goes to a3,c3,d4,e5,f6,g7,h8 */
+    expect(moves.some((m) => m.to === 'a3' && m.captured)).toBe(true);
+    expect(moves.some((m) => m.to === 'b4')).toBe(
+      false,
+    ); /* b4 is going the wrong direction, bishop on b2 goes to a3,c3,d4,e5,f6,g7,h8 */
     /* Let me recalculate: bishop on b2 (board[6][1]) directions:
      * a3 (5,0) capture - yes
      * c3 (5,2) - yes
@@ -1827,7 +1854,7 @@ describe('bishop moves — edge and pin', () => {
      * h8 (0,7) - yes
      * c1 (7,2) - yes
      * So a3 has capture, and b4 is not on any diagonal from b2 */
-    expect(moves.some(m => m.to === 'a3' && m.captured?.type === 'knight')).toBe(true);
+    expect(moves.some((m) => m.to === 'a3' && m.captured?.type === 'knight')).toBe(true);
   });
 
   test('bishop pinned by enemy rook along diagonal cannot move', () => {
@@ -1864,7 +1891,7 @@ describe('bishop moves — edge and pin', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    expect(moves2.every(m => m.from !== 'd1')).toBe(true);
+    expect(moves2.every((m) => m.from !== 'd1')).toBe(true);
   });
 });
 
@@ -1934,8 +1961,8 @@ describe('rook moves — edge and pin', () => {
     ]);
     const rook = board[7][0]!;
     const moves = chess.generateRookMoves(board, 7, 0, rook);
-    expect(moves.some(m => m.to === 'a8')).toBe(true);
-    expect(moves.some(m => m.to === 'h1')).toBe(true);
+    expect(moves.some((m) => m.to === 'a8')).toBe(true);
+    expect(moves.some((m) => m.to === 'h1')).toBe(true);
   });
 
   test('rook pinned by enemy bishop cannot move', () => {
@@ -1953,7 +1980,7 @@ describe('rook moves — edge and pin', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    expect(moves.every(m => m.from !== 'd4')).toBe(true);
+    expect(moves.every((m) => m.from !== 'd4')).toBe(true);
   });
 
   test('rook captures enemy piece and stops', () => {
@@ -1969,9 +1996,9 @@ describe('rook moves — edge and pin', () => {
     ]);
     const rook = board[7][0]!;
     const moves = chess.generateRookMoves(board, 7, 0, rook);
-    expect(moves.some(m => m.to === 'a2' && m.captured?.type === 'knight')).toBe(true);
+    expect(moves.some((m) => m.to === 'a2' && m.captured?.type === 'knight')).toBe(true);
     /* Cannot move past a2 */
-    expect(moves.some(m => m.to === 'a3')).toBe(false);
+    expect(moves.some((m) => m.to === 'a3')).toBe(false);
   });
 });
 
@@ -2019,7 +2046,7 @@ describe('queen moves — edge and pin', () => {
       white: { kingside: true, queenside: true },
       black: { kingside: true, queenside: true },
     });
-    expect(moves.every(m => m.from !== 'd1')).toBe(true);
+    expect(moves.every((m) => m.from !== 'd1')).toBe(true);
   });
 
   test('queen captures in all 8 directions', () => {
@@ -2038,7 +2065,7 @@ describe('queen moves — edge and pin', () => {
     /* Queen on d4 with enemy knights on all 8 surrounding squares */
     const captureDirs = ['c5', 'd5', 'e5', 'c4', 'e4', 'c3', 'd3', 'e3'];
     for (const dir of captureDirs) {
-      expect(moves.some(m => m.to === dir && m.captured)).toBe(true);
+      expect(moves.some((m) => m.to === dir && m.captured)).toBe(true);
     }
   });
 
@@ -2060,7 +2087,7 @@ describe('queen moves — edge and pin', () => {
       black: { kingside: false, queenside: false },
     });
     /* Queen can only move along rank 1 (between rook and king) */
-    const queenMoves = moves.filter(m => m.from === 'b1');
+    const queenMoves = moves.filter((m) => m.from === 'b1');
     for (const m of queenMoves) {
       const [, file] = chess.squareToIndices(m.to);
       expect(file).toBeGreaterThanOrEqual(0); /* on rank 1 */
@@ -2085,7 +2112,7 @@ describe('queen moves — edge and pin', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    const queenMoves = moves.filter(m => m.from === 'd4');
+    const queenMoves = moves.filter((m) => m.from === 'd4');
     for (const m of queenMoves) {
       const [r, f] = chess.squareToIndices(m.to);
       expect(Math.abs(r - 4)).toBe(Math.abs(f - 3));
@@ -2110,12 +2137,15 @@ describe('king moves — edge and block', () => {
       'K.......',
     ]);
     const king = board[7][0]!;
-    const rights: CastlingRights = { white: { kingside: false, queenside: false }, black: { kingside: false, queenside: false } };
+    const rights: CastlingRights = {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    };
     const moves = chess.generateKingMoves(board, 7, 0, king, rights);
     expect(moves).toHaveLength(3);
-    expect(moves.some(m => m.to === 'a2')).toBe(true);
-    expect(moves.some(m => m.to === 'b1')).toBe(true);
-    expect(moves.some(m => m.to === 'b2')).toBe(true);
+    expect(moves.some((m) => m.to === 'a2')).toBe(true);
+    expect(moves.some((m) => m.to === 'b1')).toBe(true);
+    expect(moves.some((m) => m.to === 'b2')).toBe(true);
   });
 
   test('king on edge a4 has 5 moves', () => {
@@ -2130,7 +2160,10 @@ describe('king moves — edge and block', () => {
       '........',
     ]);
     const king = board[4][0]!;
-    const rights: CastlingRights = { white: { kingside: false, queenside: false }, black: { kingside: false, queenside: false } };
+    const rights: CastlingRights = {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    };
     const moves = chess.generateKingMoves(board, 4, 0, king, rights);
     expect(moves).toHaveLength(5);
   });
@@ -2147,7 +2180,10 @@ describe('king moves — edge and block', () => {
       '........',
     ]);
     const king = board[5][2]!;
-    const rights: CastlingRights = { white: { kingside: false, queenside: false }, black: { kingside: false, queenside: false } };
+    const rights: CastlingRights = {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    };
     const moves = chess.generateKingMoves(board, 5, 2, king, rights);
     expect(moves).toHaveLength(0);
   });
@@ -2163,11 +2199,14 @@ describe('king moves — edge and block', () => {
       '.n......',
       'K.......',
     ]);
-    const rights: CastlingRights = { white: { kingside: false, queenside: false }, black: { kingside: false, queenside: false } };
+    const rights: CastlingRights = {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    };
     const moves = chess.getLegalMoves(board, 'white', null, rights);
-    expect(moves.some(m => m.from === 'a1' && m.to === 'a2')).toBe(true);
-    expect(moves.some(m => m.from === 'a1' && m.to === 'b1')).toBe(true);
-    expect(moves.some(m => m.from === 'a1' && m.to === 'b2' && m.captured?.type === 'knight')).toBe(true);
+    expect(moves.some((m) => m.from === 'a1' && m.to === 'a2')).toBe(true);
+    expect(moves.some((m) => m.from === 'a1' && m.to === 'b1')).toBe(true);
+    expect(moves.some((m) => m.from === 'a1' && m.to === 'b2' && m.captured?.type === 'knight')).toBe(true);
   });
 
   test('king on e1 with no castling rights has 5 moves', () => {
@@ -2182,14 +2221,17 @@ describe('king moves — edge and block', () => {
       '....K...',
     ]);
     const king = board[7][4]!;
-    const rights: CastlingRights = { white: { kingside: false, queenside: false }, black: { kingside: false, queenside: false } };
+    const rights: CastlingRights = {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    };
     const moves = chess.generateKingMoves(board, 7, 4, king, rights);
     expect(moves).toHaveLength(5);
-    expect(moves.some(m => m.to === 'd1')).toBe(true);
-    expect(moves.some(m => m.to === 'd2')).toBe(true);
-    expect(moves.some(m => m.to === 'e2')).toBe(true);
-    expect(moves.some(m => m.to === 'f1')).toBe(true);
-    expect(moves.some(m => m.to === 'f2')).toBe(true);
+    expect(moves.some((m) => m.to === 'd1')).toBe(true);
+    expect(moves.some((m) => m.to === 'd2')).toBe(true);
+    expect(moves.some((m) => m.to === 'e2')).toBe(true);
+    expect(moves.some((m) => m.to === 'f1')).toBe(true);
+    expect(moves.some((m) => m.to === 'f2')).toBe(true);
   });
 });
 
@@ -2396,107 +2438,124 @@ describe('checkmate patterns', () => {
   }
 
   test('queen a7 + king a6 mate', () => {
-    assertCheckmate(boardFromFenLike([
-      'k.......',
-      'Q.......',
-      'K.......',
-      '........',
-      '........',
-      '........',
-      '........',
-      '........',
-    ]));
+    assertCheckmate(
+      boardFromFenLike([
+        'k.......',
+        'Q.......',
+        'K.......',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+      ]),
+    );
   });
 
   test('queen b7 + king a6 mate', () => {
-    assertCheckmate(boardFromFenLike([
-      'k.......',
-      '.Q......',
-      'K.......',
-      '........',
-      '........',
-      '........',
-      '........',
-      '........',
-    ]));
+    assertCheckmate(
+      boardFromFenLike([
+        'k.......',
+        '.Q......',
+        'K.......',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+      ]),
+    );
   });
 
   test('queen a7 + king b5 mate', () => {
-    assertCheckmate(boardFromFenLike([
-      'k.......',
-      'Q.......',
-      '.K......',
-      '........',
-      '........',
-      '........',
-      '........',
-      '........',
-    ]));
+    assertCheckmate(
+      boardFromFenLike([
+        'k.......',
+        'Q.......',
+        '.K......',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+      ]),
+    );
   });
 
   test('queen b7 + king b6 mate', () => {
-    assertCheckmate(boardFromFenLike([
-      'k.......',
-      '.Q......',
-      '.K......',
-      '........',
-      '........',
-      '........',
-      '........',
-      '........',
-    ]));
+    assertCheckmate(
+      boardFromFenLike([
+        'k.......',
+        '.Q......',
+        '.K......',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+      ]),
+    );
   });
 
   test('rook h7 + king g7 mate', () => {
-    assertCheckmate(boardFromFenLike([
-      '.......k',
-      '......KR',
-      '........',
-      '........',
-      '........',
-      '........',
-      '........',
-      '........',
-    ]));
+    assertCheckmate(
+      boardFromFenLike([
+        '.......k',
+        '......KR',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+      ]),
+    );
   });
 
   test('rook a7 + rook b7 mate', () => {
-    assertCheckmate(boardFromFenLike([
-      'k.......',
-      'RR......',
-      '........',
-      'K.......',
-      '........',
-      '........',
-      '........',
-      '........',
-    ]));
+    assertCheckmate(
+      boardFromFenLike([
+        'k.......',
+        'RR......',
+        '........',
+        'K.......',
+        '........',
+        '........',
+        '........',
+        '........',
+      ]),
+    );
   });
 
   test('queen h7 + king g6 mate', () => {
-    assertCheckmate(boardFromFenLike([
-      '.......k',
-      '.......Q',
-      '......K.',
-      '........',
-      '........',
-      '........',
-      '........',
-      '........',
-    ]));
+    assertCheckmate(
+      boardFromFenLike([
+        '.......k',
+        '.......Q',
+        '......K.',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+      ]),
+    );
   });
 
   test('black queen a2 + king b3 mate', () => {
-    assertCheckmate(boardFromFenLike([
-      'K.......',
-      'q.......',
-      '.k......',
-      '........',
-      '........',
-      '........',
-      '........',
-      '........',
-    ]), 'white');
+    assertCheckmate(
+      boardFromFenLike([
+        'K.......',
+        'q.......',
+        '.k......',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+      ]),
+      'white',
+    );
   });
 });
 
@@ -2514,29 +2573,33 @@ describe('stalemate patterns', () => {
   }
 
   test('queen b6 + king c5 stalemate', () => {
-    assertStalemate(boardFromFenLike([
-      'k.......',
-      '........',
-      '.Q......',
-      '..K.....',
-      '........',
-      '........',
-      '........',
-      '........',
-    ]));
+    assertStalemate(
+      boardFromFenLike([
+        'k.......',
+        '........',
+        '.Q......',
+        '..K.....',
+        '........',
+        '........',
+        '........',
+        '........',
+      ]),
+    );
   });
 
   test('queen c7 + king b6 stalemate', () => {
-    assertStalemate(boardFromFenLike([
-      'k.......',
-      '..Q.....',
-      '.K......',
-      '........',
-      '........',
-      '........',
-      '........',
-      '........',
-    ]));
+    assertStalemate(
+      boardFromFenLike([
+        'k.......',
+        '..Q.....',
+        '.K......',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+      ]),
+    );
   });
 
   test('king in center surrounded by own pawns has moves', () => {
@@ -2575,7 +2638,7 @@ describe('en passant — additional edge cases', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    expect(moves.some(m => m.isEnPassant && m.from === 'd4' && m.to === 'e3')).toBe(true);
+    expect(moves.some((m) => m.isEnPassant && m.from === 'd4' && m.to === 'e3')).toBe(true);
   });
 
   test('black en passant as only legal move to avoid check', () => {
@@ -2598,7 +2661,7 @@ describe('en passant — additional edge cases', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    expect(moves.some(m => m.isEnPassant && m.from === 'd4' && m.to === 'e3')).toBe(true);
+    expect(moves.some((m) => m.isEnPassant && m.from === 'd4' && m.to === 'e3')).toBe(true);
   });
 
   test('two pawns adjacent to en passant target', () => {
@@ -2625,8 +2688,8 @@ describe('en passant — additional edge cases', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    expect(moves.some(m => m.from === 'c5' && m.to === 'd6' && m.isEnPassant)).toBe(true);
-    expect(moves.some(m => m.from === 'e5' && m.to === 'd6' && m.isEnPassant)).toBe(true);
+    expect(moves.some((m) => m.from === 'c5' && m.to === 'd6' && m.isEnPassant)).toBe(true);
+    expect(moves.some((m) => m.from === 'e5' && m.to === 'd6' && m.isEnPassant)).toBe(true);
   });
 
   test('en passant target resets after one turn', () => {
@@ -2645,7 +2708,7 @@ describe('en passant — additional edge cases', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    expect(moves.every(m => !m.isEnPassant)).toBe(true);
+    expect(moves.every((m) => !m.isEnPassant)).toBe(true);
   });
 });
 
@@ -2670,7 +2733,7 @@ describe('castling — black and additional', () => {
       black: { kingside: true, queenside: true },
     };
     const moves = chess.getLegalMoves(board, 'black', null, rights);
-    expect(moves.some(m => m.isCastling === 'kingside' && m.from === 'e8')).toBe(true);
+    expect(moves.some((m) => m.isCastling === 'kingside' && m.from === 'e8')).toBe(true);
   });
 
   test('black queenside castling', () => {
@@ -2689,7 +2752,7 @@ describe('castling — black and additional', () => {
       black: { kingside: true, queenside: true },
     };
     const moves = chess.getLegalMoves(board, 'black', null, rights);
-    expect(moves.some(m => m.isCastling === 'queenside' && m.from === 'e8')).toBe(true);
+    expect(moves.some((m) => m.isCastling === 'queenside' && m.from === 'e8')).toBe(true);
   });
 
   test('castling blocked by enemy piece attacking through intermediate square', () => {
@@ -2712,7 +2775,7 @@ describe('castling — black and additional', () => {
     /* Rook on f8 attacks f8, which the king passes through during kingside castle.
      * Actually, the king on e8 would try to pass through f8 to g8. f8 is attacked. */
     const moves = chess.getLegalMoves(board, 'black', null, rights);
-    expect(moves.some(m => m.isCastling === 'kingside' && m.from === 'e8')).toBe(false);
+    expect(moves.some((m) => m.isCastling === 'kingside' && m.from === 'e8')).toBe(false);
   });
 
   test('castling right forfeited by rook moving', () => {
@@ -2732,8 +2795,8 @@ describe('castling — black and additional', () => {
       black: { kingside: false, queenside: false },
     };
     const moves = chess.getLegalMoves(board, 'white', null, rights);
-    expect(moves.some(m => m.isCastling === 'kingside')).toBe(false);
-    expect(moves.some(m => m.isCastling === 'queenside')).toBe(true);
+    expect(moves.some((m) => m.isCastling === 'kingside')).toBe(false);
+    expect(moves.some((m) => m.isCastling === 'queenside')).toBe(true);
   });
 });
 
@@ -2762,7 +2825,13 @@ describe('moveToAlgebraic — extended', () => {
 
   test('promotion capture notation fxg8=Q', () => {
     const notation = chess.moveToAlgebraic(
-      { from: 'f7', to: 'g8', piece: { type: 'pawn', color: 'white' }, promotion: 'queen', captured: { type: 'rook', color: 'black' } },
+      {
+        from: 'f7',
+        to: 'g8',
+        piece: { type: 'pawn', color: 'white' },
+        promotion: 'queen',
+        captured: { type: 'rook', color: 'black' },
+      },
       { type: 'rook', color: 'black' },
       [],
     );
@@ -2811,7 +2880,12 @@ describe('moveToAlgebraic — extended', () => {
   });
 
   test('disambiguation with capture', () => {
-    const m1: Move = { from: 'a1', to: 'a3', piece: { type: 'rook', color: 'white' }, captured: { type: 'pawn', color: 'black' } };
+    const m1: Move = {
+      from: 'a1',
+      to: 'a3',
+      piece: { type: 'rook', color: 'white' },
+      captured: { type: 'pawn', color: 'black' },
+    };
     const m2: Move = { from: 'a8', to: 'a3', piece: { type: 'rook', color: 'white' } };
     expect(chess.moveToAlgebraic(m1, { type: 'pawn', color: 'black' }, [m1, m2])).toBe('R1xa3');
   });
@@ -2841,9 +2915,9 @@ describe('isSquareAttackedBy — extended', () => {
       '........',
     ]);
     /* Bishop on a3 (board[5][0]) attacks along diagonal to b4,c5,d6,e7,f8 */
-    expect(chess.isSquareAttackedBy(board, 0, 5, 'white')).toBe(true);  /* f8 */
-    expect(chess.isSquareAttackedBy(board, 1, 4, 'white')).toBe(true);  /* e7 */
-    expect(chess.isSquareAttackedBy(board, 4, 1, 'white')).toBe(true);  /* ? b5 */
+    expect(chess.isSquareAttackedBy(board, 0, 5, 'white')).toBe(true); /* f8 */
+    expect(chess.isSquareAttackedBy(board, 1, 4, 'white')).toBe(true); /* e7 */
+    expect(chess.isSquareAttackedBy(board, 4, 1, 'white')).toBe(true); /* ? b5 */
   });
 
   test('king attacks adjacent squares', () => {
@@ -2857,11 +2931,11 @@ describe('isSquareAttackedBy — extended', () => {
       '........',
       '....K...',
     ]);
-    expect(chess.isSquareAttackedBy(board, 7, 3, 'white')).toBe(true);  /* d1 */
-    expect(chess.isSquareAttackedBy(board, 7, 5, 'white')).toBe(true);  /* f1 */
-    expect(chess.isSquareAttackedBy(board, 6, 3, 'white')).toBe(true);  /* d2 */
-    expect(chess.isSquareAttackedBy(board, 6, 4, 'white')).toBe(true);  /* e2 */
-    expect(chess.isSquareAttackedBy(board, 6, 5, 'white')).toBe(true);  /* f2 */
+    expect(chess.isSquareAttackedBy(board, 7, 3, 'white')).toBe(true); /* d1 */
+    expect(chess.isSquareAttackedBy(board, 7, 5, 'white')).toBe(true); /* f1 */
+    expect(chess.isSquareAttackedBy(board, 6, 3, 'white')).toBe(true); /* d2 */
+    expect(chess.isSquareAttackedBy(board, 6, 4, 'white')).toBe(true); /* e2 */
+    expect(chess.isSquareAttackedBy(board, 6, 5, 'white')).toBe(true); /* f2 */
     expect(chess.isSquareAttackedBy(board, 5, 4, 'white')).toBe(false); /* e3 (too far) */
   });
 
@@ -2877,7 +2951,7 @@ describe('isSquareAttackedBy — extended', () => {
       '........',
     ]);
     /* White pawn on a2 (board[6][0]) attacks b3 (board[5][1]) */
-    expect(chess.isSquareAttackedBy(board, 5, 1, 'white')).toBe(true);  /* b3 */
+    expect(chess.isSquareAttackedBy(board, 5, 1, 'white')).toBe(true); /* b3 */
     expect(chess.isSquareAttackedBy(board, 5, 0, 'white')).toBe(false); /* a3 (straight, not a capture) */
   });
 
@@ -2893,7 +2967,7 @@ describe('isSquareAttackedBy — extended', () => {
       '........',
     ]);
     /* White pawn on h2 (board[6][7]) attacks g3 (board[5][6]) */
-    expect(chess.isSquareAttackedBy(board, 5, 6, 'white')).toBe(true);  /* g3 */
+    expect(chess.isSquareAttackedBy(board, 5, 6, 'white')).toBe(true); /* g3 */
     expect(chess.isSquareAttackedBy(board, 5, 7, 'white')).toBe(false); /* h3 */
   });
 
@@ -2942,15 +3016,15 @@ describe('isSquareAttackedBy — extended', () => {
       '........',
     ]);
     /* Knight on a5 (board[4][0]) attacks */
-    expect(chess.isSquareAttackedBy(board, 2, 1, 'white')).toBe(true);  /* c6 */
-    expect(chess.isSquareAttackedBy(board, 3, 2, 'white')).toBe(true);  /* c5? No. b7(2,1?) Wait. */
+    expect(chess.isSquareAttackedBy(board, 2, 1, 'white')).toBe(true); /* c6 */
+    expect(chess.isSquareAttackedBy(board, 3, 2, 'white')).toBe(true); /* c5? No. b7(2,1?) Wait. */
     /* Knight on a5(4,0): offsets (-2,-1)→(2,-1) off board, (-2,1)→(2,1)=c6 ✓,
      * (-1,-2)→(3,-2) off, (-1,2)→(3,2)=c5?, (1,-2)→(5,-2) off, (1,2)→(5,2)=c4?,
      * (2,-1)→(6,-1) off, (2,1)→(6,1)=b3 ✓ */
-    expect(chess.isSquareAttackedBy(board, 2, 1, 'white')).toBe(true);  /* c6 */
-    expect(chess.isSquareAttackedBy(board, 3, 2, 'white')).toBe(true);  /* c5 */
-    expect(chess.isSquareAttackedBy(board, 5, 2, 'white')).toBe(true);  /* c4 */
-    expect(chess.isSquareAttackedBy(board, 6, 1, 'white')).toBe(true);  /* b3 */
+    expect(chess.isSquareAttackedBy(board, 2, 1, 'white')).toBe(true); /* c6 */
+    expect(chess.isSquareAttackedBy(board, 3, 2, 'white')).toBe(true); /* c5 */
+    expect(chess.isSquareAttackedBy(board, 5, 2, 'white')).toBe(true); /* c4 */
+    expect(chess.isSquareAttackedBy(board, 6, 1, 'white')).toBe(true); /* b3 */
     expect(chess.isSquareAttackedBy(board, 4, 0, 'white')).toBe(false); /* a5 (same square) */
   });
 });
@@ -3040,9 +3114,12 @@ describe('applyMove — extended', () => {
       '........',
       'R...K..R',
     ]);
-    const rights: CastlingRights = { white: { kingside: true, queenside: true }, black: { kingside: false, queenside: false } };
+    const rights: CastlingRights = {
+      white: { kingside: true, queenside: true },
+      black: { kingside: false, queenside: false },
+    };
     const legalMoves = chess.getLegalMoves(board, 'white', null, rights);
-    const qsCastle = legalMoves.find(m => m.isCastling === 'queenside')!;
+    const qsCastle = legalMoves.find((m) => m.isCastling === 'queenside')!;
     expect(qsCastle).toBeDefined();
 
     const { newBoard } = chess.applyMove(board, qsCastle, rights);
@@ -3101,14 +3178,14 @@ describe('serializeBoard — extended', () => {
   test('initial board has correct piece types', () => {
     const board = chess.createInitialBoard();
     const serialized = chess.serializeBoard(board);
-    const kings = serialized.filter(s => s.piece === 'king');
-    const queens = serialized.filter(s => s.piece === 'queen');
+    const kings = serialized.filter((s) => s.piece === 'king');
+    const queens = serialized.filter((s) => s.piece === 'queen');
     expect(kings).toHaveLength(2);
     expect(queens).toHaveLength(2);
-    expect(kings.some(k => k.color === 'white' && k.square === 'e1')).toBe(true);
-    expect(kings.some(k => k.color === 'black' && k.square === 'e8')).toBe(true);
-    expect(queens.some(q => q.color === 'white' && q.square === 'd1')).toBe(true);
-    expect(queens.some(q => q.color === 'black' && q.square === 'd8')).toBe(true);
+    expect(kings.some((k) => k.color === 'white' && k.square === 'e1')).toBe(true);
+    expect(kings.some((k) => k.color === 'black' && k.square === 'e8')).toBe(true);
+    expect(queens.some((q) => q.color === 'white' && q.square === 'd1')).toBe(true);
+    expect(queens.some((q) => q.color === 'black' && q.square === 'd8')).toBe(true);
   });
 });
 
@@ -3130,12 +3207,12 @@ describe('engine utilities', () => {
   });
 
   test('isInBounds returns correct results', () => {
-    expect(chess.isInBounds(0, 0)).toBe(true);   /* a8 */
-    expect(chess.isInBounds(7, 7)).toBe(true);   /* h1 */
+    expect(chess.isInBounds(0, 0)).toBe(true); /* a8 */
+    expect(chess.isInBounds(7, 7)).toBe(true); /* h1 */
     expect(chess.isInBounds(-1, 0)).toBe(false); /* off top */
-    expect(chess.isInBounds(8, 0)).toBe(false);  /* off bottom */
+    expect(chess.isInBounds(8, 0)).toBe(false); /* off bottom */
     expect(chess.isInBounds(0, -1)).toBe(false); /* off left */
-    expect(chess.isInBounds(0, 8)).toBe(false);  /* off right */
+    expect(chess.isInBounds(0, 8)).toBe(false); /* off right */
   });
 
   test('squareToIndices and indicesToSquare are inverses for all squares', () => {
@@ -3165,7 +3242,8 @@ describe('engine utilities', () => {
 
   test('createInitialBoard has 8 pawns per side', () => {
     const board = chess.createInitialBoard();
-    let whitePawns = 0, blackPawns = 0;
+    let whitePawns = 0,
+      blackPawns = 0;
     for (let r = 0; r < 8; r++) {
       for (let f = 0; f < 8; f++) {
         const p = board[r][f];
@@ -3324,7 +3402,12 @@ describe('castling rights on rook move', () => {
       '........',
       'Q...K...',
     ]);
-    const move: Move = { from: 'a1', to: 'a8', piece: { type: 'queen', color: 'white' }, captured: { type: 'rook', color: 'black' } };
+    const move: Move = {
+      from: 'a1',
+      to: 'a8',
+      piece: { type: 'queen', color: 'white' },
+      captured: { type: 'rook', color: 'black' },
+    };
     const { castlingRights: newRights } = chess.applyMove(board2, move, rights);
     expect(newRights.black.queenside).toBe(false);
     expect(newRights.black.kingside).toBe(true);
@@ -3376,7 +3459,7 @@ describe('legal move counts — extended', () => {
      * Wait, is that right? Qc2 attacks along c-file, Rb3 attacks along
      * rank 3 and file b, Bc3 attacks along diagonal. Let me just verify
      * king moves */
-    expect(moves.every(m => m.from === 'd1')).toBe(true); /* Only king moves */
+    expect(moves.every((m) => m.from === 'd1')).toBe(true); /* Only king moves */
   });
 
   test('position with all pieces has many legal moves', () => {
@@ -3406,10 +3489,10 @@ describe('legal move counts — extended', () => {
     });
     /* Pawn is pinned along the a-file but can still advance (stays blocking) */
     expect(moves.length).toBe(4);
-    expect(moves.some(m => m.from === 'a2' && m.to === 'a3')).toBe(true);
-    expect(moves.some(m => m.from === 'a2' && m.to === 'a4')).toBe(true);
-    expect(moves.some(m => m.from === 'a1' && m.to === 'b1')).toBe(true);
-    expect(moves.some(m => m.from === 'a1' && m.to === 'b2')).toBe(true);
+    expect(moves.some((m) => m.from === 'a2' && m.to === 'a3')).toBe(true);
+    expect(moves.some((m) => m.from === 'a2' && m.to === 'a4')).toBe(true);
+    expect(moves.some((m) => m.from === 'a1' && m.to === 'b1')).toBe(true);
+    expect(moves.some((m) => m.from === 'a1' && m.to === 'b2')).toBe(true);
   });
 });
 
@@ -3462,14 +3545,18 @@ describe('getGameStatus — edge cases', () => {
 describe('50-move rule', () => {
   test('updateHalfMoveClock resets to 0 on pawn move', () => {
     const move: Move = {
-      from: 'e2', to: 'e4', piece: { type: 'pawn', color: 'white' },
+      from: 'e2',
+      to: 'e4',
+      piece: { type: 'pawn', color: 'white' },
     };
     expect(chess.updateHalfMoveClock(move, 42)).toBe(0);
   });
 
   test('updateHalfMoveClock resets to 0 on capture', () => {
     const move: Move = {
-      from: 'd5', to: 'e6', piece: { type: 'queen', color: 'white' },
+      from: 'd5',
+      to: 'e6',
+      piece: { type: 'queen', color: 'white' },
       captured: { type: 'pawn', color: 'black' },
     };
     expect(chess.updateHalfMoveClock(move, 37)).toBe(0);
@@ -3477,7 +3564,9 @@ describe('50-move rule', () => {
 
   test('updateHalfMoveClock increments by 1 otherwise', () => {
     const move: Move = {
-      from: 'g1', to: 'f3', piece: { type: 'knight', color: 'white' },
+      from: 'g1',
+      to: 'f3',
+      piece: { type: 'knight', color: 'white' },
     };
     expect(chess.updateHalfMoveClock(move, 5)).toBe(6);
   });
@@ -3493,10 +3582,16 @@ describe('50-move rule', () => {
       '........',
       'K.......',
     ]);
-    const { status } = chess.getGameStatus(board, 'white', null, {
-      white: { kingside: false, queenside: false },
-      black: { kingside: false, queenside: false },
-    }, 100);
+    const { status } = chess.getGameStatus(
+      board,
+      'white',
+      null,
+      {
+        white: { kingside: false, queenside: false },
+        black: { kingside: false, queenside: false },
+      },
+      100,
+    );
     expect(status).toBe('draw');
   });
 
@@ -3511,10 +3606,16 @@ describe('50-move rule', () => {
       '........',
       'K.......',
     ]);
-    const { status } = chess.getGameStatus(board, 'white', null, {
-      white: { kingside: false, queenside: false },
-      black: { kingside: false, queenside: false },
-    }, 99);
+    const { status } = chess.getGameStatus(
+      board,
+      'white',
+      null,
+      {
+        white: { kingside: false, queenside: false },
+        black: { kingside: false, queenside: false },
+      },
+      99,
+    );
     expect(status).toBe('active');
   });
 

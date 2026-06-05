@@ -1,0 +1,9 @@
+dist/
+node_modules/
+pnpm-lock.yaml
+coverage/
+release/
+*.yml
+*.yaml
+Dockerfile
+.dockerignore

@@ -14,10 +14,7 @@ const request = supertest(app);
 /* Register a player via POST /auth/register and return auth credentials.
  * Used by nearly every test to obtain a bearer token. */
 async function registerPlayer(username: string): Promise<{ playerId: string; token: string; authHeader: string }> {
-  const res = await request
-    .post('/auth/register')
-    .send({ username })
-    .expect(201);
+  const res = await request.post('/auth/register').send({ username }).expect(201);
   return {
     playerId: res.body.playerId,
     token: res.body.token,
@@ -29,41 +26,24 @@ async function registerPlayer(username: string): Promise<{ playerId: string; tok
 /* Create a game as the authenticated player (they become white).
  * Returns the game ID. */
 async function createGame(authHeader: string): Promise<string> {
-  const res = await request
-    .post('/games')
-    .set('Authorization', authHeader)
-    .expect(201);
+  const res = await request.post('/games').set('Authorization', authHeader).expect(201);
   return res.body.id;
 }
 
 /* Join a game as black (expects 200 OK). */
 async function joinGame(gameId: string, authHeader: string): Promise<void> {
-  await request
-    .post(`/games/${gameId}/join`)
-    .set('Authorization', authHeader)
-    .expect(200);
+  await request.post(`/games/${gameId}/join`).set('Authorization', authHeader).expect(200);
 }
 
 /* Make a move in a game.  Returns the response for further assertions. */
-async function makeMove(
-  gameId: string,
-  authHeader: string,
-  from: string,
-  to: string,
-): Promise<supertest.Response> {
-  return request
-    .post(`/games/${gameId}/move`)
-    .set('Authorization', authHeader)
-    .send({ from, to });
+async function makeMove(gameId: string, authHeader: string, from: string, to: string): Promise<supertest.Response> {
+  return request.post(`/games/${gameId}/move`).set('Authorization', authHeader).send({ from, to });
 }
 
 describe('Auth', () => {
   test('POST /auth/register creates a player and returns token', async () => {
     /* Happy path: registration returns playerId and bearer token */
-    const res = await request
-      .post('/auth/register')
-      .send({ username: 'alice' })
-      .expect(201);
+    const res = await request.post('/auth/register').send({ username: 'alice' }).expect(201);
     expect(res.body).toHaveProperty('playerId');
     expect(res.body).toHaveProperty('token');
     expect(typeof res.body.playerId).toBe('string');
@@ -72,36 +52,25 @@ describe('Auth', () => {
 
   test('POST /auth/register rejects empty username', async () => {
     /* Empty string is not a valid username */
-    await request
-      .post('/auth/register')
-      .send({ username: '' })
-      .expect(400);
+    await request.post('/auth/register').send({ username: '' }).expect(400);
   });
 
   test('GET /auth/me returns player info with valid token', async () => {
     /* Register a player, then verify the token works for /auth/me */
     const { token } = await registerPlayer('bob');
-    const res = await request
-      .get('/auth/me')
-      .set('Authorization', `Bearer ${token}`)
-      .expect(200);
+    const res = await request.get('/auth/me').set('Authorization', `Bearer ${token}`).expect(200);
     expect(res.body.username).toBe('bob');
     expect(res.body).toHaveProperty('id');
   });
 
   test('GET /auth/me rejects invalid token', async () => {
     /* Random token should be rejected */
-    await request
-      .get('/auth/me')
-      .set('Authorization', 'Bearer invalid-token')
-      .expect(401);
+    await request.get('/auth/me').set('Authorization', 'Bearer invalid-token').expect(401);
   });
 
   test('GET /auth/me rejects missing auth header', async () => {
     /* No auth header at all -> 401 */
-    await request
-      .get('/auth/me')
-      .expect(401);
+    await request.get('/auth/me').expect(401);
   });
 });
 
@@ -109,10 +78,7 @@ describe('Game creation and joining', () => {
   test('POST /games creates a waiting game', async () => {
     /* New game starts in 'waiting' status with only the white player */
     const { authHeader } = await registerPlayer('p1');
-    const res = await request
-      .post('/games')
-      .set('Authorization', authHeader)
-      .expect(201);
+    const res = await request.post('/games').set('Authorization', authHeader).expect(201);
     expect(res.body.status).toBe('waiting');
     expect(res.body.players.white).toBeDefined();
   });
@@ -123,9 +89,7 @@ describe('Game creation and joining', () => {
     const white = await registerPlayer('p2_2');
     await createGame(white.authHeader);
 
-    const res = await request
-      .get('/games')
-      .expect(200);
+    const res = await request.get('/games').expect(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBeGreaterThanOrEqual(1);
     /* All listed games must be in 'waiting' status */
@@ -138,10 +102,7 @@ describe('Game creation and joining', () => {
     const black = await registerPlayer('joiner');
     const gameId = await createGame(white.authHeader);
 
-    const res = await request
-      .post(`/games/${gameId}/join`)
-      .set('Authorization', black.authHeader)
-      .expect(200);
+    const res = await request.post(`/games/${gameId}/join`).set('Authorization', black.authHeader).expect(200);
     expect(res.body.status).toBe('active');
     expect(res.body.players.white).toBe(white.playerId);
     expect(res.body.players.black).toBe(black.playerId);
@@ -152,10 +113,7 @@ describe('Game creation and joining', () => {
     const p = await registerPlayer('lonely');
     const gameId = await createGame(p.authHeader);
 
-    await request
-      .post(`/games/${gameId}/join`)
-      .set('Authorization', p.authHeader)
-      .expect(400);
+    await request.post(`/games/${gameId}/join`).set('Authorization', p.authHeader).expect(400);
   });
 });
 
@@ -176,17 +134,17 @@ describe("Scholar's mate (full game)", () => {
     await joinGame(gameId, black.authHeader);
 
     /* 1. e4 — white's first move, king's pawn advance */
-    await makeMove(gameId, white.authHeader, 'e2', 'e4').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'e2', 'e4').then((r) => expect(r.status).toBe(200));
     /* 1... e5 — black responds symmetrically */
-    await makeMove(gameId, black.authHeader, 'e7', 'e5').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'e7', 'e5').then((r) => expect(r.status).toBe(200));
     /* 2. Qh5 — white develops queen early (aggressive) */
-    await makeMove(gameId, white.authHeader, 'd1', 'h5').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'd1', 'h5').then((r) => expect(r.status).toBe(200));
     /* 2... Nc6 — black develops a knight */
-    await makeMove(gameId, black.authHeader, 'b8', 'c6').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'b8', 'c6').then((r) => expect(r.status).toBe(200));
     /* 3. Bc4 — white develops bishop to threatening diagonal */
-    await makeMove(gameId, white.authHeader, 'f1', 'c4').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'f1', 'c4').then((r) => expect(r.status).toBe(200));
     /* 3... Nf6 — black develops other knight (doesn't see the threat) */
-    await makeMove(gameId, black.authHeader, 'g8', 'f6').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'g8', 'f6').then((r) => expect(r.status).toBe(200));
     /* 4. Qxf7# — queen captures f7 pawn with checkmate! */
     const result = await makeMove(gameId, white.authHeader, 'h5', 'f7');
     expect(result.status).toBe(200);
@@ -253,10 +211,7 @@ describe('Resign', () => {
     const gameId = await createGame(white.authHeader);
     await joinGame(gameId, black.authHeader);
 
-    const res = await request
-      .post(`/games/${gameId}/resign`)
-      .set('Authorization', white.authHeader)
-      .expect(200);
+    const res = await request.post(`/games/${gameId}/resign`).set('Authorization', white.authHeader).expect(200);
     expect(res.body.status).toBe('resigned');
     expect(res.body.winner).toBe('black');
   });
@@ -270,10 +225,7 @@ describe('GET /games/:gameId/moves', () => {
     const gameId = await createGame(white.authHeader);
     await joinGame(gameId, black.authHeader);
 
-    const res = await request
-      .get(`/games/${gameId}/moves`)
-      .set('Authorization', white.authHeader)
-      .expect(200);
+    const res = await request.get(`/games/${gameId}/moves`).set('Authorization', white.authHeader).expect(200);
     expect(res.body.moves).toBeDefined();
     expect(Array.isArray(res.body.moves)).toBe(true);
     expect(res.body.moves.length).toBeGreaterThan(0);
@@ -303,16 +255,9 @@ describe('Private games via API', () => {
     const pub = await registerPlayer('pub1');
     const priv = await registerPlayer('priv2');
 
-    await request
-      .post('/games')
-      .set('Authorization', pub.authHeader)
-      .expect(201);
+    await request.post('/games').set('Authorization', pub.authHeader).expect(201);
 
-    await request
-      .post('/games')
-      .set('Authorization', priv.authHeader)
-      .send({ visibility: 'private' })
-      .expect(201);
+    await request.post('/games').set('Authorization', priv.authHeader).send({ visibility: 'private' }).expect(201);
 
     const list = await request.get('/games').expect(200);
     expect(Array.isArray(list.body)).toBe(true);
@@ -333,10 +278,7 @@ describe('Private games via API', () => {
       .expect(201);
     const gameId = createRes.body.id;
 
-    const joinRes = await request
-      .post(`/games/${gameId}/join`)
-      .set('Authorization', joiner.authHeader)
-      .expect(200);
+    const joinRes = await request.post(`/games/${gameId}/join`).set('Authorization', joiner.authHeader).expect(200);
     expect(joinRes.body.status).toBe('active');
     expect(joinRes.body.players.black).toBe(joiner.playerId);
   });
@@ -357,10 +299,7 @@ describe('Private games via API', () => {
 
   test('default visibility is public when field omitted', async () => {
     const p = await registerPlayer('defaultvis');
-    const res = await request
-      .post('/games')
-      .set('Authorization', p.authHeader)
-      .expect(201);
+    const res = await request.post('/games').set('Authorization', p.authHeader).expect(201);
     expect(res.body.visibility).toBe('public');
   });
 });
@@ -368,9 +307,7 @@ describe('Private games via API', () => {
 describe('GET /health', () => {
   test('returns health status with uptime and stats', async () => {
     /* Health endpoint is unauthenticated and always returns OK */
-    const res = await request
-      .get('/health')
-      .expect(200);
+    const res = await request.get('/health').expect(200);
     expect(res.body.status).toBe('ok');
     expect(res.body).toHaveProperty('uptime');
     expect(res.body).toHaveProperty('gamesActive');
@@ -380,17 +317,11 @@ describe('GET /health', () => {
 
 describe('Auth — extended', () => {
   test('POST /auth/register with whitespace-only username is rejected', async () => {
-    await request
-      .post('/auth/register')
-      .send({ username: '   ' })
-      .expect(400);
+    await request.post('/auth/register').send({ username: '   ' }).expect(400);
   });
 
   test('POST /auth/register with non-string username is rejected', async () => {
-    await request
-      .post('/auth/register')
-      .send({ username: 123 })
-      .expect(400);
+    await request.post('/auth/register').send({ username: 123 }).expect(400);
   });
 
   test('GET /auth/me without token is rejected', async () => {
@@ -398,26 +329,18 @@ describe('Auth — extended', () => {
   });
 
   test('GET /auth/me with malformed auth header is rejected', async () => {
-    await request
-      .get('/auth/me')
-      .set('Authorization', 'NotBearer token')
-      .expect(401);
+    await request.get('/auth/me').set('Authorization', 'NotBearer token').expect(401);
   });
 });
 
 describe('Game creation — extended', () => {
   test('POST /games without auth is rejected', async () => {
-    await request
-      .post('/games')
-      .expect(401);
+    await request.post('/games').expect(401);
   });
 
   test('POST /games creates public game by default', async () => {
     const p = await registerPlayer('defpub');
-    const res = await request
-      .post('/games')
-      .set('Authorization', p.authHeader)
-      .expect(201);
+    const res = await request.post('/games').set('Authorization', p.authHeader).expect(201);
     expect(res.body.visibility).toBe('public');
   });
 
@@ -435,44 +358,32 @@ describe('Game creation — extended', () => {
 describe('Game joining — extended', () => {
   test('cannot join non-existent game', async () => {
     const p = await registerPlayer('nonexist');
-    await request
-      .post('/games/fake-id/join')
-      .set('Authorization', p.authHeader)
-      .expect(400);
+    await request.post('/games/fake-id/join').set('Authorization', p.authHeader).expect(400);
   });
 
   test('cannot join without auth', async () => {
     const host = await registerPlayer('noauth_host');
     const gameId = await createGame(host.authHeader);
-    await request
-      .post(`/games/${gameId}/join`)
-      .expect(401);
+    await request.post(`/games/${gameId}/join`).expect(401);
   });
 
   test('cannot join own game', async () => {
     const p = await registerPlayer('ownjoin');
     const gameId = await createGame(p.authHeader);
-    await request
-      .post(`/games/${gameId}/join`)
-      .set('Authorization', p.authHeader)
-      .expect(400);
+    await request.post(`/games/${gameId}/join`).set('Authorization', p.authHeader).expect(400);
   });
 
   test('GET /games/:gameId returns game details', async () => {
     const p = await registerPlayer('getdetail');
     const gameId = await createGame(p.authHeader);
-    const res = await request
-      .get(`/games/${gameId}`)
-      .expect(200);
+    const res = await request.get(`/games/${gameId}`).expect(200);
     expect(res.body.id).toBe(gameId);
     expect(res.body.status).toBe('waiting');
     expect(res.body.players.white).toBe(p.playerId);
   });
 
   test('GET /games/:gameId returns 404 for non-existent', async () => {
-    await request
-      .get('/games/non-existent')
-      .expect(404);
+    await request.get('/games/non-existent').expect(404);
   });
 });
 
@@ -552,12 +463,12 @@ describe('Promotion via API', () => {
     await joinGame(gameId, black.authHeader);
 
     /* Move pawns forward */
-    await makeMove(gameId, white.authHeader, 'e2', 'e4').then(r => expect(r.status).toBe(200));
-    await makeMove(gameId, black.authHeader, 'd7', 'd5').then(r => expect(r.status).toBe(200));
-    await makeMove(gameId, white.authHeader, 'e4', 'd5').then(r => expect(r.status).toBe(200));
-    await makeMove(gameId, black.authHeader, 'c7', 'c6').then(r => expect(r.status).toBe(200));
-    await makeMove(gameId, white.authHeader, 'd5', 'c6').then(r => expect(r.status).toBe(200));
-    await makeMove(gameId, black.authHeader, 'b8', 'c6').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'e2', 'e4').then((r) => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'd7', 'd5').then((r) => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'e4', 'd5').then((r) => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'c7', 'c6').then((r) => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'd5', 'c6').then((r) => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'b8', 'c6').then((r) => expect(r.status).toBe(200));
   });
 });
 
@@ -566,10 +477,7 @@ describe('GET /games/:gameId/moves — extended', () => {
     const p = await registerPlayer('moves_wait');
     const gameId = await createGame(p.authHeader);
 
-    await request
-      .get(`/games/${gameId}/moves`)
-      .set('Authorization', p.authHeader)
-      .expect(400);
+    await request.get(`/games/${gameId}/moves`).set('Authorization', p.authHeader).expect(400);
   });
 
   test('returns proper move format', async () => {
@@ -578,10 +486,7 @@ describe('GET /games/:gameId/moves — extended', () => {
     const gameId = await createGame(white.authHeader);
     await joinGame(gameId, black.authHeader);
 
-    const res = await request
-      .get(`/games/${gameId}/moves`)
-      .set('Authorization', white.authHeader)
-      .expect(200);
+    const res = await request.get(`/games/${gameId}/moves`).set('Authorization', white.authHeader).expect(200);
     expect(Array.isArray(res.body.moves)).toBe(true);
     if (res.body.moves.length > 0) {
       expect(res.body.moves[0]).toHaveProperty('from');
@@ -599,43 +504,35 @@ describe('Resign — extended', () => {
     const gameId = await createGame(white.authHeader);
     await joinGame(gameId, black.authHeader);
 
-    await request
-      .post(`/games/${gameId}/resign`)
-      .expect(401);
+    await request.post(`/games/${gameId}/resign`).expect(401);
   });
 
   test('cannot resign non-existent game', async () => {
     const p = await registerPlayer('res_fake');
-    await request
-      .post('/games/fake/resign')
-      .set('Authorization', p.authHeader)
-      .expect(400);
+    await request.post('/games/fake/resign').set('Authorization', p.authHeader).expect(400);
   });
 
   test('cannot resign waiting game', async () => {
     const p = await registerPlayer('res_wait');
     const gameId = await createGame(p.authHeader);
-    await request
-      .post(`/games/${gameId}/resign`)
-      .set('Authorization', p.authHeader)
-      .expect(400);
+    await request.post(`/games/${gameId}/resign`).set('Authorization', p.authHeader).expect(400);
   });
 });
 
 describe('Full game — extended', () => {
-  test('plays alternate Scholar\'s mate without errors', async () => {
+  test("plays alternate Scholar's mate without errors", async () => {
     /* Play Scholar's mate: 1.e4 e5 2.Qh5 Nc6 3.Bc4 Nf6 4.Qxf7# */
     const white = await registerPlayer('alt_w');
     const black = await registerPlayer('alt_b');
     const gameId = await createGame(white.authHeader);
     await joinGame(gameId, black.authHeader);
 
-    await makeMove(gameId, white.authHeader, 'e2', 'e4').then(r => expect(r.status).toBe(200));
-    await makeMove(gameId, black.authHeader, 'e7', 'e5').then(r => expect(r.status).toBe(200));
-    await makeMove(gameId, white.authHeader, 'd1', 'h5').then(r => expect(r.status).toBe(200));
-    await makeMove(gameId, black.authHeader, 'b8', 'c6').then(r => expect(r.status).toBe(200));
-    await makeMove(gameId, white.authHeader, 'f1', 'c4').then(r => expect(r.status).toBe(200));
-    await makeMove(gameId, black.authHeader, 'g8', 'f6').then(r => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'e2', 'e4').then((r) => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'e7', 'e5').then((r) => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'd1', 'h5').then((r) => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'b8', 'c6').then((r) => expect(r.status).toBe(200));
+    await makeMove(gameId, white.authHeader, 'f1', 'c4').then((r) => expect(r.status).toBe(200));
+    await makeMove(gameId, black.authHeader, 'g8', 'f6').then((r) => expect(r.status).toBe(200));
     const result = await makeMove(gameId, white.authHeader, 'h5', 'f7');
     expect(result.status).toBe(200);
     expect(result.body.status).toBe('checkmate');
@@ -681,10 +578,7 @@ describe('Visibility via API — extended', () => {
     const gameId = createRes.body.id;
 
     /* Join via direct ID */
-    await request
-      .post(`/games/${gameId}/join`)
-      .set('Authorization', joiner.authHeader)
-      .expect(200);
+    await request.post(`/games/${gameId}/join`).set('Authorization', joiner.authHeader).expect(200);
 
     /* Make a move */
     const moveRes = await makeMove(gameId, host.authHeader, 'e2', 'e4');
@@ -726,10 +620,7 @@ describe('GET /games/active', () => {
     const gameId = await createGame(p1.authHeader);
     await joinGame(gameId, p2.authHeader);
 
-    await request
-      .post(`/games/${gameId}/resign`)
-      .set('Authorization', p1.authHeader)
-      .expect(200);
+    await request.post(`/games/${gameId}/resign`).set('Authorization', p1.authHeader).expect(200);
 
     const res = await request.get('/games/active').expect(200);
     expect(res.body.some((g: any) => g.id === gameId)).toBe(false);
@@ -746,15 +637,9 @@ describe('GET /players/:playerId/games', () => {
     const p2 = await registerPlayer('mh2');
     const gameId = await createGame(p1.authHeader);
     await joinGame(gameId, p2.authHeader);
-    await request
-      .post(`/games/${gameId}/resign`)
-      .set('Authorization', p1.authHeader)
-      .expect(200);
+    await request.post(`/games/${gameId}/resign`).set('Authorization', p1.authHeader).expect(200);
 
-    const res = await request
-      .get(`/players/${p1.playerId}/games`)
-      .set('Authorization', p1.authHeader)
-      .expect(200);
+    const res = await request.get(`/players/${p1.playerId}/games`).set('Authorization', p1.authHeader).expect(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBeGreaterThanOrEqual(1);
     expect(res.body.every((g: any) => g.status !== 'active' && g.status !== 'waiting')).toBe(true);
@@ -764,25 +649,17 @@ describe('GET /players/:playerId/games', () => {
     const p1 = await registerPlayer('mh_forbid1');
     const p2 = await registerPlayer('mh_forbid2');
 
-    await request
-      .get(`/players/${p2.playerId}/games`)
-      .set('Authorization', p1.authHeader)
-      .expect(403);
+    await request.get(`/players/${p2.playerId}/games`).set('Authorization', p1.authHeader).expect(403);
   });
 
   test('returns empty array when no finished games', async () => {
     const p = await registerPlayer('mh_empty');
 
-    const res = await request
-      .get(`/players/${p.playerId}/games`)
-      .set('Authorization', p.authHeader)
-      .expect(200);
+    const res = await request.get(`/players/${p.playerId}/games`).set('Authorization', p.authHeader).expect(200);
     expect(res.body).toEqual([]);
   });
 
   test('returns 401 without auth', async () => {
-    await request
-      .get('/players/some-id/games')
-      .expect(401);
+    await request.get('/players/some-id/games').expect(401);
   });
 });

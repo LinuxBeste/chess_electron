@@ -232,6 +232,10 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 | `pnpm --filter chess-client package` | Package platform installer via electron-builder |
 | `pnpm --filter chess-client build:renderer` | Webpack build (renderer only) |
 | `pnpm --filter chess-client build:main` | Webpack build (main process only) |
+| `pnpm format` | Format all source files with Prettier |
+| `pnpm format:check` | Check formatting without writing (CI use) |
+| `pnpm lint` | Lint all source files with ESLint |
+| `pnpm lint:fix` | Lint and auto-fix where possible |
 
 ---
 
@@ -346,6 +350,31 @@ pnpm typecheck
 ```
 
 ---
+
+## Code quality
+
+The project uses **Prettier** for automatic code formatting and **ESLint** with `typescript-eslint` for static analysis, both configured at the monorepo root.
+
+| Command | Description |
+|---------|-------------|
+| `pnpm format` | Format all source files with Prettier |
+| `pnpm format:check` | Check formatting only (used in CI) |
+| `pnpm lint` | Lint with ESLint (recommended rules + TS) |
+| `pnpm lint:fix` | Lint and auto-fix where possible |
+
+Run both before committing:
+
+```bash
+pnpm format && pnpm lint
+```
+
+Configuration:
+- **Prettier**: `.prettierrc` (2-space indent, single quotes, trailing commas, 120 print width)
+- **ESLint**: `eslint.config.mjs` (flat config, `@eslint/js` recommended + `typescript-eslint` recommended + `eslint-config-prettier`)
+
+---
+
+## Further documentation
 
 ## Further documentation
 

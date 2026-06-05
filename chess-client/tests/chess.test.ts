@@ -12,7 +12,9 @@ function indicesToSquare(rank: number, file: number): string {
   return String.fromCharCode(file + 97) + (8 - rank).toString();
 }
 
-function deserializeBoard(serialized: { square: string; piece: string; color: string }[]): (null | { type: string; color: string })[][] {
+function deserializeBoard(
+  serialized: { square: string; piece: string; color: string }[],
+): (null | { type: string; color: string })[][] {
   const board: (null | { type: string; color: string })[][] = Array.from({ length: 8 }, () => Array(8).fill(null));
   for (const sq of serialized) {
     const [rank, file] = squareToIndices(sq.square);
@@ -22,7 +24,7 @@ function deserializeBoard(serialized: { square: string; piece: string; color: st
 }
 
 function cloneBoard(board: (null | { type: string; color: string })[][]): (null | { type: string; color: string })[][] {
-  return board.map(row => row.map(cell => (cell ? { ...cell } : null)));
+  return board.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
 }
 
 function createInitialBoard(): (null | { type: string; color: string })[][] {
@@ -37,7 +39,10 @@ function createInitialBoard(): (null | { type: string; color: string })[][] {
   return board;
 }
 
-function findKing(board: (null | { type: string; color: string })[][], color: 'white' | 'black'): [number, number] | null {
+function findKing(
+  board: (null | { type: string; color: string })[][],
+  color: 'white' | 'black',
+): [number, number] | null {
   for (let r = 0; r < 8; r++) {
     for (let f = 0; f < 8; f++) {
       const p = board[r]?.[f];
@@ -90,15 +95,11 @@ describe('chess client helpers', () => {
 
   test('deserializeBoard handles empty array', () => {
     const board = deserializeBoard([]);
-    for (let r = 0; r < 8; r++)
-      for (let f = 0; f < 8; f++)
-        expect(board[r][f]).toBeNull();
+    for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) expect(board[r][f]).toBeNull();
   });
 
   test('cloneBoard creates independent copy', () => {
-    const board = deserializeBoard([
-      { square: 'e1', piece: 'king', color: 'white' },
-    ]);
+    const board = deserializeBoard([{ square: 'e1', piece: 'king', color: 'white' }]);
     const cloned = cloneBoard(board);
     cloned[7][4] = null;
     expect(board[7][4]).not.toBeNull();
@@ -114,9 +115,7 @@ describe('chess client helpers', () => {
   });
 
   test('findKing returns null when king not present', () => {
-    const board = deserializeBoard([
-      { square: 'e1', piece: 'queen', color: 'white' },
-    ]);
+    const board = deserializeBoard([{ square: 'e1', piece: 'queen', color: 'white' }]);
     expect(findKing(board, 'white')).toBeNull();
   });
 

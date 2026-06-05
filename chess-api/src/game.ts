@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocket } from 'ws';
 import { Player, GameState, Color, PieceType } from './types';
+import type { GameStatus } from './types';
 import * as chess from './chess';
 
 /* In-memory data stores.  Everything resets on process restart — there is
@@ -189,7 +190,7 @@ export function checkRateLimit(playerId: string): boolean {
   const now = Date.now();
   const windowStart = now - RATE_LIMIT_WINDOW_MS;
   let timestamps = rateLimitBuckets.get(playerId) ?? [];
-  timestamps = timestamps.filter(t => t > windowStart);
+  timestamps = timestamps.filter((t) => t > windowStart);
   if (timestamps.length >= RATE_LIMIT_MAX_REQUESTS) {
     return false;
   }
@@ -242,11 +243,11 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
  * Private games are excluded — they must be joined by direct ID.
  */
 export function getActiveGames(): GameState[] {
-  return Array.from(games.values()).filter(g => g.status === 'active');
+  return Array.from(games.values()).filter((g) => g.status === 'active');
 }
 
 export function getOpenGames(): GameState[] {
-  return Array.from(games.values()).filter(g => g.status === 'waiting' && g.visibility === 'public');
+  return Array.from(games.values()).filter((g) => g.status === 'waiting' && g.visibility === 'public');
 }
 
 /**
@@ -266,16 +267,14 @@ export function getGame(gameId: string): GameState | null {
  *
  * On success, the game transitions to 'active' and black is assigned.
  */
-export function joinGame(
-  gameId: string,
-  playerId: string,
-): { success: boolean; error?: string; game?: GameState } {
+export function joinGame(gameId: string, playerId: string): { success: boolean; error?: string; game?: GameState } {
   const game = games.get(gameId);
   if (!game) return { success: false, error: 'Game not found' };
   if (game.status !== 'waiting') return { success: false, error: 'Game is not open for joining' };
   if (game.players.white === playerId) return { success: false, error: 'Cannot join your own game' };
   const activeCount = countActiveGamesForPlayer(playerId);
-  if (activeCount >= MAX_GAMES_PER_PLAYER) return { success: false, error: `Already in ${activeCount} active game(s) (max ${MAX_GAMES_PER_PLAYER})` };
+  if (activeCount >= MAX_GAMES_PER_PLAYER)
+    return { success: false, error: `Already in ${activeCount} active game(s) (max ${MAX_GAMES_PER_PLAYER})` };
 
   /* Black joins and the game immediately becomes active */
   game.players.black = playerId;
@@ -341,15 +340,10 @@ export function makeMove(
   if (piece.color !== playerColor) return { success: false, error: 'That is not your piece' };
 
   /* Compute legal moves for this position */
-  const legalMoves = chess.getLegalMoves(
-    game.board,
-    playerColor,
-    game.enPassantTarget,
-    game.castlingRights,
-  );
+  const legalMoves = chess.getLegalMoves(game.board, playerColor, game.enPassantTarget, game.castlingRights);
 
   /* Find the matching legal move (considering promotion piece choice) */
-  const matchedMove = legalMoves.find(m => {
+  const matchedMove = legalMoves.find((m) => {
     if (m.from !== from || m.to !== to) return false;
     if (promotion && m.promotion !== promotion) return false;
     /* If no promotion piece was specified but this move IS a promotion,
@@ -361,11 +355,7 @@ export function makeMove(
   if (!matchedMove) return { success: false, error: 'Illegal move' };
 
   /* Apply the move on the board */
-  const { newBoard, enPassantTarget, castlingRights } = chess.applyMove(
-    game.board,
-    matchedMove,
-    game.castlingRights,
-  );
+  const { newBoard, enPassantTarget, castlingRights } = chess.applyMove(game.board, matchedMove, game.castlingRights);
 
   /* Generate algebraic notation for the move history */
   const notation = chess.moveToAlgebraic(matchedMove, matchedMove.captured, legalMoves);
@@ -375,9 +365,15 @@ export function makeMove(
 
   /* Determine the next turn and check for game-ending conditions */
   const nextTurn: Color = game.turn === 'white' ? 'black' : 'white';
-  const { status: rawStatus } = chess.getGameStatus(newBoard, nextTurn, enPassantTarget, castlingRights, newHalfMoveClock);
+  const { status: rawStatus } = chess.getGameStatus(
+    newBoard,
+    nextTurn,
+    enPassantTarget,
+    castlingRights,
+    newHalfMoveClock,
+  );
 
-  let newStatus = rawStatus;
+  let newStatus: GameStatus;
   let winner: Color | null = null;
 
   if (rawStatus === 'checkmate') {
@@ -437,10 +433,7 @@ export function makeMove(
  * The game board is preserved in its current state for review.
  * A WebSocket game_over event is broadcast to both players.
  */
-export function resignGame(
-  gameId: string,
-  playerId: string,
-): { success: boolean; error?: string; state?: GameState } {
+export function resignGame(gameId: string, playerId: string): { success: boolean; error?: string; state?: GameState } {
   const game = games.get(gameId);
   if (!game) return { success: false, error: 'Game not found' };
 
@@ -493,16 +486,17 @@ export function getLegalMovesForPlayer(
   if (game.status !== 'active') return { success: false, error: 'Game is not active' };
 
   const legalMoves = chess.getLegalMoves(game.board, playerColor, game.enPassantTarget, game.castlingRights);
-  return { success: true, moves: legalMoves.map(m => ({ from: m.from, to: m.to })) };
+  return { success: true, moves: legalMoves.map((m) => ({ from: m.from, to: m.to })) };
 }
 
 /**
  * Get completed games for a player (games they participated in that have ended).
  */
 export function getPlayerGames(playerId: string): GameState[] {
-  return Array.from(games.values()).filter(g => {
+  return Array.from(games.values()).filter((g) => {
     const isPlayer = g.players.white === playerId || g.players.black === playerId;
-    const isFinished = g.status === 'checkmate' || g.status === 'stalemate' || g.status === 'resigned' || g.status === 'draw';
+    const isFinished =
+      g.status === 'checkmate' || g.status === 'stalemate' || g.status === 'resigned' || g.status === 'draw';
     return isPlayer && isFinished;
   });
 }

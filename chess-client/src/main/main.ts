@@ -11,8 +11,8 @@ if (process.env.DISABLE_HARDWARE_ACCEL !== 'false') {
 }
 
 /* ─── Env-driven config ─── */
-const serverUrl = process.env.CHESS_SERVER_URL || 'http://localhost:3000';
-const devtoolsEnabled = process.env.DEVTOOLS === 'true' || process.env.NODE_ENV === 'development' || process.argv.includes('--devtools');
+const devtoolsEnabled =
+  process.env.DEVTOOLS === 'true' || process.env.NODE_ENV === 'development' || process.argv.includes('--devtools');
 const windowTitle = process.env.WINDOW_TITLE || 'Chess';
 const defaultWidth = parseInt(process.env.WINDOW_WIDTH || '1280', 10);
 const defaultHeight = parseInt(process.env.WINDOW_HEIGHT || '900', 10);

@@ -15,7 +15,13 @@ const GamePage = lazy(() => import('./pages/GamePage'));
 const ResultPage = lazy(() => import('./pages/ResultPage'));
 
 function Loading() {
-  return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 24, color: '#888' }}>Loading...</div>;
+  return (
+    <div
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 24, color: '#888' }}
+    >
+      Loading...
+    </div>
+  );
 }
 
 export default function App() {
@@ -53,19 +59,21 @@ export default function App() {
       store.set('token', session.token);
       store.set('playerId', session.playerId);
       store.set('username', session.username);
-      getMe().then(() => {
-        navigate('/lobby', { replace: true });
-      }).catch((err) => {
-        if (err instanceof ApiError && err.status === 401) {
-          store.set('token', null);
-          store.set('playerId', null);
-          store.set('username', null);
-          store.clearSession();
-          navigate('/login', { replace: true });
-        } else {
-          store.toast('Failed to connect to server. Check the Server URL.', 'error');
-        }
-      });
+      getMe()
+        .then(() => {
+          navigate('/lobby', { replace: true });
+        })
+        .catch((err) => {
+          if (err instanceof ApiError && err.status === 401) {
+            store.set('token', null);
+            store.set('playerId', null);
+            store.set('username', null);
+            store.clearSession();
+            navigate('/login', { replace: true });
+          } else {
+            store.toast('Failed to connect to server. Check the Server URL.', 'error');
+          }
+        });
     }
 
     const unsubToken = store.subscribe('token', (token) => {

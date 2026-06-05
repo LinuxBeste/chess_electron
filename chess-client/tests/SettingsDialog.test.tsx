@@ -38,14 +38,26 @@ describe('SettingsDialog', () => {
 
   test('calls onClose when close button clicked', () => {
     let closed = false;
-    render(<SettingsDialog onClose={() => { closed = true; }} />);
+    render(
+      <SettingsDialog
+        onClose={() => {
+          closed = true;
+        }}
+      />,
+    );
     fireEvent.click(screen.getByText('✕'));
     expect(closed).toBe(true);
   });
 
   test('calls onClose when overlay clicked', () => {
     let closed = false;
-    const { container } = render(<SettingsDialog onClose={() => { closed = true; }} />);
+    const { container } = render(
+      <SettingsDialog
+        onClose={() => {
+          closed = true;
+        }}
+      />,
+    );
     fireEvent.click(container.querySelector('.modal-overlay')!);
     expect(closed).toBe(true);
   });

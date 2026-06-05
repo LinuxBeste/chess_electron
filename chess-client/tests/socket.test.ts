@@ -2,7 +2,15 @@ import { describe, test, expect, jest } from '@jest/globals';
 
 describe('SocketManager logic', () => {
   test('connect does nothing without token', () => {
-    const store = { data: { token: null, wsStatus: 'disconnected' }, get(k: string) { return this.data[k as keyof typeof this.data]; }, set(k: string, v: any) { (this.data as any)[k] = v; } };
+    const store = {
+      data: { token: null, wsStatus: 'disconnected' },
+      get(k: string) {
+        return this.data[k as keyof typeof this.data];
+      },
+      set(k: string, v: any) {
+        (this.data as any)[k] = v;
+      },
+    };
     const retryCount = { value: 0 };
 
     /* Simulating the logic without actual WebSocket */
@@ -14,7 +22,15 @@ describe('SocketManager logic', () => {
   });
 
   test('scheduleReconnect caps at MAX_RETRIES', () => {
-    const store = { data: { wsStatus: 'disconnected' } as any, get(k: string) { return this.data[k]; }, set(k: string, v: any) { this.data[k] = v; } };
+    const store = {
+      data: { wsStatus: 'disconnected' } as any,
+      get(k: string) {
+        return this.data[k];
+      },
+      set(k: string, v: any) {
+        this.data[k] = v;
+      },
+    };
     const MAX_RETRIES = 5;
     let retryCount = 5; /* Already at max */
 
@@ -31,7 +47,7 @@ describe('SocketManager logic', () => {
     handlers.add(handler);
     expect(handlers.size).toBe(1);
 
-    handlers.forEach(h => h({ type: 'move', gameId: 'g1' }));
+    handlers.forEach((h) => h({ type: 'move', gameId: 'g1' }));
     expect(handler).toHaveBeenCalledWith({ type: 'move', gameId: 'g1' });
   });
 
@@ -50,7 +66,7 @@ describe('SocketManager logic', () => {
     const handler = jest.fn();
 
     handlers.add(handler);
-    handlers.forEach(h => h({ type: 'game_over', gameId: 'g1', result: 'checkmate' }));
+    handlers.forEach((h) => h({ type: 'game_over', gameId: 'g1', result: 'checkmate' }));
     expect(handler).toHaveBeenCalledWith({ type: 'game_over', gameId: 'g1', result: 'checkmate' });
   });
 
@@ -59,7 +75,7 @@ describe('SocketManager logic', () => {
     const handler = jest.fn();
 
     handlers.add(handler);
-    handlers.forEach(h => h({ type: 'game_started', gameId: 'g1' }));
+    handlers.forEach((h) => h({ type: 'game_started', gameId: 'g1' }));
     expect(handler).toHaveBeenCalledWith({ type: 'game_started', gameId: 'g1' });
   });
 
@@ -85,7 +101,7 @@ describe('SocketManager logic', () => {
     handlers.add(h2);
     expect(handlers.size).toBe(2);
 
-    handlers.forEach(h => h({ type: 'move' }));
+    handlers.forEach((h) => h({ type: 'move' }));
     expect(h1).toHaveBeenCalled();
     expect(h2).toHaveBeenCalled();
   });
@@ -99,7 +115,7 @@ describe('SocketManager logic', () => {
     handlers.add(h2);
     handlers.delete(h1);
 
-    handlers.forEach(h => h({ type: 'move' }));
+    handlers.forEach((h) => h({ type: 'move' }));
     expect(h1).not.toHaveBeenCalled();
     expect(h2).toHaveBeenCalled();
   });

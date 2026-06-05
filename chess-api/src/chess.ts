@@ -96,7 +96,7 @@ export function createInitialBoard(): Board {
 export function cloneBoard(board: Board): Board {
   /* Map each row to a new array; spread each Piece so changes to the
    * clone's pieces don't affect the original board's pieces */
-  return board.map(row => row.map(cell => (cell ? { ...cell } : null)));
+  return board.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
 }
 
 /**
@@ -159,7 +159,12 @@ function generateSlidingMoves(
 /* Rook slides along ranks (horizontal) and files (vertical).
  * Four orthogonal directions: east, west, south, north. */
 export function generateRookMoves(board: Board, rank: number, file: number, piece: Piece): Move[] {
-  return generateSlidingMoves(board, rank, file, piece, [[0, 1], [0, -1], [1, 0], [-1, 0]]);
+  return generateSlidingMoves(board, rank, file, piece, [
+    [0, 1],
+    [0, -1],
+    [1, 0],
+    [-1, 0],
+  ]);
 }
 
 /* Bishop slides along the four diagonal axes:
@@ -168,17 +173,19 @@ export function generateRookMoves(board: Board, rank: number, file: number, piec
  *   [-1,1]  = northeast (decreasing rank, increasing file)
  *   [-1,-1] = northwest (decreasing rank, decreasing file) */
 export function generateBishopMoves(board: Board, rank: number, file: number, piece: Piece): Move[] {
-  return generateSlidingMoves(board, rank, file, piece, [[1, 1], [1, -1], [-1, 1], [-1, -1]]);
+  return generateSlidingMoves(board, rank, file, piece, [
+    [1, 1],
+    [1, -1],
+    [-1, 1],
+    [-1, -1],
+  ]);
 }
 
 /* Queen combines rook (orthogonal) and bishop (diagonal) sliding.
  * This is the most powerful piece because it moves along every rank,
  * file, and diagonal — 8 directions total. */
 export function generateQueenMoves(board: Board, rank: number, file: number, piece: Piece): Move[] {
-  return [
-    ...generateRookMoves(board, rank, file, piece),
-    ...generateBishopMoves(board, rank, file, piece),
-  ];
+  return [...generateRookMoves(board, rank, file, piece), ...generateBishopMoves(board, rank, file, piece)];
 }
 
 /* All 8 L-shaped offsets a knight can jump to.
@@ -187,8 +194,14 @@ export function generateQueenMoves(board: Board, rank: number, file: number, pie
  * knights leap directly to their destination, ignoring any pieces
  * on intermediate squares. */
 const KNIGHT_OFFSETS: [number, number][] = [
-  [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-  [1, -2], [1, 2], [2, -1], [2, 1],
+  [-2, -1],
+  [-2, 1],
+  [-1, -2],
+  [-1, 2],
+  [1, -2],
+  [1, 2],
+  [2, -1],
+  [2, 1],
 ];
 
 /* Generate all pseudo-legal knight moves from (rank, file).
@@ -318,9 +331,14 @@ export function generatePawnMoves(
  * exactly one square orthogonally or diagonally.  Think of it as a queen
  * limited to a range of 1. */
 const KING_OFFSETS: [number, number][] = [
-  [-1, -1], [-1, 0], [-1, 1],
-  [0, -1],           [0, 1],
-  [1, -1],  [1, 0],  [1, 1],
+  [-1, -1],
+  [-1, 0],
+  [-1, 1],
+  [0, -1],
+  [0, 1],
+  [1, -1],
+  [1, 0],
+  [1, 1],
 ];
 
 /* Generate all pseudo-legal king moves from (rank, file), including
@@ -408,13 +426,19 @@ function getPseudoLegalMoves(
 ): Move[] {
   switch (piece.type) {
     /* Pawn needs enPassantTarget for en-passant detection */
-    case 'pawn':   return generatePawnMoves(board, rank, file, piece, enPassantTarget);
-    case 'knight': return generateKnightMoves(board, rank, file, piece);
-    case 'bishop': return generateBishopMoves(board, rank, file, piece);
-    case 'rook':   return generateRookMoves(board, rank, file, piece);
-    case 'queen':  return generateQueenMoves(board, rank, file, piece);
+    case 'pawn':
+      return generatePawnMoves(board, rank, file, piece, enPassantTarget);
+    case 'knight':
+      return generateKnightMoves(board, rank, file, piece);
+    case 'bishop':
+      return generateBishopMoves(board, rank, file, piece);
+    case 'rook':
+      return generateRookMoves(board, rank, file, piece);
+    case 'queen':
+      return generateQueenMoves(board, rank, file, piece);
     /* King needs castlingRights for castling-availability check */
-    case 'king':   return generateKingMoves(board, rank, file, piece, castlingRights);
+    case 'king':
+      return generateKingMoves(board, rank, file, piece, castlingRights);
   }
 }
 
@@ -461,7 +485,12 @@ export function isSquareAttackedBy(board: Board, rank: number, file: number, byC
   }
 
   /* Scan outward along ranks and files (4 orthogonal directions) for rook/queen */
-  for (const [dr, df] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+  for (const [dr, df] of [
+    [0, 1],
+    [0, -1],
+    [1, 0],
+    [-1, 0],
+  ]) {
     let r = rank + dr;
     let f = file + df;
     while (isInBounds(r, f)) {
@@ -476,7 +505,12 @@ export function isSquareAttackedBy(board: Board, rank: number, file: number, byC
   }
 
   /* Scan outward along diagonals (4 diagonal directions) for bishop/queen */
-  for (const [dr, df] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+  for (const [dr, df] of [
+    [1, 1],
+    [1, -1],
+    [-1, 1],
+    [-1, -1],
+  ]) {
     let r = rank + dr;
     let f = file + df;
     while (isInBounds(r, f)) {
@@ -752,7 +786,12 @@ export function serializeBoard(board: Board): SerializedSquare[] {
  *  Knights are 'N' (not 'K', which is reserved for the king).
  *  Pawns have no letter — their moves are specified by destination only. */
 const PIECE_LETTER: Record<PieceType, string> = {
-  king: 'K', queen: 'Q', rook: 'R', bishop: 'B', knight: 'N', pawn: '',
+  king: 'K',
+  queen: 'Q',
+  rook: 'R',
+  bishop: 'B',
+  knight: 'N',
+  pawn: '',
 };
 
 /**
@@ -768,11 +807,7 @@ const PIECE_LETTER: Record<PieceType, string> = {
  * as those require knowing the opponent's response.  Add them at the
  * application layer if desired.
  */
-export function moveToAlgebraic(
-  move: Move,
-  capturedPiece: Piece | undefined,
-  legalMoves: Move[],
-): string {
+export function moveToAlgebraic(move: Move, capturedPiece: Piece | undefined, legalMoves: Move[]): string {
   /* Castling uses the special notation O-O / O-O-O */
   if (move.isCastling) {
     return move.isCastling === 'kingside' ? 'O-O' : 'O-O-O';
@@ -797,14 +832,14 @@ export function moveToAlgebraic(
    *   - If both differ → disambiguate by file (simplest unique specifier). */
   let disambig = '';
   const ambiguous = legalMoves.filter(
-    m => m !== move && m.piece.type === move.piece.type && m.piece.color === move.piece.color && m.to === move.to,
+    (m) => m !== move && m.piece.type === move.piece.type && m.piece.color === move.piece.color && m.to === move.to,
   );
   if (ambiguous.length > 0) {
-    const sameFile = ambiguous.some(m => m.from[0] === move.from[0]);
+    const sameFile = ambiguous.some((m) => m.from[0] === move.from[0]);
     if (!sameFile) {
       disambig = move.from[0];
     } else {
-      const sameRank = ambiguous.some(m => m.from[1] === move.from[1]);
+      const sameRank = ambiguous.some((m) => m.from[1] === move.from[1]);
       disambig = sameRank ? move.from : move.from[1];
     }
   }

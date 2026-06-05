@@ -24,9 +24,23 @@ interface SquareProps {
 }
 
 export default function Square({
-  rank, file, displayRank, displayFile, piece, isLight, sqSize,
-  isSelected, isLastMoveFrom, isLastMoveTo, isLegalHint, isLegalCapture,
-  isHovered, showCoordinates, onClick, onPointerDown, onPointerEnter,
+  rank,
+  file,
+  displayRank,
+  displayFile,
+  piece,
+  isLight,
+  sqSize,
+  isSelected,
+  isLastMoveFrom,
+  isLastMoveTo,
+  isLegalHint,
+  isLegalCapture,
+  isHovered,
+  showCoordinates,
+  onClick,
+  onPointerDown,
+  onPointerEnter,
 }: SquareProps) {
   const squareName = indicesToSquare(rank, file);
   const classes = [
@@ -36,7 +50,9 @@ export default function Square({
     isLastMoveFrom && 'hl-last-from',
     isLastMoveTo && 'hl-last-to',
     isHovered && 'hl-hover',
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div
@@ -58,9 +74,7 @@ export default function Square({
       {showCoordinates && displayRank === 7 && (
         <span className="sq-label sq-label-file">{String.fromCharCode(97 + displayFile)}</span>
       )}
-      {showCoordinates && displayFile === 0 && (
-        <span className="sq-label sq-label-rank">{8 - displayRank}</span>
-      )}
+      {showCoordinates && displayFile === 0 && <span className="sq-label sq-label-rank">{8 - displayRank}</span>}
       {piece && (
         <span
           className="piece-char"

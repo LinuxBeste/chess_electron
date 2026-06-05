@@ -99,7 +99,9 @@ export function createServer(): http.Server {
         } else if (msg.type === 'chat_message' && typeof msg.gameId === 'string' && typeof msg.text === 'string') {
           game.handleChatMessage(msg.gameId, player.id, (msg.text as string).trim(), ws);
         }
-      } catch { /* Ignore malformed messages */ }
+      } catch {
+        /* Ignore malformed messages */
+      }
     });
 
     /* Prevent crash on WS errors — cleanup happens in 'close' */

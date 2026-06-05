@@ -10,11 +10,11 @@ const pieces: PieceType[] = ['queen', 'rook', 'bishop', 'knight'];
 
 export default function PromotionDialog({ color, onSelect }: PromotionDialogProps) {
   return (
-    <div className="modal-overlay" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={(e) => e.stopPropagation()}>
       <div className="modal-card" style={{ padding: 24 }}>
         <div className="promo-title">Choose promotion piece</div>
         <div className="promo-row">
-          {pieces.map(pt => (
+          {pieces.map((pt) => (
             <div key={pt} className="promo-piece" onClick={() => onSelect(pt)}>
               <span
                 className="piece-char"

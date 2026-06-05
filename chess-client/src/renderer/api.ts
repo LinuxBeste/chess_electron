@@ -148,12 +148,7 @@ export function joinGame(gameId: string): Promise<GameState> {
  * Returns updated GameState.
  * Confirmed in ../chess-api/src/routes.ts line 93-111
  * and ../chess-api/docs/api.md lines 103-118. */
-export function makeMove(
-  gameId: string,
-  from: string,
-  to: string,
-  promotion?: PieceType,
-): Promise<GameState> {
+export function makeMove(gameId: string, from: string, to: string, promotion?: PieceType): Promise<GameState> {
   return request(`/games/${gameId}/move`, {
     method: 'POST',
     body: JSON.stringify({ from, to, ...(promotion ? { promotion } : {}) }),

@@ -23,15 +23,16 @@ function deriveOutcome(game: GameState, myId: string): Outcome {
   if (game) {
     if (game.status === 'checkmate' || game.status === 'resigned') {
       if (game.winner) {
-        const winnerIsMe = (game.winner === 'white' && game.players.white === myId) ||
-                          (game.winner === 'black' && game.players.black === myId);
-          if (winnerIsMe) {
-            outcomeText = 'You Won';
-            won = true;
-          } else if (myId && (game.players.white === myId || game.players.black === myId)) {
-            outcomeText = 'You Lost';
-            lost = true;
-          }
+        const winnerIsMe =
+          (game.winner === 'white' && game.players.white === myId) ||
+          (game.winner === 'black' && game.players.black === myId);
+        if (winnerIsMe) {
+          outcomeText = 'You Won';
+          won = true;
+        } else if (myId && (game.players.white === myId || game.players.black === myId)) {
+          outcomeText = 'You Lost';
+          lost = true;
+        }
       }
     } else if (game.status === 'stalemate' || game.status === 'draw') {
       outcomeText = 'Draw';
