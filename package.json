@@ -5,6 +5,7 @@
     "dev": "pnpm -r dev",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
+    "build:website": "pnpm --filter chess-website build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",

@@ -1,5 +1,8 @@
 packages:
   - "chess-api"
   - "chess-client"
+  - "website"
 allowBuilds:
+  '@parcel/watcher': set this to true or false
   electron: false
+  esbuild: true
