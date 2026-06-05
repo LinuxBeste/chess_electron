@@ -20,6 +20,7 @@ export default function LobbyPage() {
   const [matchHistory, setMatchHistory] = useState<GameState[]>([]);
   const [isPrivate, setIsPrivate] = useState(false);
   const [joinId, setJoinId] = useState('');
+  const [spectateId, setSpectateId] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
   const [liveStatus, setLiveStatus] = useState('');
 
@@ -131,7 +132,7 @@ export default function LobbyPage() {
             .filter((g) => g.visibility !== 'private')
             .map((game) => {
               const creatorId = game.players.white;
-              const creatorName = creatorId === myId ? 'You' : (creatorId?.slice(0, 8) ?? 'Unknown');
+              const creatorName = game.whiteName || (creatorId === myId ? 'You' : (creatorId?.slice(0, 8) ?? 'Unknown'));
               return (
                 <div
                   key={game.id}
@@ -192,44 +193,58 @@ export default function LobbyPage() {
             minHeight: 80,
           }}
         >
-          {liveGames.map((game) => (
-            <div
-              key={game.id}
-              className="live-game-card card-elevated"
-              style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: 'var(--success)',
-                    animation: 'pulse 2s ease-in-out infinite',
-                    flexShrink: 0,
-                  }}
-                />
-                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
-                  Game in progress
-                </span>
-              </div>
-              <button
-                className="btn btn-sm"
-                style={{ color: 'var(--success)', borderColor: 'var(--success)', background: 'transparent' }}
-                onMouseEnter={(e) => {
-                  (e.target as HTMLElement).style.background = 'var(--success)';
-                  (e.target as HTMLElement).style.color = '#fff';
-                }}
-                onMouseLeave={(e) => {
-                  (e.target as HTMLElement).style.background = 'transparent';
-                  (e.target as HTMLElement).style.color = 'var(--success)';
-                }}
-                onClick={() => spectateGame(game.id)}
+          {liveGames.map((game) => {
+            const wName = game.whiteName || game.players.white?.slice(0, 8) || 'White';
+            const bName = game.blackName || game.players.black?.slice(0, 8) || 'Black';
+            const statusLabel = game.status === 'active' ? 'In Progress' : game.status;
+            return (
+              <div
+                key={game.id}
+                className="live-game-card card-elevated"
+                style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
               >
-                Spectate
-              </button>
-            </div>
-          ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: 'var(--success)',
+                      animation: 'pulse 2s ease-in-out infinite',
+                      flexShrink: 0,
+                    }}
+                  />
+                  <div style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
+                      {wName}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--muted)', margin: '0 4px' }}>vs</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
+                      {bName}
+                    </span>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                      {statusLabel}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  className="btn btn-sm"
+                  style={{ color: 'var(--success)', borderColor: 'var(--success)', background: 'transparent', flexShrink: 0 }}
+                  onMouseEnter={(e) => {
+                    (e.target as HTMLElement).style.background = 'var(--success)';
+                    (e.target as HTMLElement).style.color = '#fff';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.target as HTMLElement).style.background = 'transparent';
+                    (e.target as HTMLElement).style.color = 'var(--success)';
+                  }}
+                  onClick={() => spectateGame(game.id)}
+                >
+                  Spectate
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -292,6 +307,29 @@ export default function LobbyPage() {
             }}
           >
             Join
+          </button>
+        </div>
+
+        <div className="card" style={{ padding: 24 }}>
+          <h2 className="card-title">Spectate by ID</h2>
+          <input
+            className="input"
+            type="text"
+            placeholder="Paste game ID..."
+            value={spectateId}
+            onChange={(e) => setSpectateId(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && spectateId.trim()) spectateGame(spectateId.trim());
+            }}
+          />
+          <button
+            className="btn btn-secondary"
+            style={{ marginTop: 12, width: '100%' }}
+            onClick={() => {
+              if (spectateId.trim()) spectateGame(spectateId.trim());
+            }}
+          >
+            Spectate
           </button>
         </div>
 

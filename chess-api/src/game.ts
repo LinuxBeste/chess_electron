@@ -19,6 +19,21 @@ const players = new Map<string, Player>();
  * authenticated request — O(n) instead of O(1). */
 const tokenIndex = new Map<string, string>();
 
+/**
+ * Attach player display names to a GameState before returning it to clients.
+ * The core domain model stores only IDs; this enriches the response so the
+ * UI can show usernames without extra API calls.
+ */
+function enrichNames(g: GameState): GameState {
+  const whitePlayer = g.players.white ? players.get(g.players.white) : undefined;
+  const blackPlayer = g.players.black ? players.get(g.players.black) : undefined;
+  return {
+    ...g,
+    whiteName: whitePlayer?.username ?? g.whiteName,
+    blackName: blackPlayer?.username ?? g.blackName,
+  };
+}
+
 /* Env-driven limits with defaults */
 const MAX_GAMES_PER_PLAYER = parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '5', 10);
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10);
@@ -235,7 +250,7 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
     halfMoveClock: 0,
   };
   games.set(id, game);
-  return game;
+  return enrichNames(game);
 }
 
 /**
@@ -243,18 +258,19 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
  * Private games are excluded — they must be joined by direct ID.
  */
 export function getActiveGames(): GameState[] {
-  return Array.from(games.values()).filter((g) => g.status === 'active');
+  return Array.from(games.values()).filter((g) => g.status === 'active').map(enrichNames);
 }
 
 export function getOpenGames(): GameState[] {
-  return Array.from(games.values()).filter((g) => g.status === 'waiting' && g.visibility === 'public');
+  return Array.from(games.values()).filter((g) => g.status === 'waiting' && g.visibility === 'public').map(enrichNames);
 }
 
 /**
  * Get a game by its ID.  Returns null if no such game exists.
  */
 export function getGame(gameId: string): GameState | null {
-  return games.get(gameId) ?? null;
+  const g = games.get(gameId);
+  return g ? enrichNames(g) : null;
 }
 
 /**
@@ -300,15 +316,16 @@ export function joinGame(gameId: string, playerId: string): { success: boolean; 
   game.players.black = playerId;
   game.status = 'active';
 
-  /* Broadcast to P1 (white) so their game view updates from waiting → active.
-     P2 gets the game state from the REST response. */
+  /* Broadcast to all connected players so their game view updates.
+     The enriched copy includes player display names for the UI. */
+  const enriched = enrichNames(game);
   broadcastToGame(gameId, {
     type: 'game_started',
     gameId,
-    game,
+    game: enriched,
   });
 
-  return { success: true, game };
+  return { success: true, game: enriched };
 }
 
 /**
@@ -443,7 +460,7 @@ export function makeMove(
   }
 
   broadcastToGame(gameId, message);
-  return { success: true, state: game };
+  return { success: true, state: enrichNames(game) };
 }
 
 /**
@@ -481,7 +498,7 @@ export function resignGame(gameId: string, playerId: string): { success: boolean
     winner,
   });
 
-  return { success: true, state: game };
+  return { success: true, state: enrichNames(game) };
 }
 
 /**
@@ -513,12 +530,14 @@ export function getLegalMovesForPlayer(
  * Get completed games for a player (games they participated in that have ended).
  */
 export function getPlayerGames(playerId: string): GameState[] {
-  return Array.from(games.values()).filter((g) => {
-    const isPlayer = g.players.white === playerId || g.players.black === playerId;
-    const isFinished =
-      g.status === 'checkmate' || g.status === 'stalemate' || g.status === 'resigned' || g.status === 'draw';
-    return isPlayer && isFinished;
-  });
+  return Array.from(games.values())
+    .filter((g) => {
+      const isPlayer = g.players.white === playerId || g.players.black === playerId;
+      const isFinished =
+        g.status === 'checkmate' || g.status === 'stalemate' || g.status === 'resigned' || g.status === 'draw';
+      return isPlayer && isFinished;
+    })
+    .map(enrichNames);
 }
 
 /**
