@@ -1,11 +1,14 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { store } from '../store';
+import * as api from '../api';
 
 export default function ResultPage() {
   const { gameId } = useParams();
   const navigate = useNavigate();
   const game = store.get('currentGame');
   const myId = store.get('playerId');
+  const [rematching, setRematching] = useState(false);
 
   let outcomeText = 'Draw';
   let reasonText = '';
@@ -46,6 +49,21 @@ export default function ResultPage() {
     }
   }
 
+  const wasPlayer = !!myId && game && (game.players.white === myId || game.players.black === myId);
+
+  async function handleRematch() {
+    if (!game) return;
+    setRematching(true);
+    try {
+      const g = await api.createGame(game.visibility === 'private' ? 'private' : 'public');
+      store.set('currentGame', g);
+      navigate(`/game/${g.id}`);
+    } catch (err: any) {
+      store.toast(err?.message || 'Failed to create rematch');
+      setRematching(false);
+    }
+  }
+
   const outcomeColor = won ? '#4f8ef7' : lost ? 'rgba(220,80,80,0.9)' : '#888';
 
   return (
@@ -74,6 +92,16 @@ export default function ResultPage() {
               onClick={() => navigate(`/game/${game.id}`)}
             >
               Review Game
+            </button>
+          )}
+          {wasPlayer && (
+            <button
+              className="btn btn-primary"
+              style={{ padding: '12px 24px', fontSize: 15 }}
+              onClick={handleRematch}
+              disabled={rematching}
+            >
+              {rematching ? 'Creating...' : 'Rematch'}
             </button>
           )}
           <button

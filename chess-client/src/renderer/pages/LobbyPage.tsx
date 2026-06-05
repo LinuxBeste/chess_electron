@@ -325,7 +325,16 @@ export default function LobbyPage() {
                     <span style={{ color: 'var(--text)', fontWeight: 500, letterSpacing: '0.2px' }}>
                       vs {opponent.slice(0, 8)}
                     </span>
-                    <span style={{ color: resultColor, fontWeight: 600, letterSpacing: '0.3px' }}>{resultText}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: resultColor, fontWeight: 600, letterSpacing: '0.3px' }}>{resultText}</span>
+                      <button
+                        className="btn btn-ghost btn-xs"
+                        style={{ fontSize: 11, padding: '2px 8px' }}
+                        onClick={() => navigate(`/game/${g.id}`)}
+                      >
+                        Review
+                      </button>
+                    </div>
                   </div>
                 );
               })

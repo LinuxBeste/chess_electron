@@ -49,6 +49,8 @@ export default function GamePage() {
   const [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null);
   const [resignConfirmed, setResignConfirmed] = useState(false);
   const [waiting, setWaiting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   /* Spectator mode = read-only; no move interaction.  The ?spectate=1
      query param is set by LobbyPage when clicking "Spectate". */
@@ -139,6 +141,18 @@ export default function GamePage() {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  /* Close menu on click outside */
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [menuOpen]);
 
   function initGame(g: GameState) {
     setGame(g);
@@ -324,6 +338,19 @@ export default function GamePage() {
     }
   }
 
+  function handleCopyId() {
+    const id = gameRef.current?.id || gameId;
+    if (id) {
+      navigator.clipboard.writeText(id).catch(() => {});
+    }
+    setMenuOpen(false);
+  }
+
+  function handleAbort() {
+    store.set('currentGame', null);
+    navigate('/lobby');
+  }
+
   function handleResign() {
     if (isSpectator) {
       socketManager.send({ type: 'unspectate' });
@@ -435,13 +462,6 @@ export default function GamePage() {
           <span className="player-clock">{formatTime(whiteTime)}</span>
         </div>
         <div className="game-btn-row">
-          <button
-            className={isSpectator ? 'btn btn-secondary btn-sm' : 'btn btn-danger btn-sm'}
-            onClick={handleResign}
-            style={{ minWidth: 80 }}
-          >
-            {isSpectator ? 'Leave' : resignConfirmed ? 'Are you sure?' : 'Resign'}
-          </button>
           {showReview && (
             <div className="review-controls active">
               <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(-1)}>
@@ -459,6 +479,57 @@ export default function GamePage() {
               </button>
             </div>
           )}
+          <div ref={menuRef} style={{ position: 'relative' }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setMenuOpen((o) => !o)}
+              style={{ minWidth: 80 }}
+            >
+              ☰ Menu
+            </button>
+            {menuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  right: 0,
+                  marginBottom: 4,
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                  minWidth: 160,
+                  padding: 4,
+                  zIndex: 100,
+                  animation: 'fadeIn 100ms ease',
+                }}
+              >
+                {!isFinished && (
+                  <>
+                    {isSpectator ? (
+                      <MenuItem label="Leave" onClick={handleResign} />
+                    ) : (
+                      <MenuItem
+                        label={resignConfirmed ? 'Are you sure?' : 'Resign'}
+                        onClick={handleResign}
+                        danger
+                      />
+                    )}
+                    {!isSpectator && game?.status === 'active' && (
+                      <MenuItem label="Offer Draw" onClick={() => { setMenuOpen(false); store.toast('Draw offer not yet implemented', 'info'); }} />
+                    )}
+                    {waiting && !isSpectator && (
+                      <MenuItem label="Abort Game" onClick={handleAbort} />
+                    )}
+                  </>
+                )}
+                {isFinished && (
+                  <MenuItem label="Back to Lobby" onClick={() => navigate('/lobby')} />
+                )}
+                <MenuItem label="Copy Game ID" onClick={handleCopyId} />
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <div className="sidebar">
@@ -468,5 +539,30 @@ export default function GamePage() {
       </div>
       {promotion && <PromotionDialog color={playerColor} onSelect={handlePromotionSelect} />}
     </div>
+  );
+}
+
+/* Small helper for menu dropdown items */
+function MenuItem({ label, onClick, danger }: { label: string; onClick: () => void; danger?: boolean }) {
+  return (
+    <button
+      className="btn btn-ghost btn-sm"
+      style={{
+        width: '100%',
+        justifyContent: 'flex-start',
+        padding: '8px 12px',
+        fontSize: 13,
+        borderRadius: 6,
+        color: danger ? 'var(--danger)' : 'var(--text)',
+        border: 'none',
+        background: 'transparent',
+        cursor: 'pointer',
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+      onClick={onClick}
+    >
+      {label}
+    </button>
   );
 }
