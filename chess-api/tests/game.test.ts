@@ -104,21 +104,21 @@ describe('game lifecycle', () => {
   });
 
   test('player can join multiple active games (up to MAX_GAMES_PER_PLAYER)', () => {
-    const hosts = Array.from({ length: 6 }, (_, i) => registerPlayer(`h${i}_host`));
+    const hosts = Array.from({ length: 21 }, (_, i) => registerPlayer(`h${i}_host`));
     const joiner = registerPlayer('j_multi');
 
-    /* Join 5 games — should succeed */
-    for (let i = 0; i < 5; i++) {
+    /* Join 20 games — should succeed */
+    for (let i = 0; i < 20; i++) {
       const g = game.createGame(hosts[i]);
       const result = game.joinGame(g.id, joiner);
       expect(result.success).toBe(true);
     }
 
-    /* 6th join should fail */
-    const g6 = game.createGame(hosts[5]);
-    const result6 = game.joinGame(g6.id, joiner);
-    expect(result6.success).toBe(false);
-    expect(result6.error).toMatch(/active game/i);
+    /* 21st join should fail */
+    const g21 = game.createGame(hosts[20]);
+    const result21 = game.joinGame(g21.id, joiner);
+    expect(result21.success).toBe(false);
+    expect(result21.error).toMatch(/active game/i);
   });
 
   test('game stats count active games and online players', () => {
