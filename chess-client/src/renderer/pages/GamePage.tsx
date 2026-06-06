@@ -431,7 +431,6 @@ export default function GamePage() {
       }
       if (['checkmate', 'stalemate', 'resigned', 'draw'].includes(updated.status)) {
         if (getSetting('soundEnabled')) playGameOverSound();
-        navigate(`/result/${updated.id}`);
       }
     } catch (err: any) {
       setBoard(oldBoard);
@@ -494,29 +493,19 @@ export default function GamePage() {
     if (newIndex === -1) {
       setBoard(createInitialBoard());
       setLastMove(null);
+      setMoves([]);
     } else {
       const snapshot = gameRef.current.boardHistory[newIndex];
       setBoard(deserializeBoard(snapshot.board));
-      const prevBoard = newIndex > 0 ? gameRef.current.boardHistory[newIndex - 1].board : null;
-      setLastMove(prevBoard ? extractLastMove(prevBoard, snapshot.board) : null);
+      setLastMove(extractLastMoveFromHistory(gameRef.current.moveHistory, newIndex));
+      setMoves(gameRef.current.moveHistory.slice(0, newIndex + 1));
     }
   }
 
-  function extractLastMove(
-    prevBoard: SerializedSquare[],
-    curBoard: SerializedSquare[],
-  ): { from: string; to: string } | null {
-    const prevMap = new Map(prevBoard.map((sq) => [sq.square, sq]));
-    const curMap = new Map(curBoard.map((sq) => [sq.square, sq]));
-    let from: string | null = null;
-    let to: string | null = null;
-    for (const sq of prevBoard) {
-      if (!curMap.has(sq.square)) from = sq.square;
-    }
-    for (const sq of curBoard) {
-      if (!prevMap.has(sq.square)) to = sq.square;
-    }
-    return from && to ? { from, to } : null;
+  function extractLastMoveFromHistory(history: string[], index: number): { from: string; to: string } | null {
+    if (index < 0 || index >= history.length) return null;
+    const parts = history[index].split('-');
+    return parts.length === 2 ? { from: parts[0], to: parts[1] } : null;
   }
 
   function formatTime(ms: number): string {

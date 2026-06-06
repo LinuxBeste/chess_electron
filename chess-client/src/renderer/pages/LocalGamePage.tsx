@@ -338,27 +338,12 @@ export default function LocalGamePage() {
     if (newIndex === -1) {
       setBoard(createInitialBoard());
       setLastMove(null);
+      setMoves([]);
     } else {
       setBoard(cloneBoard(boardHistory[newIndex].board));
-      const prevBoard = newIndex > 0 ? boardHistory[newIndex - 1].board : null;
-      if (prevBoard) {
-        const prevMap = new Map<string, boolean>();
-        for (let r = 0; r < 8; r++)
-          for (let f = 0; f < 8; f++)
-            if (prevBoard[r][f]) prevMap.set(indicesToSquare(r, f), true);
-        const curMap = new Map<string, boolean>();
-        const curBoard = boardHistory[newIndex].board;
-        for (let r = 0; r < 8; r++)
-          for (let f = 0; f < 8; f++)
-            if (curBoard[r][f]) curMap.set(indicesToSquare(r, f), true);
-        let from: string | null = null;
-        let to: string | null = null;
-        for (const sq of prevMap.keys()) if (!curMap.has(sq)) from = sq;
-        for (const sq of curMap.keys()) if (!prevMap.has(sq)) to = sq;
-        setLastMove(from && to ? { from, to } : null);
-      } else {
-        setLastMove(null);
-      }
+      const parts = boardHistory[newIndex].move.split('-');
+      setLastMove(parts.length === 2 ? { from: parts[0], to: parts[1] } : null);
+      setMoves(boardHistory.slice(0, newIndex + 1).map((e) => e.move));
     }
   }
 

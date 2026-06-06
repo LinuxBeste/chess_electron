@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { store } from '../store';
 import * as api from '../api';
@@ -7,8 +7,22 @@ import { t } from '../translate';
 export default function ResultPage() {
   const { gameId } = useParams();
   const navigate = useNavigate();
-  const game = store.get('currentGame');
+  const [game, setGame] = useState(() => store.get('currentGame'));
   const myId = store.get('playerId');
+
+  useEffect(() => {
+    if (game && game.id === gameId) return;
+    if (!gameId) return;
+    api.getGame(gameId)
+      .then((g) => {
+        setGame(g);
+        store.set('currentGame', g);
+      })
+      .catch(() => {
+        store.toast(t('game.failedLoad'));
+        navigate('/lobby');
+      });
+  }, []);
   const [rematching, setRematching] = useState(false);
 
   let outcomeText = t('result.draw');
