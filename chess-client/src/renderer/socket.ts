@@ -61,7 +61,25 @@ export interface GameAbortedMessage {
   gameId: string;
 }
 
-type WsMessage = MoveMessage | GameOverMessage | GameStartedMessage | ChatMessage | GameAbortedMessage;
+export interface DrawOfferedMessage {
+  type: 'draw_offered';
+  gameId: string;
+  byPlayerId: string;
+}
+
+export interface DrawDeclinedMessage {
+  type: 'draw_declined';
+  gameId: string;
+}
+
+type WsMessage =
+  | MoveMessage
+  | GameOverMessage
+  | GameStartedMessage
+  | ChatMessage
+  | GameAbortedMessage
+  | DrawOfferedMessage
+  | DrawDeclinedMessage;
 
 /** Handler type for move events */
 export type MoveHandler = (msg: MoveMessage) => void;
@@ -77,6 +95,12 @@ export type ChatHandler = (msg: ChatMessage) => void;
 
 /** Handler type for game-aborted events */
 export type GameAbortedHandler = (msg: GameAbortedMessage) => void;
+
+/** Handler type for draw-offered events */
+export type DrawOfferedHandler = (msg: DrawOfferedMessage) => void;
+
+/** Handler type for draw-declined events */
+export type DrawDeclinedHandler = (msg: DrawDeclinedMessage) => void;
 
 /** Maximum number of reconnect attempts before giving up */
 const MAX_RETRIES = 5;
@@ -96,6 +120,8 @@ class SocketManager {
   private gameStartedHandlers = new Set<GameStartedHandler>();
   private chatHandlers = new Set<ChatHandler>();
   private gameAbortedHandlers = new Set<GameAbortedHandler>();
+  private drawOfferedHandlers = new Set<DrawOfferedHandler>();
+  private drawDeclinedHandlers = new Set<DrawDeclinedHandler>();
   private serverUrl = 'http://localhost:3000';
 
   /** Set a custom server URL for the WebSocket connection */
@@ -153,6 +179,12 @@ class SocketManager {
             break;
           case 'game_aborted':
             this.gameAbortedHandlers.forEach((h) => h(msg as GameAbortedMessage));
+            break;
+          case 'draw_offered':
+            this.drawOfferedHandlers.forEach((h) => h(msg as DrawOfferedMessage));
+            break;
+          case 'draw_declined':
+            this.drawDeclinedHandlers.forEach((h) => h(msg as DrawDeclinedMessage));
             break;
         }
       } catch {
@@ -238,6 +270,20 @@ class SocketManager {
     this.gameAbortedHandlers.add(handler);
     return () => {
       this.gameAbortedHandlers.delete(handler);
+    };
+  }
+
+  onDrawOffered(handler: DrawOfferedHandler): () => void {
+    this.drawOfferedHandlers.add(handler);
+    return () => {
+      this.drawOfferedHandlers.delete(handler);
+    };
+  }
+
+  onDrawDeclined(handler: DrawDeclinedHandler): () => void {
+    this.drawDeclinedHandlers.add(handler);
+    return () => {
+      this.drawDeclinedHandlers.delete(handler);
     };
   }
 }

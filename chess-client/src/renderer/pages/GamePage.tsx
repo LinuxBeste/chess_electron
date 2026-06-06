@@ -30,7 +30,14 @@ import type {
   SerializedSquare,
   GameStatus,
 } from '../../types';
-import type { MoveMessage, GameOverMessage, GameStartedMessage, GameAbortedMessage } from '../socket';
+import type {
+  MoveMessage,
+  GameOverMessage,
+  GameStartedMessage,
+  GameAbortedMessage,
+  DrawOfferedMessage,
+  DrawDeclinedMessage,
+} from '../socket';
 
 export default function GamePage() {
   const { gameId } = useParams<{ gameId: string }>();
@@ -52,6 +59,8 @@ export default function GamePage() {
   const [waiting, setWaiting] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [timeout, setTimeout_] = useState<'white' | 'black' | null>(null);
+  const [drawOfferedBy, setDrawOfferedBy] = useState<string | null>(null);
+  const [drawPending, setDrawPending] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   /* Spectator mode = read-only; no move interaction.  The ?spectate=1
@@ -117,6 +126,12 @@ export default function GamePage() {
     const unsubGameAborted = socketManager.onGameAborted((msg) => {
       if (msg.gameId === gameId) handleWsGameAborted(msg);
     });
+    const unsubDrawOffered = socketManager.onDrawOffered((msg) => {
+      if (msg.gameId === gameId) handleDrawOffered(msg);
+    });
+    const unsubDrawDeclined = socketManager.onDrawDeclined((msg) => {
+      if (msg.gameId === gameId) handleDrawDeclined(msg);
+    });
 
     if (initialGame) {
       initGame(initialGame);
@@ -143,6 +158,8 @@ export default function GamePage() {
       unsubGameOver();
       unsubGameStarted();
       unsubGameAborted();
+      unsubDrawOffered();
+      unsubDrawDeclined();
       if (isSpectator) {
         socketManager.send({ type: 'unspectate' });
       }
@@ -199,6 +216,8 @@ export default function GamePage() {
     setMoves(g.moveHistory);
     setWaiting(g.status === 'waiting');
     setReviewIndex(null);
+    setDrawOfferedBy(null);
+    setDrawPending(false);
     const ms = getSetting('timeControlMinutes') * 60 * 1000;
     setWhiteTime(ms);
     setBlackTime(ms);
@@ -265,6 +284,36 @@ export default function GamePage() {
   function handleWsGameAborted(_msg: GameAbortedMessage) {
     store.set('currentGame', null);
     navigate('/lobby');
+  }
+
+  function handleDrawOffered(msg: DrawOfferedMessage) {
+    if (msg.byPlayerId === store.get('playerId')) {
+      setDrawPending(true);
+    } else {
+      setDrawOfferedBy(msg.byPlayerId);
+    }
+  }
+
+  function handleDrawDeclined(_msg: DrawDeclinedMessage) {
+    setDrawPending(false);
+  }
+
+  function handleOfferDraw() {
+    if (!gameId) return;
+    setMenuOpen(false);
+    socketManager.send({ type: 'offer_draw', gameId });
+  }
+
+  function handleAcceptDraw() {
+    if (!gameId) return;
+    setDrawOfferedBy(null);
+    socketManager.send({ type: 'accept_draw', gameId });
+  }
+
+  function handleDeclineDraw() {
+    if (!gameId) return;
+    setDrawOfferedBy(null);
+    socketManager.send({ type: 'decline_draw', gameId });
   }
 
   const requestLegalMoves = useCallback(async (square: string) => {
@@ -519,6 +568,21 @@ export default function GamePage() {
               </div>
             </div>
           )}
+          {drawOfferedBy && !isFinished && (
+            <div className="waiting-overlay" style={{ background: 'rgba(0,0,0,0.75)' }}>
+              <div className="waiting-text" style={{ fontSize: 16, marginBottom: 16 }}>
+                Opponent offers a draw
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button className="btn btn-primary btn-sm" onClick={handleAcceptDraw}>
+                  Accept
+                </button>
+                <button className="btn btn-secondary btn-sm" onClick={handleDeclineDraw}>
+                  Decline
+                </button>
+              </div>
+            </div>
+          )}
         </Board>
         <div className="player-bar">
           <span className="player-name">{game?.players.white === store.get('playerId') ? 'You (White)' : 'White'}</span>
@@ -579,7 +643,7 @@ export default function GamePage() {
                       />
                     )}
                     {!isSpectator && game?.status === 'active' && (
-                      <MenuItem label="Offer Draw" onClick={() => { setMenuOpen(false); store.toast('Draw offer not yet implemented', 'info'); }} />
+                      <MenuItem label={drawPending ? 'Draw offered...' : 'Offer Draw'} onClick={handleOfferDraw} />
                     )}
                     {waiting && !isSpectator && (
                       <MenuItem label="Abort Game" onClick={handleAbort} />

@@ -57,6 +57,11 @@ const wsConnections = new Map<string, Set<WebSocket>>();
 /* Spectator WebSocket connections per game. Non-players can watch active games. */
 const spectatorConnections = new Map<string, Set<WebSocket>>();
 
+/* Tracks active draw offers: gameId → playerId of the player who offered.
+ * Offers are cleared when the opponent declines, the offering player cancels,
+ * or any move is made. */
+const drawOffers = new Map<string, string>();
+
 /**
  * Register a player.
  *
@@ -534,6 +539,9 @@ export function makeMove(
   game.halfMoveClock = newHalfMoveClock;
   if (winner) game.winner = winner;
 
+  /* Cancel any pending draw offer — a move was made */
+  cancelDrawOffer(gameId);
+
   /* Build and broadcast the WebSocket event to both players */
   const isTerminal = newStatus === 'checkmate' || newStatus === 'stalemate' || newStatus === 'draw';
   const message: Record<string, unknown> = {
@@ -628,6 +636,94 @@ function recordGameResult(game: GameState, winner: Color | null): void {
     if (whitePlayer?.isRegistered) db.addDraw(whiteId);
     if (blackPlayer?.isRegistered) db.addDraw(blackId);
   }
+}
+
+/* ─── Draw offer system ─── */
+
+/**
+ * Offer a draw to the opponent.
+ * Returns false if there's already a pending offer in this game.
+ * The offerer is also notified so they can show "Draw offered" state.
+ */
+export function offerDraw(gameId: string, playerId: string): boolean {
+  const game = games.get(gameId);
+  if (!game || game.status !== 'active') return false;
+  const isPlayer = game.players.white === playerId || game.players.black === playerId;
+  if (!isPlayer) return false;
+  if (drawOffers.has(gameId)) return false;
+
+  drawOffers.set(gameId, playerId);
+  const message = { type: 'draw_offered', gameId, byPlayerId: playerId };
+  broadcastToGame(gameId, message);
+  return true;
+}
+
+/**
+ * Accept a pending draw offer — game ends as a draw.
+ * Only the non-offering player can accept.
+ */
+export function acceptDraw(gameId: string, playerId: string): { success: boolean; error?: string } {
+  const offererId = drawOffers.get(gameId);
+  if (!offererId) return { success: false, error: 'No pending draw offer' };
+  if (offererId === playerId) return { success: false, error: 'Cannot accept your own draw offer' };
+
+  const game = games.get(gameId);
+  if (!game || game.status !== 'active') {
+    drawOffers.delete(gameId);
+    return { success: false, error: 'Game is not active' };
+  }
+
+  const isPlayer = game.players.white === playerId || game.players.black === playerId;
+  if (!isPlayer) return { success: false, error: 'You are not a player in this game' };
+
+  game.status = 'draw';
+  game.winner = null;
+  drawOffers.delete(gameId);
+
+  recordGameResult(game, null);
+
+  broadcastToGame(gameId, {
+    type: 'game_over',
+    gameId,
+    board: chess.serializeBoard(game.board),
+    turn: game.turn,
+    lastMove: game.lastMove,
+    status: 'draw',
+    result: 'draw',
+    reason: 'Draw by agreement',
+  });
+
+  return { success: true };
+}
+
+/**
+ * Decline a pending draw offer.
+ * Only the non-offering player can decline.
+ */
+export function declineDraw(gameId: string, playerId: string): boolean {
+  const offererId = drawOffers.get(gameId);
+  if (!offererId) return false;
+  if (offererId === playerId) return false;
+
+  const game = games.get(gameId);
+  if (!game) {
+    drawOffers.delete(gameId);
+    return false;
+  }
+
+  const isPlayer = game.players.black === playerId || game.players.white === playerId;
+  if (!isPlayer) return false;
+
+  drawOffers.delete(gameId);
+  sendToPlayer(offererId, { type: 'draw_declined', gameId });
+  return true;
+}
+
+/**
+ * Cancel or clear a pending draw offer (e.g. when a move is made).
+ */
+export function cancelDrawOffer(gameId: string): void {
+  drawOffers.delete(gameId);
 }
 
 /**
