@@ -1,3 +1,7 @@
+import { TextEncoder } from 'util';
+
+globalThis.TextEncoder = TextEncoder;
+
 const store: Record<string, string> = {};
 
 Object.defineProperty(globalThis, 'localStorage', {

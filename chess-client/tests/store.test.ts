@@ -1,4 +1,5 @@
-import { describe, test, expect, jest } from '@jest/globals';
+import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+import { store as realStore } from '../src/renderer/store';
 
 class Store {
   private state: Record<string, any> = {
@@ -230,5 +231,69 @@ describe('session persistence', () => {
     expect(typeof session!.token).toBe('string');
     expect(typeof session!.playerId).toBe('string');
     expect(typeof session!.username).toBe('string');
+  });
+});
+
+describe('real store — offline field', () => {
+  beforeEach(() => {
+    realStore.set('offline', false);
+    realStore.set('token', null);
+    realStore.set('playerId', null);
+    realStore.set('username', null);
+  });
+
+  test('offline defaults to false', () => {
+    expect(realStore.get('offline')).toBe(false);
+  });
+
+  test('can set offline to true and get it back', () => {
+    realStore.set('offline', true);
+    expect(realStore.get('offline')).toBe(true);
+  });
+
+  test('can toggle offline back and forth', () => {
+    realStore.set('offline', true);
+    expect(realStore.get('offline')).toBe(true);
+    realStore.set('offline', false);
+    expect(realStore.get('offline')).toBe(false);
+    realStore.set('offline', true);
+    expect(realStore.get('offline')).toBe(true);
+  });
+
+  test('subscribes to offline changes', () => {
+    const handler = jest.fn();
+    realStore.subscribe('offline', handler);
+    realStore.set('offline', true);
+    expect(handler).toHaveBeenCalledWith(true);
+  });
+
+  test('unsubscribe from offline stops notifications', () => {
+    const handler = jest.fn();
+    const unsub = realStore.subscribe('offline', handler);
+    unsub();
+    realStore.set('offline', true);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  test('setting offline does not trigger token subscribers', () => {
+    const handler = jest.fn();
+    realStore.subscribe('token', handler);
+    realStore.set('offline', true);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  test('offline is independent of token', () => {
+    realStore.set('offline', true);
+    realStore.set('token', 'abc');
+    expect(realStore.get('offline')).toBe(true);
+    realStore.set('token', null);
+    expect(realStore.get('offline')).toBe(true);
+  });
+
+  test('username can be set without token when offline', () => {
+    realStore.set('offline', true);
+    realStore.set('username', 'OfflinePlayer');
+    expect(realStore.get('username')).toBe('OfflinePlayer');
+    expect(realStore.get('token')).toBeNull();
   });
 });
