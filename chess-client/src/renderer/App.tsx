@@ -76,8 +76,20 @@ export default function App() {
     }
     setSoundVolume(existing.soundVolume);
 
+    /* Subscribe to token changes FIRST so the initial restore triggers it */
+    const unsubToken = store.subscribe('token', (token) => {
+      if (token) {
+        socketManager.connect();
+      } else {
+        socketManager.disconnect();
+        navigate('/login', { replace: true });
+      }
+    });
+
     /* Restore persisted session and validate credentials against the server.
-       If the token is stale (401), clear session and redirect to login. */
+       If the token is stale (401), clear session and redirect to login.
+       The subscribe above will fire on store.set('token', ...) and connect
+       or disconnect the WebSocket accordingly. */
     const session = store.restoreSession();
     if (session) {
       store.set('token', session.token);
@@ -93,23 +105,11 @@ export default function App() {
             store.set('playerId', null);
             store.set('username', null);
             store.clearSession();
-            navigate('/login', { replace: true });
           } else {
             store.toast('Failed to connect to server. Check the Server URL.', 'error');
           }
         });
     }
-
-    /* Subscribe to token changes: connect WebSocket when we have a token,
-       disconnect and redirect to login when logged out */
-    const unsubToken = store.subscribe('token', (token) => {
-      if (token) {
-        socketManager.connect();
-      } else {
-        socketManager.disconnect();
-        navigate('/login', { replace: true });
-      }
-    });
 
     return () => unsubToken();
   }, []);
