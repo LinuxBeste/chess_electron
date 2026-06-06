@@ -24,14 +24,19 @@ export default function MoveHistory({ moves }: MoveHistoryProps) {
 
   if (moves.length === 0) {
     return (
-      <div className="sidebar-panel" style={{ minHeight: 150, maxHeight: 'calc(50vh - 100px)' }}>
-        <div className="empty-state">No moves yet</div>
+      <div className="moves-panel">
+        <h3 className="sidebar-title">Moves</h3>
+        <div className="sidebar-panel" style={{ minHeight: 150, maxHeight: 'calc(50vh - 100px)' }}>
+          <div className="empty-state">No moves yet</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div ref={scrollRef} className="sidebar-panel" style={{ minHeight: 150, maxHeight: 'calc(50vh - 100px)' }}>
+    <div className="moves-panel">
+      <h3 className="sidebar-title">Moves</h3>
+      <div ref={scrollRef} className="sidebar-panel" style={{ minHeight: 150, maxHeight: 'calc(50vh - 100px)' }}>
       <div className="history-grid">
         <div className="history-header">#</div>
         <div className="history-header">White</div>
@@ -53,6 +58,7 @@ export default function MoveHistory({ moves }: MoveHistoryProps) {
             </>
           );
         })}
+      </div>
       </div>
     </div>
   );

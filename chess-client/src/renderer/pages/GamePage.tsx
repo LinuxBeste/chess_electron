@@ -662,7 +662,6 @@ export default function GamePage() {
         </div>
       </div>
       <div className="sidebar">
-        <h3 className="sidebar-title">Moves</h3>
         <MoveHistory moves={moves} />
         {gameId && <Chat gameId={gameId} />}
       </div>

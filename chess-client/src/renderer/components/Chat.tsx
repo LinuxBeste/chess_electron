@@ -49,11 +49,11 @@ export default function Chat({ gameId }: ChatProps) {
   };
 
   return (
-    <>
+    <div className="chat-panel">
       <h3 className="sidebar-title" style={{ marginTop: 8 }}>
         Chat
       </h3>
-      <div ref={listRef} className="sidebar-panel" style={{ minHeight: 80, maxHeight: 150, fontSize: 12, padding: 8 }}>
+      <div ref={listRef} className="sidebar-panel" style={{ minHeight: 60, maxHeight: 150, fontSize: 12, padding: 8 }}>
         {messages.map((msg, i) => {
           const isMe = msg.playerId === store.get('playerId');
           return (
@@ -82,6 +82,6 @@ export default function Chat({ gameId }: ChatProps) {
           Send
         </button>
       </div>
-    </>
+    </div>
   );
 }
