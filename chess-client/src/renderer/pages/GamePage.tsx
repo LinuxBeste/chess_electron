@@ -242,6 +242,8 @@ export default function GamePage() {
     setBoard(newBoard);
     setLastMove(msg.lastMove);
     setGame((prev) => (prev ? { ...prev, turn: msg.turn } : null));
+    setDrawOfferedBy(null);
+    setDrawPending(false);
     const incMs = getSetting('timeControlIncrement') * 1000;
     if (msg.turn === 'black') setWhiteTime((t) => t + incMs);
     else setBlackTime((t) => t + incMs);
