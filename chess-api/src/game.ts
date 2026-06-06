@@ -1,8 +1,10 @@
+import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocket } from 'ws';
 import { Player, GameState, Color, PieceType } from './types';
 import type { GameStatus } from './types';
 import * as chess from './chess';
+import * as db from './db';
 
 /* In-memory data stores.  Everything resets on process restart — there is
  * no database or persistent storage.  Three data structures:
@@ -22,15 +24,16 @@ const tokenIndex = new Map<string, string>();
 /**
  * Attach player display names to a GameState before returning it to clients.
  * The core domain model stores only IDs; this enriches the response so the
- * UI can show usernames without extra API calls.
+ * UI can show usernames without extra API calls.  Registered players use
+ * their displayName (which may differ from their login username).
  */
 function enrichNames(g: GameState): GameState {
   const whitePlayer = g.players.white ? players.get(g.players.white) : undefined;
   const blackPlayer = g.players.black ? players.get(g.players.black) : undefined;
   return {
     ...g,
-    whiteName: whitePlayer?.username ?? g.whiteName,
-    blackName: blackPlayer?.username ?? g.blackName,
+    whiteName: whitePlayer?.displayName ?? whitePlayer?.username ?? g.whiteName,
+    blackName: blackPlayer?.displayName ?? blackPlayer?.username ?? g.blackName,
   };
 }
 
@@ -55,21 +58,88 @@ const wsConnections = new Map<string, Set<WebSocket>>();
 const spectatorConnections = new Map<string, Set<WebSocket>>();
 
 /**
- * Register a new player with a display-only username.
+ * Register a player.
  *
- * Generates a UUID for the player ID and another UUID for the bearer token.
- * The token is stored in both the player's token list and the reverse index.
- * Returns both so the client can immediately authenticate.
+ * Two modes:
+ *   1. Anonymous (no password) — in-memory only, no DB record.
+ *      Generates UUIDs for player ID and bearer token. Username is used
+ *      as display name and can be a duplicate.
+ *   2. Registered (with password) — persisted to SQLite. Username must be
+ *      unique across all registered users. Password is hashed with PBKDF2.
+ *
+ * Returns { playerId, token, isRegistered } so the client knows the type.
  */
-export function registerPlayer(username: string): { playerId: string; token: string } {
+export function registerPlayer(
+  username: string,
+  password?: string,
+): { playerId: string; token: string; isRegistered: boolean; displayName: string } {
   const playerId = uuidv4();
   const token = uuidv4();
 
-  const player: Player = { id: playerId, username, tokens: [token] };
+  if (password) {
+    const hash = hashPassword(password);
+    db.createUser(playerId, username, hash, username);
+    db.saveToken(token, playerId);
+    const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: true };
+    players.set(playerId, player);
+    tokenIndex.set(token, playerId);
+    return { playerId, token, isRegistered: true, displayName: username };
+  }
+
+  const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: false };
   players.set(playerId, player);
   tokenIndex.set(token, playerId);
+  return { playerId, token, isRegistered: false, displayName: username };
+}
 
-  return { playerId, token };
+/**
+ * Log in an existing registered user by verifying their password.
+ * Generates a new session token on each login (multi-device friendly).
+ */
+export function loginPlayer(
+  username: string,
+  password: string,
+): { success: false; error: string } | { success: true; playerId: string; token: string; displayName: string } {
+  const user = db.getUserByUsername(username);
+  if (!user || !user.password_hash) {
+    return { success: false, error: 'Invalid username or password' };
+  }
+  if (!verifyPassword(password, user.password_hash)) {
+    return { success: false, error: 'Invalid username or password' };
+  }
+
+  const token = uuidv4();
+  db.saveToken(token, user.id);
+
+  const existing = players.get(user.id);
+  if (existing) {
+    existing.tokens.push(token);
+    tokenIndex.set(token, user.id);
+  } else {
+    const player: Player = {
+      id: user.id,
+      username: user.username,
+      displayName: user.display_name,
+      tokens: [token],
+      isRegistered: true,
+    };
+    players.set(user.id, player);
+    tokenIndex.set(token, user.id);
+  }
+
+  return { success: true, playerId: user.id, token, displayName: user.display_name };
+}
+
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const key = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  return `${salt}:${key}`;
+}
+
+function verifyPassword(password: string, stored: string): boolean {
+  const [salt, key] = stored.split(':');
+  const check = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  return key === check;
 }
 
 /**
@@ -488,6 +558,11 @@ export function makeMove(
   }
 
   broadcastToGame(gameId, message);
+
+  if (isTerminal) {
+    recordGameResult(game, winner);
+  }
+
   return { success: true, state: enrichNames(game) };
 }
 
@@ -526,7 +601,33 @@ export function resignGame(gameId: string, playerId: string): { success: boolean
     winner,
   });
 
+  recordGameResult(game, winner === 'white' ? 'white' : winner === 'black' ? 'black' : null);
+
   return { success: true, state: enrichNames(game) };
+}
+
+/**
+ * Persist game results to the database for registered players.
+ * Does nothing for anonymous (in-memory only) players.
+ */
+function recordGameResult(game: GameState, winner: Color | null): void {
+  const whiteId = game.players.white;
+  const blackId = game.players.black;
+  if (!whiteId || !blackId) return;
+
+  const whitePlayer = players.get(whiteId);
+  const blackPlayer = players.get(blackId);
+
+  if (winner === 'white') {
+    if (whitePlayer?.isRegistered) db.addWin(whiteId);
+    if (blackPlayer?.isRegistered) db.addLoss(blackId);
+  } else if (winner === 'black') {
+    if (blackPlayer?.isRegistered) db.addWin(blackId);
+    if (whitePlayer?.isRegistered) db.addLoss(whiteId);
+  } else {
+    if (whitePlayer?.isRegistered) db.addDraw(whiteId);
+    if (blackPlayer?.isRegistered) db.addDraw(blackId);
+  }
 }
 
 /**
@@ -569,6 +670,16 @@ export function getPlayerGames(playerId: string): GameState[] {
 }
 
 /**
+ * Get stats for a player.  Returns null if the player is not registered
+ * (anonymous players have no persistent stats).
+ */
+export function getPlayerStats(playerId: string): { wins: number; losses: number; draws: number } | null {
+  const user = db.getUserById(playerId);
+  if (!user) return null;
+  return { wins: user.wins, losses: user.losses, draws: user.draws };
+}
+
+/**
  * Store recent chat messages per game (in-memory, last 50 messages).
  */
 const chatHistory = new Map<string, { playerId: string; username: string; text: string; timestamp: number }[]>();
@@ -592,15 +703,16 @@ export function handleChatMessage(gameId: string, playerId: string, text: string
   if (!chatHistory.has(gameId)) {
     chatHistory.set(gameId, []);
   }
+  const displayName = player.displayName;
   const history = chatHistory.get(gameId)!;
-  history.push({ playerId, username: player.username, text, timestamp: Date.now() });
+  history.push({ playerId, username: displayName, text, timestamp: Date.now() });
   if (history.length > 50) history.shift();
 
   const message: Record<string, unknown> = {
     type: 'chat_message',
     gameId,
     playerId,
-    username: player.username,
+    username: displayName,
     text,
     timestamp: Date.now(),
   };
@@ -669,8 +781,32 @@ export function stopWaitingGameSweep(): void {
   }
 }
 
-/* Auto-start the sweep on module load unless we're in a test environment */
+/* Register all users and in-memory — called once at server startup. */
+export function loadPersistedUsers(): void {
+  const allUsers = db.loadAllUsers();
+  for (const u of allUsers) {
+    const player: Player = {
+      id: u.id,
+      username: u.username,
+      displayName: u.display_name,
+      tokens: [],
+      isRegistered: true,
+    };
+    players.set(u.id, player);
+  }
+  const allTokens = db.loadAllTokens();
+  for (const t of allTokens) {
+    const player = players.get(t.user_id);
+    if (player) {
+      player.tokens.push(t.token);
+      tokenIndex.set(t.token, t.user_id);
+    }
+  }
+}
+
+/* Auto-start on module load unless we're in a test environment */
 const isTestEnv = typeof process.env.JEST_WORKER_ID !== 'undefined' || process.env.NODE_ENV === 'test';
 if (!isTestEnv) {
+  loadPersistedUsers();
   startWaitingGameSweep();
 }

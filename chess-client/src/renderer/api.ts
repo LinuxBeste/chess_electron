@@ -78,19 +78,41 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 /* POST /auth/register — no auth required.
- * Response shape confirmed in ../chess-api/src/routes.ts line 46-54
- * and ../chess-api/docs/api.md lines 13-28. */
-export function register(username: string): Promise<{ playerId: string; token: string }> {
+ * Anonymous: just { username }.
+ * Registered: { username, password } for a persistent account with stats.
+ * Returns { playerId, token, isRegistered, displayName }. */
+export function register(
+  username: string,
+  password?: string,
+): Promise<{ playerId: string; token: string; isRegistered: boolean; displayName: string }> {
   return request('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ username }),
+    body: JSON.stringify({ username, ...(password ? { password } : {}) }),
+  });
+}
+
+/* POST /auth/login — no auth required.
+ * Login as an existing registered user.
+ * Returns { playerId, token, displayName } on success. */
+export function login(
+  username: string,
+  password: string,
+): Promise<{ success: true; playerId: string; token: string; displayName: string }> {
+  return request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
   });
 }
 
 /* GET /auth/me — auth required.
- * Response shape confirmed in ../chess-api/src/routes.ts line 57-59
- * and ../chess-api/docs/api.md lines 30-40. */
-export function getMe(): Promise<{ id: string; username: string }> {
+ * Returns player info including stats for registered users. */
+export function getMe(): Promise<{
+  id: string;
+  username: string;
+  displayName: string;
+  isRegistered: boolean;
+  stats?: { wins: number; losses: number; draws: number };
+}> {
   return request('/auth/me');
 }
 

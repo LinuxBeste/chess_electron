@@ -65,12 +65,17 @@ export interface GameState {
   halfMoveClock: number;
 }
 
-/* A registered human player.  `tokens` is a list of bearer tokens so the
- * same person can authenticate from multiple devices or browser tabs. */
+/* A player (anonymous or registered). `tokens` is a list of bearer tokens
+ * so the same person can authenticate from multiple devices or browser tabs.
+ * `displayName` is what appears in-game — for anonymous users it matches
+ * `username`; for registered users it can differ. `isRegistered` indicates
+ * whether the player has a persistent DB account with stats. */
 export interface Player {
   id: string;
   username: string;
+  displayName: string;
   tokens: string[];
+  isRegistered: boolean;
 }
 
 /* Flattened representation of one occupied square, used for JSON API responses.

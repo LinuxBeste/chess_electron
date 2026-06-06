@@ -6,14 +6,19 @@ import { socketManager } from '../socket';
 import { getSetting } from '../settings';
 import { useNavigate } from 'react-router-dom';
 
+type Mode = 'quick' | 'signin' | 'register';
+
 export default function LoginPage() {
+  const [mode, setMode] = useState<Mode>('quick');
   const [username, setUsername] = useState(() => window.electronAPI?.defaultUsername || '');
+  const [password, setPassword] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const alwaysAsk = getSetting('alwaysAskServerUrl');
   const [serverUrl, setServerUrl] = useState(() => {
     if (alwaysAsk) return '';
     return localStorage.getItem('chess_server_url') || window.electronAPI?.serverUrl || 'http://localhost:3000';
   });
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -36,30 +41,24 @@ export default function LoginPage() {
       return;
     }
     const def = window.electronAPI?.defaultUsername;
-    if (def && window.electronAPI?.autoConnect !== false) {
-      handleSubmit();
+    if (def && mode === 'quick' && window.electronAPI?.autoConnect !== false) {
+      handleQuickPlay();
     } else {
       inputRef.current?.focus();
     }
   }, []);
 
-  async function handleSubmit() {
+  async function handleQuickPlay() {
     const trimmed = username.trim();
     if (!trimmed) {
-      const input = inputRef.current;
-      if (input) {
-        input.style.borderBottomColor = 'rgba(220,50,50,0.6)';
-        setTimeout(() => {
-          input.style.borderBottomColor = '';
-        }, 2000);
-      }
+      flashInput(inputRef.current);
       return;
     }
     setLoading(true);
     try {
-      const { playerId, token } = await api.register(trimmed);
-      store.set('token', token);
-      store.set('playerId', playerId);
+      const result = await api.register(trimmed);
+      store.set('token', result.token);
+      store.set('playerId', result.playerId);
       store.set('username', trimmed);
       navigate('/lobby');
     } catch (err: any) {
@@ -67,6 +66,58 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleRegister() {
+    const trimmed = username.trim();
+    if (!trimmed) {
+      flashInput(inputRef.current);
+      return;
+    }
+    if (registerPassword.length < 4) {
+      store.toast('Password must be at least 4 characters', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await api.register(trimmed, registerPassword);
+      store.set('token', result.token);
+      store.set('playerId', result.playerId);
+      store.set('username', result.displayName);
+      navigate('/lobby');
+    } catch (err: any) {
+      store.toast(err.message || 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSignIn() {
+    const trimmed = username.trim();
+    if (!trimmed || !password) {
+      store.toast('Username and password are required', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await api.login(trimmed, password);
+      store.set('token', result.token);
+      store.set('playerId', result.playerId);
+      store.set('username', result.displayName);
+      navigate('/lobby');
+    } catch (err: any) {
+      store.toast(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function flashInput(el: HTMLElement | null) {
+    if (!el) return;
+    el.style.borderBottomColor = 'rgba(220,50,50,0.6)';
+    setTimeout(() => {
+      el.style.borderBottomColor = '';
+    }, 2000);
   }
 
   return (
@@ -87,6 +138,31 @@ export default function LoginPage() {
         <p style={{ fontSize: 13, fontWeight: 300, color: 'var(--muted)', marginBottom: 24, letterSpacing: '0.3px' }}>
           ♚ Chess
         </p>
+
+        {/* Mode tabs */}
+        <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
+          {(['quick', 'signin', 'register'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              style={{
+                flex: 1,
+                padding: '10px 0',
+                fontSize: 13,
+                fontWeight: mode === m ? 600 : 400,
+                color: mode === m ? 'var(--accent)' : 'var(--muted)',
+                background: 'none',
+                border: 'none',
+                borderBottom: mode === m ? '2px solid var(--accent)' : '2px solid transparent',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {m === 'quick' ? 'Quick Play' : m === 'signin' ? 'Sign In' : 'Register'}
+            </button>
+          ))}
+        </div>
+
         <input
           className="input-clean"
           type="text"
@@ -99,11 +175,12 @@ export default function LoginPage() {
           onChange={(e) => handleServerUrlChange(e.target.value)}
           style={{ fontSize: 12, marginBottom: 8, opacity: 0.65 }}
         />
+
         <input
           ref={inputRef}
           className="input-clean"
           type="text"
-          placeholder="Enter your username"
+          placeholder={mode === 'quick' ? 'Enter your display name' : 'Username'}
           autoComplete="off"
           autoCapitalize="off"
           autoCorrect="off"
@@ -111,17 +188,83 @@ export default function LoginPage() {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSubmit();
+            if (e.key === 'Enter') {
+              if (mode === 'quick') handleQuickPlay();
+              else if (mode === 'signin') handleSignIn();
+              else handleRegister();
+            }
           }}
         />
+
+        {mode !== 'quick' && (
+          <input
+            className="input-clean"
+            type="password"
+            placeholder={mode === 'signin' ? 'Password' : 'Password (min 4 chars)'}
+            autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+            value={mode === 'signin' ? password : registerPassword}
+            onChange={(e) => {
+              if (mode === 'signin') setPassword(e.target.value);
+              else setRegisterPassword(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (mode === 'signin') handleSignIn();
+                else handleRegister();
+              }
+            }}
+            style={{ marginTop: 8 }}
+          />
+        )}
+
         <button
           className="btn btn-primary"
           style={{ marginTop: 24, width: '100%', padding: 14, fontSize: 16 }}
-          onClick={handleSubmit}
+          onClick={() => {
+            if (mode === 'quick') handleQuickPlay();
+            else if (mode === 'signin') handleSignIn();
+            else handleRegister();
+          }}
           disabled={loading}
         >
-          {loading ? 'Connecting...' : 'Enter'}
+          {loading
+            ? 'Connecting...'
+            : mode === 'quick'
+              ? 'Enter'
+              : mode === 'signin'
+                ? 'Sign In'
+                : 'Create Account'}
         </button>
+
+        {mode === 'signin' && (
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
+            No account?{' '}
+            <span
+              style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }}
+              onClick={() => setMode('register')}
+            >
+              Register here
+            </span>
+          </p>
+        )}
+
+        {mode === 'register' && (
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
+            Already have an account?{' '}
+            <span
+              style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }}
+              onClick={() => setMode('signin')}
+            >
+              Sign in
+            </span>
+          </p>
+        )}
+
+        <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 16, opacity: 0.6 }}>
+          {mode === 'quick'
+            ? 'Quick play uses a display name only — no password, no saved stats.'
+            : 'Registered accounts save your stats and let you log in from any device.'}
+        </p>
       </div>
     </div>
   );

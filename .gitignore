@@ -27,4 +27,7 @@ chess-client/release/
 
 package-lock.json
 
+# SQLite database (auto-generated at runtime)
+chess-api/data/
+
 FEATURES.md

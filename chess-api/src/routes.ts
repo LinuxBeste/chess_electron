@@ -53,20 +53,59 @@ router.get('/health', (_req: Request, res: Response) => {
   });
 });
 
-/* Register a new player (no auth — this is how you get your token) */
+/* Register a new player.
+ *
+ * Two modes:
+ *   - Anonymous (no password): in-memory only, name can be duplicate.
+ *   - Registered  (with password): persisted to SQLite, unique username.
+ */
 router.post('/auth/register', (req: Request, res: Response) => {
-  const { username } = req.body;
+  const { username, password } = req.body;
   if (!username || typeof username !== 'string' || username.trim().length === 0) {
     res.status(400).json({ error: 'Username is required' });
     return;
   }
-  const result = game.registerPlayer(username.trim());
-  res.status(201).json(result);
+  if (password !== undefined && (typeof password !== 'string' || password.length < 4)) {
+    res.status(400).json({ error: 'Password must be at least 4 characters' });
+    return;
+  }
+  try {
+    const result = game.registerPlayer(username.trim(), password || undefined);
+    res.status(201).json(result);
+  } catch (err: any) {
+    if (err?.message?.includes('UNIQUE constraint')) {
+      res.status(409).json({ error: 'Username is already taken' });
+      return;
+    }
+    res.status(500).json({ error: 'Registration failed' });
+  }
 });
 
-/* Get the authenticated player's info */
+/* Log in as an existing registered user */
+router.post('/auth/login', (req: Request, res: Response) => {
+  const { username, password } = req.body;
+  if (!username || typeof username !== 'string' || !password || typeof password !== 'string') {
+    res.status(400).json({ error: 'Username and password are required' });
+    return;
+  }
+  const result = game.loginPlayer(username.trim(), password);
+  if (!result.success) {
+    res.status(401).json({ error: result.error });
+    return;
+  }
+  res.json(result);
+});
+
+/* Get the authenticated player's info (includes stats for registered users) */
 router.get('/auth/me', authMiddleware, (req: Request, res: Response) => {
-  res.json({ id: req.player.id, username: req.player.username });
+  const stats = game.getPlayerStats(req.player.id);
+  res.json({
+    id: req.player.id,
+    username: req.player.username,
+    displayName: req.player.displayName,
+    isRegistered: req.player.isRegistered,
+    ...(stats ? { stats } : {}),
+  });
 });
 
 /* Create a new game (player becomes white).

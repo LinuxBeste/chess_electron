@@ -12,10 +12,12 @@ import { store } from '../store';
 import { useNavigate } from 'react-router-dom';
 import SettingsDialog from './SettingsDialog';
 import MatchHistoryDialog from './MatchHistoryDialog';
+import StatsDialog from './StatsDialog';
 
 export default function Navbar() {
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const username = useStoreValue('username');
   const token = useStoreValue('token');
   const wsStatus = useStoreValue('wsStatus');
@@ -35,6 +37,9 @@ export default function Navbar() {
               <span className={`navbar-dot ${wsStatus === 'connected' ? 'online' : 'offline'}`} />
               {username}
             </span>
+            <button className="navbar-btn" onClick={() => setShowStats(true)}>
+              Stats
+            </button>
             <button className="navbar-btn" onClick={() => setShowSettings(true)}>
               Settings
             </button>
@@ -59,6 +64,7 @@ export default function Navbar() {
       </div>
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
       {showHistory && <MatchHistoryDialog onClose={() => setShowHistory(false)} />}
+      {showStats && <StatsDialog onClose={() => setShowStats(false)} />}
     </nav>
   );
 }

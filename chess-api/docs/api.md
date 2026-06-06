@@ -4,7 +4,12 @@ Base URL: `http://localhost:3000`
 
 ## Authentication
 
-Register a player to receive a bearer token. Include this token in the `Authorization` header for all authenticated endpoints.
+### Two modes
+
+1. **Anonymous (Quick Play)** — just a display name, no password, no persistence. Name can be a duplicate. Stats are not saved between sessions.
+2. **Registered (Account)** — unique username + password, persisted to SQLite. Stats (wins/losses/draws) are tracked automatically.
+
+All authenticated endpoints require a bearer token in the `Authorization` header:
 
 ```
 Authorization: Bearer <token>
@@ -12,30 +17,72 @@ Authorization: Bearer <token>
 
 ### POST /auth/register
 
-Create a new player account (no password, just a display name).
+Create a new player. Two modes:
 
-**Request:**
-```json
-{ "username": "alice" }
-```
+- **Anonymous**: `{ "username": "alice" }` (in-memory, name can be duplicate)
+- **Registered**: `{ "username": "alice", "password": "secret" }` (persisted, username must be unique)
 
 **Response (201):**
 ```json
 {
   "playerId": "uuid-v4",
-  "token": "uuid-v4"
+  "token": "uuid-v4",
+  "isRegistered": false,
+  "displayName": "alice"
 }
+```
+
+**Response (409 — username taken):**
+```json
+{ "error": "Username is already taken" }
+```
+
+### POST /auth/login
+
+Log in as an existing registered user.
+
+**Request:**
+```json
+{ "username": "alice", "password": "secret" }
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "playerId": "uuid-v4",
+  "token": "uuid-v4",
+  "displayName": "alice"
+}
+```
+
+**Response (401):**
+```json
+{ "error": "Invalid username or password" }
 ```
 
 ### GET /auth/me
 
-Returns the authenticated player's info. Requires auth.
+Returns the authenticated player's info. Requires auth. Includes stats for registered users.
 
-**Response:**
+**Response (anonymous):**
 ```json
 {
   "id": "uuid-v4",
-  "username": "alice"
+  "username": "alice",
+  "displayName": "alice",
+  "isRegistered": false
+}
+```
+
+**Response (registered):**
+```json
+{
+  "id": "uuid-v4",
+  "username": "alice",
+  "displayName": "alice",
+  "isRegistered": true,
+  "stats": { "wins": 5, "losses": 2, "draws": 1 }
 }
 ```
 

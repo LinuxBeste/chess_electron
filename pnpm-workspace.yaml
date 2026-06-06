@@ -4,5 +4,6 @@ packages:
   - "website"
 allowBuilds:
   '@parcel/watcher': set this to true or false
+  better-sqlite3: true
   electron: false
   esbuild: true
