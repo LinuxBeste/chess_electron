@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState(() => window.electronAPI?.defaultUsername || '');
   const [password, setPassword] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
+  const [offlineMode, setOfflineMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const alwaysAsk = getSetting('alwaysAskServerUrl');
   const [serverUrl, setServerUrl] = useState(() => {
@@ -53,6 +54,13 @@ export default function LoginPage() {
     const trimmed = username.trim();
     if (!trimmed) {
       flashInput(inputRef.current);
+      return;
+    }
+    if (offlineMode) {
+      store.set('username', trimmed);
+      store.set('playerId', null);
+      store.set('offline', true);
+      navigate('/lobby');
       return;
     }
     setLoading(true);
@@ -197,7 +205,7 @@ export default function LoginPage() {
           }}
         />
 
-        {mode !== 'quick' && (
+        {mode !== 'quick' ? (
           <input
             className="input-clean"
             type="password"
@@ -216,6 +224,18 @@ export default function LoginPage() {
             }}
             style={{ marginTop: 8 }}
           />
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 }}>
+            <div className={`toggle ${offlineMode ? 'active' : ''}`} onClick={() => setOfflineMode(!offlineMode)}>
+              <div className="toggle-knob" />
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted)', letterSpacing: '0.2px' }}>
+              {t('login.offlineMode')}
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 300, color: 'var(--muted)', opacity: 0.6, marginLeft: 4 }}>
+              {t('login.offlineModeDesc')}
+            </span>
+          </div>
         )}
 
         <button

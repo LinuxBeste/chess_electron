@@ -27,7 +27,11 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
   const username = useStoreValue('username');
   const token = useStoreValue('token');
   const wsStatus = useStoreValue('wsStatus');
+  const offline = useStoreValue('offline');
   const navigate = useNavigate();
+
+  const isLoggedIn = !!(token && username);
+  const isOffline = !!(offline && username);
 
   return (
     <nav className="navbar">
@@ -39,27 +43,40 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
         {getLanguageNames()[getLanguage() === 'de' ? 'en' : 'de']}
       </button>
       <div className="navbar-actions">
-        {token && username ? (
+        {(isLoggedIn || isOffline) && (
           <>
-            <span className="navbar-player">
-              <span className={`navbar-dot ${wsStatus === 'connected' ? 'online' : 'offline'}`} />
-              {username}
-            </span>
-            <button className="navbar-btn" onClick={() => setShowStats(true)}>
-              {t('navbar.stats')}
-            </button>
+            {isLoggedIn && (
+              <span className="navbar-player">
+                <span className={`navbar-dot ${wsStatus === 'connected' ? 'online' : 'offline'}`} />
+                {username}
+              </span>
+            )}
+            {isOffline && (
+              <span className="navbar-player">
+                <span className="navbar-dot offline" />
+                {username}
+              </span>
+            )}
+            {isLoggedIn && (
+              <button className="navbar-btn" onClick={() => setShowStats(true)}>
+                {t('navbar.stats')}
+              </button>
+            )}
             <button className="navbar-btn" onClick={() => setShowSettings(true)}>
               {t('navbar.settings')}
             </button>
-            <button className="navbar-btn" onClick={() => setShowHistory(true)}>
-              {t('navbar.history')}
-            </button>
+            {isLoggedIn && (
+              <button className="navbar-btn" onClick={() => setShowHistory(true)}>
+                {t('navbar.history')}
+              </button>
+            )}
             <button
               className="navbar-btn"
               onClick={() => {
                 store.set('token', null);
                 store.set('playerId', null);
                 store.set('username', null);
+                store.set('offline', false);
                 store.clearSession();
                 store.set('currentGame', null);
                 navigate('/login');
@@ -68,7 +85,7 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
               {t('navbar.logout')}
             </button>
           </>
-        ) : null}
+        )}
       </div>
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
       {showHistory && <MatchHistoryDialog onClose={() => setShowHistory(false)} />}

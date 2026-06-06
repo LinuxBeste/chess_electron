@@ -20,6 +20,7 @@ interface StateMap {
   wsStatus: WsStatus;
   toasts: ToastMessage[];
   currentView: ViewName;
+  offline: boolean;
 }
 
 /* Typed observable store. subscribe/get/set are key-constrained to StateMap keys. */
@@ -32,6 +33,7 @@ class Store {
     wsStatus: 'disconnected',
     toasts: [],
     currentView: 'login',
+    offline: false,
   };
 
   /* Listeners stored by key string; cast internally since the map is heterogenous */

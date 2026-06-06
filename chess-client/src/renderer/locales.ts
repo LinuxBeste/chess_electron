@@ -59,6 +59,8 @@ export type TranslationKeys = {
     registrationFailed: string;
     credentialsRequired: string;
     loginFailed: string;
+    offlineMode: string;
+    offlineModeDesc: string;
   };
   lobby: {
     openGames: string;
@@ -437,6 +439,8 @@ export const en: TranslationKeys = {
     registrationFailed: 'Registration failed',
     credentialsRequired: 'Username and password are required',
     loginFailed: 'Login failed',
+    offlineMode: 'Offline mode',
+    offlineModeDesc: 'Play locally without a server. No stats, no history.',
   },
   lobby: {
     openGames: 'Open Games',
@@ -815,6 +819,8 @@ export const de: TranslationKeys = {
     registrationFailed: 'Registrierung fehlgeschlagen',
     credentialsRequired: 'Benutzername und Passwort erforderlich',
     loginFailed: 'Anmeldung fehlgeschlagen',
+    offlineMode: 'Offline-Modus',
+    offlineModeDesc: 'Lokal spielen ohne Server. Keine Statistik, kein Verlauf.',
   },
   lobby: {
     openGames: 'Offene Spiele',

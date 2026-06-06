@@ -20,6 +20,7 @@ type StateMap = {
   wsStatus: import('../../types').WsStatus;
   toasts: import('../../types').ToastMessage[];
   currentView: string;
+  offline: boolean;
 };
 
 export function useStoreValue<K extends keyof StateMap>(key: K): StateMap[K] {

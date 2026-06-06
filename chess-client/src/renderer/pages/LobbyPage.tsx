@@ -41,6 +41,7 @@ export default function LobbyPage() {
   }, []);
 
   useEffect(() => {
+    if (store.get('offline')) return;
     poll();
     const interval = setInterval(poll, 3000);
     return () => clearInterval(interval);
@@ -48,7 +49,7 @@ export default function LobbyPage() {
 
   /* If the player was in an active game (e.g. after a page refresh), resume it */
   useEffect(() => {
-    checkActiveGame();
+    if (!store.get('offline')) checkActiveGame();
   }, []);
 
   async function checkActiveGame() {
@@ -95,144 +96,147 @@ export default function LobbyPage() {
   }
 
   const myId = store.get('playerId');
+  const offline = store.get('offline');
 
   return (
     <div className="lobby-layout">
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-        <h2 className="card-title">{t('lobby.openGames')}</h2>
-        {statusMsg && (
+      {!offline && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+          <h2 className="card-title">{t('lobby.openGames')}</h2>
+          {statusMsg && (
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 300,
+                color: statusMsg === t('lobby.cannotConnect') ? 'var(--danger)' : 'var(--muted)',
+                textAlign: 'center',
+                padding: 16,
+              }}
+            >
+              {statusMsg}
+            </div>
+          )}
+          <div style={{ flex: '1 1 0', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4, minHeight: 0 }}>
+            {openGames
+              .filter((g) => g.visibility !== 'private')
+              .map((game) => {
+                const creatorId = game.players.white;
+                const creatorName = game.whiteName || (creatorId === myId ? t('common.you') : (creatorId?.slice(0, 8) ?? t('common.unknown')));
+                return (
+                  <div
+                    key={game.id}
+                    className="game-card card-elevated"
+                    style={{
+                      padding: '14px 18px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          background: 'var(--accent)',
+                          animation: 'pulse 2s ease-in-out infinite',
+                          flexShrink: 0,
+                        }}
+                      />
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
+                            {creatorName}
+                          </span>
+                          {game.visibility === 'private' && <span className="badge badge-private">{t('lobby.private')}</span>}
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 300, color: 'var(--muted)', letterSpacing: '0.2px' }}>
+                          {t('lobby.waiting')}
+                        </span>
+                      </div>
+                    </div>
+                    <button className="btn btn-sm btn-secondary" onClick={() => joinGame(game.id)}>
+                      {t('lobby.join')}
+                    </button>
+                  </div>
+                );
+              })}
+          </div>
+
+          <h2 className="card-title" style={{ marginTop: 16 }}>
+            {t('lobby.liveGames')}
+          </h2>
+          {liveStatus && (
+            <div style={{ fontSize: 13, fontWeight: 300, color: 'var(--muted)', textAlign: 'center', padding: 16 }}>
+              {liveStatus}
+            </div>
+          )}
           <div
             style={{
-              fontSize: 13,
-              fontWeight: 300,
-              color: statusMsg === t('lobby.cannotConnect') ? 'var(--danger)' : 'var(--muted)',
-              textAlign: 'center',
-              padding: 16,
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              paddingRight: 4,
+              minHeight: 80,
             }}
           >
-            {statusMsg}
-          </div>
-        )}
-        <div style={{ flex: '1 1 0', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4, minHeight: 0 }}>
-          {openGames
-            .filter((g) => g.visibility !== 'private')
-            .map((game) => {
-              const creatorId = game.players.white;
-              const creatorName = game.whiteName || (creatorId === myId ? t('common.you') : (creatorId?.slice(0, 8) ?? t('common.unknown')));
+            {liveGames.map((game) => {
+              const wName = game.whiteName || game.players.white?.slice(0, 8) || t('common.white');
+              const bName = game.blackName || game.players.black?.slice(0, 8) || t('common.black');
+              const statusLabel = game.status === 'active' ? t('lobby.inProgress') : game.status;
               return (
                 <div
                   key={game.id}
-                  className="game-card card-elevated"
-                  style={{
-                    padding: '14px 18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
+                  className="live-game-card card-elevated"
+                  style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
                     <span
                       style={{
                         width: 8,
                         height: 8,
                         borderRadius: '50%',
-                        background: 'var(--accent)',
+                        background: 'var(--success)',
                         animation: 'pulse 2s ease-in-out infinite',
                         flexShrink: 0,
                       }}
                     />
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
-                          {creatorName}
-                        </span>
-                        {game.visibility === 'private' && <span className="badge badge-private">{t('lobby.private')}</span>}
-                      </div>
-                      <span style={{ fontSize: 12, fontWeight: 300, color: 'var(--muted)', letterSpacing: '0.2px' }}>
-                        {t('lobby.waiting')}
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
+                        {wName}
                       </span>
+                      <span style={{ fontSize: 12, color: 'var(--muted)', margin: '0 4px' }}>{t('common.vs')}</span>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
+                        {bName}
+                      </span>
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                        {statusLabel}
+                      </div>
                     </div>
                   </div>
-                  <button className="btn btn-sm btn-secondary" onClick={() => joinGame(game.id)}>
-                    {t('lobby.join')}
+                  <button
+                    className="btn btn-sm"
+                    style={{ color: 'var(--success)', borderColor: 'var(--success)', background: 'transparent', flexShrink: 0 }}
+                    onMouseEnter={(e) => {
+                      (e.target as HTMLElement).style.background = 'var(--success)';
+                      (e.target as HTMLElement).style.color = '#fff';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.target as HTMLElement).style.background = 'transparent';
+                      (e.target as HTMLElement).style.color = 'var(--success)';
+                    }}
+                    onClick={() => spectateGame(game.id)}
+                  >
+                    {t('lobby.spectate')}
                   </button>
                 </div>
               );
             })}
-        </div>
-
-        <h2 className="card-title" style={{ marginTop: 16 }}>
-          {t('lobby.liveGames')}
-        </h2>
-        {liveStatus && (
-          <div style={{ fontSize: 13, fontWeight: 300, color: 'var(--muted)', textAlign: 'center', padding: 16 }}>
-            {liveStatus}
           </div>
-        )}
-        <div
-          style={{
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-            paddingRight: 4,
-            minHeight: 80,
-          }}
-        >
-          {liveGames.map((game) => {
-            const wName = game.whiteName || game.players.white?.slice(0, 8) || t('common.white');
-            const bName = game.blackName || game.players.black?.slice(0, 8) || t('common.black');
-            const statusLabel = game.status === 'active' ? t('lobby.inProgress') : game.status;
-            return (
-              <div
-                key={game.id}
-                className="live-game-card card-elevated"
-                style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-                  <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      background: 'var(--success)',
-                      animation: 'pulse 2s ease-in-out infinite',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div style={{ minWidth: 0 }}>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
-                      {wName}
-                    </span>
-                    <span style={{ fontSize: 12, color: 'var(--muted)', margin: '0 4px' }}>{t('common.vs')}</span>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
-                      {bName}
-                    </span>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-                      {statusLabel}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  className="btn btn-sm"
-                  style={{ color: 'var(--success)', borderColor: 'var(--success)', background: 'transparent', flexShrink: 0 }}
-                  onMouseEnter={(e) => {
-                    (e.target as HTMLElement).style.background = 'var(--success)';
-                    (e.target as HTMLElement).style.color = '#fff';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.target as HTMLElement).style.background = 'transparent';
-                    (e.target as HTMLElement).style.color = 'var(--success)';
-                  }}
-                  onClick={() => spectateGame(game.id)}
-                >
-                  {t('lobby.spectate')}
-                </button>
-              </div>
-            );
-          })}
         </div>
-      </div>
+      )}
 
       <div className="lobby-sidebar">
         <div className="card" style={{ padding: 24 }}>
@@ -249,75 +253,81 @@ export default function LobbyPage() {
           </button>
         </div>
 
-        <div className="card" style={{ padding: 24 }}>
-          <h2 className="card-title">{t('lobby.createGame')}</h2>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)', letterSpacing: '0.2px' }}>
-              {t('lobby.privateGame')}
-            </span>
-            <div className={`toggle ${isPrivate ? 'active' : ''}`} onClick={() => setIsPrivate(!isPrivate)}>
-              <div className="toggle-knob" />
+        {!offline && (
+          <div className="card" style={{ padding: 24 }}>
+            <h2 className="card-title">{t('lobby.createGame')}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)', letterSpacing: '0.2px' }}>
+                {t('lobby.privateGame')}
+              </span>
+              <div className={`toggle ${isPrivate ? 'active' : ''}`} onClick={() => setIsPrivate(!isPrivate)}>
+                <div className="toggle-knob" />
+              </div>
             </div>
-          </div>
-          <button className="btn btn-primary" style={{ width: '100%', padding: 14, fontSize: 16 }} onClick={createGame}>
-            {t('lobby.newGame')}
-          </button>
-          {window.electronAPI && (
-            <button
-              className="btn btn-ghost"
-              style={{ marginTop: 12, width: '100%', fontSize: 13 }}
-              onClick={() => window.electronAPI?.openNewWindow()}
-            >
-              {t('lobby.newWindow')}
+            <button className="btn btn-primary" style={{ width: '100%', padding: 14, fontSize: 16 }} onClick={createGame}>
+              {t('lobby.newGame')}
             </button>
-          )}
-        </div>
+            {window.electronAPI && (
+              <button
+                className="btn btn-ghost"
+                style={{ marginTop: 12, width: '100%', fontSize: 13 }}
+                onClick={() => window.electronAPI?.openNewWindow()}
+              >
+                {t('lobby.newWindow')}
+              </button>
+            )}
+          </div>
+        )}
 
-        <div className="card" style={{ padding: 24 }}>
-          <h2 className="card-title">{t('lobby.joinById')}</h2>
-          <input
-            className="input"
-            type="text"
-            placeholder={t('lobby.pasteGameId')}
-            value={joinId}
-            onChange={(e) => setJoinId(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && joinId.trim()) joinGame(joinId.trim());
-            }}
-          />
-          <button
-            className="btn btn-secondary"
-            style={{ marginTop: 12, width: '100%' }}
-            onClick={() => {
-              if (joinId.trim()) joinGame(joinId.trim());
-            }}
-          >
-            {t('lobby.join')}
-          </button>
-        </div>
+        {!offline && (
+          <div className="card" style={{ padding: 24 }}>
+            <h2 className="card-title">{t('lobby.joinById')}</h2>
+            <input
+              className="input"
+              type="text"
+              placeholder={t('lobby.pasteGameId')}
+              value={joinId}
+              onChange={(e) => setJoinId(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && joinId.trim()) joinGame(joinId.trim());
+              }}
+            />
+            <button
+              className="btn btn-secondary"
+              style={{ marginTop: 12, width: '100%' }}
+              onClick={() => {
+                if (joinId.trim()) joinGame(joinId.trim());
+              }}
+            >
+              {t('lobby.join')}
+            </button>
+          </div>
+        )}
 
-        <div className="card" style={{ padding: 24 }}>
-          <h2 className="card-title">{t('lobby.spectateById')}</h2>
-          <input
-            className="input"
-            type="text"
-            placeholder={t('lobby.pasteGameId')}
-            value={spectateId}
-            onChange={(e) => setSpectateId(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && spectateId.trim()) spectateGame(spectateId.trim());
-            }}
-          />
-          <button
-            className="btn btn-secondary"
-            style={{ marginTop: 12, width: '100%' }}
-            onClick={() => {
-              if (spectateId.trim()) spectateGame(spectateId.trim());
-            }}
-          >
-            {t('lobby.spectate')}
-          </button>
-        </div>
+        {!offline && (
+          <div className="card" style={{ padding: 24 }}>
+            <h2 className="card-title">{t('lobby.spectateById')}</h2>
+            <input
+              className="input"
+              type="text"
+              placeholder={t('lobby.pasteGameId')}
+              value={spectateId}
+              onChange={(e) => setSpectateId(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && spectateId.trim()) spectateGame(spectateId.trim());
+              }}
+            />
+            <button
+              className="btn btn-secondary"
+              style={{ marginTop: 12, width: '100%' }}
+              onClick={() => {
+                if (spectateId.trim()) spectateGame(spectateId.trim());
+              }}
+            >
+              {t('lobby.spectate')}
+            </button>
+          </div>
+        )}
 
       </div>
     </div>

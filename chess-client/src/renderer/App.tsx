@@ -91,9 +91,11 @@ export default function App() {
     const unsubToken = store.subscribe('token', (token) => {
       if (token) {
         socketManager.connect();
-      } else {
+      } else if (!store.get('offline')) {
         socketManager.disconnect();
         navigate('/login', { replace: true });
+      } else {
+        socketManager.disconnect();
       }
     });
 
