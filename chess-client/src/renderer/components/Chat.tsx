@@ -9,6 +9,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { socketManager } from '../socket';
 import { store } from '../store';
+import { t } from '../translate';
 
 interface ChatMessage {
   playerId: string;
@@ -51,7 +52,7 @@ export default function Chat({ gameId }: ChatProps) {
   return (
     <div className="chat-panel">
       <h3 className="sidebar-title" style={{ marginTop: 8 }}>
-        Chat
+        {t('chat.title')}
       </h3>
       <div ref={listRef} className="sidebar-panel" style={{ minHeight: 60, maxHeight: 150, fontSize: 12, padding: 8 }}>
         {messages.map((msg, i) => {
@@ -59,7 +60,7 @@ export default function Chat({ gameId }: ChatProps) {
           return (
             <div key={i} className={`chat-msg ${isMe ? 'chat-msg-self' : ''}`}>
               <span className="chat-name" style={{ color: isMe ? '#4f8ef7' : '#888' }}>
-                {isMe ? 'You' : msg.username}
+                {isMe ? t('chat.you') : msg.username}
               </span>
               <span className="chat-text">{msg.text}</span>
             </div>
@@ -70,7 +71,7 @@ export default function Chat({ gameId }: ChatProps) {
         <input
           className="input"
           type="text"
-          placeholder="Type a message..."
+          placeholder={t('chat.placeholder')}
           style={{ flex: 1, fontSize: 12 }}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -79,7 +80,7 @@ export default function Chat({ gameId }: ChatProps) {
           }}
         />
         <button className="btn btn-primary" style={{ padding: '8px 12px', fontSize: 12 }} onClick={send}>
-          Send
+          {t('chat.send')}
         </button>
       </div>
     </div>

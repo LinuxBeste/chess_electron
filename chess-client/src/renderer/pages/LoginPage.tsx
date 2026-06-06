@@ -5,6 +5,7 @@ import { setBaseUrl } from '../api';
 import { socketManager } from '../socket';
 import { getSetting } from '../settings';
 import { useNavigate } from 'react-router-dom';
+import { t } from '../translate';
 
 type Mode = 'quick' | 'signin' | 'register';
 
@@ -62,7 +63,7 @@ export default function LoginPage() {
       store.set('username', trimmed);
       navigate('/lobby');
     } catch (err: any) {
-      store.toast(err.message || 'Failed to connect');
+      store.toast(err.message || t('login.failedConnect'));
     } finally {
       setLoading(false);
     }
@@ -75,7 +76,7 @@ export default function LoginPage() {
       return;
     }
     if (registerPassword.length < 4) {
-      store.toast('Password must be at least 4 characters', 'error');
+      store.toast(t('login.passwordTooShort'), 'error');
       return;
     }
     setLoading(true);
@@ -86,7 +87,7 @@ export default function LoginPage() {
       store.set('username', result.displayName);
       navigate('/lobby');
     } catch (err: any) {
-      store.toast(err.message || 'Registration failed');
+      store.toast(err.message || t('login.registrationFailed'));
     } finally {
       setLoading(false);
     }
@@ -95,7 +96,7 @@ export default function LoginPage() {
   async function handleSignIn() {
     const trimmed = username.trim();
     if (!trimmed || !password) {
-      store.toast('Username and password are required', 'error');
+      store.toast(t('login.credentialsRequired'), 'error');
       return;
     }
     setLoading(true);
@@ -106,7 +107,7 @@ export default function LoginPage() {
       store.set('username', result.displayName);
       navigate('/lobby');
     } catch (err: any) {
-      store.toast(err.message || 'Login failed');
+      store.toast(err.message || t('login.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -133,10 +134,10 @@ export default function LoginPage() {
         }}
       >
         <h1 style={{ fontSize: 32, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.5px', marginBottom: 4 }}>
-          Where every <span style={{ color: 'var(--accent)' }}>move</span> matters.
+          {t('login.tagline')}
         </h1>
         <p style={{ fontSize: 13, fontWeight: 300, color: 'var(--muted)', marginBottom: 24, letterSpacing: '0.3px' }}>
-          ♚ Chess
+          {t('login.subtitle')}
         </p>
 
         {/* Mode tabs */}
@@ -158,7 +159,7 @@ export default function LoginPage() {
                 transition: 'all 0.15s',
               }}
             >
-              {m === 'quick' ? 'Quick Play' : m === 'signin' ? 'Sign In' : 'Register'}
+              {m === 'quick' ? t('login.quickPlay') : m === 'signin' ? t('login.signIn') : t('login.register')}
             </button>
           ))}
         </div>
@@ -166,7 +167,7 @@ export default function LoginPage() {
         <input
           className="input-clean"
           type="text"
-          placeholder="Server URL"
+          placeholder={t('login.serverUrl')}
           autoComplete="off"
           autoCapitalize="off"
           autoCorrect="off"
@@ -180,7 +181,7 @@ export default function LoginPage() {
           ref={inputRef}
           className="input-clean"
           type="text"
-          placeholder={mode === 'quick' ? 'Enter your display name' : 'Username'}
+          placeholder={mode === 'quick' ? t('login.displayName') : t('login.username')}
           autoComplete="off"
           autoCapitalize="off"
           autoCorrect="off"
@@ -200,7 +201,7 @@ export default function LoginPage() {
           <input
             className="input-clean"
             type="password"
-            placeholder={mode === 'signin' ? 'Password' : 'Password (min 4 chars)'}
+            placeholder={mode === 'signin' ? t('login.password') : t('login.passwordMin')}
             autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
             value={mode === 'signin' ? password : registerPassword}
             onChange={(e) => {
@@ -228,42 +229,42 @@ export default function LoginPage() {
           disabled={loading}
         >
           {loading
-            ? 'Connecting...'
+            ? t('login.connecting')
             : mode === 'quick'
-              ? 'Enter'
+              ? t('login.enter')
               : mode === 'signin'
-                ? 'Sign In'
-                : 'Create Account'}
+                ? t('login.signIn')
+                : t('login.createAccount')}
         </button>
 
         {mode === 'signin' && (
           <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
-            No account?{' '}
+            {t('login.noAccount')}{' '}
             <span
               style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }}
               onClick={() => setMode('register')}
             >
-              Register here
+              {t('login.registerHere')}
             </span>
           </p>
         )}
 
         {mode === 'register' && (
           <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
-            Already have an account?{' '}
+            {t('login.haveAccount')}{' '}
             <span
               style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }}
               onClick={() => setMode('signin')}
             >
-              Sign in
+              {t('login.signInLink')}
             </span>
           </p>
         )}
 
         <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 16, opacity: 0.6 }}>
           {mode === 'quick'
-            ? 'Quick play uses a display name only — no password, no saved stats.'
-            : 'Registered accounts save your stats and let you log in from any device.'}
+            ? t('login.quickPlayInfo')
+            : t('login.registeredInfo')}
         </p>
       </div>
     </div>

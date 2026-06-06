@@ -7,6 +7,7 @@
  */
 
 import { Component, type ReactNode } from 'react';
+import { t } from '../translate';
 
 interface Props {
   children: ReactNode;
@@ -42,16 +43,16 @@ export default class ErrorBoundary extends Component<Props, State> {
             padding: 24,
           }}
         >
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#e0e0e0' }}>Something went wrong</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#e0e0e0' }}>{t('errorBoundary.title')}</h1>
           <p style={{ fontSize: 14, color: '#888', maxWidth: 400, textAlign: 'center' }}>
-            {this.state.error?.message || 'An unexpected error occurred'}
+            {this.state.error?.message || t('errorBoundary.message')}
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-primary" onClick={this.handleReload}>
-              Try Again
+              {t('errorBoundary.tryAgain')}
             </button>
             <button className="btn btn-ghost" onClick={() => window.location.reload()}>
-              Reload App
+              {t('errorBoundary.reload')}
             </button>
           </div>
         </div>

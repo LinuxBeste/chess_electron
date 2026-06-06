@@ -8,6 +8,7 @@
 
 import type { PieceType } from '../../types';
 import { getPieceSvg } from '../chess';
+import { t } from '../translate';
 
 interface PromotionDialogProps {
   color: 'white' | 'black';
@@ -21,7 +22,7 @@ export default function PromotionDialog({ color, onSelect }: PromotionDialogProp
   return (
     <div className="modal-overlay" onClick={(e) => e.stopPropagation()}>
       <div className="modal-card" style={{ padding: 24 }}>
-        <div className="promo-title">Choose promotion piece</div>
+        <div className="promo-title">{t('promotion.title')}</div>
         <div className="promo-row">
           {pieces.map((pt) => (
             <div key={pt} className="promo-piece" onClick={() => onSelect(pt)}>

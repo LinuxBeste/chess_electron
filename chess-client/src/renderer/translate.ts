@@ -1,0 +1,41 @@
+import { en, de, type TranslationKeys } from './locales';
+import { loadSettings } from './settings';
+
+let current: TranslationKeys = en;
+let currentLang: string = 'en';
+
+export function setLanguage(lang: string): void {
+  currentLang = lang;
+  current = lang === 'de' ? de : en;
+  try {
+    localStorage.setItem('chess_locale', lang);
+  } catch {}
+}
+
+export function getLanguage(): string {
+  return currentLang;
+}
+
+export function t(path: string, vars?: Record<string, string | number>): string {
+  const keys = path.split('.');
+  let value: unknown = current;
+  for (const key of keys) {
+    if (value === null || value === undefined) return path;
+    value = (value as Record<string, unknown>)[key];
+  }
+  if (typeof value !== 'string') return path;
+  if (vars) {
+    return value.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? `{${k}}`));
+  }
+  return value;
+}
+
+try {
+  const settingsLang = loadSettings().language;
+  if (settingsLang === 'de' || settingsLang === 'en') {
+    setLanguage(settingsLang);
+  } else {
+    const saved = localStorage.getItem('chess_locale');
+    if (saved === 'de' || saved === 'en') setLanguage(saved);
+  }
+} catch {}

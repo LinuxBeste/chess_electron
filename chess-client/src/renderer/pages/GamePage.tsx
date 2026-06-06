@@ -38,6 +38,7 @@ import type {
   DrawOfferedMessage,
   DrawDeclinedMessage,
 } from '../socket';
+import { t } from '../translate';
 
 export default function GamePage() {
   const { gameId } = useParams<{ gameId: string }>();
@@ -229,7 +230,7 @@ export default function GamePage() {
       store.set('currentGame', g);
       initGame(g);
     } catch (err: any) {
-      store.toast(err.message || 'Failed to load game');
+      store.toast(err.message || t('game.failedLoad'));
       navigate('/lobby');
     }
   }
@@ -435,7 +436,7 @@ export default function GamePage() {
     } catch (err: any) {
       setBoard(oldBoard);
       setLastMove(gameRef.current?.lastMove || null);
-      store.toast(err.message || 'Move failed');
+      store.toast(err.message || t('game.moveFailed'));
     }
   }
 
@@ -481,7 +482,7 @@ export default function GamePage() {
         store.set('currentGame', updated);
         navigate(`/result/${updated.id}`);
       })
-      .catch((err: any) => store.toast(err.message || 'Failed to resign'));
+      .catch((err: any) => store.toast(err.message || t('game.failedResign')));
     setResignConfirmed(false);
   }
 
@@ -534,7 +535,7 @@ export default function GamePage() {
     <div className="game-layout">
       <div className="game-center">
         <div className="player-bar">
-          <span className="player-name">{game?.players.black === store.get('playerId') ? 'You (Black)' : 'Black'}</span>
+          <span className="player-name">{game?.players.black === store.get('playerId') ? t('game.youBlack') : t('common.black')}</span>
           <span className="player-clock">{formatTime(blackTime)}</span>
         </div>
         <Board
@@ -550,9 +551,9 @@ export default function GamePage() {
         >
           {waiting && game && (
             <div className="waiting-overlay">
-              <div className="waiting-text">Waiting for opponent...</div>
+              <div className="waiting-text">{t('game.waiting')}</div>
               <div className="waiting-id-row">
-                <span className="waiting-id-label">Game ID:</span>
+                <span className="waiting-id-label">{t('game.gameId')}</span>
                 <span className="waiting-id-value">{game.id}</span>
                 <button
                   className="btn btn-secondary btn-xs"
@@ -565,7 +566,7 @@ export default function GamePage() {
                       .catch(() => {});
                   }}
                 >
-                  Copy
+                  {t('common.copy')}
                 </button>
               </div>
             </div>
@@ -573,38 +574,38 @@ export default function GamePage() {
           {drawOfferedBy && !isFinished && (
             <div className="waiting-overlay" style={{ background: 'rgba(0,0,0,0.75)' }}>
               <div className="waiting-text" style={{ fontSize: 16, marginBottom: 16 }}>
-                Opponent offers a draw
+                {t('game.opponentDraw')}
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
                 <button className="btn btn-primary btn-sm" onClick={handleAcceptDraw}>
-                  Accept
+                  {t('game.accept')}
                 </button>
                 <button className="btn btn-secondary btn-sm" onClick={handleDeclineDraw}>
-                  Decline
+                  {t('game.decline')}
                 </button>
               </div>
             </div>
           )}
         </Board>
         <div className="player-bar">
-          <span className="player-name">{game?.players.white === store.get('playerId') ? 'You (White)' : 'White'}</span>
+          <span className="player-name">{game?.players.white === store.get('playerId') ? t('game.youWhite') : t('common.white')}</span>
           <span className="player-clock">{formatTime(whiteTime)}</span>
         </div>
         <div className="game-btn-row">
           {showReview && (
             <div className="review-controls active">
               <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(-1)}>
-                ◀ Prev
+                {t('common.prev')}
               </button>
               <span className="review-label">
                 {reviewIndex === -1
-                  ? 'Start'
+                  ? t('common.start')
                   : reviewIndex !== null && game
                     ? `${reviewIndex + 1}/${game.boardHistory.length}`
-                    : 'End'}
+                    : t('common.end')}
               </span>
               <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(1)}>
-                Next ▶
+                {t('common.next')}
               </button>
             </div>
           )}
@@ -614,7 +615,7 @@ export default function GamePage() {
               onClick={() => setMenuOpen((o) => !o)}
               style={{ minWidth: 80 }}
             >
-              ☰ Menu
+              {t('game.menu')}
             </button>
             {menuOpen && (
               <div
@@ -636,26 +637,26 @@ export default function GamePage() {
                 {!isFinished && (
                   <>
                     {isSpectator ? (
-                      <MenuItem label="Leave" onClick={handleResign} />
+                      <MenuItem                         label={t('game.leave')} onClick={handleResign} />
                     ) : (
                       <MenuItem
-                        label={resignConfirmed ? 'Are you sure?' : 'Resign'}
+                        label={resignConfirmed ? t('game.areYouSure') : t('game.resign')}
                         onClick={handleResign}
                         danger
                       />
                     )}
                     {!isSpectator && game?.status === 'active' && (
-                      <MenuItem label={drawPending ? 'Draw offered...' : 'Offer Draw'} onClick={handleOfferDraw} />
+                      <MenuItem label={drawPending ? t('game.drawOffered') : t('game.offerDraw')} onClick={handleOfferDraw} />
                     )}
                     {waiting && !isSpectator && (
-                      <MenuItem label="Abort Game" onClick={handleAbort} />
+                      <MenuItem label={t('game.abortGame')} onClick={handleAbort} />
                     )}
                   </>
                 )}
                 {isFinished && (
-                  <MenuItem label="Back to Lobby" onClick={() => navigate('/lobby')} />
+                  <MenuItem label={t('common.backToLobby')} onClick={() => navigate('/lobby')} />
                 )}
-                <MenuItem label="Copy Game ID" onClick={handleCopyId} />
+                <MenuItem label={t('common.copyGameId')} onClick={handleCopyId} />
               </div>
             )}
           </div>

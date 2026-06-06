@@ -3,6 +3,7 @@ import { store } from '../store';
 import * as api from '../api';
 import { useNavigate } from 'react-router-dom';
 import type { GameState } from '../../types';
+import { t } from '../translate';
 
 interface Props {
   onClose: () => void;
@@ -50,25 +51,25 @@ export default function MatchHistoryDialog({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 0' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>Match History</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>{t('matchHistory.title')}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', fontSize: 18, cursor: 'pointer', padding: '4px 8px', borderRadius: 4 }}>✕</button>
         </div>
 
         <div style={{ padding: '16px 24px 24px', overflowY: 'auto', flex: 1 }}>
           {loading ? (
             <div style={{ fontSize: 13, fontWeight: 300, color: '#888', textAlign: 'center', padding: 32 }}>
-              Loading...
+              {t('matchHistory.loading')}
             </div>
           ) : games.length === 0 ? (
             <div style={{ fontSize: 13, fontWeight: 300, color: '#555', textAlign: 'center', padding: 32 }}>
-              No completed games yet
+              {t('matchHistory.noGames')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {games.map((g) => {
                 const isWhite = g.players.white === myId;
                 const won = g.winner === (isWhite ? 'white' : 'black');
-                const resultText = g.status === 'draw' ? 'Draw' : won ? 'Won' : 'Lost';
+                const resultText = g.status === 'draw' ? t('matchHistory.draw') : won ? t('matchHistory.won') : t('matchHistory.lost');
                 const resultColor = g.status === 'draw' ? 'var(--muted)' : won ? 'var(--accent)' : 'var(--danger)';
                 const opponentName = isWhite
                   ? g.blackName || g.players.black?.slice(0, 8) || '?'
@@ -87,7 +88,7 @@ export default function MatchHistoryDialog({ onClose }: Props) {
                     }}
                   >
                     <span style={{ color: 'var(--text)', fontWeight: 500, letterSpacing: '0.2px' }}>
-                      vs {opponentName}
+                      {t('common.vs')} {opponentName}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ color: resultColor, fontWeight: 600, letterSpacing: '0.3px' }}>{resultText}</span>
@@ -96,7 +97,7 @@ export default function MatchHistoryDialog({ onClose }: Props) {
                         style={{ fontSize: 11, padding: '2px 8px' }}
                         onClick={() => { onClose(); navigate(`/game/${g.id}`); }}
                       >
-                        Review
+                        {t('matchHistory.review')}
                       </button>
                     </div>
                   </div>

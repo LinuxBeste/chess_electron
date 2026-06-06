@@ -18,6 +18,7 @@ import { cloneBoard, createInitialBoard, squareToIndices, indicesToSquare } from
 import { getSetting } from '../settings';
 import { playMoveSound, playCaptureSound, playCheckSound, playGameOverSound } from '../sound';
 import type { Board as BoardType, PieceType, Move, LegalMoveHint } from '../../types';
+import { t } from '../translate';
 
 export default function LocalGamePage() {
   const navigate = useNavigate();
@@ -391,8 +392,7 @@ export default function LocalGamePage() {
       <div className="game-center">
         <div className="player-bar">
           <span className="player-name">
-            {turn === 'black' && !gameOver ? '◄ ' : ''}Black
-            {turn === 'black' && !gameOver ? ' to move' : ''}
+            {turn === 'black' && !gameOver ? t('localGame.blackToMove') : t('common.black')}
           </span>
           <span className="player-clock">{formatTime(blackTime)}</span>
         </div>
@@ -411,46 +411,45 @@ export default function LocalGamePage() {
             <div className="waiting-overlay">
               <div className="waiting-text" style={{ fontSize: 22 }}>
                 {gameOver.status === 'checkmate'
-                  ? `${gameOver.winner === 'white' ? 'White' : 'Black'} wins!`
+                  ? t('localGame.wins', { color: gameOver.winner === 'white' ? t('common.white') : t('common.black') })
                   : gameOver.status === 'stalemate'
-                    ? 'Stalemate — Draw'
+                    ? t('localGame.stalemate')
                     : gameOver.status === 'timeout'
-                      ? `${gameOver.winner === 'white' ? 'Black' : 'White'} ran out of time`
-                      : 'Game Over'}
+                      ? t('localGame.ranOutOfTime', { color: gameOver.winner === 'white' ? t('common.black') : t('common.white') })
+                      : t('localGame.gameOver')}
               </div>
               <div style={{ marginTop: 8, fontSize: 13, color: 'var(--muted)' }}>
-                {gameOver.status === 'checkmate' ? 'Checkmate' : gameOver.status === 'stalemate' ? 'No legal moves' : gameOver.status === 'timeout' ? 'Timeout' : ''}
+                {gameOver.status === 'checkmate' ? t('localGame.checkmate') : gameOver.status === 'stalemate' ? t('localGame.noLegalMoves') : gameOver.status === 'timeout' ? t('localGame.timeout') : ''}
               </div>
             </div>
           )}
         </Board>
         <div className="player-bar">
           <span className="player-name">
-            White
-            {turn === 'white' && !gameOver ? ' to move ◄' : ''}
+            {turn === 'white' && !gameOver ? t('localGame.whiteToMove') : t('common.white')}
           </span>
           <span className="player-clock">{formatTime(whiteTime)}</span>
         </div>
         <div className="game-btn-row">
           <button className="btn btn-secondary btn-sm" onClick={() => navigate('/lobby')} style={{ minWidth: 80 }}>
-            Leave
+            {t('localGame.leave')}
           </button>
           <button className="btn btn-primary btn-sm" onClick={newGame} style={{ minWidth: 80 }}>
-            New Game
+            {t('localGame.newGame')}
           </button>
           {gameOver && boardHistory.length > 0 && (
             <div className="review-controls active">
-              <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(-1)}>◀ Prev</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(-1)}>{t('common.prev')}</button>
               <span className="review-label">
-                {reviewIndex === -1 ? 'Start' : reviewIndex !== null ? `${reviewIndex + 1}/${boardHistory.length}` : 'End'}
+                {reviewIndex === -1 ? t('common.start') : reviewIndex !== null ? `${reviewIndex + 1}/${boardHistory.length}` : t('common.end')}
               </span>
-              <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(1)}>Next ▶</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(1)}>{t('common.next')}</button>
             </div>
           )}
         </div>
       </div>
       <div className="sidebar">
-        <h3 className="sidebar-title">Moves</h3>
+        <h3 className="sidebar-title">{t('localGame.moves')}</h3>
         <MoveHistory moves={moves} />
         <div style={{ marginTop: 12, padding: '0 16px' }}>
           <div
@@ -463,10 +462,10 @@ export default function LocalGamePage() {
               marginBottom: 8,
             }}
           >
-            Local 1v1
+            {t('localGame.local1v1')}
           </div>
           <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
-            Pass the keyboard to your opponent after each move.
+            {t('localGame.instruction')}
           </div>
         </div>
       </div>

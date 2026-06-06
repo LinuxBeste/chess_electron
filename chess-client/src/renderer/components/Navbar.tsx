@@ -13,8 +13,14 @@ import { useNavigate } from 'react-router-dom';
 import SettingsDialog from './SettingsDialog';
 import MatchHistoryDialog from './MatchHistoryDialog';
 import StatsDialog from './StatsDialog';
+import { t, getLanguage } from '../translate';
+import { getLanguageNames } from '../locales';
 
-export default function Navbar() {
+interface NavbarProps {
+  onLanguageChange: () => void;
+}
+
+export default function Navbar({ onLanguageChange }: NavbarProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -26,10 +32,12 @@ export default function Navbar() {
   return (
     <nav className="navbar">
       <span className="navbar-brand">
-        ♚ <span>Chess</span>
-        <span className="navbar-tagline">Where every move matters.</span>
+        {t('navbar.chess')}
       </span>
       <div className="navbar-center" />
+      <button className="navbar-btn" onClick={onLanguageChange} style={{ fontSize: 11, padding: '4px 8px' }}>
+        {getLanguageNames()[getLanguage() === 'de' ? 'en' : 'de']}
+      </button>
       <div className="navbar-actions">
         {token && username ? (
           <>
@@ -38,13 +46,13 @@ export default function Navbar() {
               {username}
             </span>
             <button className="navbar-btn" onClick={() => setShowStats(true)}>
-              Stats
+              {t('navbar.stats')}
             </button>
             <button className="navbar-btn" onClick={() => setShowSettings(true)}>
-              Settings
+              {t('navbar.settings')}
             </button>
             <button className="navbar-btn" onClick={() => setShowHistory(true)}>
-              History
+              {t('navbar.history')}
             </button>
             <button
               className="navbar-btn"
@@ -57,7 +65,7 @@ export default function Navbar() {
                 navigate('/login');
               }}
             >
-              Logout
+              {t('navbar.logout')}
             </button>
           </>
         ) : null}

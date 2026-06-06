@@ -7,7 +7,6 @@
  *
  * A cached copy avoids repeated JSON.parse on every getSetting() call.
  */
-
 export interface AppSettings {
   /* ── General :: Sound ── */
   soundEnabled: boolean;
@@ -22,6 +21,9 @@ export interface AppSettings {
   pieceAnimation: 'none' | 'slide' | 'pop';
   animateBoardFlip: boolean;
   reduceMotion: boolean;
+
+  /* ── General :: Language ── */
+  language: 'en' | 'de';
 
   /* ── General :: Pieces ── */
   pieceSet: 'emoji' | 'svg';
@@ -107,6 +109,9 @@ export const defaultSettings: AppSettings = {
   pieceAnimation: 'slide',
   animateBoardFlip: true,
   reduceMotion: false,
+
+  /* ── General :: Language ── */
+  language: 'en',
 
   /* ── General :: Pieces ── */
   pieceSet: 'svg',

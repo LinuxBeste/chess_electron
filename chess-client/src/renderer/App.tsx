@@ -7,7 +7,7 @@
  * in index.tsx for Electron compatibility (file:// protocol).
  */
 
-import { useEffect, lazy, Suspense, useRef } from 'react';
+import { useEffect, lazy, Suspense, useRef, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ToastContainer from './components/ToastContainer';
@@ -15,8 +15,10 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { store } from './store';
 import { socketManager } from './socket';
 import { ApiError, setBaseUrl, getMe } from './api';
-import { type AppSettings, loadSettings, saveSettings, applyTheme, getSetting } from './settings';
+import { type AppSettings, loadSettings, saveSettings, applyTheme, getSetting, defaultSettings } from './settings';
 import { setSoundVolume } from './sound';
+import { t, setLanguage, getLanguage } from './translate';
+import { getLanguageNames } from './locales';
 
 /* Code-split page bundles — each page is loaded only when first navigated to */
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -30,13 +32,22 @@ function Loading() {
     <div
       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 24, color: '#888' }}
     >
-      Loading...
+      {t('app.loading')}
     </div>
   );
 }
 
 export default function App() {
   const navigate = useNavigate();
+  const [langKey, setLangKey] = useState(0);
+
+  function handleLanguageChange() {
+    const next = getLanguage() === 'de' ? 'en' : 'de';
+    setLanguage(next);
+    const current = loadSettings();
+    saveSettings({ ...current, language: next });
+    setLangKey((k) => k + 1);
+  }
 
   /* One-shot initialisation on app mount:
      - Resolve server URL from Electron preload, localStorage, or default
@@ -106,7 +117,7 @@ export default function App() {
             store.set('username', null);
             store.clearSession();
           } else {
-            store.toast('Failed to connect to server. Check the Server URL.', 'error');
+            store.toast(t('app.connectFailed'), 'error');
           }
         });
     }
@@ -150,11 +161,11 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <Navbar />
+      <Navbar key={langKey} onLanguageChange={handleLanguageChange} />
       <ToastContainer />
       <div id="app-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Suspense fallback={<Loading />}>
-          <Routes>
+          <Routes key={langKey}>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/lobby" element={<LobbyPage />} />

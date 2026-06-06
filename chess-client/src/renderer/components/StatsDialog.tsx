@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { store } from '../store';
 import * as api from '../api';
+import { t } from '../translate';
 
 interface Props {
   onClose: () => void;
@@ -38,7 +39,7 @@ export default function StatsDialog({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 0' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>Stats</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>{t('stats.title')}</h2>
           <button
             onClick={onClose}
             style={{
@@ -58,12 +59,12 @@ export default function StatsDialog({ onClose }: Props) {
         <div style={{ padding: '16px 24px 24px' }}>
           {loading ? (
             <div style={{ fontSize: 13, fontWeight: 300, color: '#888', textAlign: 'center', padding: 24 }}>
-              Loading...
+              {t('stats.loading')}
             </div>
           ) : !stats ? (
             <div style={{ fontSize: 13, fontWeight: 300, color: '#555', textAlign: 'center', padding: 24 }}>
-              Stats are only available for registered accounts.{' '}
-              <span style={{ color: 'var(--text)' }}>Log in or create an account to track your stats.</span>
+              {t('stats.unregistered')}{' '}
+              <span style={{ color: 'var(--text)' }}>{t('stats.signUpPrompt')}</span>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -75,12 +76,12 @@ export default function StatsDialog({ onClose }: Props) {
                   borderBottom: '1px solid rgba(255,255,255,0.06)',
                 }}
               >
-                <StatItem label="Wins" value={stats.wins} color="var(--accent)" />
-                <StatItem label="Losses" value={stats.losses} color="var(--danger)" />
-                <StatItem label="Draws" value={stats.draws} color="var(--muted)" />
+                <StatItem label={t('stats.wins')} value={stats.wins} color="var(--accent)" />
+                <StatItem label={t('stats.losses')} value={stats.losses} color="var(--danger)" />
+                <StatItem label={t('stats.draws')} value={stats.draws} color="var(--muted)" />
               </div>
               <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>
-                Total: {stats.wins + stats.losses + stats.draws} games
+                {t('stats.total', { count: stats.wins + stats.losses + stats.draws })}
               </div>
             </div>
           )}

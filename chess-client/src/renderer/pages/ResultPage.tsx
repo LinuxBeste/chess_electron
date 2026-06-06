@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { store } from '../store';
 import * as api from '../api';
+import { t } from '../translate';
 
 export default function ResultPage() {
   const { gameId } = useParams();
@@ -10,7 +11,7 @@ export default function ResultPage() {
   const myId = store.get('playerId');
   const [rematching, setRematching] = useState(false);
 
-  let outcomeText = 'Draw';
+  let outcomeText = t('result.draw');
   let reasonText = '';
   let won = false;
   let lost = false;
@@ -22,29 +23,29 @@ export default function ResultPage() {
           (game.winner === 'white' && game.players.white === myId) ||
           (game.winner === 'black' && game.players.black === myId);
         if (winnerIsMe) {
-          outcomeText = 'You Won';
+          outcomeText = t('result.youWon');
           won = true;
         } else if (myId && (game.players.white === myId || game.players.black === myId)) {
-          outcomeText = 'You Lost';
+          outcomeText = t('result.youLost');
           lost = true;
         }
       }
     } else if (game.status === 'stalemate' || game.status === 'draw') {
-      outcomeText = 'Draw';
+      outcomeText = t('result.draw');
     }
 
     switch (game.status) {
       case 'checkmate':
-        reasonText = 'by checkmate';
+        reasonText = t('result.byCheckmate');
         break;
       case 'resigned':
-        reasonText = won ? 'by resignation' : 'opponent resigned';
+        reasonText = won ? t('result.byResignation') : t('result.opponentResigned');
         break;
       case 'stalemate':
-        reasonText = 'by stalemate';
+        reasonText = t('result.byStalemate');
         break;
       case 'draw':
-        reasonText = 'by 50-move rule';
+        reasonText = t('result.by50MoveRule');
         break;
     }
   }
@@ -59,7 +60,7 @@ export default function ResultPage() {
       store.set('currentGame', g);
       navigate(`/game/${g.id}`);
     } catch (err: any) {
-      store.toast(err?.message || 'Failed to create rematch');
+      store.toast(err?.message || t('result.failedRematch'));
       setRematching(false);
     }
   }
@@ -83,7 +84,7 @@ export default function ResultPage() {
             style={{ padding: '12px 24px', fontSize: 15 }}
             onClick={() => navigate('/lobby')}
           >
-            Back to Lobby
+            {t('common.backToLobby')}
           </button>
           {game && game.boardHistory && game.boardHistory.length > 0 && (
             <button
@@ -91,7 +92,7 @@ export default function ResultPage() {
               style={{ padding: '12px 24px', fontSize: 15 }}
               onClick={() => navigate(`/game/${game.id}`)}
             >
-              Review Game
+              {t('result.review')}
             </button>
           )}
           {wasPlayer && (
@@ -101,7 +102,7 @@ export default function ResultPage() {
               onClick={handleRematch}
               disabled={rematching}
             >
-              {rematching ? 'Creating...' : 'Rematch'}
+              {rematching ? t('result.creating') : t('result.rematch')}
             </button>
           )}
           <button
@@ -114,12 +115,12 @@ export default function ResultPage() {
                   .writeText(id)
                   .then(() => {
                     const btn = document.activeElement as HTMLElement;
-                    btn.textContent = 'Copied ✓';
+                    btn.textContent = t('common.copied');
                     setTimeout(() => {
-                      btn.textContent = 'Copy Game ID';
+                      btn.textContent = t('common.copyGameId');
                     }, 2000);
                   })
-                  .catch(() => store.toast('Failed to copy'));
+                  .catch(() => store.toast(t('result.failedCopy')));
               }
             }}
           >
