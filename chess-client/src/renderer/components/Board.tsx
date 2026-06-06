@@ -145,7 +145,6 @@ export default function Board({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={() => setHoverSquare(null)}
-      style={{ width: 'min(65vh, 600px)', height: 'min(65vh, 600px)' }}
     >
       {Array.from({ length: 8 }, (_, dr) => {
         const br = isWhiteBottom ? dr : 7 - dr;

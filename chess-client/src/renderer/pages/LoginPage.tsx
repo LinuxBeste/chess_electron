@@ -123,7 +123,7 @@ export default function LoginPage() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 24 }}>
       <div
-        className="card"
+        className="card login-card"
         style={{
           padding: '48px 40px',
           width: '100%',

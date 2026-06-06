@@ -96,9 +96,7 @@ export default function LobbyPage() {
   const myId = store.get('playerId');
 
   return (
-    <div
-      style={{ display: 'flex', gap: 24, padding: '20px 32px', flex: 1, width: '100%', minHeight: 0, overflow: 'hidden' }}
-    >
+    <div className="lobby-layout">
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         <h2 className="card-title">Open Games</h2>
         {statusMsg && (
@@ -235,7 +233,7 @@ export default function LobbyPage() {
         </div>
       </div>
 
-      <div style={{ width: 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', minHeight: 0 }}>
+      <div className="lobby-sidebar">
         <div className="card" style={{ padding: 24 }}>
           <h2 className="card-title">Local 1v1</h2>
           <p style={{ fontSize: 13, fontWeight: 300, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.5 }}>
