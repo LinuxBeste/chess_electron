@@ -1,10 +1,6 @@
-import path from 'path';
-import os from 'os';
-import fs from 'fs';
 import type { Config } from 'jest';
 
-const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'chess-api-test-'));
-process.env.DB_PATH = path.join(tmpDir, 'chess.db');
+process.env.DB_PATH = ':memory:';
 
 const config: Config = {
   testEnvironment: 'node',
