@@ -11,7 +11,6 @@ describe('SocketManager logic', () => {
         (this.data as any)[k] = v;
       },
     };
-    const retryCount = { value: 0 };
 
     /* Simulating the logic without actual WebSocket */
     const token = store.get('token');
@@ -32,7 +31,7 @@ describe('SocketManager logic', () => {
       },
     };
     const MAX_RETRIES = 5;
-    let retryCount = 5; /* Already at max */
+    const retryCount = 5; /* Already at max */
 
     if (retryCount >= MAX_RETRIES) {
       store.set('wsStatus', 'disconnected');

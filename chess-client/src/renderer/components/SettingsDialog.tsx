@@ -9,7 +9,6 @@ import {
   clearAllLocalData,
 } from '../settings';
 import { setSoundVolume } from '../sound';
-import { store } from '../store';
 import { t, setLanguage, getLanguage } from '../translate';
 import { getLanguageNames } from '../locales';
 
@@ -737,7 +736,7 @@ function ClockTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (s:
 }
 
 function AdvancedTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (s: AppSettings) => void }) {
-  const [refreshToken, dispatch] = useReducer((x: number) => x + 1, 0);
+  const [_refreshToken, dispatch] = useReducer((x: number) => x + 1, 0);
   const [confirmClear, setConfirmClear] = useState(false);
 
   const localKeys = getLocalStorageKeys();

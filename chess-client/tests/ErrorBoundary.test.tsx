@@ -1,5 +1,5 @@
 import { describe, test, expect, jest, beforeAll } from '@jest/globals';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import ErrorBoundary from '../src/renderer/components/ErrorBoundary';
 

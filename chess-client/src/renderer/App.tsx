@@ -15,10 +15,9 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { store } from './store';
 import { socketManager } from './socket';
 import { ApiError, setBaseUrl, getMe } from './api';
-import { type AppSettings, loadSettings, saveSettings, applyTheme, getSetting, defaultSettings } from './settings';
+import { type AppSettings, loadSettings, saveSettings, applyTheme, getSetting } from './settings';
 import { setSoundVolume } from './sound';
 import { t, setLanguage, getLanguage } from './translate';
-import { getLanguageNames } from './locales';
 
 /* Code-split page bundles — each page is loaded only when first navigated to */
 const LoginPage = lazy(() => import('./pages/LoginPage'));

@@ -13,7 +13,7 @@ export default tseslint.config(
 
   {
     rules: {
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-console': 'off',
       'no-empty': ['error', { allowEmptyCatch: true }],
@@ -24,6 +24,29 @@ export default tseslint.config(
     files: ['chess-api/src/types.ts'],
     rules: {
       '@typescript-eslint/no-namespace': 'off',
+    },
+  },
+
+  {
+    files: ['chess-client/webpack.*.config.js'],
+    rules: {
+      'no-undef': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
+  {
+    files: ['chess-client/jest.config.js'],
+    rules: {
+      'no-undef': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
+  {
+    files: ['**/tests/**'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
     },
   },
 

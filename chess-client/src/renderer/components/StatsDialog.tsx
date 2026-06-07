@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { store } from '../store';
 import * as api from '../api';
 import { t } from '../translate';
 
