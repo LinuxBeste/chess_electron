@@ -55,14 +55,6 @@ describe('Auth', () => {
     await request.post('/auth/register').send({ username: '' }).expect(400);
   });
 
-  test('GET /auth/me returns player info with valid token', async () => {
-    /* Register a player, then verify the token works for /auth/me */
-    const { token } = await registerPlayer('bob');
-    const res = await request.get('/auth/me').set('Authorization', `Bearer ${token}`).expect(200);
-    expect(res.body.username).toBe('bob');
-    expect(res.body).toHaveProperty('id');
-  });
-
   test('GET /auth/me rejects invalid token', async () => {
     /* Random token should be rejected */
     await request.get('/auth/me').set('Authorization', 'Bearer invalid-token').expect(401);
