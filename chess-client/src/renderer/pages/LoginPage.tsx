@@ -282,9 +282,7 @@ export default function LoginPage() {
         )}
 
         <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 16, opacity: 0.6 }}>
-          {mode === 'quick'
-            ? t('login.quickPlayInfo')
-            : t('login.registeredInfo')}
+          {mode === 'quick' ? t('login.quickPlayInfo') : t('login.registeredInfo')}
         </p>
       </div>
     </div>

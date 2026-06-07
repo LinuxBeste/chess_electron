@@ -35,9 +35,7 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
 
   return (
     <nav className="navbar">
-      <span className="navbar-brand">
-        {t('navbar.chess')}
-      </span>
+      <span className="navbar-brand">{t('navbar.chess')}</span>
       <div className="navbar-center" />
       <button className="navbar-btn" onClick={onLanguageChange} style={{ fontSize: 11, padding: '4px 8px' }}>
         {getLanguageNames()[getLanguage() === 'de' ? 'en' : 'de']}

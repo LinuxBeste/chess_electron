@@ -25,9 +25,7 @@ export default function GameModes() {
       <div className="max-w-3xl mx-auto">
         <ScrollReveal>
           <div className="text-center mb-16">
-            <h2 className="text-[clamp(28px,4vw,40px)] font-bold tracking-tight mb-3">
-              Two ways to play
-            </h2>
+            <h2 className="text-[clamp(28px,4vw,40px)] font-bold tracking-tight mb-3">Two ways to play</h2>
             <p className="text-muted text-lg max-w-lg mx-auto">
               Whether you&apos;re in the same room or across the globe.
             </p>

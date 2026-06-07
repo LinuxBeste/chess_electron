@@ -361,11 +361,15 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
  * Private games are excluded — they must be joined by direct ID.
  */
 export function getActiveGames(): GameState[] {
-  return Array.from(games.values()).filter((g) => g.status === 'active').map(enrichNames);
+  return Array.from(games.values())
+    .filter((g) => g.status === 'active')
+    .map(enrichNames);
 }
 
 export function getOpenGames(): GameState[] {
-  return Array.from(games.values()).filter((g) => g.status === 'waiting' && g.visibility === 'public').map(enrichNames);
+  return Array.from(games.values())
+    .filter((g) => g.status === 'waiting' && g.visibility === 'public')
+    .map(enrichNames);
 }
 
 /**

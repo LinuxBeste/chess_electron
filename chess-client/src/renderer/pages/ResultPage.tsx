@@ -13,7 +13,8 @@ export default function ResultPage() {
   useEffect(() => {
     if (game && game.id === gameId) return;
     if (!gameId) return;
-    api.getGame(gameId)
+    api
+      .getGame(gameId)
       .then((g) => {
         setGame(g);
         store.set('currentGame', g);

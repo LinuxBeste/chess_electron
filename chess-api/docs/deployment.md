@@ -38,6 +38,7 @@ docker build -t chess-api .
 ```
 
 The `Dockerfile` uses a multi-stage build:
+
 1. **builder** stage — installs all dependencies, compiles TypeScript
 2. **runner** stage — copies only production dependencies and compiled JS
 
@@ -54,16 +55,17 @@ docker compose up --build
 ```
 
 The compose configuration includes:
+
 - Port mapping (3000:3000)
 - Auto-restart (`unless-stopped`)
 - Health check (GET /health every 30s)
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT`   | `3000`  | HTTP/WS server port |
-| `NODE_ENV` | —    | Set to `test` to skip server startup (used by test runner) |
+| Variable   | Default | Description                                                |
+| ---------- | ------- | ---------------------------------------------------------- |
+| `PORT`     | `3000`  | HTTP/WS server port                                        |
+| `NODE_ENV` | —       | Set to `test` to skip server startup (used by test runner) |
 
 ## Testing
 
@@ -72,6 +74,7 @@ npm test
 ```
 
 Runs Jest with `--forceExit --detectOpenHandles`. The test suite:
+
 - `chess.test.ts` — 22+ test cases covering the full chess engine
 - `api.test.ts` — 15+ integration tests covering the full API surface
 

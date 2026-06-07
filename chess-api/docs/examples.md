@@ -26,6 +26,7 @@ curl -s -X POST http://localhost:3000/auth/register \
 ```
 
 **Response:**
+
 ```json
 {
   "playerId": "550e8400-e29b-41d4-a716-446655440000",
@@ -50,6 +51,7 @@ curl -s -X POST http://localhost:3000/games \
 ```
 
 **Response:**
+
 ```json
 {
   "id": "game-uuid-here",
@@ -133,6 +135,7 @@ curl -s http://localhost:3000/games/<game-id>/moves \
 ```
 
 **Response:**
+
 ```json
 {
   "moves": [
@@ -160,6 +163,7 @@ curl -s http://localhost:3000/health | jq
 ```
 
 **Response:**
+
 ```json
 {
   "status": "ok",

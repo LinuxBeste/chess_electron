@@ -14,9 +14,7 @@ const features = [
       'Spectator mode with live moves',
       'In-game chat',
     ],
-    visual: (
-      <Placeholder label="Room code UI" className="w-full h-28" />
-    ),
+    visual: <Placeholder label="Room code UI" className="w-full h-28" />,
   },
   {
     icon: Gamepad2,
@@ -28,9 +26,7 @@ const features = [
       'Move history with algebraic notation',
       'Undo/redo during local games',
     ],
-    visual: (
-      <Placeholder label="Board interaction screenshot" className="w-full h-48" />
-    ),
+    visual: <Placeholder label="Board interaction screenshot" className="w-full h-48" />,
   },
   {
     icon: Palette,
@@ -43,9 +39,7 @@ const features = [
       'Adjustable animation speed',
       'Sound effects with volume control',
     ],
-    visual: (
-      <Placeholder label="Theme selector screenshot" className="w-full h-40" />
-    ),
+    visual: <Placeholder label="Theme selector screenshot" className="w-full h-40" />,
   },
   {
     icon: Cpu,
@@ -58,9 +52,7 @@ const features = [
       'Check, checkmate, and stalemate detection',
       'Threefold repetition & 50-move rule',
     ],
-    visual: (
-      <Placeholder label="Rules & moves UI" className="w-full h-32" />
-    ),
+    visual: <Placeholder label="Rules & moves UI" className="w-full h-32" />,
   },
   {
     icon: Globe,
@@ -72,9 +64,7 @@ const features = [
       'Built-in server mode',
       'Real-time sync with low latency',
     ],
-    visual: (
-      <Placeholder label="Online lobby screenshot" className="w-full h-32" />
-    ),
+    visual: <Placeholder label="Online lobby screenshot" className="w-full h-32" />,
   },
   {
     icon: Shield,
@@ -86,9 +76,7 @@ const features = [
       'Community-driven development',
       'Cross-platform (Linux, macOS, Windows)',
     ],
-    visual: (
-      <Placeholder label="GitHub repo screenshot" className="w-full h-32" />
-    ),
+    visual: <Placeholder label="GitHub repo screenshot" className="w-full h-32" />,
   },
 ];
 
@@ -108,22 +96,14 @@ export default function FeaturesPage() {
 
         <ScrollReveal>
           <div className="text-center mb-16">
-            <h1 className="text-[clamp(32px,5vw,48px)] font-extrabold tracking-tight mb-4">
-              All features
-            </h1>
-            <p className="text-muted text-lg max-w-2xl mx-auto">
-              Everything in the Chess App, explained in detail.
-            </p>
+            <h1 className="text-[clamp(32px,5vw,48px)] font-extrabold tracking-tight mb-4">All features</h1>
+            <p className="text-muted text-lg max-w-2xl mx-auto">Everything in the Chess App, explained in detail.</p>
           </div>
         </ScrollReveal>
 
         <div className="space-y-20">
           {features.map((f, i) => (
-            <ScrollReveal
-              key={f.title}
-              variant={i % 2 === 0 ? 'fade-left' : 'fade-right'}
-              delay={0.05}
-            >
+            <ScrollReveal key={f.title} variant={i % 2 === 0 ? 'fade-left' : 'fade-right'} delay={0.05}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
                 <div className={i % 2 === 0 ? 'md:order-1' : 'md:order-2'}>
                   <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-accent/10 text-accent mb-4">
@@ -140,9 +120,7 @@ export default function FeaturesPage() {
                     ))}
                   </ul>
                 </div>
-                <div className={`${i % 2 === 0 ? 'md:order-2' : 'md:order-1'} flex justify-center`}>
-                  {f.visual}
-                </div>
+                <div className={`${i % 2 === 0 ? 'md:order-2' : 'md:order-1'} flex justify-center`}>{f.visual}</div>
               </div>
             </ScrollReveal>
           ))}

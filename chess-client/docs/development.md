@@ -15,17 +15,17 @@ pnpm install
 
 ## Commands
 
-| Command               | Description                            |
-|-----------------------|----------------------------------------|
-| `pnpm run typecheck`  | TypeScript type checking only           |
-| `pnpm run build:renderer` | Build renderer bundle              |
-| `pnpm run build:main` | Build Electron main process             |
-| `pnpm run build`      | Build main + renderer bundles           |
-| `pnpm run build:web`  | Build renderer for standalone web       |
-| `pnpm run dev:web`    | Dev server for browser (port 3000)      |
-| `pnpm run dev`        | Build and launch Electron               |
-| `pnpm run start`      | Launch Electron (build first)           |
-| `pnpm run package`    | Build and package with electron-builder |
+| Command                   | Description                             |
+| ------------------------- | --------------------------------------- |
+| `pnpm run typecheck`      | TypeScript type checking only           |
+| `pnpm run build:renderer` | Build renderer bundle                   |
+| `pnpm run build:main`     | Build Electron main process             |
+| `pnpm run build`          | Build main + renderer bundles           |
+| `pnpm run build:web`      | Build renderer for standalone web       |
+| `pnpm run dev:web`        | Dev server for browser (port 3000)      |
+| `pnpm run dev`            | Build and launch Electron               |
+| `pnpm run start`          | Launch Electron (build first)           |
+| `pnpm run package`        | Build and package with electron-builder |
 
 ## Project Conventions
 
@@ -33,7 +33,7 @@ pnpm install
 
 - Strict TypeScript throughout — no `any` types
 - Descriptive variable names over abbreviated ones
-- Comments explain *why*, not *what* — the code itself says what it does
+- Comments explain _why_, not _what_ — the code itself says what it does
 - No banner/heading comments (`// === SECTION ===`)
 
 ### Adding a New Page
@@ -45,6 +45,7 @@ pnpm install
 ### API Client Conventions
 
 Every function in `api.ts`:
+
 - Is named after the endpoint (e.g. `register`, `createGame`, `makeMove`)
 - Has a JSDoc comment referencing the source file where the endpoint was confirmed
 - Returns a typed promise matching the response shape
@@ -53,6 +54,7 @@ Every function in `api.ts`:
 ### Settings
 
 Settings are stored in localStorage under `chess_settings`. The schema is defined in `settings.ts` with type `AppSettings`. New settings:
+
 1. Add the field to the `AppSettings` interface and `defaultSettings` in `settings.ts`
 2. Add a UI control in `SettingsDialog.tsx` in the appropriate tab
 3. If it requires CSS, use a `data-*` attribute on `<html>` (see `boardStyle`, `background`, `boardTheme`)

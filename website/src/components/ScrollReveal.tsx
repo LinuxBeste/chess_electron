@@ -11,11 +11,11 @@ interface Props {
 }
 
 const variantStyles: Record<Variant, string> = {
-  'fade-up':    'opacity-0 translate-y-8',
-  'fade-left':  'opacity-0 -translate-x-16',
+  'fade-up': 'opacity-0 translate-y-8',
+  'fade-left': 'opacity-0 -translate-x-16',
   'fade-right': 'opacity-0 translate-x-16',
-  'scale-up':   'opacity-0 scale-95',
-  'zoom-in':    'opacity-0 scale-75',
+  'scale-up': 'opacity-0 scale-95',
+  'zoom-in': 'opacity-0 scale-75',
 };
 
 export default function ScrollReveal({ children, variant = 'fade-up', delay = 0, className = '', once = true }: Props) {
@@ -28,7 +28,14 @@ export default function ScrollReveal({ children, variant = 'fade-up', delay = 0,
       ([entry]) => {
         if (entry.isIntersecting) {
           el.style.transition = `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`;
-          el.classList.remove('opacity-0', 'translate-y-8', 'translate-x-16', '-translate-x-16', 'scale-95', 'scale-75');
+          el.classList.remove(
+            'opacity-0',
+            'translate-y-8',
+            'translate-x-16',
+            '-translate-x-16',
+            'scale-95',
+            'scale-75',
+          );
           if (once) observer.unobserve(el);
         }
       },

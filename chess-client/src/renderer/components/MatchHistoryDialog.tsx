@@ -51,8 +51,23 @@ export default function MatchHistoryDialog({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 0' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>{t('matchHistory.title')}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', fontSize: 18, cursor: 'pointer', padding: '4px 8px', borderRadius: 4 }}>✕</button>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>
+            {t('matchHistory.title')}
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#888',
+              fontSize: 18,
+              cursor: 'pointer',
+              padding: '4px 8px',
+              borderRadius: 4,
+            }}
+          >
+            ✕
+          </button>
         </div>
 
         <div style={{ padding: '16px 24px 24px', overflowY: 'auto', flex: 1 }}>
@@ -69,7 +84,8 @@ export default function MatchHistoryDialog({ onClose }: Props) {
               {games.map((g) => {
                 const isWhite = g.players.white === myId;
                 const won = g.winner === (isWhite ? 'white' : 'black');
-                const resultText = g.status === 'draw' ? t('matchHistory.draw') : won ? t('matchHistory.won') : t('matchHistory.lost');
+                const resultText =
+                  g.status === 'draw' ? t('matchHistory.draw') : won ? t('matchHistory.won') : t('matchHistory.lost');
                 const resultColor = g.status === 'draw' ? 'var(--muted)' : won ? 'var(--accent)' : 'var(--danger)';
                 const opponentName = isWhite
                   ? g.blackName || g.players.black?.slice(0, 8) || '?'
@@ -95,7 +111,10 @@ export default function MatchHistoryDialog({ onClose }: Props) {
                       <button
                         className="btn btn-ghost btn-xs"
                         style={{ fontSize: 11, padding: '2px 8px' }}
-                        onClick={() => { onClose(); navigate(`/game/${g.id}`); }}
+                        onClick={() => {
+                          onClose();
+                          navigate(`/game/${g.id}`);
+                        }}
                       >
                         {t('matchHistory.review')}
                       </button>

@@ -4,10 +4,7 @@
   "directories": {
     "output": "release"
   },
-  "files": [
-    "dist/**/*",
-    "assets/**/*"
-  ],
+  "files": ["dist/**/*", "assets/**/*"],
   "icon": "assets/icon.png",
   "linux": {
     "target": ["AppImage", "deb"],

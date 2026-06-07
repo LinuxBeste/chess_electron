@@ -136,15 +136,18 @@ export default function App() {
 
     function resetIdleTimer() {
       if (idleTimer.current) clearTimeout(idleTimer.current);
-      idleTimer.current = setTimeout(() => {
-        if (store.get('token')) {
-          store.set('token', null);
-          store.set('playerId', null);
-          store.set('username', null);
-          store.clearSession();
-          store.set('currentGame', null);
-        }
-      }, idleMinutes * 60 * 1000);
+      idleTimer.current = setTimeout(
+        () => {
+          if (store.get('token')) {
+            store.set('token', null);
+            store.set('playerId', null);
+            store.set('username', null);
+            store.clearSession();
+            store.set('currentGame', null);
+          }
+        },
+        idleMinutes * 60 * 1000,
+      );
     }
 
     const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'mousemove'];

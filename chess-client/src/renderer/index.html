@@ -735,7 +735,8 @@
       }
 
       /* ─── Chat ─── */
-      .chat-panel, .moves-panel {
+      .chat-panel,
+      .moves-panel {
         display: flex;
         flex-direction: column;
         flex: 1;
@@ -1004,8 +1005,12 @@
           padding: 5px 10px;
           font-size: 12px;
         }
-        .player-name { font-size: 12px; }
-        .player-clock { font-size: 12px; }
+        .player-name {
+          font-size: 12px;
+        }
+        .player-clock {
+          font-size: 12px;
+        }
         .sidebar {
           width: 100%;
           flex-direction: row;
@@ -1026,24 +1031,60 @@
           font-size: 11px;
           margin-bottom: 4px;
         }
-        .piece-char { font-size: 26px; }
-        .legal-dot { width: 8px; height: 8px; }
-        .sq-label { font-size: 8px; }
-        .modal-card { padding: 20px !important; }
-        .navbar { padding: 0 12px; height: 40px; }
-        .navbar-btn { padding: 4px 10px; font-size: 11px; }
-        .navbar-player { font-size: 11px; }
-        .navbar-actions { gap: 4px; }
-        .navbar-tagline { display: none; }
-        .game-btn-row .btn { font-size: 11px; padding: 5px 10px; }
+        .piece-char {
+          font-size: 26px;
+        }
+        .legal-dot {
+          width: 8px;
+          height: 8px;
+        }
+        .sq-label {
+          font-size: 8px;
+        }
+        .modal-card {
+          padding: 20px !important;
+        }
+        .navbar {
+          padding: 0 12px;
+          height: 40px;
+        }
+        .navbar-btn {
+          padding: 4px 10px;
+          font-size: 11px;
+        }
+        .navbar-player {
+          font-size: 11px;
+        }
+        .navbar-actions {
+          gap: 4px;
+        }
+        .navbar-tagline {
+          display: none;
+        }
+        .game-btn-row .btn {
+          font-size: 11px;
+          padding: 5px 10px;
+        }
       }
 
       /* ─── Small tablet / large phone: tighter ─── */
       @media (max-width: 700px) {
-        .lobby-layout { padding: 6px 8px; gap: 6px; }
-        .lobby-sidebar > * { min-width: 130px; padding: 10px !important; }
-        .card-title { font-size: 14px; margin-bottom: 6px; }
-        .game-layout { padding: 4px; gap: 4px; }
+        .lobby-layout {
+          padding: 6px 8px;
+          gap: 6px;
+        }
+        .lobby-sidebar > * {
+          min-width: 130px;
+          padding: 10px !important;
+        }
+        .card-title {
+          font-size: 14px;
+          margin-bottom: 6px;
+        }
+        .game-layout {
+          padding: 4px;
+          gap: 4px;
+        }
         .board-container {
           width: min(85vw, calc(100vh - 350px)) !important;
           height: min(85vw, calc(100vh - 350px)) !important;
@@ -1053,33 +1094,94 @@
           padding: 4px 8px;
           font-size: 11px;
         }
-        .player-name { font-size: 11px; }
-        .player-clock { font-size: 11px; }
-        .sidebar { min-height: 120px; gap: 4px; }
-        .sidebar .sidebar-panel { padding: 6px; }
-        .sidebar-title { font-size: 10px; margin-bottom: 3px; }
-        .piece-char { font-size: 22px; }
-        .legal-dot { width: 7px; height: 7px; }
-        .sq-label { font-size: 7px; }
-        .modal-card { padding: 16px !important; }
-        .game-btn-row .btn { font-size: 10px; padding: 4px 8px; }
-        .navbar { height: 36px; padding: 0 8px; }
-        .navbar-brand { font-size: 12px; }
-        .navbar-btn { padding: 3px 8px; font-size: 10px; }
-        .navbar-player { font-size: 10px; }
-        .navbar-actions { gap: 3px; }
-        .promo-piece { width: 44px; height: 44px; padding: 6px; }
-        .lobby-sidebar .card .btn { padding: 8px 14px !important; font-size: 13px !important; }
+        .player-name {
+          font-size: 11px;
+        }
+        .player-clock {
+          font-size: 11px;
+        }
+        .sidebar {
+          min-height: 120px;
+          gap: 4px;
+        }
+        .sidebar .sidebar-panel {
+          padding: 6px;
+        }
+        .sidebar-title {
+          font-size: 10px;
+          margin-bottom: 3px;
+        }
+        .piece-char {
+          font-size: 22px;
+        }
+        .legal-dot {
+          width: 7px;
+          height: 7px;
+        }
+        .sq-label {
+          font-size: 7px;
+        }
+        .modal-card {
+          padding: 16px !important;
+        }
+        .game-btn-row .btn {
+          font-size: 10px;
+          padding: 4px 8px;
+        }
+        .navbar {
+          height: 36px;
+          padding: 0 8px;
+        }
+        .navbar-brand {
+          font-size: 12px;
+        }
+        .navbar-btn {
+          padding: 3px 8px;
+          font-size: 10px;
+        }
+        .navbar-player {
+          font-size: 10px;
+        }
+        .navbar-actions {
+          gap: 3px;
+        }
+        .promo-piece {
+          width: 44px;
+          height: 44px;
+          padding: 6px;
+        }
+        .lobby-sidebar .card .btn {
+          padding: 8px 14px !important;
+          font-size: 13px !important;
+        }
       }
 
       /* ─── Phone: maximum compactness, game cards get more prominence ─── */
       @media (max-width: 480px) {
-        .lobby-layout { padding: 4px 6px; gap: 4px; }
-        .lobby-sidebar > :nth-child(-n+2) { flex: 1 1 calc(50% - 4px); min-width: 0; padding: 8px !important; }
-        .lobby-sidebar > :nth-child(n+3) { min-width: 100%; padding: 8px !important; }
-        .lobby-sidebar .card { padding: 8px !important; }
-        .card-title { font-size: 12px; margin-bottom: 4px; }
-        .game-layout { padding: 2px; gap: 3px; }
+        .lobby-layout {
+          padding: 4px 6px;
+          gap: 4px;
+        }
+        .lobby-sidebar > :nth-child(-n + 2) {
+          flex: 1 1 calc(50% - 4px);
+          min-width: 0;
+          padding: 8px !important;
+        }
+        .lobby-sidebar > :nth-child(n + 3) {
+          min-width: 100%;
+          padding: 8px !important;
+        }
+        .lobby-sidebar .card {
+          padding: 8px !important;
+        }
+        .card-title {
+          font-size: 12px;
+          margin-bottom: 4px;
+        }
+        .game-layout {
+          padding: 2px;
+          gap: 3px;
+        }
         .board-container {
           width: min(90vw, calc(100vh - 280px)) !important;
           height: min(90vw, calc(100vh - 280px)) !important;
@@ -1089,40 +1191,114 @@
           padding: 2px 6px;
           font-size: 10px;
         }
-        .player-name { font-size: 10px; }
-        .player-clock { font-size: 10px; }
-        .player-indicator { width: 4px; height: 4px; margin: 0 3px 1px 2px; }
-        .sidebar { min-height: 100px; gap: 3px; }
-        .sidebar .sidebar-panel { padding: 4px; }
-        .sidebar-title { font-size: 9px; margin-bottom: 2px; }
-        .piece-char { font-size: 18px; }
-        .legal-dot { width: 5px; height: 5px; }
-        .legal-capture { background: transparent; border: 2px solid rgba(79, 142, 247, 0.6); }
-        .sq-label { font-size: 6px; }
-        .game-btn-row .btn { font-size: 9px; padding: 3px 6px; }
-        .navbar { height: 32px; padding: 0 6px; }
-        .navbar-brand { font-size: 11px; }
-        .navbar-btn { padding: 2px 6px; font-size: 9px; }
-        .navbar-player { font-size: 9px; margin-right: 2px; }
-        .navbar-dot { width: 4px; height: 4px; margin-right: 3px; }
-        .navbar-actions { gap: 2px; }
-        .modal-card { padding: 12px !important; }
-        .promo-title { font-size: 12px; }
-        .promo-piece { width: 40px; height: 40px; padding: 5px; }
-        .promo-row { gap: 8px; }
+        .player-name {
+          font-size: 10px;
+        }
+        .player-clock {
+          font-size: 10px;
+        }
+        .player-indicator {
+          width: 4px;
+          height: 4px;
+          margin: 0 3px 1px 2px;
+        }
+        .sidebar {
+          min-height: 100px;
+          gap: 3px;
+        }
+        .sidebar .sidebar-panel {
+          padding: 4px;
+        }
+        .sidebar-title {
+          font-size: 9px;
+          margin-bottom: 2px;
+        }
+        .piece-char {
+          font-size: 18px;
+        }
+        .legal-dot {
+          width: 5px;
+          height: 5px;
+        }
+        .legal-capture {
+          background: transparent;
+          border: 2px solid rgba(79, 142, 247, 0.6);
+        }
+        .sq-label {
+          font-size: 6px;
+        }
+        .game-btn-row .btn {
+          font-size: 9px;
+          padding: 3px 6px;
+        }
+        .navbar {
+          height: 32px;
+          padding: 0 6px;
+        }
+        .navbar-brand {
+          font-size: 11px;
+        }
+        .navbar-btn {
+          padding: 2px 6px;
+          font-size: 9px;
+        }
+        .navbar-player {
+          font-size: 9px;
+          margin-right: 2px;
+        }
+        .navbar-dot {
+          width: 4px;
+          height: 4px;
+          margin-right: 3px;
+        }
+        .navbar-actions {
+          gap: 2px;
+        }
+        .modal-card {
+          padding: 12px !important;
+        }
+        .promo-title {
+          font-size: 12px;
+        }
+        .promo-piece {
+          width: 40px;
+          height: 40px;
+          padding: 5px;
+        }
+        .promo-row {
+          gap: 8px;
+        }
 
         /* make game cards larger relative to sidebar widgets */
-        .game-card { padding: 10px 12px !important; }
-        .live-game-card { padding: 10px 12px !important; }
-        .game-card .btn { font-size: 11px !important; padding: 6px 12px !important; }
-        .live-game-card .btn { font-size: 11px !important; padding: 6px 12px !important; }
-        .lobby-sidebar .card .btn { padding: 6px 10px !important; font-size: 11px !important; }
+        .game-card {
+          padding: 10px 12px !important;
+        }
+        .live-game-card {
+          padding: 10px 12px !important;
+        }
+        .game-card .btn {
+          font-size: 11px !important;
+          padding: 6px 12px !important;
+        }
+        .live-game-card .btn {
+          font-size: 11px !important;
+          padding: 6px 12px !important;
+        }
+        .lobby-sidebar .card .btn {
+          padding: 6px 10px !important;
+          font-size: 11px !important;
+        }
       }
 
       /* ─── Phone landscape: side-by-side ─── */
       @media (orientation: landscape) and (max-height: 500px) {
-        .game-layout { flex-direction: row; align-items: center; }
-        .game-center { flex: 0 0 auto; }
+        .game-layout {
+          flex-direction: row;
+          align-items: center;
+        }
+        .game-center {
+          flex: 0 0 auto;
+        }
         .board-container {
           width: min(50vh, calc(100vw - 200px), 500px) !important;
           height: min(50vh, calc(100vw - 200px), 500px) !important;
@@ -1138,18 +1314,36 @@
           flex: none;
           flex-direction: column;
         }
-        .piece-char { font-size: 20px; }
-        .navbar { height: 30px; padding: 0 6px; }
-        .navbar-brand { font-size: 10px; }
-        .navbar-btn { padding: 2px 5px; font-size: 8px; }
-        .navbar-player { font-size: 8px; }
-        .navbar-actions { gap: 2px; }
-        .navbar-tagline { display: none; }
+        .piece-char {
+          font-size: 20px;
+        }
+        .navbar {
+          height: 30px;
+          padding: 0 6px;
+        }
+        .navbar-brand {
+          font-size: 10px;
+        }
+        .navbar-btn {
+          padding: 2px 5px;
+          font-size: 8px;
+        }
+        .navbar-player {
+          font-size: 8px;
+        }
+        .navbar-actions {
+          gap: 2px;
+        }
+        .navbar-tagline {
+          display: none;
+        }
       }
 
       /* ─── Login card ─── */
       @media (max-width: 600px) {
-        .login-card { padding: 20px 12px !important; }
+        .login-card {
+          padding: 20px 12px !important;
+        }
       }
     </style>
   </head>

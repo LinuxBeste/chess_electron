@@ -19,6 +19,7 @@ A cell is either `null` (empty) or a `Piece` object `{ type, color }`.
 Each piece type has its own generator function. These produce **pseudo-legal** moves — they obey piece movement rules but do not filter out moves that leave the king in check.
 
 ### Pawn (`generatePawnMoves`)
+
 - Single advance (1 square forward)
 - Double advance from starting rank (2 squares forward, sets en-passant target)
 - Diagonal captures (including en passant)
@@ -26,20 +27,25 @@ Each piece type has its own generator function. These produce **pseudo-legal** m
 - En passant detection: checks if the destination matches the stored `enPassantTarget`
 
 ### Knight (`generateKnightMoves`)
+
 - 8 L-shaped offsets from `KNIGHT_OFFSETS`
 - Filters out-of-bounds and friendly-occupied squares
 
 ### Bishop (`generateBishopMoves`)
+
 - Diagonal sliding using `generateSlidingMoves` with `[[1,1], [1,-1], [-1,1], [-1,-1]]`
 - Walks outward in each direction until edge, capture, or block
 
 ### Rook (`generateRookMoves`)
+
 - Rank/file sliding using `generateSlidingMoves` with `[[0,1], [0,-1], [1,0], [-1,0]]`
 
 ### Queen (`generateQueenMoves`)
+
 - Combines rook + bishop sliding moves
 
 ### King (`generateKingMoves`)
+
 - 8 adjacent squares (filters out-of-bounds and friendly-occupied)
 - Castling: kingside (O-O) and queenside (O-O-O) — checks that intermediate squares and the rook's destination are empty. Attack validation is done later in `getLegalMoves`.
 

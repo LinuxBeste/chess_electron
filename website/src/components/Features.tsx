@@ -26,7 +26,7 @@ const features = [
   {
     icon: Download,
     title: 'Works Offline-ish',
-    desc: 'Once downloaded, the desktop app runs on your machine. Start your own server or connect to a friend\'s.',
+    desc: "Once downloaded, the desktop app runs on your machine. Start your own server or connect to a friend's.",
   },
   {
     icon: Shield,
@@ -41,9 +41,7 @@ export default function Features() {
       <div className="max-w-5xl mx-auto">
         <ScrollReveal>
           <div className="text-center mb-16">
-            <h2 className="text-[clamp(28px,4vw,40px)] font-bold tracking-tight mb-3">
-              Everything you need to play
-            </h2>
+            <h2 className="text-[clamp(28px,4vw,40px)] font-bold tracking-tight mb-3">Everything you need to play</h2>
             <p className="text-muted text-lg max-w-lg mx-auto">
               Designed for casual games with friends — no account needed, no hassle.
             </p>

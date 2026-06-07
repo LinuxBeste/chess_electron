@@ -49,6 +49,7 @@ Moves are sent via REST and broadcast back via WebSocket. The game view also per
 ### Local 1v1 (Offline)
 
 The local game mode runs entirely client-side with no server:
+
 - Board logic uses functions from `chess.ts` (cloneBoard, createInitialBoard, squareToIndices)
 - Move generation, check/checkmate/stalemate detection are self-contained in `LocalGamePage.tsx`
 - No WebSocket, no API calls, no server dependency
@@ -59,37 +60,37 @@ The store (`store.ts`) is a simple observable map. Components subscribe to keys 
 
 ### Store Keys
 
-| Key            | Type               | Description                     |
-|----------------|--------------------|----------------------------------|
-| `token`        | `string \| null`   | Bearer token for auth            |
-| `playerId`     | `string \| null`   | Current player's UUID            |
-| `username`     | `string \| null`   | Display name                     |
-| `currentGame`  | `GameState \| null` | Active game snapshot            |
-| `wsStatus`     | `WsStatus`         | WebSocket connection state       |
-| `toasts`       | `ToastMessage[]`   | Active toast notifications       |
+| Key           | Type                | Description                |
+| ------------- | ------------------- | -------------------------- |
+| `token`       | `string \| null`    | Bearer token for auth      |
+| `playerId`    | `string \| null`    | Current player's UUID      |
+| `username`    | `string \| null`    | Display name               |
+| `currentGame` | `GameState \| null` | Active game snapshot       |
+| `wsStatus`    | `WsStatus`          | WebSocket connection state |
+| `toasts`      | `ToastMessage[]`    | Active toast notifications |
 
 ## Settings
 
 All settings are persisted to localStorage under `chess_settings`:
 
-| Key                  | Type                                             | Default    |
-|----------------------|--------------------------------------------------|------------|
-| soundEnabled         | `boolean`                                        | `true`     |
-| soundVolume          | `number` (0-100)                                 | `100`      |
-| animationsEnabled    | `boolean`                                        | `true`     |
-| boardTheme           | `'default' \| 'classic' \| 'blue' \| 'green' \| 'gray' \| 'amber'` | `'default'` |
-| boardStyle           | `'default' \| 'rounded' \| 'framed'`             | `'default'` |
-| background           | `'default' \| 'dots' \| 'grid' \| 'none'`        | `'default'` |
-| pieceAnimation       | `'none' \| 'slide' \| 'pop'`                     | `'slide'`   |
-| alwaysWhiteBottom    | `boolean`                                        | `false`    |
-| showLegalHints       | `boolean`                                        | `true`     |
-| showCoordinates      | `boolean`                                        | `true`     |
-| highlightLastMove    | `boolean`                                        | `true`     |
-| autoPromoteQueen     | `boolean`                                        | `false`    |
-| moveAnimationSpeed   | `'fast' \| 'normal' \| 'slow'`                   | `'normal'` |
-| confirmResign        | `boolean`                                        | `true`     |
-| confirmDraw          | `boolean`                                        | `false`    |
-| pieceSet             | `'emoji' \| 'svg'`                               | `'svg'`    |
+| Key                | Type                                                               | Default     |
+| ------------------ | ------------------------------------------------------------------ | ----------- |
+| soundEnabled       | `boolean`                                                          | `true`      |
+| soundVolume        | `number` (0-100)                                                   | `100`       |
+| animationsEnabled  | `boolean`                                                          | `true`      |
+| boardTheme         | `'default' \| 'classic' \| 'blue' \| 'green' \| 'gray' \| 'amber'` | `'default'` |
+| boardStyle         | `'default' \| 'rounded' \| 'framed'`                               | `'default'` |
+| background         | `'default' \| 'dots' \| 'grid' \| 'none'`                          | `'default'` |
+| pieceAnimation     | `'none' \| 'slide' \| 'pop'`                                       | `'slide'`   |
+| alwaysWhiteBottom  | `boolean`                                                          | `false`     |
+| showLegalHints     | `boolean`                                                          | `true`      |
+| showCoordinates    | `boolean`                                                          | `true`      |
+| highlightLastMove  | `boolean`                                                          | `true`      |
+| autoPromoteQueen   | `boolean`                                                          | `false`     |
+| moveAnimationSpeed | `'fast' \| 'normal' \| 'slow'`                                     | `'normal'`  |
+| confirmResign      | `boolean`                                                          | `true`      |
+| confirmDraw        | `boolean`                                                          | `false`     |
+| pieceSet           | `'emoji' \| 'svg'`                                                 | `'svg'`     |
 
 CSS variables are applied via `data-theme`, `data-board-style`, and `data-background` attributes on `<html>`.
 
@@ -105,13 +106,13 @@ CSS variables are applied via `data-theme`, `data-board-style`, and `data-backgr
 
 Hash-based routing with React Router (`<HashRouter>`):
 
-| Route              | Component        | Description                     |
-|--------------------|------------------|----------------------------------|
-| `/login`           | `LoginPage`      | Username entry screen            |
-| `/lobby`           | `LobbyPage`      | Game list + create game          |
-| `/game/:gameId`    | `GamePage`       | Active chess game                |
-| `/result/:gameId`  | `ResultPage`     | Game over screen                 |
-| `/local`           | `LocalGamePage`  | Offline 1v1 hotseat              |
+| Route             | Component       | Description             |
+| ----------------- | --------------- | ----------------------- |
+| `/login`          | `LoginPage`     | Username entry screen   |
+| `/lobby`          | `LobbyPage`     | Game list + create game |
+| `/game/:gameId`   | `GamePage`      | Active chess game       |
+| `/result/:gameId` | `ResultPage`    | Game over screen        |
+| `/local`          | `LocalGamePage` | Offline 1v1 hotseat     |
 
 All pages are lazy-loaded with `React.lazy()` for code-splitting.
 
@@ -120,6 +121,7 @@ All pages are lazy-loaded with `React.lazy()` for code-splitting.
 Connect: `ws://localhost:3000/?token=<bearer-token>`
 
 Messages are JSON with a `type` discriminator:
+
 - `type: "move"` — opponent made a move
 - `type: "game_over"` — game ended
 - `type: "game_started"` — game started for white

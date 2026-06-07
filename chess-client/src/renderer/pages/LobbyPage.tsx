@@ -116,12 +116,24 @@ export default function LobbyPage() {
               {statusMsg}
             </div>
           )}
-          <div style={{ flex: '1 1 0', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4, minHeight: 0 }}>
+          <div
+            style={{
+              flex: '1 1 0',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              paddingRight: 4,
+              minHeight: 0,
+            }}
+          >
             {openGames
               .filter((g) => g.visibility !== 'private')
               .map((game) => {
                 const creatorId = game.players.white;
-                const creatorName = game.whiteName || (creatorId === myId ? t('common.you') : (creatorId?.slice(0, 8) ?? t('common.unknown')));
+                const creatorName =
+                  game.whiteName ||
+                  (creatorId === myId ? t('common.you') : (creatorId?.slice(0, 8) ?? t('common.unknown')));
                 return (
                   <div
                     key={game.id}
@@ -149,7 +161,9 @@ export default function LobbyPage() {
                           <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
                             {creatorName}
                           </span>
-                          {game.visibility === 'private' && <span className="badge badge-private">{t('lobby.private')}</span>}
+                          {game.visibility === 'private' && (
+                            <span className="badge badge-private">{t('lobby.private')}</span>
+                          )}
                         </div>
                         <span style={{ fontSize: 12, fontWeight: 300, color: 'var(--muted)', letterSpacing: '0.2px' }}>
                           {t('lobby.waiting')}
@@ -190,7 +204,12 @@ export default function LobbyPage() {
                 <div
                   key={game.id}
                   className="live-game-card card-elevated"
-                  style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                  style={{
+                    padding: '14px 18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
                     <span
@@ -211,14 +230,17 @@ export default function LobbyPage() {
                       <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
                         {bName}
                       </span>
-                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-                        {statusLabel}
-                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{statusLabel}</div>
                     </div>
                   </div>
                   <button
                     className="btn btn-sm"
-                    style={{ color: 'var(--success)', borderColor: 'var(--success)', background: 'transparent', flexShrink: 0 }}
+                    style={{
+                      color: 'var(--success)',
+                      borderColor: 'var(--success)',
+                      background: 'transparent',
+                      flexShrink: 0,
+                    }}
                     onMouseEnter={(e) => {
                       (e.target as HTMLElement).style.background = 'var(--success)';
                       (e.target as HTMLElement).style.color = '#fff';
@@ -264,7 +286,11 @@ export default function LobbyPage() {
                 <div className="toggle-knob" />
               </div>
             </div>
-            <button className="btn btn-primary" style={{ width: '100%', padding: 14, fontSize: 16 }} onClick={createGame}>
+            <button
+              className="btn btn-primary"
+              style={{ width: '100%', padding: 14, fontSize: 16 }}
+              onClick={createGame}
+            >
               {t('lobby.newGame')}
             </button>
             {window.electronAPI && (
@@ -328,7 +354,6 @@ export default function LobbyPage() {
             </button>
           </div>
         )}
-
       </div>
     </div>
   );

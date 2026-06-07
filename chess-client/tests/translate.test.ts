@@ -54,9 +54,7 @@ describe('translate', () => {
   });
 
   test('t reads non-template string correctly', () => {
-    expect(t('login.quickPlayInfo')).toBe(
-      'Quick play uses a display name only — no password, no saved stats.',
-    );
+    expect(t('login.quickPlayInfo')).toBe('Quick play uses a display name only — no password, no saved stats.');
   });
 });
 
@@ -83,17 +81,13 @@ describe('locales', () => {
   test('getTranslations contains offline keys in en', () => {
     const flat = getTranslations('en');
     expect(flat['login.offlineMode']).toBe('Offline mode');
-    expect(flat['login.offlineModeDesc']).toBe(
-      'Play locally without a server. No stats, no history.',
-    );
+    expect(flat['login.offlineModeDesc']).toBe('Play locally without a server. No stats, no history.');
   });
 
   test('getTranslations contains offline keys in de', () => {
     const flat = getTranslations('de');
     expect(flat['login.offlineMode']).toBe('Offline-Modus');
-    expect(flat['login.offlineModeDesc']).toBe(
-      'Lokal spielen ohne Server. Keine Statistik, kein Verlauf.',
-    );
+    expect(flat['login.offlineModeDesc']).toBe('Lokal spielen ohne Server. Keine Statistik, kein Verlauf.');
   });
 
   test('getLanguageNames returns correct mapping', () => {

@@ -13,9 +13,7 @@ export default function Releases() {
     <section id="download" className="py-24 md:py-32 px-6 bg-surface-alt/50">
       <div className="max-w-4xl mx-auto text-center">
         <ScrollReveal>
-          <h2 className="text-[clamp(28px,4vw,40px)] font-bold tracking-tight mb-3">
-            Ready to play?
-          </h2>
+          <h2 className="text-[clamp(28px,4vw,40px)] font-bold tracking-tight mb-3">Ready to play?</h2>
           <p className="text-muted text-lg max-w-lg mx-auto mb-10">
             Download the app for your platform and start challenging your friends.
           </p>

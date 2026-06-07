@@ -19,13 +19,14 @@ export default function Home() {
           </div>
 
           <h1 className="text-[clamp(36px,7vw,68px)] font-extrabold tracking-tight leading-tight mb-5 text-text">
-            Battle your<br />
+            Battle your
+            <br />
             <span className="text-accent">friends</span> in chess.
           </h1>
 
           <p className="text-muted text-lg md:text-xl leading-relaxed mb-8 max-w-lg mx-auto">
-            Where every move matters. Challenge your friends, track your games, and
-            experience smooth drag-and-drop chess — all in a beautiful desktop app.
+            Where every move matters. Challenge your friends, track your games, and experience smooth drag-and-drop
+            chess — all in a beautiful desktop app.
           </p>
 
           <div className="flex gap-4 flex-wrap justify-center mb-14">

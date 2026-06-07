@@ -2,46 +2,46 @@
 
 ## Theme
 
-| Role            | Value        | Usage                           |
-|-----------------|--------------|----------------------------------|
-| Background      | `#0e0e10`   | App background, deepest layer    |
-| Surface         | `#1a1a1f`    | Cards, panels, player bars       |
-| Elevated        | `#222228`    | Game cards, modals               |
-| Light square    | `#3d3d52`    | Chess board light squares        |
-| Dark square     | `#2c2c38`    | Chess board dark squares         |
-| Accent          | `#4f8ef7`    | Buttons, highlights, active states|
-| Danger          | `rgba(220,80,80,0.7)` | Resign button            |
-| Text            | `#e0e0e0`    | Primary text                     |
-| Muted text      | `#888`       | Labels, secondary text           |
-| Board shadow    | `rgba(0,0,0,0.4)` | Board drop shadow          |
+| Role         | Value                 | Usage                              |
+| ------------ | --------------------- | ---------------------------------- |
+| Background   | `#0e0e10`             | App background, deepest layer      |
+| Surface      | `#1a1a1f`             | Cards, panels, player bars         |
+| Elevated     | `#222228`             | Game cards, modals                 |
+| Light square | `#3d3d52`             | Chess board light squares          |
+| Dark square  | `#2c2c38`             | Chess board dark squares           |
+| Accent       | `#4f8ef7`             | Buttons, highlights, active states |
+| Danger       | `rgba(220,80,80,0.7)` | Resign button                      |
+| Text         | `#e0e0e0`             | Primary text                       |
+| Muted text   | `#888`                | Labels, secondary text             |
+| Board shadow | `rgba(0,0,0,0.4)`     | Board drop shadow                  |
 
 ### Board Themes (via `data-theme` attribute)
 
-| Theme    | Light square | Dark square |
-|----------|-------------|-------------|
-| default  | `#3d3d52`   | `#2c2c38`   |
-| classic  | `#f0d9b5`   | `#b58863`   |
-| blue     | `#dee3e6`   | `#8ca2ad`   |
-| green    | `#eeeed2`   | `#769656`   |
-| gray     | `#c8c8c8`   | `#6b6b6b`   |
-| amber    | `#f5deb3`   | `#b8860b`   |
+| Theme   | Light square | Dark square |
+| ------- | ------------ | ----------- |
+| default | `#3d3d52`    | `#2c2c38`   |
+| classic | `#f0d9b5`    | `#b58863`   |
+| blue    | `#dee3e6`    | `#8ca2ad`   |
+| green   | `#eeeed2`    | `#769656`   |
+| gray    | `#c8c8c8`    | `#6b6b6b`   |
+| amber   | `#f5deb3`    | `#b8860b`   |
 
 ### Board Styles (via `data-board-style`)
 
-| Style     | Description                  |
-|-----------|------------------------------|
-| default   | Flat square corners          |
-| rounded   | 4px radius on each square    |
-| framed    | 3px border around the board  |
+| Style   | Description                 |
+| ------- | --------------------------- |
+| default | Flat square corners         |
+| rounded | 4px radius on each square   |
+| framed  | 3px border around the board |
 
 ### Background Patterns (via `data-background`)
 
-| Pattern | Description                        |
-|---------|------------------------------------|
-| default | Radial gradient from top center    |
-| dots    | Dot grid pattern (20px spacing)    |
-| grid    | Line grid pattern (40px spacing)   |
-| none    | Solid background color only        |
+| Pattern | Description                      |
+| ------- | -------------------------------- |
+| default | Radial gradient from top center  |
+| dots    | Dot grid pattern (20px spacing)  |
+| grid    | Line grid pattern (40px spacing) |
+| none    | Solid background color only      |
 
 ## Typography
 
@@ -71,41 +71,49 @@
 ## Component Styles
 
 ### Cards
+
 - `border-radius: 12px`
 - `border: 1px solid rgba(255,255,255,0.06)`
 - `box-shadow: 0 4px 16px rgba(0,0,0,0.3)`
 
 ### Buttons (primary)
+
 - Background: `#4f8ef7`
 - Hover: `#5d9af8`
 - Active: `scale(0.97)`
 
 ### Buttons (secondary)
+
 - Transparent background with accent border
 - Hover fills with accent color
 
 ### Input
+
 - Dark elevated background with light border
 - Focus: border transitions to accent blue
 
 ### Toast
+
 - Fixed position top-center
 - Error background: `rgba(220,50,50,0.95)`
 - Info background: `rgba(79,142,247,0.95)`
 - Auto-dismiss after 4 seconds
 
 ### Settings Dialog
+
 - 4 tabs: General, Board, Display, Gameplay
 - Settings persisted to localStorage under `chess_settings`
 - Select rows, toggle rows, and slider rows
 - Live preview of board theme colors
 
 ### Scrollbars
+
 - Thin (6px)
 - Track: transparent
 - Thumb: `rgba(255,255,255,0.1)`, hover: `rgba(255,255,255,0.2)`
 
 ### Local 1v1 Game
+
 - Player bars with timer display
 - Review controls (prev/next) after game over
 - Promotion dialog with 4 piece choices

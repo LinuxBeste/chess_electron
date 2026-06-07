@@ -4,26 +4,27 @@
 
 All calls go through `src/renderer/api.ts`. Each function was written by reading `../chess-api/src/routes.ts` and confirmed against `../chess-api/docs/api.md`.
 
-| Function             | Method | Path                    | Auth | Request Body                  | Response             |
-|----------------------|--------|-------------------------|------|-------------------------------|----------------------|
-| `register`           | POST   | `/auth/register`        | No   | `{ username }`                | `{ playerId, token }`|
-| `getMe`              | GET    | `/auth/me`              | Yes  | —                             | `{ id, username }`   |
-| `healthCheck`        | GET    | `/health`               | No   | —                             | `{ status, uptime, gamesActive, playersOnline }` |
-| `createGame`         | POST   | `/games`                | Yes  | `{ visibility? }`             | `GameState`          |
-| `getOpenGames`       | GET    | `/games`                | No   | —                             | `GameState[]`        |
-| `getActiveGames`     | GET    | `/games/active`         | No   | —                             | `GameState[]`        |
-| `getGame`            | GET    | `/games/:gameId`        | No   | —                             | `GameState`          |
-| `joinGame`           | POST   | `/games/:gameId/join`   | Yes  | —                             | `GameState`          |
-| `makeMove`           | POST   | `/games/:gameId/move`   | Yes  | `{ from, to, promotion? }`    | `GameState`          |
-| `resignGame`         | POST   | `/games/:gameId/resign` | Yes  | —                             | `GameState`          |
-| `getPlayerGames`     | GET    | `/players/:playerId/games`| Yes | —                             | `GameState[]`        |
-| `getLegalMoves`      | GET    | `/games/:gameId/moves`  | Yes  | —                             | `{ moves: [{from,to}] }`|
+| Function         | Method | Path                       | Auth | Request Body               | Response                                         |
+| ---------------- | ------ | -------------------------- | ---- | -------------------------- | ------------------------------------------------ |
+| `register`       | POST   | `/auth/register`           | No   | `{ username }`             | `{ playerId, token }`                            |
+| `getMe`          | GET    | `/auth/me`                 | Yes  | —                          | `{ id, username }`                               |
+| `healthCheck`    | GET    | `/health`                  | No   | —                          | `{ status, uptime, gamesActive, playersOnline }` |
+| `createGame`     | POST   | `/games`                   | Yes  | `{ visibility? }`          | `GameState`                                      |
+| `getOpenGames`   | GET    | `/games`                   | No   | —                          | `GameState[]`                                    |
+| `getActiveGames` | GET    | `/games/active`            | No   | —                          | `GameState[]`                                    |
+| `getGame`        | GET    | `/games/:gameId`           | No   | —                          | `GameState`                                      |
+| `joinGame`       | POST   | `/games/:gameId/join`      | Yes  | —                          | `GameState`                                      |
+| `makeMove`       | POST   | `/games/:gameId/move`      | Yes  | `{ from, to, promotion? }` | `GameState`                                      |
+| `resignGame`     | POST   | `/games/:gameId/resign`    | Yes  | —                          | `GameState`                                      |
+| `getPlayerGames` | GET    | `/players/:playerId/games` | Yes  | —                          | `GameState[]`                                    |
+| `getLegalMoves`  | GET    | `/games/:gameId/moves`     | Yes  | —                          | `{ moves: [{from,to}] }`                         |
 
 ## WebSocket Events
 
 Connection: `ws://localhost:3000/?token=<bearer-token>` (confirmed in `../chess-api/src/index.ts`)
 
 ### `type: "move"`
+
 Broadcast when a player makes a legal move.
 
 ```json
@@ -38,6 +39,7 @@ Broadcast when a player makes a legal move.
 ```
 
 ### `type: "game_over"`
+
 Broadcast when the game ends (checkmate, stalemate, draw, or resignation).
 
 ```json
@@ -54,6 +56,7 @@ Broadcast when the game ends (checkmate, stalemate, draw, or resignation).
 ```
 
 ### `type: "game_started"`
+
 Broadcast to white when a second player joins.
 
 ```json
@@ -65,6 +68,7 @@ Broadcast to white when a second player joins.
 ```
 
 ### `type: "chat_message"`
+
 Broadcast to players and spectators when someone sends a chat message.
 
 ```json
@@ -80,17 +84,17 @@ Broadcast to players and spectators when someone sends a chat message.
 
 ### Client Messages (sent via WebSocket)
 
-| Type | Body | Description |
-|------|------|-------------|
-| `spectate` | `{ gameId }` | Start spectating a game |
-| `unspectate` | `{ gameId }` | Stop spectating |
-| `chat_message` | `{ gameId, text }` | Send a chat message |
+| Type           | Body               | Description             |
+| -------------- | ------------------ | ----------------------- |
+| `spectate`     | `{ gameId }`       | Start spectating a game |
+| `unspectate`   | `{ gameId }`       | Stop spectating         |
+| `chat_message` | `{ gameId, text }` | Send a chat message     |
 
 ### Server Responses to Client Messages
 
-| Type | Body | Condition |
-|------|------|-----------|
-| `spectate_ok` | `{ gameId, game }` | Successfully spectating |
+| Type             | Body                | Condition                    |
+| ---------------- | ------------------- | ---------------------------- |
+| `spectate_ok`    | `{ gameId, game }`  | Successfully spectating      |
 | `spectate_error` | `{ gameId, error }` | Game not found or not active |
 
 ## Auth Flow
@@ -105,12 +109,12 @@ Broadcast to players and spectators when someone sends a chat message.
 
 The client re-exports all API types from `../chess-api/src/types.ts` in `src/types.ts`. Key types:
 
-| Type                | Purpose                               |
-|---------------------|---------------------------------------|
-| `Color`             | `'white' \| 'black'`                  |
-| `PieceType`         | All six piece types                   |
-| `GameStatus`        | `waiting \| active \| checkmate \| stalemate \| draw \| resigned` |
-| `GameState`         | Full game snapshot (board, turn, status, players, moveHistory, boardHistory, halfMoveClock, visibility, etc.) |
-| `Board`             | `(Piece \| null)[][]` — 8×8 grid     |
-| `Move`              | A move with from/to, capture, castling, en-passant, promotion metadata |
-| `SerializedSquare`  | WS message board format: `{ square, piece, color }` |
+| Type               | Purpose                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `Color`            | `'white' \| 'black'`                                                                                          |
+| `PieceType`        | All six piece types                                                                                           |
+| `GameStatus`       | `waiting \| active \| checkmate \| stalemate \| draw \| resigned`                                             |
+| `GameState`        | Full game snapshot (board, turn, status, players, moveHistory, boardHistory, halfMoveClock, visibility, etc.) |
+| `Board`            | `(Piece \| null)[][]` — 8×8 grid                                                                              |
+| `Move`             | A move with from/to, capture, castling, en-passant, promotion metadata                                        |
+| `SerializedSquare` | WS message board format: `{ square, piece, color }`                                                           |

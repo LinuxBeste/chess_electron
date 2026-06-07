@@ -34,7 +34,9 @@ export default function Navbar({ theme, onToggleTheme }: Props) {
       }`}
     >
       <Link to="/" className="text-lg font-bold text-text tracking-tight flex items-center gap-3">
-        <span><span className="text-accent mr-0.5">♚</span> Chess</span>
+        <span>
+          <span className="text-accent mr-0.5">♚</span> Chess
+        </span>
         <span className="text-xs font-normal text-muted hidden sm:inline">Where every move matters.</span>
       </Link>
       <nav className="flex items-center gap-3 md:gap-5">

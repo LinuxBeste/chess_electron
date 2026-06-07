@@ -14,7 +14,7 @@ const faqs = [
   },
   {
     q: 'How do I play with a friend online?',
-    a: 'Create a new online room from the main menu. Share the generated room code with your friend. They enter the code on their end and you\'re connected immediately.',
+    a: "Create a new online room from the main menu. Share the generated room code with your friend. They enter the code on their end and you're connected immediately.",
   },
   {
     q: 'Can I play on the same computer?',
@@ -60,9 +60,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
           className={`text-muted shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         />
       </button>
-      {open && (
-        <div className="px-5 pb-4 text-sm text-muted leading-relaxed">{a}</div>
-      )}
+      {open && <div className="px-5 pb-4 text-sm text-muted leading-relaxed">{a}</div>}
     </div>
   );
 }
@@ -83,12 +81,8 @@ export default function FaqPage() {
 
         <ScrollReveal>
           <div className="text-center mb-12">
-            <h1 className="text-[clamp(32px,5vw,48px)] font-extrabold tracking-tight mb-4">
-              FAQ
-            </h1>
-            <p className="text-muted text-lg max-w-lg mx-auto">
-              Questions? We&apos;ve got answers.
-            </p>
+            <h1 className="text-[clamp(32px,5vw,48px)] font-extrabold tracking-tight mb-4">FAQ</h1>
+            <p className="text-muted text-lg max-w-lg mx-auto">Questions? We&apos;ve got answers.</p>
           </div>
         </ScrollReveal>
 

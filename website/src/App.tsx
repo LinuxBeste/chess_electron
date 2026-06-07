@@ -26,10 +26,7 @@ function ScrollProgress() {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[60] h-[3px] bg-transparent">
-      <div
-        className="h-full bg-accent transition-[width] duration-150 ease-out"
-        style={{ width: `${progress}%` }}
-      />
+      <div className="h-full bg-accent transition-[width] duration-150 ease-out" style={{ width: `${progress}%` }} />
     </div>
   );
 }
@@ -46,7 +43,7 @@ export default function App() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => setTheme(t => (t === 'light' ? 'dark' : 'light'));
+  const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
 
   return (
     <BrowserRouter>
@@ -55,12 +52,54 @@ export default function App() {
         <BackgroundPieces />
         <div className="relative z-10">
           <Routes>
-            <Route path="/" element={<Layout theme={theme} onToggleTheme={toggleTheme}><Home /></Layout>} />
-            <Route path="/features" element={<Layout theme={theme} onToggleTheme={toggleTheme}><FeaturesPage /></Layout>} />
-            <Route path="/how-to-play" element={<Layout theme={theme} onToggleTheme={toggleTheme}><HowToPlayPage /></Layout>} />
-            <Route path="/themes" element={<Layout theme={theme} onToggleTheme={toggleTheme}><ThemesPage /></Layout>} />
-            <Route path="/faq" element={<Layout theme={theme} onToggleTheme={toggleTheme}><FaqPage /></Layout>} />
-            <Route path="/download" element={<Layout theme={theme} onToggleTheme={toggleTheme}><DownloadPage /></Layout>} />
+            <Route
+              path="/"
+              element={
+                <Layout theme={theme} onToggleTheme={toggleTheme}>
+                  <Home />
+                </Layout>
+              }
+            />
+            <Route
+              path="/features"
+              element={
+                <Layout theme={theme} onToggleTheme={toggleTheme}>
+                  <FeaturesPage />
+                </Layout>
+              }
+            />
+            <Route
+              path="/how-to-play"
+              element={
+                <Layout theme={theme} onToggleTheme={toggleTheme}>
+                  <HowToPlayPage />
+                </Layout>
+              }
+            />
+            <Route
+              path="/themes"
+              element={
+                <Layout theme={theme} onToggleTheme={toggleTheme}>
+                  <ThemesPage />
+                </Layout>
+              }
+            />
+            <Route
+              path="/faq"
+              element={
+                <Layout theme={theme} onToggleTheme={toggleTheme}>
+                  <FaqPage />
+                </Layout>
+              }
+            />
+            <Route
+              path="/download"
+              element={
+                <Layout theme={theme} onToggleTheme={toggleTheme}>
+                  <DownloadPage />
+                </Layout>
+              }
+            />
           </Routes>
         </div>
       </div>

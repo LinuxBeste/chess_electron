@@ -31,9 +31,7 @@ export default function ThemesPage() {
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-accent/10 text-accent mx-auto mb-4">
               <Palette size={28} />
             </div>
-            <h1 className="text-[clamp(32px,5vw,48px)] font-extrabold tracking-tight mb-4">
-              Board themes
-            </h1>
+            <h1 className="text-[clamp(32px,5vw,48px)] font-extrabold tracking-tight mb-4">Board themes</h1>
             <p className="text-muted text-lg max-w-xl mx-auto">
               Customize the look and feel of your chess board. Choose from six handcrafted themes.
             </p>
@@ -50,11 +48,7 @@ export default function ThemesPage() {
                   <p className="text-muted text-sm leading-relaxed mb-3">{t.desc}</p>
                   <div className="flex gap-1.5">
                     {t.colors.split(' / ').map((c) => (
-                      <div
-                        key={c}
-                        className="w-5 h-5 rounded border border-border"
-                        style={{ background: c.trim() }}
-                      />
+                      <div key={c} className="w-5 h-5 rounded border border-border" style={{ background: c.trim() }} />
                     ))}
                   </div>
                 </div>

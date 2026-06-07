@@ -95,15 +95,70 @@ export default function LocalGamePage() {
   /* Per-piece ray/path generator.  Sliding pieces (bishop/rook/queen) iterate
      until blocked; knights/king/pawns have fixed direction sets.  En passant
      and castling are NOT implemented here — the local game is basic 1v1. */
-  function getMovesForPiece(b: BoardType, r: number, f: number, piece: { type: PieceType; color: 'white' | 'black' }): [number, number][] {
+  function getMovesForPiece(
+    b: BoardType,
+    r: number,
+    f: number,
+    piece: { type: PieceType; color: 'white' | 'black' },
+  ): [number, number][] {
     const targets: [number, number][] = [];
     const dirs: Record<string, [number, number][]> = {
-      pawn: piece.color === 'white' ? [[-1, 0], [-2, 0], [-1, -1], [-1, 1]] : [[1, 0], [2, 0], [1, -1], [1, 1]],
-      knight: [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]],
-      bishop: [[-1, -1], [-1, 1], [1, -1], [1, 1]],
-      rook: [[-1, 0], [1, 0], [0, -1], [0, 1]],
-      queen: [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]],
-      king: [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]],
+      pawn:
+        piece.color === 'white'
+          ? [
+              [-1, 0],
+              [-2, 0],
+              [-1, -1],
+              [-1, 1],
+            ]
+          : [
+              [1, 0],
+              [2, 0],
+              [1, -1],
+              [1, 1],
+            ],
+      knight: [
+        [-2, -1],
+        [-2, 1],
+        [-1, -2],
+        [-1, 2],
+        [1, -2],
+        [1, 2],
+        [2, -1],
+        [2, 1],
+      ],
+      bishop: [
+        [-1, -1],
+        [-1, 1],
+        [1, -1],
+        [1, 1],
+      ],
+      rook: [
+        [-1, 0],
+        [1, 0],
+        [0, -1],
+        [0, 1],
+      ],
+      queen: [
+        [-1, -1],
+        [-1, 1],
+        [1, -1],
+        [1, 1],
+        [-1, 0],
+        [1, 0],
+        [0, -1],
+        [0, 1],
+      ],
+      king: [
+        [-1, -1],
+        [-1, 0],
+        [-1, 1],
+        [0, -1],
+        [0, 1],
+        [1, -1],
+        [1, 0],
+        [1, 1],
+      ],
     };
     const pieceDirs = dirs[piece.type] || [];
     const isSliding = piece.type !== 'knight' && piece.type !== 'king' && piece.type !== 'pawn';
@@ -291,13 +346,16 @@ export default function LocalGamePage() {
 
   const dragFrom = useRef<string | null>(null);
 
-  const handleDragStart = useCallback((from: string) => {
-    if (gameOver) return;
-    dragFrom.current = from;
-    setSelectedSquare(from);
-    const moves = getLegalMoves(boardRef.current, turnRef.current);
-    setLegalHints(moves.filter((m) => m.from === from));
-  }, [gameOver]);
+  const handleDragStart = useCallback(
+    (from: string) => {
+      if (gameOver) return;
+      dragFrom.current = from;
+      setSelectedSquare(from);
+      const moves = getLegalMoves(boardRef.current, turnRef.current);
+      setLegalHints(moves.filter((m) => m.from === from));
+    },
+    [gameOver],
+  );
 
   const handleDragEnd = useCallback(
     (to: string) => {
@@ -400,11 +458,19 @@ export default function LocalGamePage() {
                   : gameOver.status === 'stalemate'
                     ? t('localGame.stalemate')
                     : gameOver.status === 'timeout'
-                      ? t('localGame.ranOutOfTime', { color: gameOver.winner === 'white' ? t('common.black') : t('common.white') })
+                      ? t('localGame.ranOutOfTime', {
+                          color: gameOver.winner === 'white' ? t('common.black') : t('common.white'),
+                        })
                       : t('localGame.gameOver')}
               </div>
               <div style={{ marginTop: 8, fontSize: 13, color: 'var(--muted)' }}>
-                {gameOver.status === 'checkmate' ? t('localGame.checkmate') : gameOver.status === 'stalemate' ? t('localGame.noLegalMoves') : gameOver.status === 'timeout' ? t('localGame.timeout') : ''}
+                {gameOver.status === 'checkmate'
+                  ? t('localGame.checkmate')
+                  : gameOver.status === 'stalemate'
+                    ? t('localGame.noLegalMoves')
+                    : gameOver.status === 'timeout'
+                      ? t('localGame.timeout')
+                      : ''}
               </div>
             </div>
           )}
@@ -424,11 +490,19 @@ export default function LocalGamePage() {
           </button>
           {gameOver && boardHistory.length > 0 && (
             <div className="review-controls active">
-              <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(-1)}>{t('common.prev')}</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(-1)}>
+                {t('common.prev')}
+              </button>
               <span className="review-label">
-                {reviewIndex === -1 ? t('common.start') : reviewIndex !== null ? `${reviewIndex + 1}/${boardHistory.length}` : t('common.end')}
+                {reviewIndex === -1
+                  ? t('common.start')
+                  : reviewIndex !== null
+                    ? `${reviewIndex + 1}/${boardHistory.length}`
+                    : t('common.end')}
               </span>
-              <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(1)}>{t('common.next')}</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(1)}>
+                {t('common.next')}
+              </button>
             </div>
           )}
         </div>
@@ -449,9 +523,7 @@ export default function LocalGamePage() {
           >
             {t('localGame.local1v1')}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
-            {t('localGame.instruction')}
-          </div>
+          <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>{t('localGame.instruction')}</div>
         </div>
       </div>
       {promotion && <PromotionDialog color={turn} onSelect={handlePromotionSelect} />}

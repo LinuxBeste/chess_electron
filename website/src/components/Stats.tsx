@@ -48,7 +48,8 @@ function StatBox({ icon: Icon, end, suffix, label }: StatBoxProps) {
         <Icon size={22} />
       </div>
       <div className="text-3xl md:text-4xl font-extrabold tracking-tight text-text">
-        {count}{suffix}
+        {count}
+        {suffix}
       </div>
       <div className="text-muted text-sm mt-1">{label}</div>
     </div>

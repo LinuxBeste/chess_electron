@@ -1,7 +1,12 @@
 import { useState, useReducer } from 'react';
 import {
-  type AppSettings, defaultSettings, loadSettings, saveSettings,
-  getLocalStorageKeys, clearLocalStorageKey, clearAllLocalData,
+  type AppSettings,
+  defaultSettings,
+  loadSettings,
+  saveSettings,
+  getLocalStorageKeys,
+  clearLocalStorageKey,
+  clearAllLocalData,
 } from '../settings';
 import { setSoundVolume } from '../sound';
 import { store } from '../store';
@@ -36,30 +41,48 @@ function Section({ title }: { title: string }) {
 
 function getLightColor(theme: string): string {
   switch (theme) {
-    case 'classic': return '#f0d9b5';
-    case 'blue': return '#dee3e6';
-    case 'green': return '#eeeed2';
-    case 'gray': return '#c8c8c8';
-    case 'amber': return '#f5deb3';
-    default: return '#3d3d52';
+    case 'classic':
+      return '#f0d9b5';
+    case 'blue':
+      return '#dee3e6';
+    case 'green':
+      return '#eeeed2';
+    case 'gray':
+      return '#c8c8c8';
+    case 'amber':
+      return '#f5deb3';
+    default:
+      return '#3d3d52';
   }
 }
 
 function getDarkColor(theme: string): string {
   switch (theme) {
-    case 'classic': return '#b58863';
-    case 'blue': return '#8ca2ad';
-    case 'green': return '#769656';
-    case 'gray': return '#6b6b6b';
-    case 'amber': return '#b8860b';
-    default: return '#2c2c38';
+    case 'classic':
+      return '#b58863';
+    case 'blue':
+      return '#8ca2ad';
+    case 'green':
+      return '#769656';
+    case 'gray':
+      return '#6b6b6b';
+    case 'amber':
+      return '#b8860b';
+    default:
+      return '#2c2c38';
   }
 }
 
 function ToggleRow({
-  label, desc, checked, onChange,
+  label,
+  desc,
+  checked,
+  onChange,
 }: {
-  label: string; desc: string; checked: boolean; onChange: (v: boolean) => void;
+  label: string;
+  desc: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
 }) {
   return (
     <div className="settings-row">
@@ -75,10 +98,17 @@ function ToggleRow({
 }
 
 function SelectRow({
-  label, desc, options, value, onChange,
+  label,
+  desc,
+  options,
+  value,
+  onChange,
 }: {
-  label: string; desc: string; options: { value: string; label: string }[];
-  value: string; onChange: (v: string) => void;
+  label: string;
+  desc: string;
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
 }) {
   return (
     <div className="settings-row">
@@ -88,7 +118,9 @@ function SelectRow({
       </div>
       <select className="settings-select" value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
         ))}
       </select>
     </div>
@@ -96,9 +128,18 @@ function SelectRow({
 }
 
 function SliderRow({
-  label, desc, value, min, max, onChange,
+  label,
+  desc,
+  value,
+  min,
+  max,
+  onChange,
 }: {
-  label: string; desc: string; value: number; min: number; max: number;
+  label: string;
+  desc: string;
+  value: number;
+  min: number;
+  max: number;
   onChange: (v: number) => void;
 }) {
   return (
@@ -152,22 +193,89 @@ function GeneralTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (
   return (
     <>
       <Section title={t('settings.general.sound')} />
-      <ToggleRow label={t('settings.general.soundEffects')} desc={t('settings.general.soundEffectsDesc')} checked={settings.soundEnabled} onChange={(v) => onUpdate({ ...settings, soundEnabled: v })} />
-      <SliderRow label={t('settings.general.soundVolume')} desc={t('settings.general.soundVolumeDesc')} value={settings.soundVolume} min={0} max={100} onChange={(v) => onUpdate({ ...settings, soundVolume: v })} />
-      <SelectRow label={t('settings.general.moveSound')} desc={t('settings.general.moveSoundDesc')} options={soundOptions} value={settings.moveSound} onChange={(v) => onUpdate({ ...settings, moveSound: v as any })} />
-      <SelectRow label={t('settings.general.captureSound')} desc={t('settings.general.captureSoundDesc')} options={soundOptions} value={settings.captureSound} onChange={(v) => onUpdate({ ...settings, captureSound: v as any })} />
-      <ToggleRow label={t('settings.general.notifications')} desc={t('settings.general.notificationsDesc')} checked={settings.notificationEnabled} onChange={(v) => onUpdate({ ...settings, notificationEnabled: v })} />
+      <ToggleRow
+        label={t('settings.general.soundEffects')}
+        desc={t('settings.general.soundEffectsDesc')}
+        checked={settings.soundEnabled}
+        onChange={(v) => onUpdate({ ...settings, soundEnabled: v })}
+      />
+      <SliderRow
+        label={t('settings.general.soundVolume')}
+        desc={t('settings.general.soundVolumeDesc')}
+        value={settings.soundVolume}
+        min={0}
+        max={100}
+        onChange={(v) => onUpdate({ ...settings, soundVolume: v })}
+      />
+      <SelectRow
+        label={t('settings.general.moveSound')}
+        desc={t('settings.general.moveSoundDesc')}
+        options={soundOptions}
+        value={settings.moveSound}
+        onChange={(v) => onUpdate({ ...settings, moveSound: v as any })}
+      />
+      <SelectRow
+        label={t('settings.general.captureSound')}
+        desc={t('settings.general.captureSoundDesc')}
+        options={soundOptions}
+        value={settings.captureSound}
+        onChange={(v) => onUpdate({ ...settings, captureSound: v as any })}
+      />
+      <ToggleRow
+        label={t('settings.general.notifications')}
+        desc={t('settings.general.notificationsDesc')}
+        checked={settings.notificationEnabled}
+        onChange={(v) => onUpdate({ ...settings, notificationEnabled: v })}
+      />
 
       <Section title={t('settings.general.animations')} />
-      <ToggleRow label={t('settings.general.animationsToggle')} desc={t('settings.general.animationsDesc')} checked={settings.animationsEnabled} onChange={(v) => onUpdate({ ...settings, animationsEnabled: v })} />
-      <SelectRow label={t('settings.general.animationSpeed')} desc={t('settings.general.animationSpeedDesc')} options={animSpeedOptions} value={settings.moveAnimationSpeed} onChange={(v) => onUpdate({ ...settings, moveAnimationSpeed: v as any })} />
-      <SelectRow label={t('settings.general.pieceAnimation')} desc={t('settings.general.pieceAnimationDesc')} options={pieceAnimOptions} value={settings.pieceAnimation} onChange={(v) => onUpdate({ ...settings, pieceAnimation: v as any })} />
-      <ToggleRow label={t('settings.general.animateBoardFlip')} desc={t('settings.general.animateBoardFlipDesc')} checked={settings.animateBoardFlip} onChange={(v) => onUpdate({ ...settings, animateBoardFlip: v })} />
-      <ToggleRow label={t('settings.general.reduceMotion')} desc={t('settings.general.reduceMotionDesc')} checked={settings.reduceMotion} onChange={(v) => onUpdate({ ...settings, reduceMotion: v })} />
+      <ToggleRow
+        label={t('settings.general.animationsToggle')}
+        desc={t('settings.general.animationsDesc')}
+        checked={settings.animationsEnabled}
+        onChange={(v) => onUpdate({ ...settings, animationsEnabled: v })}
+      />
+      <SelectRow
+        label={t('settings.general.animationSpeed')}
+        desc={t('settings.general.animationSpeedDesc')}
+        options={animSpeedOptions}
+        value={settings.moveAnimationSpeed}
+        onChange={(v) => onUpdate({ ...settings, moveAnimationSpeed: v as any })}
+      />
+      <SelectRow
+        label={t('settings.general.pieceAnimation')}
+        desc={t('settings.general.pieceAnimationDesc')}
+        options={pieceAnimOptions}
+        value={settings.pieceAnimation}
+        onChange={(v) => onUpdate({ ...settings, pieceAnimation: v as any })}
+      />
+      <ToggleRow
+        label={t('settings.general.animateBoardFlip')}
+        desc={t('settings.general.animateBoardFlipDesc')}
+        checked={settings.animateBoardFlip}
+        onChange={(v) => onUpdate({ ...settings, animateBoardFlip: v })}
+      />
+      <ToggleRow
+        label={t('settings.general.reduceMotion')}
+        desc={t('settings.general.reduceMotionDesc')}
+        checked={settings.reduceMotion}
+        onChange={(v) => onUpdate({ ...settings, reduceMotion: v })}
+      />
 
       <Section title={t('settings.general.pieces')} />
-      <SelectRow label={t('settings.general.pieceSet')} desc={t('settings.general.pieceSetDesc')} options={pieceSetOptions} value={settings.pieceSet} onChange={(v) => onUpdate({ ...settings, pieceSet: v as any })} />
-      <ToggleRow label={t('settings.general.pieceDropShadow')} desc={t('settings.general.pieceDropShadowDesc')} checked={settings.pieceDropShadow} onChange={(v) => onUpdate({ ...settings, pieceDropShadow: v })} />
+      <SelectRow
+        label={t('settings.general.pieceSet')}
+        desc={t('settings.general.pieceSetDesc')}
+        options={pieceSetOptions}
+        value={settings.pieceSet}
+        onChange={(v) => onUpdate({ ...settings, pieceSet: v as any })}
+      />
+      <ToggleRow
+        label={t('settings.general.pieceDropShadow')}
+        desc={t('settings.general.pieceDropShadowDesc')}
+        checked={settings.pieceDropShadow}
+        onChange={(v) => onUpdate({ ...settings, pieceDropShadow: v })}
+      />
 
       <Section title={t('settings.general.language')} />
       <SelectRow
@@ -214,28 +322,122 @@ function BoardTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (s:
   return (
     <>
       <Section title={t('settings.board.themeStyle')} />
-      <SelectRow label={t('settings.board.boardTheme')} desc={t('settings.board.boardThemeDesc')} options={themeOptions} value={settings.boardTheme} onChange={(v) => onUpdate({ ...settings, boardTheme: v as any })} />
-      <SelectRow label={t('settings.board.boardStyle')} desc={t('settings.board.boardStyleDesc')} options={boardStyleOptions} value={settings.boardStyle} onChange={(v) => onUpdate({ ...settings, boardStyle: v as any })} />
-      <SelectRow label={t('settings.board.boardSize')} desc={t('settings.board.boardSizeDesc')} options={boardSizeOptions} value={settings.boardSize} onChange={(v) => onUpdate({ ...settings, boardSize: v as any })} />
-      <ToggleRow label={t('settings.board.boardBorder')} desc={t('settings.board.boardBorderDesc')} checked={settings.boardBorder} onChange={(v) => onUpdate({ ...settings, boardBorder: v })} />
-      <SelectRow label={t('settings.board.coordinateStyle')} desc={t('settings.board.coordinateStyleDesc')} options={coordStyleOptions} value={settings.boardCoordinateStyle} onChange={(v) => onUpdate({ ...settings, boardCoordinateStyle: v as any })} />
+      <SelectRow
+        label={t('settings.board.boardTheme')}
+        desc={t('settings.board.boardThemeDesc')}
+        options={themeOptions}
+        value={settings.boardTheme}
+        onChange={(v) => onUpdate({ ...settings, boardTheme: v as any })}
+      />
+      <SelectRow
+        label={t('settings.board.boardStyle')}
+        desc={t('settings.board.boardStyleDesc')}
+        options={boardStyleOptions}
+        value={settings.boardStyle}
+        onChange={(v) => onUpdate({ ...settings, boardStyle: v as any })}
+      />
+      <SelectRow
+        label={t('settings.board.boardSize')}
+        desc={t('settings.board.boardSizeDesc')}
+        options={boardSizeOptions}
+        value={settings.boardSize}
+        onChange={(v) => onUpdate({ ...settings, boardSize: v as any })}
+      />
+      <ToggleRow
+        label={t('settings.board.boardBorder')}
+        desc={t('settings.board.boardBorderDesc')}
+        checked={settings.boardBorder}
+        onChange={(v) => onUpdate({ ...settings, boardBorder: v })}
+      />
+      <SelectRow
+        label={t('settings.board.coordinateStyle')}
+        desc={t('settings.board.coordinateStyleDesc')}
+        options={coordStyleOptions}
+        value={settings.boardCoordinateStyle}
+        onChange={(v) => onUpdate({ ...settings, boardCoordinateStyle: v as any })}
+      />
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
-        <div style={{ fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 8, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{t('settings.board.preview')}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 2, width: 140, height: 140, borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            color: '#888',
+            marginBottom: 8,
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase',
+          }}
+        >
+          {t('settings.board.preview')}
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4,1fr)',
+            gap: 2,
+            width: 140,
+            height: 140,
+            borderRadius: 4,
+            overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}
+        >
           {Array.from({ length: 16 }, (_, i) => (
-            <div key={i} style={{ background: (Math.floor(i / 4) + (i % 4)) % 2 === 0 ? getLightColor(settings.boardTheme) : getDarkColor(settings.boardTheme) }} />
+            <div
+              key={i}
+              style={{
+                background:
+                  (Math.floor(i / 4) + (i % 4)) % 2 === 0
+                    ? getLightColor(settings.boardTheme)
+                    : getDarkColor(settings.boardTheme),
+              }}
+            />
           ))}
         </div>
       </div>
 
       <Section title={t('settings.board.labelsInfo')} />
-      <ToggleRow label={t('settings.board.showCoordinates')} desc={t('settings.board.showCoordinatesDesc')} checked={settings.showCoordinates} onChange={(v) => onUpdate({ ...settings, showCoordinates: v })} />
-      <ToggleRow label={t('settings.board.highlightLastMove')} desc={t('settings.board.highlightLastMoveDesc')} checked={settings.highlightLastMove} onChange={(v) => onUpdate({ ...settings, highlightLastMove: v })} />
-      <ToggleRow label={t('settings.board.highlightCheck')} desc={t('settings.board.highlightCheckDesc')} checked={settings.highlightCheck} onChange={(v) => onUpdate({ ...settings, highlightCheck: v })} />
-      <ToggleRow label={t('settings.board.moveHistory')} desc={t('settings.board.moveHistoryDesc')} checked={settings.showMoveHistory} onChange={(v) => onUpdate({ ...settings, showMoveHistory: v })} />
-      <ToggleRow label={t('settings.board.capturedPieces')} desc={t('settings.board.capturedPiecesDesc')} checked={settings.showCapturedPieces} onChange={(v) => onUpdate({ ...settings, showCapturedPieces: v })} />
-      <ToggleRow label={t('settings.board.materialDifference')} desc={t('settings.board.materialDifferenceDesc')} checked={settings.showMaterialDifference} onChange={(v) => onUpdate({ ...settings, showMaterialDifference: v })} />
-      <ToggleRow label={t('settings.board.moveArrows')} desc={t('settings.board.moveArrowsDesc')} checked={settings.showMoveArrows} onChange={(v) => onUpdate({ ...settings, showMoveArrows: v })} />
+      <ToggleRow
+        label={t('settings.board.showCoordinates')}
+        desc={t('settings.board.showCoordinatesDesc')}
+        checked={settings.showCoordinates}
+        onChange={(v) => onUpdate({ ...settings, showCoordinates: v })}
+      />
+      <ToggleRow
+        label={t('settings.board.highlightLastMove')}
+        desc={t('settings.board.highlightLastMoveDesc')}
+        checked={settings.highlightLastMove}
+        onChange={(v) => onUpdate({ ...settings, highlightLastMove: v })}
+      />
+      <ToggleRow
+        label={t('settings.board.highlightCheck')}
+        desc={t('settings.board.highlightCheckDesc')}
+        checked={settings.highlightCheck}
+        onChange={(v) => onUpdate({ ...settings, highlightCheck: v })}
+      />
+      <ToggleRow
+        label={t('settings.board.moveHistory')}
+        desc={t('settings.board.moveHistoryDesc')}
+        checked={settings.showMoveHistory}
+        onChange={(v) => onUpdate({ ...settings, showMoveHistory: v })}
+      />
+      <ToggleRow
+        label={t('settings.board.capturedPieces')}
+        desc={t('settings.board.capturedPiecesDesc')}
+        checked={settings.showCapturedPieces}
+        onChange={(v) => onUpdate({ ...settings, showCapturedPieces: v })}
+      />
+      <ToggleRow
+        label={t('settings.board.materialDifference')}
+        desc={t('settings.board.materialDifferenceDesc')}
+        checked={settings.showMaterialDifference}
+        onChange={(v) => onUpdate({ ...settings, showMaterialDifference: v })}
+      />
+      <ToggleRow
+        label={t('settings.board.moveArrows')}
+        desc={t('settings.board.moveArrowsDesc')}
+        checked={settings.showMoveArrows}
+        onChange={(v) => onUpdate({ ...settings, showMoveArrows: v })}
+      />
     </>
   );
 }
@@ -268,23 +470,92 @@ function DisplayTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (
   return (
     <>
       <Section title={t('settings.display.layout')} />
-      <ToggleRow label={t('settings.display.alwaysWhiteBottom')} desc={t('settings.display.alwaysWhiteBottomDesc')} checked={settings.alwaysWhiteBottom} onChange={(v) => onUpdate({ ...settings, alwaysWhiteBottom: v })} />
-      <ToggleRow label={t('settings.display.autoFlipBoard')} desc={t('settings.display.autoFlipBoardDesc')} checked={settings.autoFlipBoard} onChange={(v) => onUpdate({ ...settings, autoFlipBoard: v })} />
-      <ToggleRow label={t('settings.display.compactMode')} desc={t('settings.display.compactModeDesc')} checked={settings.compactMode} onChange={(v) => onUpdate({ ...settings, compactMode: v })} />
-      <SelectRow label={t('settings.display.uiDensity')} desc={t('settings.display.uiDensityDesc')} options={densityOptions} value={settings.uiDensity} onChange={(v) => onUpdate({ ...settings, uiDensity: v as any })} />
-      <ToggleRow label={t('settings.display.showPlayerNames')} desc={t('settings.display.showPlayerNamesDesc')} checked={settings.showPlayerNames} onChange={(v) => onUpdate({ ...settings, showPlayerNames: v })} />
-      <ToggleRow label={t('settings.display.showGameInfo')} desc={t('settings.display.showGameInfoDesc')} checked={settings.showGameInfo} onChange={(v) => onUpdate({ ...settings, showGameInfo: v })} />
-      <ToggleRow label={t('settings.display.showResultPopup')} desc={t('settings.display.showResultPopupDesc')} checked={settings.showGameResultPopup} onChange={(v) => onUpdate({ ...settings, showGameResultPopup: v })} />
+      <ToggleRow
+        label={t('settings.display.alwaysWhiteBottom')}
+        desc={t('settings.display.alwaysWhiteBottomDesc')}
+        checked={settings.alwaysWhiteBottom}
+        onChange={(v) => onUpdate({ ...settings, alwaysWhiteBottom: v })}
+      />
+      <ToggleRow
+        label={t('settings.display.autoFlipBoard')}
+        desc={t('settings.display.autoFlipBoardDesc')}
+        checked={settings.autoFlipBoard}
+        onChange={(v) => onUpdate({ ...settings, autoFlipBoard: v })}
+      />
+      <ToggleRow
+        label={t('settings.display.compactMode')}
+        desc={t('settings.display.compactModeDesc')}
+        checked={settings.compactMode}
+        onChange={(v) => onUpdate({ ...settings, compactMode: v })}
+      />
+      <SelectRow
+        label={t('settings.display.uiDensity')}
+        desc={t('settings.display.uiDensityDesc')}
+        options={densityOptions}
+        value={settings.uiDensity}
+        onChange={(v) => onUpdate({ ...settings, uiDensity: v as any })}
+      />
+      <ToggleRow
+        label={t('settings.display.showPlayerNames')}
+        desc={t('settings.display.showPlayerNamesDesc')}
+        checked={settings.showPlayerNames}
+        onChange={(v) => onUpdate({ ...settings, showPlayerNames: v })}
+      />
+      <ToggleRow
+        label={t('settings.display.showGameInfo')}
+        desc={t('settings.display.showGameInfoDesc')}
+        checked={settings.showGameInfo}
+        onChange={(v) => onUpdate({ ...settings, showGameInfo: v })}
+      />
+      <ToggleRow
+        label={t('settings.display.showResultPopup')}
+        desc={t('settings.display.showResultPopupDesc')}
+        checked={settings.showGameResultPopup}
+        onChange={(v) => onUpdate({ ...settings, showGameResultPopup: v })}
+      />
 
       <Section title={t('settings.display.visuals')} />
-      <SelectRow label={t('settings.display.backgroundPattern')} desc={t('settings.display.backgroundPatternDesc')} options={backgroundOptions} value={settings.background} onChange={(v) => onUpdate({ ...settings, background: v as any })} />
-      <ToggleRow label={t('settings.display.legalMoveHints')} desc={t('settings.display.legalMoveHintsDesc')} checked={settings.showLegalHints} onChange={(v) => onUpdate({ ...settings, showLegalHints: v })} />
-      <ToggleRow label={t('settings.display.showThreats')} desc={t('settings.display.showThreatsDesc')} checked={settings.showThreats} onChange={(v) => onUpdate({ ...settings, showThreats: v })} />
-      <ToggleRow label={t('settings.display.showOpponentClock')} desc={t('settings.display.showOpponentClockDesc')} checked={settings.showOpponentClock} onChange={(v) => onUpdate({ ...settings, showOpponentClock: v })} />
+      <SelectRow
+        label={t('settings.display.backgroundPattern')}
+        desc={t('settings.display.backgroundPatternDesc')}
+        options={backgroundOptions}
+        value={settings.background}
+        onChange={(v) => onUpdate({ ...settings, background: v as any })}
+      />
+      <ToggleRow
+        label={t('settings.display.legalMoveHints')}
+        desc={t('settings.display.legalMoveHintsDesc')}
+        checked={settings.showLegalHints}
+        onChange={(v) => onUpdate({ ...settings, showLegalHints: v })}
+      />
+      <ToggleRow
+        label={t('settings.display.showThreats')}
+        desc={t('settings.display.showThreatsDesc')}
+        checked={settings.showThreats}
+        onChange={(v) => onUpdate({ ...settings, showThreats: v })}
+      />
+      <ToggleRow
+        label={t('settings.display.showOpponentClock')}
+        desc={t('settings.display.showOpponentClockDesc')}
+        checked={settings.showOpponentClock}
+        onChange={(v) => onUpdate({ ...settings, showOpponentClock: v })}
+      />
 
       <Section title={t('settings.display.clockDisplay')} />
-      <SelectRow label={t('settings.display.clockStyle')} desc={t('settings.display.clockStyleDesc')} options={clockStyleOptions} value={settings.clockStyle} onChange={(v) => onUpdate({ ...settings, clockStyle: v as any })} />
-      <SelectRow label={t('settings.display.decimalPlaces')} desc={t('settings.display.decimalPlacesDesc')} options={decimalOptions} value={String(settings.clockDecimalPlaces)} onChange={(v) => onUpdate({ ...settings, clockDecimalPlaces: Number(v) as 0 | 1 | 2 })} />
+      <SelectRow
+        label={t('settings.display.clockStyle')}
+        desc={t('settings.display.clockStyleDesc')}
+        options={clockStyleOptions}
+        value={settings.clockStyle}
+        onChange={(v) => onUpdate({ ...settings, clockStyle: v as any })}
+      />
+      <SelectRow
+        label={t('settings.display.decimalPlaces')}
+        desc={t('settings.display.decimalPlacesDesc')}
+        options={decimalOptions}
+        value={String(settings.clockDecimalPlaces)}
+        onChange={(v) => onUpdate({ ...settings, clockDecimalPlaces: Number(v) as 0 | 1 | 2 })}
+      />
     </>
   );
 }
@@ -298,22 +569,83 @@ function GameplayTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: 
   return (
     <>
       <Section title={t('settings.gameplay.moves')} />
-      <ToggleRow label={t('settings.gameplay.autoPromoteQueen')} desc={t('settings.gameplay.autoPromoteQueenDesc')} checked={settings.autoPromoteQueen} onChange={(v) => onUpdate({ ...settings, autoPromoteQueen: v })} />
-      <ToggleRow label={t('settings.gameplay.premove')} desc={t('settings.gameplay.premoveDesc')} checked={settings.premove} onChange={(v) => onUpdate({ ...settings, premove: v })} />
-      <ToggleRow label={t('settings.gameplay.clickToMove')} desc={t('settings.gameplay.clickToMoveDesc')} checked={settings.clickToMove} onChange={(v) => onUpdate({ ...settings, clickToMove: v })} />
-      <ToggleRow label={t('settings.gameplay.showMovePreview')} desc={t('settings.gameplay.showMovePreviewDesc')} checked={settings.showMovePreview} onChange={(v) => onUpdate({ ...settings, showMovePreview: v })} />
-      <SelectRow label={t('settings.gameplay.moveNotation')} desc={t('settings.gameplay.moveNotationDesc')} options={moveNotationOptions} value={settings.moveNotation} onChange={(v) => onUpdate({ ...settings, moveNotation: v as any })} />
-      <ToggleRow label={t('settings.gameplay.keyboardNavigation')} desc={t('settings.gameplay.keyboardNavigationDesc')} checked={settings.enableKeyboardNavigation} onChange={(v) => onUpdate({ ...settings, enableKeyboardNavigation: v })} />
-      <ToggleRow label={t('settings.gameplay.openingBook')} desc={t('settings.gameplay.openingBookDesc')} checked={settings.enableOpeningBook} onChange={(v) => onUpdate({ ...settings, enableOpeningBook: v })} />
+      <ToggleRow
+        label={t('settings.gameplay.autoPromoteQueen')}
+        desc={t('settings.gameplay.autoPromoteQueenDesc')}
+        checked={settings.autoPromoteQueen}
+        onChange={(v) => onUpdate({ ...settings, autoPromoteQueen: v })}
+      />
+      <ToggleRow
+        label={t('settings.gameplay.premove')}
+        desc={t('settings.gameplay.premoveDesc')}
+        checked={settings.premove}
+        onChange={(v) => onUpdate({ ...settings, premove: v })}
+      />
+      <ToggleRow
+        label={t('settings.gameplay.clickToMove')}
+        desc={t('settings.gameplay.clickToMoveDesc')}
+        checked={settings.clickToMove}
+        onChange={(v) => onUpdate({ ...settings, clickToMove: v })}
+      />
+      <ToggleRow
+        label={t('settings.gameplay.showMovePreview')}
+        desc={t('settings.gameplay.showMovePreviewDesc')}
+        checked={settings.showMovePreview}
+        onChange={(v) => onUpdate({ ...settings, showMovePreview: v })}
+      />
+      <SelectRow
+        label={t('settings.gameplay.moveNotation')}
+        desc={t('settings.gameplay.moveNotationDesc')}
+        options={moveNotationOptions}
+        value={settings.moveNotation}
+        onChange={(v) => onUpdate({ ...settings, moveNotation: v as any })}
+      />
+      <ToggleRow
+        label={t('settings.gameplay.keyboardNavigation')}
+        desc={t('settings.gameplay.keyboardNavigationDesc')}
+        checked={settings.enableKeyboardNavigation}
+        onChange={(v) => onUpdate({ ...settings, enableKeyboardNavigation: v })}
+      />
+      <ToggleRow
+        label={t('settings.gameplay.openingBook')}
+        desc={t('settings.gameplay.openingBookDesc')}
+        checked={settings.enableOpeningBook}
+        onChange={(v) => onUpdate({ ...settings, enableOpeningBook: v })}
+      />
 
       <Section title={t('settings.gameplay.confirmation')} />
-      <ToggleRow label={t('settings.gameplay.confirmResign')} desc={t('settings.gameplay.confirmResignDesc')} checked={settings.confirmResign} onChange={(v) => onUpdate({ ...settings, confirmResign: v })} />
-      <ToggleRow label={t('settings.gameplay.confirmDraw')} desc={t('settings.gameplay.confirmDrawDesc')} checked={settings.confirmDraw} onChange={(v) => onUpdate({ ...settings, confirmDraw: v })} />
-      <ToggleRow label={t('settings.gameplay.confirmAbort')} desc={t('settings.gameplay.confirmAbortDesc')} checked={settings.confirmAbort} onChange={(v) => onUpdate({ ...settings, confirmAbort: v })} />
-      <ToggleRow label={t('settings.gameplay.autoNextGame')} desc={t('settings.gameplay.autoNextGameDesc')} checked={settings.autoNextGame} onChange={(v) => onUpdate({ ...settings, autoNextGame: v })} />
+      <ToggleRow
+        label={t('settings.gameplay.confirmResign')}
+        desc={t('settings.gameplay.confirmResignDesc')}
+        checked={settings.confirmResign}
+        onChange={(v) => onUpdate({ ...settings, confirmResign: v })}
+      />
+      <ToggleRow
+        label={t('settings.gameplay.confirmDraw')}
+        desc={t('settings.gameplay.confirmDrawDesc')}
+        checked={settings.confirmDraw}
+        onChange={(v) => onUpdate({ ...settings, confirmDraw: v })}
+      />
+      <ToggleRow
+        label={t('settings.gameplay.confirmAbort')}
+        desc={t('settings.gameplay.confirmAbortDesc')}
+        checked={settings.confirmAbort}
+        onChange={(v) => onUpdate({ ...settings, confirmAbort: v })}
+      />
+      <ToggleRow
+        label={t('settings.gameplay.autoNextGame')}
+        desc={t('settings.gameplay.autoNextGameDesc')}
+        checked={settings.autoNextGame}
+        onChange={(v) => onUpdate({ ...settings, autoNextGame: v })}
+      />
 
       <Section title={t('settings.gameplay.history')} />
-      <ToggleRow label={t('settings.gameplay.showTimestamps')} desc={t('settings.gameplay.showTimestampsDesc')} checked={settings.showTimestampsInHistory} onChange={(v) => onUpdate({ ...settings, showTimestampsInHistory: v })} />
+      <ToggleRow
+        label={t('settings.gameplay.showTimestamps')}
+        desc={t('settings.gameplay.showTimestampsDesc')}
+        checked={settings.showTimestampsInHistory}
+        onChange={(v) => onUpdate({ ...settings, showTimestampsInHistory: v })}
+      />
     </>
   );
 }
@@ -357,7 +689,9 @@ function ClockTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (s:
       </div>
       <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
         <div style={{ flex: 1 }}>
-          <div className="settings-label" style={{ marginBottom: 4 }}>{t('settings.clock.initialTime')}</div>
+          <div className="settings-label" style={{ marginBottom: 4 }}>
+            {t('settings.clock.initialTime')}
+          </div>
           <input
             className="input"
             type="number"
@@ -369,7 +703,9 @@ function ClockTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (s:
           />
         </div>
         <div style={{ flex: 1 }}>
-          <div className="settings-label" style={{ marginBottom: 4 }}>{t('settings.clock.increment')}</div>
+          <div className="settings-label" style={{ marginBottom: 4 }}>
+            {t('settings.clock.increment')}
+          </div>
           <input
             className="input"
             type="number"
@@ -384,7 +720,15 @@ function ClockTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (s:
 
       <Section title={t('settings.clock.preview')} />
       <div style={{ padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8, textAlign: 'center' }}>
-        <div style={{ fontSize: 28, fontWeight: 300, fontVariantNumeric: 'tabular-nums', color: '#e0e0e0', letterSpacing: '1px' }}>
+        <div
+          style={{
+            fontSize: 28,
+            fontWeight: 300,
+            fontVariantNumeric: 'tabular-nums',
+            color: '#e0e0e0',
+            letterSpacing: '1px',
+          }}
+        >
           {formatClockPreview(settings.timeControlMinutes, settings.clockDecimalPlaces)}
         </div>
       </div>
@@ -463,7 +807,9 @@ function AdvancedTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: 
                 fontSize: 12,
               }}
             >
-              <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#ccc' }}>
+              <div
+                style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#ccc' }}
+              >
                 {row.key}
                 <span style={{ color: '#666', marginLeft: 8 }}>({row.size} B)</span>
               </div>
@@ -484,7 +830,11 @@ function AdvancedTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: 
             <button className="btn btn-danger btn-sm" style={{ flex: 1, fontSize: 12 }} onClick={handleClearAll}>
               {t('settings.advanced.confirmClearAll')}
             </button>
-            <button className="btn btn-ghost btn-sm" style={{ flex: 1, fontSize: 12 }} onClick={() => setConfirmClear(false)}>
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ flex: 1, fontSize: 12 }}
+              onClick={() => setConfirmClear(false)}
+            >
               {t('common.cancel')}
             </button>
           </div>
@@ -548,8 +898,23 @@ export default function SettingsDialog({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 28px 0' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>{t('settings.title')}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', fontSize: 18, cursor: 'pointer', padding: '4px 8px', borderRadius: 4 }}>✕</button>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>
+            {t('settings.title')}
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#888',
+              fontSize: 18,
+              cursor: 'pointer',
+              padding: '4px 8px',
+              borderRadius: 4,
+            }}
+          >
+            ✕
+          </button>
         </div>
 
         <div className="settings-tabs" style={{ padding: '16px 28px 0' }}>

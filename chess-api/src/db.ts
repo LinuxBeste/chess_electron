@@ -50,12 +50,7 @@ export interface DbUser {
   draws: number;
 }
 
-export function createUser(
-  id: string,
-  username: string,
-  passwordHash: string | null,
-  displayName: string,
-): void {
+export function createUser(id: string, username: string, passwordHash: string | null, displayName: string): void {
   const d = getDb();
   d.prepare(
     `INSERT INTO users (id, username, password_hash, display_name, created_at)
@@ -65,25 +60,17 @@ export function createUser(
 
 export function getUserByUsername(username: string): DbUser | undefined {
   const d = getDb();
-  return d.prepare('SELECT * FROM users WHERE username = ?').get(username) as
-    | DbUser
-    | undefined;
+  return d.prepare('SELECT * FROM users WHERE username = ?').get(username) as DbUser | undefined;
 }
 
 export function getUserById(id: string): DbUser | undefined {
   const d = getDb();
-  return d.prepare('SELECT * FROM users WHERE id = ?').get(id) as
-    | DbUser
-    | undefined;
+  return d.prepare('SELECT * FROM users WHERE id = ?').get(id) as DbUser | undefined;
 }
 
 export function saveToken(token: string, userId: string): void {
   const d = getDb();
-  d.prepare('INSERT INTO user_tokens (token, user_id, created_at) VALUES (?, ?, ?)').run(
-    token,
-    userId,
-    Date.now(),
-  );
+  d.prepare('INSERT INTO user_tokens (token, user_id, created_at) VALUES (?, ?, ?)').run(token, userId, Date.now());
 }
 
 export function getUserIdByToken(token: string): string | undefined {

@@ -23,6 +23,7 @@ Create a new player. Two modes:
 - **Registered**: `{ "username": "alice", "password": "secret" }` (persisted, username must be unique)
 
 **Response (201):**
+
 ```json
 {
   "playerId": "uuid-v4",
@@ -33,6 +34,7 @@ Create a new player. Two modes:
 ```
 
 **Response (409 — username taken):**
+
 ```json
 { "error": "Username is already taken" }
 ```
@@ -42,11 +44,13 @@ Create a new player. Two modes:
 Log in as an existing registered user.
 
 **Request:**
+
 ```json
 { "username": "alice", "password": "secret" }
 ```
 
 **Response (200):**
+
 ```json
 {
   "success": true,
@@ -57,6 +61,7 @@ Log in as an existing registered user.
 ```
 
 **Response (401):**
+
 ```json
 { "error": "Invalid username or password" }
 ```
@@ -66,6 +71,7 @@ Log in as an existing registered user.
 Returns the authenticated player's info. Requires auth. Includes stats for registered users.
 
 **Response (anonymous):**
+
 ```json
 {
   "id": "uuid-v4",
@@ -76,6 +82,7 @@ Returns the authenticated player's info. Requires auth. Includes stats for regis
 ```
 
 **Response (registered):**
+
 ```json
 {
   "id": "uuid-v4",
@@ -91,6 +98,7 @@ Returns the authenticated player's info. Requires auth. Includes stats for regis
 ### GET /health
 
 **Response:**
+
 ```json
 {
   "status": "ok",
@@ -109,6 +117,7 @@ Create a new game. The creator plays white. Requires auth.
 Optional body field: `visibility` (`'public' | 'private'`, defaults to `'public'`).
 
 **Response (201):**
+
 ```json
 {
   "id": "uuid-v4",
@@ -136,6 +145,7 @@ Optional body field: `visibility` (`'public' | 'private'`, defaults to `'public'
 List all open (waiting) public games.
 
 **Response:**
+
 ```json
 [ { ...GameState }, ... ]
 ```
@@ -145,6 +155,7 @@ List all open (waiting) public games.
 List all active games (for spectating). No auth required.
 
 **Response:**
+
 ```json
 [ { ...GameState }, ... ]
 ```
@@ -166,6 +177,7 @@ Join a game as black. Requires auth.
 Make a move. Requires auth.
 
 **Request:**
+
 ```json
 {
   "from": "e2",
@@ -189,6 +201,7 @@ Resign from a game. Requires auth.
 Get completed games for the authenticated player (match history). Requires auth. Can only view your own history.
 
 **Response (200):**
+
 ```json
 [ { ...GameState }, ... ]
 ```
@@ -200,6 +213,7 @@ Get completed games for the authenticated player (match history). Requires auth.
 Get all legal moves for the authenticated player in a game. Requires auth.
 
 **Response:**
+
 ```json
 {
   "moves": [
@@ -220,6 +234,7 @@ ws://localhost:3000/?token=<bearer-token>
 ### Client Messages
 
 **Spectate a game:**
+
 ```json
 {
   "type": "spectate",
@@ -228,6 +243,7 @@ ws://localhost:3000/?token=<bearer-token>
 ```
 
 **Unspectate a game:**
+
 ```json
 {
   "type": "unspectate",
@@ -236,6 +252,7 @@ ws://localhost:3000/?token=<bearer-token>
 ```
 
 **Send a chat message:**
+
 ```json
 {
   "type": "chat_message",
@@ -247,6 +264,7 @@ ws://localhost:3000/?token=<bearer-token>
 ### Server Messages
 
 **On game started:**
+
 ```json
 {
   "type": "game_started",
@@ -256,6 +274,7 @@ ws://localhost:3000/?token=<bearer-token>
 ```
 
 **On a move:**
+
 ```json
 {
   "type": "move",
@@ -268,6 +287,7 @@ ws://localhost:3000/?token=<bearer-token>
 ```
 
 **On game end (checkmate/stalemate/resign/draw):**
+
 ```json
 {
   "type": "game_over",
@@ -282,6 +302,7 @@ ws://localhost:3000/?token=<bearer-token>
 ```
 
 **Chat message broadcast:**
+
 ```json
 {
   "type": "chat_message",
@@ -294,6 +315,7 @@ ws://localhost:3000/?token=<bearer-token>
 ```
 
 **Spectator acknowledgement:**
+
 ```json
 {
   "type": "spectate_ok",
@@ -303,6 +325,7 @@ ws://localhost:3000/?token=<bearer-token>
 ```
 
 **Spectator error:**
+
 ```json
 {
   "type": "spectate_error",
@@ -313,11 +336,11 @@ ws://localhost:3000/?token=<bearer-token>
 
 ## Game Status Values
 
-| Status     | Description |
-|------------|-------------|
-| `waiting`  | Created, waiting for second player |
-| `active`   | Both players joined, game in progress |
-| `checkmate`| King is in check with no legal moves |
-| `stalemate`| No legal moves but king is not in check |
-| `draw`     | Draw by 50-move rule |
-| `resigned` | A player resigned |
+| Status      | Description                             |
+| ----------- | --------------------------------------- |
+| `waiting`   | Created, waiting for second player      |
+| `active`    | Both players joined, game in progress   |
+| `checkmate` | King is in check with no legal moves    |
+| `stalemate` | No legal moves but king is not in check |
+| `draw`      | Draw by 50-move rule                    |
+| `resigned`  | A player resigned                       |

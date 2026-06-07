@@ -22,13 +22,7 @@ import PromotionDialog from '../components/PromotionDialog';
 import { deserializeBoard, cloneBoard, createInitialBoard, squareToIndices } from '../chess';
 import { getSetting } from '../settings';
 import { playMoveSound, playCaptureSound, playCheckSound, playGameOverSound } from '../sound';
-import type {
-  Board as BoardType,
-  GameState,
-  PieceType,
-  LegalMoveHint,
-  GameStatus,
-} from '../../types';
+import type { Board as BoardType, GameState, PieceType, LegalMoveHint, GameStatus } from '../../types';
 import type {
   MoveMessage,
   GameOverMessage,
@@ -83,13 +77,19 @@ export default function GamePage() {
       if (gameRef.current && gameRef.current.turn === 'white') {
         setWhiteTime((t) => {
           const next = t - 50;
-          if (next <= 0) { setTimeout_('black'); return 0; }
+          if (next <= 0) {
+            setTimeout_('black');
+            return 0;
+          }
           return next;
         });
       } else {
         setBlackTime((t) => {
           const next = t - 50;
-          if (next <= 0) { setTimeout_('white'); return 0; }
+          if (next <= 0) {
+            setTimeout_('white');
+            return 0;
+          }
           return next;
         });
       }
@@ -523,7 +523,9 @@ export default function GamePage() {
     <div className="game-layout">
       <div className="game-center">
         <div className="player-bar">
-          <span className="player-name">{game?.players.black === store.get('playerId') ? t('game.youBlack') : t('common.black')}</span>
+          <span className="player-name">
+            {game?.players.black === store.get('playerId') ? t('game.youBlack') : t('common.black')}
+          </span>
           <span className="player-clock">{formatTime(blackTime)}</span>
         </div>
         <Board
@@ -576,7 +578,9 @@ export default function GamePage() {
           )}
         </Board>
         <div className="player-bar">
-          <span className="player-name">{game?.players.white === store.get('playerId') ? t('game.youWhite') : t('common.white')}</span>
+          <span className="player-name">
+            {game?.players.white === store.get('playerId') ? t('game.youWhite') : t('common.white')}
+          </span>
           <span className="player-clock">{formatTime(whiteTime)}</span>
         </div>
         <div className="game-btn-row">
@@ -625,7 +629,7 @@ export default function GamePage() {
                 {!isFinished && (
                   <>
                     {isSpectator ? (
-                      <MenuItem                         label={t('game.leave')} onClick={handleResign} />
+                      <MenuItem label={t('game.leave')} onClick={handleResign} />
                     ) : (
                       <MenuItem
                         label={resignConfirmed ? t('game.areYouSure') : t('game.resign')}
@@ -634,16 +638,15 @@ export default function GamePage() {
                       />
                     )}
                     {!isSpectator && game?.status === 'active' && (
-                      <MenuItem label={drawPending ? t('game.drawOffered') : t('game.offerDraw')} onClick={handleOfferDraw} />
+                      <MenuItem
+                        label={drawPending ? t('game.drawOffered') : t('game.offerDraw')}
+                        onClick={handleOfferDraw}
+                      />
                     )}
-                    {waiting && !isSpectator && (
-                      <MenuItem label={t('game.abortGame')} onClick={handleAbort} />
-                    )}
+                    {waiting && !isSpectator && <MenuItem label={t('game.abortGame')} onClick={handleAbort} />}
                   </>
                 )}
-                {isFinished && (
-                  <MenuItem label={t('common.backToLobby')} onClick={() => navigate('/lobby')} />
-                )}
+                {isFinished && <MenuItem label={t('common.backToLobby')} onClick={() => navigate('/lobby')} />}
                 <MenuItem label={t('common.copyGameId')} onClick={handleCopyId} />
               </div>
             )}

@@ -10,14 +10,14 @@ export default function Hero() {
         </div>
 
         <h1 className="text-[clamp(36px,7vw,68px)] font-extrabold tracking-tight leading-tight mb-5 text-text">
-          Battle your<br />
+          Battle your
+          <br />
           <span className="text-accent">friends</span> in chess.
         </h1>
 
         <p className="text-muted text-lg md:text-xl leading-relaxed mb-8 max-w-lg mx-auto">
-          A beautiful desktop app for real-time chess. Challenge your friends,
-          track your games, and enjoy a smooth drag-and-drop experience —
-          all built from scratch.
+          A beautiful desktop app for real-time chess. Challenge your friends, track your games, and enjoy a smooth
+          drag-and-drop experience — all built from scratch.
         </p>
 
         <div className="flex gap-4 flex-wrap justify-center">

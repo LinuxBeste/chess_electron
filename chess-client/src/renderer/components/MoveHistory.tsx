@@ -36,30 +36,30 @@ export default function MoveHistory({ moves }: MoveHistoryProps) {
 
   return (
     <div className="moves-panel">
-        <h3 className="sidebar-title">{t('moveHistory.title')}</h3>
+      <h3 className="sidebar-title">{t('moveHistory.title')}</h3>
       <div ref={scrollRef} className="sidebar-panel" style={{ minHeight: 150, maxHeight: 'calc(50vh - 100px)' }}>
-      <div className="history-grid">
-        <div className="history-header">{t('moveHistory.hash')}</div>
-        <div className="history-header">{t('moveHistory.white')}</div>
-        <div className="history-header">{t('moveHistory.black')}</div>
-        {Array.from({ length: Math.ceil(moves.length / 2) }, (_, i) => {
-          const wIdx = i * 2;
-          const bIdx = i * 2 + 1;
-          const isLastWhite = wIdx >= moves.length - 1;
-          const isLastBlack = bIdx >= moves.length - 1;
-          return (
-            <>
-              <div className="history-num">{i + 1}.</div>
-              <div className={`history-move ${isLastWhite ? 'history-latest' : ''}`}>{moves[wIdx]}</div>
-              {bIdx < moves.length ? (
-                <div className={`history-move ${isLastBlack ? 'history-latest' : ''}`}>{moves[bIdx]}</div>
-              ) : (
-                <div />
-              )}
-            </>
-          );
-        })}
-      </div>
+        <div className="history-grid">
+          <div className="history-header">{t('moveHistory.hash')}</div>
+          <div className="history-header">{t('moveHistory.white')}</div>
+          <div className="history-header">{t('moveHistory.black')}</div>
+          {Array.from({ length: Math.ceil(moves.length / 2) }, (_, i) => {
+            const wIdx = i * 2;
+            const bIdx = i * 2 + 1;
+            const isLastWhite = wIdx >= moves.length - 1;
+            const isLastBlack = bIdx >= moves.length - 1;
+            return (
+              <>
+                <div className="history-num">{i + 1}.</div>
+                <div className={`history-move ${isLastWhite ? 'history-latest' : ''}`}>{moves[wIdx]}</div>
+                {bIdx < moves.length ? (
+                  <div className={`history-move ${isLastBlack ? 'history-latest' : ''}`}>{moves[bIdx]}</div>
+                ) : (
+                  <div />
+                )}
+              </>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

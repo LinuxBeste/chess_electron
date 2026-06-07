@@ -46,11 +46,11 @@
 
 ## Prerequisites
 
-| Tool | Min version | Install |
-|------|-------------|---------|
-| Node.js | 18.x | https://nodejs.org |
-| pnpm | 8.x | `npm install -g pnpm` |
-| Docker (optional) | 24.x | https://docs.docker.com/get-docker |
+| Tool              | Min version | Install                            |
+| ----------------- | ----------- | ---------------------------------- |
+| Node.js           | 18.x        | https://nodejs.org                 |
+| pnpm              | 8.x         | `npm install -g pnpm`              |
+| Docker (optional) | 24.x        | https://docs.docker.com/get-docker |
 
 ---
 
@@ -103,31 +103,31 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 
 ### chess-client (`chess-client/.env`)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CHESS_SERVER_URL` | `http://localhost:3000` | API base URL |
-| `CHESS_WS_URL` | *(same as server)* | WebSocket URL override |
-| `DEFAULT_USERNAME` | *(empty)* | Pre-fills login; auto-submits if set |
-| `AUTO_CONNECT` | `true` | Auto-connect WebSocket on startup |
-| `THEME` | `default` | Board theme (default, classic, blue, green, gray, amber) |
-| `SOUND_ENABLED` | `true` | Enable sound by default |
-| `SHOW_LEGAL_HINTS` | `true` | Show legal move hints by default |
-| `DEVTOOLS` | `false` | Open DevTools on window creation |
-| `WINDOW_TITLE` | `Chess` | Window title |
-| `WINDOW_WIDTH` | `1280` | Default window width |
-| `WINDOW_HEIGHT` | `900` | Default window height |
+| Variable           | Default                 | Description                                              |
+| ------------------ | ----------------------- | -------------------------------------------------------- |
+| `CHESS_SERVER_URL` | `http://localhost:3000` | API base URL                                             |
+| `CHESS_WS_URL`     | _(same as server)_      | WebSocket URL override                                   |
+| `DEFAULT_USERNAME` | _(empty)_               | Pre-fills login; auto-submits if set                     |
+| `AUTO_CONNECT`     | `true`                  | Auto-connect WebSocket on startup                        |
+| `THEME`            | `default`               | Board theme (default, classic, blue, green, gray, amber) |
+| `SOUND_ENABLED`    | `true`                  | Enable sound by default                                  |
+| `SHOW_LEGAL_HINTS` | `true`                  | Show legal move hints by default                         |
+| `DEVTOOLS`         | `false`                 | Open DevTools on window creation                         |
+| `WINDOW_TITLE`     | `Chess`                 | Window title                                             |
+| `WINDOW_WIDTH`     | `1280`                  | Default window width                                     |
+| `WINDOW_HEIGHT`    | `900`                   | Default window height                                    |
 
 ### chess-api
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3000` | HTTP/WS server port |
-| `CORS_ORIGIN` | `*` | Allowed CORS origin |
-| `WS_HEARTBEAT_INTERVAL` | `30000` | WebSocket ping interval (ms) |
-| `LOG_LEVEL` | `info` | Log level |
-| `MAX_GAMES_PER_PLAYER` | `1` | Max concurrent games per player |
-| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit window (ms) |
-| `RATE_LIMIT_MAX_REQUESTS` | `30` | Max requests per window per player |
+| Variable                  | Default | Description                        |
+| ------------------------- | ------- | ---------------------------------- |
+| `PORT`                    | `3000`  | HTTP/WS server port                |
+| `CORS_ORIGIN`             | `*`     | Allowed CORS origin                |
+| `WS_HEARTBEAT_INTERVAL`   | `30000` | WebSocket ping interval (ms)       |
+| `LOG_LEVEL`               | `info`  | Log level                          |
+| `MAX_GAMES_PER_PLAYER`    | `1`     | Max concurrent games per player    |
+| `RATE_LIMIT_WINDOW_MS`    | `60000` | Rate limit window (ms)             |
+| `RATE_LIMIT_MAX_REQUESTS` | `30`    | Max requests per window per player |
 
 ---
 
@@ -220,22 +220,22 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `pnpm install` | Install all dependencies (both packages) |
-| `pnpm dev` | Start API + build client concurrently |
-| `pnpm build` | Compile all packages |
-| `pnpm test` | Run all test suites |
-| `pnpm typecheck` | Type-check all packages |
-| `pnpm --filter chess-api dev` | Start API server with `ts-node` (hot reload) |
-| `pnpm --filter chess-client dev` | Build webpack bundles + launch Electron |
-| `pnpm --filter chess-client package` | Package platform installer via electron-builder |
-| `pnpm --filter chess-client build:renderer` | Webpack build (renderer only) |
-| `pnpm --filter chess-client build:main` | Webpack build (main process only) |
-| `pnpm format` | Format all source files with Prettier |
-| `pnpm format:check` | Check formatting without writing (CI use) |
-| `pnpm lint` | Lint all source files with ESLint |
-| `pnpm lint:fix` | Lint and auto-fix where possible |
+| Command                                     | Description                                     |
+| ------------------------------------------- | ----------------------------------------------- |
+| `pnpm install`                              | Install all dependencies (both packages)        |
+| `pnpm dev`                                  | Start API + build client concurrently           |
+| `pnpm build`                                | Compile all packages                            |
+| `pnpm test`                                 | Run all test suites                             |
+| `pnpm typecheck`                            | Type-check all packages                         |
+| `pnpm --filter chess-api dev`               | Start API server with `ts-node` (hot reload)    |
+| `pnpm --filter chess-client dev`            | Build webpack bundles + launch Electron         |
+| `pnpm --filter chess-client package`        | Package platform installer via electron-builder |
+| `pnpm --filter chess-client build:renderer` | Webpack build (renderer only)                   |
+| `pnpm --filter chess-client build:main`     | Webpack build (main process only)               |
+| `pnpm format`                               | Format all source files with Prettier           |
+| `pnpm format:check`                         | Check formatting without writing (CI use)       |
+| `pnpm lint`                                 | Lint all source files with ESLint               |
+| `pnpm lint:fix`                             | Lint and auto-fix where possible                |
 
 ---
 
@@ -245,31 +245,31 @@ All authenticated endpoints require `Authorization: Bearer <token>`.
 
 ### REST endpoints
 
-| Method | Endpoint | Auth | Description |
-| ------ | -------- | ---- | ----------- |
-| `GET` | `/health` | — | Server status, active games, online players |
-| `POST` | `/auth/register` | — | Create player → `{ playerId, token }` |
-| `GET` | `/auth/me` | ✓ | Current player identity |
-| `POST` | `/games` | ✓ | Create game as white (body: `visibility`) |
-| `GET` | `/games` | — | List open public games |
-| `GET` | `/games/active` | — | List active (in-progress) games for spectating |
-| `GET` | `/games/:id` | — | Full game state |
-| `POST` | `/games/:id/join` | ✓ | Join as black |
-| `POST` | `/games/:id/move` | ✓ | Submit move (`from`, `to`, `promotion?`) |
-| `POST` | `/games/:id/resign` | ✓ | Resign from game |
-| `GET` | `/games/:id/moves` | ✓ | Legal moves for current turn |
-| `GET` | `/players/:id/games` | ✓ | Completed games for a player |
+| Method | Endpoint             | Auth | Description                                    |
+| ------ | -------------------- | ---- | ---------------------------------------------- |
+| `GET`  | `/health`            | —    | Server status, active games, online players    |
+| `POST` | `/auth/register`     | —    | Create player → `{ playerId, token }`          |
+| `GET`  | `/auth/me`           | ✓    | Current player identity                        |
+| `POST` | `/games`             | ✓    | Create game as white (body: `visibility`)      |
+| `GET`  | `/games`             | —    | List open public games                         |
+| `GET`  | `/games/active`      | —    | List active (in-progress) games for spectating |
+| `GET`  | `/games/:id`         | —    | Full game state                                |
+| `POST` | `/games/:id/join`    | ✓    | Join as black                                  |
+| `POST` | `/games/:id/move`    | ✓    | Submit move (`from`, `to`, `promotion?`)       |
+| `POST` | `/games/:id/resign`  | ✓    | Resign from game                               |
+| `GET`  | `/games/:id/moves`   | ✓    | Legal moves for current turn                   |
+| `GET`  | `/players/:id/games` | ✓    | Completed games for a player                   |
 
 ### WebSocket events
 
 Connect to `ws://host:port/?token=<bearer-token>`.
 
-| Event | Trigger | Payload includes |
-|-------|---------|-----------------|
-| `move` | Legal move submitted | `board` (serialized), `turn`, `lastMove` |
-| `game_started` | Black joins | Full `GameState` |
-| `game_over` | Checkmate, stalemate, or resign | `board`, `result`, `reason` |
-| `chat_message` | Player or spectator sends chat | `playerId`, `username`, `text` |
+| Event          | Trigger                         | Payload includes                         |
+| -------------- | ------------------------------- | ---------------------------------------- |
+| `move`         | Legal move submitted            | `board` (serialized), `turn`, `lastMove` |
+| `game_started` | Black joins                     | Full `GameState`                         |
+| `game_over`    | Checkmate, stalemate, or resign | `board`, `result`, `reason`              |
+| `chat_message` | Player or spectator sends chat  | `playerId`, `username`, `text`           |
 
 Client-to-server events: `spectate`, `unspectate`, `chat_message`.
 
@@ -289,14 +289,14 @@ The engine in [`chess-api/src/chess.ts`](./chess-api/src/chess.ts) implements ev
 
 ### Implemented rules
 
-| Rule | Implementation |
-|------|---------------|
-| Pawn double push | `generatePawnMoves` — sets `enPassantTarget` on 2-square advance |
-| En passant | Checks destination against stored `enPassantTarget`, removes captured pawn |
-| Castling | `generateKingMoves` checks empty squares + rook presence; `getLegalMoves` verifies king doesn't pass through check |
-| Promotion | 4 candidate moves per promotion rank (queen/rook/bishop/knight) |
-| Check / checkmate / stalemate | `getGameStatus` — legal moves exist? king in check? |
-| Algebraic notation | `moveToAlgebraic` — handles disambiguation, castling `O-O`, captures, promotion `e8=Q` |
+| Rule                          | Implementation                                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Pawn double push              | `generatePawnMoves` — sets `enPassantTarget` on 2-square advance                                                   |
+| En passant                    | Checks destination against stored `enPassantTarget`, removes captured pawn                                         |
+| Castling                      | `generateKingMoves` checks empty squares + rook presence; `getLegalMoves` verifies king doesn't pass through check |
+| Promotion                     | 4 candidate moves per promotion rank (queen/rook/bishop/knight)                                                    |
+| Check / checkmate / stalemate | `getGameStatus` — legal moves exist? king in check?                                                                |
+| Algebraic notation            | `moveToAlgebraic` — handles disambiguation, castling `O-O`, captures, promotion `e8=Q`                             |
 
 Full engine documentation: [`chess-api/docs/chess-logic.md`](./chess-api/docs/chess-logic.md)
 
@@ -322,11 +322,11 @@ pnpm --filter chess-client package
 
 Output in `chess-client/release/`:
 
-| Platform | Format |
-|----------|--------|
-| Linux | `.AppImage`, `.deb` |
-| macOS | `.dmg` |
-| Windows | `.exe` (NSIS installer) |
+| Platform | Format                  |
+| -------- | ----------------------- |
+| Linux    | `.AppImage`, `.deb`     |
+| macOS    | `.dmg`                  |
+| Windows  | `.exe` (NSIS installer) |
 
 The API server must be deployed separately — either via Docker or directly on a VM. The client connects to whatever `CHESS_SERVER_URL` points to.
 
@@ -336,10 +336,10 @@ The API server must be deployed separately — either via Docker or directly on 
 
 Two tsconfigs in `chess-client/`:
 
-| Config | Target | Entry | JSX | Purpose |
-|--------|--------|-------|-----|---------|
-| `tsconfig.json` | ES2020 + DOM | — | `react-jsx` | Base config (noEmit), includes renderer + types |
-| `tsconfig.main.json` | ES2020 | `src/main/` | — | Main + preload (Electron Node process) |
+| Config               | Target       | Entry       | JSX         | Purpose                                         |
+| -------------------- | ------------ | ----------- | ----------- | ----------------------------------------------- |
+| `tsconfig.json`      | ES2020 + DOM | —           | `react-jsx` | Base config (noEmit), includes renderer + types |
+| `tsconfig.main.json` | ES2020       | `src/main/` | —           | Main + preload (Electron Node process)          |
 
 `tsconfig.json` includes `chess-api/src/types.ts` so client types (`Board`, `Piece`, `Move`, etc.) are re-exported directly from the server's canonical definitions.
 
@@ -355,12 +355,12 @@ pnpm typecheck
 
 The project uses **Prettier** for automatic code formatting and **ESLint** with `typescript-eslint` for static analysis, both configured at the monorepo root.
 
-| Command | Description |
-|---------|-------------|
-| `pnpm format` | Format all source files with Prettier |
-| `pnpm format:check` | Check formatting only (used in CI) |
-| `pnpm lint` | Lint with ESLint (recommended rules + TS) |
-| `pnpm lint:fix` | Lint and auto-fix where possible |
+| Command             | Description                               |
+| ------------------- | ----------------------------------------- |
+| `pnpm format`       | Format all source files with Prettier     |
+| `pnpm format:check` | Check formatting only (used in CI)        |
+| `pnpm lint`         | Lint with ESLint (recommended rules + TS) |
+| `pnpm lint:fix`     | Lint and auto-fix where possible          |
 
 Run both before committing:
 
@@ -369,6 +369,7 @@ pnpm format && pnpm lint
 ```
 
 Configuration:
+
 - **Prettier**: `.prettierrc` (2-space indent, single quotes, trailing commas, 120 print width)
 - **ESLint**: `eslint.config.mjs` (flat config, `@eslint/js` recommended + `typescript-eslint` recommended + `eslint-config-prettier`)
 

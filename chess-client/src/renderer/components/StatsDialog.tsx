@@ -39,7 +39,9 @@ export default function StatsDialog({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 0' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>{t('stats.title')}</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>
+            {t('stats.title')}
+          </h2>
           <button
             onClick={onClose}
             style={{
@@ -63,8 +65,7 @@ export default function StatsDialog({ onClose }: Props) {
             </div>
           ) : !stats ? (
             <div style={{ fontSize: 13, fontWeight: 300, color: '#555', textAlign: 'center', padding: 24 }}>
-              {t('stats.unregistered')}{' '}
-              <span style={{ color: 'var(--text)' }}>{t('stats.signUpPrompt')}</span>
+              {t('stats.unregistered')} <span style={{ color: 'var(--text)' }}>{t('stats.signUpPrompt')}</span>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

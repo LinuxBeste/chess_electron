@@ -15,17 +15,13 @@ const platforms = [
   {
     icon: <Monitor size={28} />,
     name: 'macOS',
-    formats: [
-      { label: 'DMG', file: 'chess-electron-1.0.0.dmg' },
-    ],
+    formats: [{ label: 'DMG', file: 'chess-electron-1.0.0.dmg' }],
     note: 'Apple Silicon & Intel',
   },
   {
     icon: <Globe size={28} />,
     name: 'Windows',
-    formats: [
-      { label: 'NSIS Installer', file: 'chess-electron-Setup-1.0.0.exe' },
-    ],
+    formats: [{ label: 'NSIS Installer', file: 'chess-electron-Setup-1.0.0.exe' }],
     note: 'Windows 10 / 11',
   },
 ];
@@ -53,9 +49,7 @@ export default function DownloadPage() {
 
         <ScrollReveal>
           <div className="text-center mb-14">
-            <h1 className="text-[clamp(32px,5vw,48px)] font-extrabold tracking-tight mb-4">
-              Download
-            </h1>
+            <h1 className="text-[clamp(32px,5vw,48px)] font-extrabold tracking-tight mb-4">Download</h1>
             <p className="text-muted text-lg max-w-lg mx-auto mb-8">
               Get the latest release for your platform. All builds are signed and verified.
             </p>
@@ -121,23 +115,24 @@ export default function DownloadPage() {
               <div>
                 <h3 className="font-semibold mb-1">Linux</h3>
                 <p className="text-muted">
-                  Download the <code className="text-accent bg-accent/10 px-1 rounded">.AppImage</code>, make it executable
-                  with <code className="text-accent bg-accent/10 px-1 rounded">chmod +x</code>, and run it. Or install the
+                  Download the <code className="text-accent bg-accent/10 px-1 rounded">.AppImage</code>, make it
+                  executable with <code className="text-accent bg-accent/10 px-1 rounded">chmod +x</code>, and run it.
+                  Or install the
                   <code className="text-accent bg-accent/10 px-1 rounded">.deb</code> package with your package manager.
                 </p>
               </div>
               <div>
                 <h3 className="font-semibold mb-1">macOS</h3>
                 <p className="text-muted">
-                  Open the <code className="text-accent bg-accent/10 px-1 rounded">.dmg</code> file and drag the app to your
-                  Applications folder. You may need to allow it in System Settings under Privacy &amp; Security.
+                  Open the <code className="text-accent bg-accent/10 px-1 rounded">.dmg</code> file and drag the app to
+                  your Applications folder. You may need to allow it in System Settings under Privacy &amp; Security.
                 </p>
               </div>
               <div>
                 <h3 className="font-semibold mb-1">Windows</h3>
                 <p className="text-muted">
-                  Run the <code className="text-accent bg-accent/10 px-1 rounded">.exe</code> installer. Windows may show a
-                  SmartScreen prompt — click "More info" then "Run anyway".
+                  Run the <code className="text-accent bg-accent/10 px-1 rounded">.exe</code> installer. Windows may
+                  show a SmartScreen prompt — click "More info" then "Run anyway".
                 </p>
               </div>
             </div>
@@ -146,9 +141,7 @@ export default function DownloadPage() {
 
         <ScrollReveal variant="fade-up" delay={0.15}>
           <div className="text-center">
-            <p className="text-muted text-sm mb-4">
-              Prefer building from source?
-            </p>
+            <p className="text-muted text-sm mb-4">Prefer building from source?</p>
             <a
               href="https://github.com/linuxbeste/chess_electron"
               target="_blank"

@@ -8,7 +8,7 @@ const steps = [
     icon: Gamepad2,
     num: '01',
     title: 'Launch the App',
-    desc: 'Download and open the Chess App. No account needed — just pick a display name and you\'re ready.',
+    desc: "Download and open the Chess App. No account needed — just pick a display name and you're ready.",
   },
   {
     icon: Monitor,
@@ -20,7 +20,7 @@ const steps = [
     icon: Share2,
     num: '03',
     title: 'Share the Room Code',
-    desc: 'If playing online, share the generated room code with your friend. They enter it on their end and you\'re connected instantly.',
+    desc: "If playing online, share the generated room code with your friend. They enter it on their end and you're connected instantly.",
   },
   {
     icon: Globe,
@@ -52,9 +52,7 @@ export default function HowToPlayPage() {
 
         <ScrollReveal>
           <div className="text-center mb-16">
-            <h1 className="text-[clamp(32px,5vw,48px)] font-extrabold tracking-tight mb-4">
-              How to play
-            </h1>
+            <h1 className="text-[clamp(32px,5vw,48px)] font-extrabold tracking-tight mb-4">How to play</h1>
             <p className="text-muted text-lg max-w-xl mx-auto">
               From download to your first checkmate in five simple steps.
             </p>
@@ -86,9 +84,7 @@ export default function HowToPlayPage() {
         <ScrollReveal variant="fade-up" delay={0.1}>
           <div className="mt-16 text-center p-8 bg-surface border border-border rounded-2xl">
             <h2 className="text-lg font-bold mb-2">Need help?</h2>
-            <p className="text-muted text-sm mb-4">
-              Check the FAQ page or open an issue on GitHub.
-            </p>
+            <p className="text-muted text-sm mb-4">Check the FAQ page or open an issue on GitHub.</p>
             <div className="flex gap-3 justify-center">
               <Link
                 to="/faq"
