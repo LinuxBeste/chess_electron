@@ -27,7 +27,6 @@ import type {
   GameState,
   PieceType,
   LegalMoveHint,
-  SerializedSquare,
   GameStatus,
 } from '../../types';
 import type {
