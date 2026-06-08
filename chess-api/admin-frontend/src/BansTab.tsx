@@ -1,18 +1,28 @@
 import { useEffect, useState } from 'react';
 import { ShieldOff, ShieldBan, Trash2, RotateCcw, Plus } from 'lucide-react';
 import { api, BanList } from './api';
+import SearchBar from './SearchBar';
 
 export default function BansTab() {
   const [bans, setBans] = useState<BanList>({ players: [], ips: [] });
   const [error, setError] = useState('');
   const [newIp, setNewIp] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   function load() {
     api<BanList>('/bans').then(setBans).catch((e) => setError(e.message));
   }
 
   useEffect(load, []);
+
+  const filteredPlayers = query
+    ? bans.players.filter((pid) => pid.toLowerCase().includes(query.toLowerCase()))
+    : bans.players;
+
+  const filteredIps = query
+    ? bans.ips.filter((ip) => ip.toLowerCase().includes(query.toLowerCase()))
+    : bans.ips;
 
   async function handleAddIpBan() {
     const ip = newIp.trim();
@@ -77,6 +87,10 @@ export default function BansTab() {
         </button>
       </div>
 
+      <div className="mb-4">
+        <SearchBar value={query} onChange={setQuery} placeholder="Search bans by player ID or IP..." />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Banned players */}
         <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
@@ -84,11 +98,11 @@ export default function BansTab() {
             <ShieldOff size={16} className="text-red-400" />
             Banned Players
           </h3>
-          {bans.players.length === 0 ? (
-            <p className="text-xs text-[#666]">No banned players.</p>
+          {filteredPlayers.length === 0 ? (
+            <p className="text-xs text-[#666]">{query ? 'No matching bans.' : 'No banned players.'}</p>
           ) : (
             <ul className="space-y-1">
-              {bans.players.map((pid) => (
+              {filteredPlayers.map((pid) => (
                 <li key={pid} className="flex items-center justify-between px-3 py-2 bg-[#222] rounded text-xs">
                   <span className="font-mono text-[#ccc]">{pid.slice(0, 12)}&hellip;</span>
                   <button
@@ -111,11 +125,11 @@ export default function BansTab() {
             <ShieldBan size={16} className="text-red-400" />
             Banned IPs
           </h3>
-          {bans.ips.length === 0 ? (
-            <p className="text-xs text-[#666]">No banned IPs.</p>
+          {filteredIps.length === 0 ? (
+            <p className="text-xs text-[#666]">{query ? 'No matching bans.' : 'No banned IPs.'}</p>
           ) : (
             <ul className="space-y-1">
-              {bans.ips.map((ip) => (
+              {filteredIps.map((ip) => (
                 <li key={ip} className="flex items-center justify-between px-3 py-2 bg-[#222] rounded text-xs">
                   <span className="text-[#ccc]">{ip}</span>
                   <button

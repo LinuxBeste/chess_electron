@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, Stats, SystemStats, ProcessRow } from './api';
 import SystemCharts from './SystemCharts';
+import SearchBar from './SearchBar';
 
 function fmtBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -44,6 +45,7 @@ export default function OverviewTab() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [sys, setSys] = useState<SystemStats | null>(null);
   const [procs, setProcs] = useState<ProcessRow[]>([]);
+  const [procQuery, setProcQuery] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -123,7 +125,16 @@ export default function OverviewTab() {
       {/* Running Processes */}
       <div>
         <h3 className="text-sm font-semibold text-[#e0e0e0] mb-3 tracking-wide uppercase">Running Processes (top 20 by CPU)</h3>
-        {procs.length > 0 ? (
+        <div className="mb-3">
+          <SearchBar value={procQuery} onChange={setProcQuery} placeholder="Search processes by user, PID, command..." />
+        </div>
+        {(() => {
+          const filtered = procQuery
+            ? procs.filter((p) =>
+                [p.user, String(p.pid), p.command].some((v) => v.toLowerCase().includes(procQuery.toLowerCase())),
+              )
+            : procs;
+          return filtered.length > 0 ? (
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
@@ -137,7 +148,7 @@ export default function OverviewTab() {
                 </tr>
               </thead>
               <tbody>
-                {procs.map((p, i) => (
+                {filtered.map((p, i) => (
                   <tr key={p.pid} style={{ borderBottom: i < procs.length - 1 ? '1px solid #222' : 'none' }}>
                     <td style={{ padding: '6px 10px', color: '#ccc' }}>{p.user}</td>
                     <td style={{ padding: '6px 10px', color: '#ccc', textAlign: 'right' }}>{p.pid}</td>
@@ -152,9 +163,10 @@ export default function OverviewTab() {
           </div>
         ) : (
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 text-center" style={{ fontSize: 12, color: '#666' }}>
-            Process listing unavailable on this platform
+            {procQuery ? 'No matching processes.' : 'Process listing unavailable on this platform'}
           </div>
-        )}
+        );
+        })()}
       </div>
 
       {/* Live Graphs */}
