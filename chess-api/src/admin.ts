@@ -49,6 +49,85 @@ router.get('/admin/api/stats', adminAuthMiddleware, (_req: Request, res: Respons
   res.json({ gamesActive, playersOnline, registeredUsers, totalUsers });
 });
 
+/* ─── Live metrics (delta-tracked CPU/net/disk) ─── */
+
+let prevCpu: { idle: number; total: number } | null = null;
+let prevNet: { rx: number; tx: number } | null = null;
+let prevDisk: { read: number; write: number } | null = null;
+
+function readProc(path: string): string | null {
+  try { return require('fs').readFileSync(path, 'utf-8'); } catch { return null; }
+}
+
+function sampleCpu(): { idle: number; total: number } | null {
+  const content = readProc('/proc/stat');
+  if (!content) return null;
+  const line = content.split('\n').find(l => l.startsWith('cpu '));
+  if (!line) return null;
+  const parts = line.trim().split(/\s+/).slice(1).map(Number);
+  return { idle: parts[3] + (parts[4] || 0), total: parts.reduce((a, b) => a + b, 0) };
+}
+
+function sampleNet(): { rx: number; tx: number } | null {
+  const content = readProc('/proc/net/dev');
+  if (!content) return null;
+  let rx = 0, tx = 0;
+  for (const line of content.split('\n').slice(2)) {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length < 10) continue;
+    rx += parseInt(parts[1]) || 0;
+    tx += parseInt(parts[9]) || 0;
+  }
+  return { rx, tx };
+}
+
+function sampleDisk(): { read: number; write: number } | null {
+  const content = readProc('/proc/diskstats');
+  if (!content) return null;
+  let read = 0, write = 0;
+  for (const line of content.split('\n').filter(l => l.trim())) {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length < 14) continue;
+    const name = parts[2];
+    if (name.startsWith('loop') || name.startsWith('ram') || /\d$/.test(name)) continue;
+    read += parseInt(parts[5]) || 0;
+    write += parseInt(parts[9]) || 0;
+  }
+  return { read: read * 512, write: write * 512 };
+}
+
+router.get('/admin/api/system/metrics', adminAuthMiddleware, (_req: Request, res: Response) => {
+  const totalMem = os.totalmem();
+  const usedMem = totalMem - os.freemem();
+
+  let cpuPercent = 0;
+  const cpu = sampleCpu();
+  if (cpu && prevCpu) {
+    const totalDiff = cpu.total - prevCpu.total;
+    const idleDiff = cpu.idle - prevCpu.idle;
+    if (totalDiff > 0) cpuPercent = Math.round(((totalDiff - idleDiff) / totalDiff) * 10000) / 100;
+  }
+  if (cpu) prevCpu = cpu;
+
+  let rxRate = 0, txRate = 0;
+  const net = sampleNet();
+  if (net && prevNet) { rxRate = Math.max(0, net.rx - prevNet.rx); txRate = Math.max(0, net.tx - prevNet.tx); }
+  if (net) prevNet = net;
+
+  let readRate = 0, writeRate = 0;
+  const disk = sampleDisk();
+  if (disk && prevDisk) { readRate = Math.max(0, disk.read - prevDisk.read); writeRate = Math.max(0, disk.write - prevDisk.write); }
+  if (disk) prevDisk = disk;
+
+  res.json({
+    cpu: cpuPercent,
+    memory: { used: usedMem, total: totalMem, percent: Math.round((usedMem / totalMem) * 10000) / 100 },
+    net: { rx: rxRate, tx: txRate },
+    disk: { read: readRate, write: writeRate },
+    timestamp: Date.now(),
+  });
+});
+
 router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Response) => {
   const totalMem = os.totalmem();
   const freeMem = os.freemem();

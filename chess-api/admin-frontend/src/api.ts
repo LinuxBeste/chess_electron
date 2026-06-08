@@ -68,6 +68,14 @@ export interface BanList {
   ips: string[];
 }
 
+export interface SystemMetricsSample {
+  cpu: number;
+  memory: { used: number; total: number; percent: number };
+  net: { rx: number; tx: number };
+  disk: { read: number; write: number };
+  timestamp: number;
+}
+
 export interface SystemStats {
   memory: {
     total: number;

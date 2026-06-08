@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, Stats, SystemStats } from './api';
+import SystemCharts from './SystemCharts';
 
 function fmtBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -108,6 +109,9 @@ export default function OverviewTab() {
           </div>
         </div>
       </div>
+
+      {/* Live Graphs */}
+      <SystemCharts />
     </div>
   );
 }
