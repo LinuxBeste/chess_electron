@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, Stats, SystemStats } from './api';
+import { api, Stats, SystemStats, ProcessRow } from './api';
 import SystemCharts from './SystemCharts';
 
 function fmtBytes(bytes: number): string {
@@ -35,7 +35,7 @@ function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
       <div className="text-xs text-[#888]">{label}</div>
-      <div className="text-sm font-semibold text-[#e0e0e0] mt-0.5">{value}</div>
+      <div className="text-sm font-semibold text-[#e0e0e0] mt-0.5" style={{ wordBreak: 'break-all' }}>{value}</div>
     </div>
   );
 }
@@ -43,14 +43,16 @@ function InfoCard({ label, value }: { label: string; value: string }) {
 export default function OverviewTab() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [sys, setSys] = useState<SystemStats | null>(null);
+  const [procs, setProcs] = useState<ProcessRow[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
     Promise.all([
       api<Stats>('/stats'),
       api<SystemStats>('/system'),
+      api<ProcessRow[]>('/system/processes'),
     ])
-      .then(([s, sy]) => { setStats(s); setSys(sy); })
+      .then(([s, sy, p]) => { setStats(s); setSys(sy); setProcs(p); })
       .catch((e) => setError(e.message));
   }, []);
 
@@ -80,7 +82,6 @@ export default function OverviewTab() {
       <div>
         <h3 className="text-sm font-semibold text-[#e0e0e0] mb-3 tracking-wide uppercase">System Performance</h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Left column: bars */}
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
             <div className="text-xs font-semibold text-[#888] mb-3 uppercase tracking-wide">Usage</div>
             <Bar label="RAM" value={sys.memory.used} color="#4a9eff" total={sys.memory.total} />
@@ -88,13 +89,13 @@ export default function OverviewTab() {
             <Bar label="Heap" value={sys.process.heapUsed} color="#ff9800" total={sys.process.heapTotal} />
           </div>
 
-          {/* Right column: info cards */}
           <div className="grid grid-cols-2 gap-2">
+            <InfoCard label="OS" value={`${sys.system.platform} ${sys.system.arch}`} />
+            <InfoCard label="Release" value={sys.system.release} />
             <InfoCard label="CPU Cores" value={String(sys.cpu.cores)} />
             <InfoCard label="CPU Model" value={sys.cpu.model.length > 30 ? sys.cpu.model.slice(0, 28) + '…' : sys.cpu.model} />
-            <InfoCard label="Load (1m)" value={sys.cpu.loadAverage1.toFixed(2)} />
-            <InfoCard label="Load (5m)" value={sys.cpu.loadAverage5.toFixed(2)} />
-            <InfoCard label="Load (15m)" value={sys.cpu.loadAverage15.toFixed(2)} />
+            <InfoCard label="CPU Speed" value={sys.cpu.speed ? sys.cpu.speed + ' MHz' : '—'} />
+            <InfoCard label="Load (1m / 5m / 15m)" value={`${sys.cpu.loadAverage1.toFixed(2)} / ${sys.cpu.loadAverage5.toFixed(2)} / ${sys.cpu.loadAverage15.toFixed(2)}`} />
             <InfoCard label="RAM Total" value={fmtBytes(sys.memory.total)} />
             <InfoCard label="RAM Free" value={fmtBytes(sys.memory.free)} />
             <InfoCard label="RAM Used" value={fmtBytes(sys.memory.used)} />
@@ -103,11 +104,57 @@ export default function OverviewTab() {
             <InfoCard label="Process Uptime" value={fmtUptime(sys.process.uptime)} />
             <InfoCard label="System Uptime" value={fmtUptime(sys.system.uptime)} />
             <InfoCard label="Node.js" value={sys.process.nodeVersion} />
-            <InfoCard label="Platform" value={sys.system.platform + ' ' + sys.system.arch} />
             <InfoCard label="Hostname" value={sys.system.hostname} />
             <InfoCard label="PID" value={String(sys.process.pid)} />
           </div>
         </div>
+      </div>
+
+      {/* Networks */}
+      <div>
+        <h3 className="text-sm font-semibold text-[#e0e0e0] mb-3 tracking-wide uppercase">Networks</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {sys.networks.map((n, i) => (
+            <InfoCard key={i} label={`${n.name} (${n.family})`} value={n.address} />
+          ))}
+        </div>
+      </div>
+
+      {/* Running Processes */}
+      <div>
+        <h3 className="text-sm font-semibold text-[#e0e0e0] mb-3 tracking-wide uppercase">Running Processes (top 20 by CPU)</h3>
+        {procs.length > 0 ? (
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
+            <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ color: '#888', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.5px', borderBottom: '1px solid #2a2a2a' }}>
+                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>User</th>
+                  <th style={{ textAlign: 'right', padding: '8px 10px' }}>PID</th>
+                  <th style={{ textAlign: 'right', padding: '8px 10px' }}>CPU%</th>
+                  <th style={{ textAlign: 'right', padding: '8px 10px' }}>Mem%</th>
+                  <th style={{ textAlign: 'right', padding: '8px 10px' }}>RSS</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Command</th>
+                </tr>
+              </thead>
+              <tbody>
+                {procs.map((p, i) => (
+                  <tr key={p.pid} style={{ borderBottom: i < procs.length - 1 ? '1px solid #222' : 'none' }}>
+                    <td style={{ padding: '6px 10px', color: '#ccc' }}>{p.user}</td>
+                    <td style={{ padding: '6px 10px', color: '#ccc', textAlign: 'right' }}>{p.pid}</td>
+                    <td style={{ padding: '6px 10px', color: '#4a9eff', textAlign: 'right' }}>{p.cpu.toFixed(1)}</td>
+                    <td style={{ padding: '6px 10px', color: '#4caf50', textAlign: 'right' }}>{p.mem.toFixed(1)}</td>
+                    <td style={{ padding: '6px 10px', color: '#ff9800', textAlign: 'right' }}>{fmtBytes(p.rss)}</td>
+                    <td style={{ padding: '6px 10px', color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 300 }}>{p.command}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 text-center" style={{ fontSize: 12, color: '#666' }}>
+            Process listing unavailable on this platform
+          </div>
+        )}
       </div>
 
       {/* Live Graphs */}

@@ -16,18 +16,20 @@ function fmtRate(bytesPerSec: number): string {
 }
 
 type ChartDef = {
-  key: keyof Pick<SystemMetricsSample, 'cpu' | 'net' | 'disk' | 'memory'>;
   label: string;
   color: string;
   extract: (s: SystemMetricsSample) => number;
   format: (v: number) => string;
+  suffix?: string;
 };
 
 const CHARTS: ChartDef[] = [
-  { key: 'cpu', label: 'CPU', color: '#4a9eff', extract: (s) => s.cpu, format: (v) => v.toFixed(1) + '%' },
-  { key: 'memory', label: 'RAM', color: '#4caf50', extract: (s) => s.memory.percent, format: (v) => v.toFixed(1) + '%' },
-  { key: 'disk', label: 'Disk I/O', color: '#ff9800', extract: (s) => s.disk.read + s.disk.write, format: (v) => fmtRate(v) },
-  { key: 'net', label: 'Network I/O', color: '#f44336', extract: (s) => s.net.rx + s.net.tx, format: (v) => fmtRate(v) },
+  { label: 'CPU', color: '#4a9eff', extract: (s) => s.cpu, format: (v) => v.toFixed(1) + '%' },
+  { label: 'RAM', color: '#4caf50', extract: (s) => s.memory.percent, format: (v) => v.toFixed(1) + '%' },
+  { label: 'Net RX', color: '#2196f3', extract: (s) => s.net.rx, format: (v) => fmtRate(v) },
+  { label: 'Net TX', color: '#f44336', extract: (s) => s.net.tx, format: (v) => fmtRate(v) },
+  { label: 'Disk Read', color: '#ff9800', extract: (s) => s.disk.read, format: (v) => fmtRate(v) },
+  { label: 'Disk Write', color: '#9c27b0', extract: (s) => s.disk.write, format: (v) => fmtRate(v) },
 ];
 
 function Sparkline({ data, width, height, color, maxVal }: { data: number[]; width: number; height: number; color: string; maxVal: number }) {
@@ -83,9 +85,9 @@ export default function SystemCharts() {
   return (
     <div>
       <h3 className="text-sm font-semibold text-[#e0e0e0] mb-3 tracking-wide uppercase">Live Graphs</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {CHARTS.map((def) => (
-          <ChartCard key={def.key} def={def} samples={samples} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {CHARTS.map((def, i) => (
+          <ChartCard key={i} def={def} samples={samples} />
         ))}
       </div>
     </div>

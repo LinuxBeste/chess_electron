@@ -86,6 +86,7 @@ export interface SystemStats {
   cpu: {
     cores: number;
     model: string;
+    speed: number;
     loadAverage1: number;
     loadAverage5: number;
     loadAverage15: number;
@@ -101,6 +102,7 @@ export interface SystemStats {
   system: {
     uptime: number;
     platform: string;
+    release: string;
     hostname: string;
     arch: string;
   };
@@ -110,4 +112,14 @@ export interface SystemStats {
     used: number;
     usagePercent: number;
   };
+  networks: { name: string; address: string; family: string }[];
+}
+
+export interface ProcessRow {
+  user: string;
+  pid: number;
+  cpu: number;
+  mem: number;
+  rss: number;
+  command: string;
 }

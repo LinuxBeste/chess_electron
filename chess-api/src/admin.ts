@@ -149,6 +149,17 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
     }
   } catch {}
 
+  const nets = os.networkInterfaces();
+  const addrs: { name: string; address: string; family: string }[] = [];
+  for (const [name, infs] of Object.entries(nets)) {
+    if (!infs) continue;
+    for (const inf of infs) {
+      if (inf.family === 'IPv4' || inf.family === 'IPv6') {
+        addrs.push({ name, address: inf.address, family: inf.family === 'IPv6' ? 'IPv6' : 'IPv4' });
+      }
+    }
+  }
+
   res.json({
     memory: {
       total: totalMem,
@@ -159,6 +170,7 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
     cpu: {
       cores: cpus.length,
       model: cpus[0]?.model || 'unknown',
+      speed: cpus[0]?.speed || 0,
       loadAverage1: loadAvg[0],
       loadAverage5: loadAvg[1],
       loadAverage15: loadAvg[2],
@@ -174,6 +186,7 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
     system: {
       uptime: os.uptime(),
       platform: os.platform(),
+      release: os.release(),
       hostname: os.hostname(),
       arch: os.arch(),
     },
@@ -183,7 +196,32 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
       used: diskTotal - diskFree,
       usagePercent: diskTotal > 0 ? Math.round(((diskTotal - diskFree) / diskTotal) * 100 * 100) / 100 : 0,
     },
+    networks: addrs,
   });
+});
+
+router.get('/admin/api/system/processes', adminAuthMiddleware, (_req: Request, res: Response) => {
+  try {
+    const { execSync } = require('child_process');
+    const out = execSync('ps aux --sort=-%cpu | head -21', { maxBuffer: 65536 }).toString();
+    const lines = out.split('\n');
+    const processes = [];
+    for (const line of lines.slice(1)) {
+      if (!line.trim()) continue;
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 11) continue;
+      const user = parts[0];
+      const pid = parseInt(parts[1], 10);
+      const cpu = parseFloat(parts[2]);
+      const mem = parseFloat(parts[3]);
+      const rss = parseInt(parts[5], 10) * 1024;
+      const command = parts.slice(10).join(' ').slice(0, 80);
+      processes.push({ user, pid, cpu, mem, rss, command });
+    }
+    res.json(processes);
+  } catch {
+    res.json([]);
+  }
 });
 
 router.get('/admin/api/games', adminAuthMiddleware, (_req: Request, res: Response) => {
