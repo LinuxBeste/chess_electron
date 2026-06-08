@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Flag, RotateCcw, Search } from 'lucide-react';
+import { Flag, RotateCcw } from 'lucide-react';
 import { api, GameRow } from './api';
 import SearchBar from './SearchBar';
 

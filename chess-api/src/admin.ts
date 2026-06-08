@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import os from 'os';
+import fs from 'fs';
+import { execSync } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
 import * as game from './game';
 import * as db from './db';
@@ -56,11 +58,7 @@ let prevNet: { rx: number; tx: number } | null = null;
 let prevDisk: { read: number; write: number } | null = null;
 
 function readProc(path: string): string | null {
-  try {
-    return require('fs').readFileSync(path, 'utf-8');
-  } catch {
-    return null;
-  }
+  try { return fs.readFileSync(path, 'utf-8'); } catch { return null; }
 }
 
 function sampleCpu(): { idle: number; total: number } | null {
@@ -155,7 +153,6 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
   let diskTotal = 0;
   let diskFree = 0;
   try {
-    const { execSync } = require('child_process');
     const out = execSync('df -k /').toString().split('\n')[1]?.split(/\s+/);
     if (out && out.length >= 4) {
       diskTotal = parseInt(out[1], 10) * 1024 || 0;
@@ -216,7 +213,6 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
 
 router.get('/admin/api/system/processes', adminAuthMiddleware, (_req: Request, res: Response) => {
   try {
-    const { execSync } = require('child_process');
     const out = execSync('ps aux --sort=-%cpu | head -21', { maxBuffer: 65536 }).toString();
     const lines = out.split('\n');
     const processes = [];
