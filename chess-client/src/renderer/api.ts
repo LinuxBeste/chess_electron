@@ -116,6 +116,33 @@ export function getMe(): Promise<{
   return request('/auth/me');
 }
 
+/* PUT /auth/me — auth required.
+ * Update the authenticated player's display name. */
+export function updateDisplayName(displayName: string): Promise<{ success: true; displayName: string }> {
+  return request('/auth/me', {
+    method: 'PUT',
+    body: JSON.stringify({ displayName }),
+  });
+}
+
+/* PUT /auth/me/password — auth required.
+ * Change the authenticated player's password. */
+export function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ success: true }> {
+  return request('/auth/me/password', {
+    method: 'PUT',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
+/* DELETE /auth/me — auth required.
+ * Delete the authenticated player's account. */
+export function deleteAccount(): Promise<{ success: true }> {
+  return request('/auth/me', { method: 'DELETE' });
+}
+
 /* GET /health — no auth required.
  * Response shape confirmed in ../chess-api/src/routes.ts line 35-43
  * and ../chess-api/docs/api.md lines 44-54. */

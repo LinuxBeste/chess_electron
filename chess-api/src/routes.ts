@@ -108,6 +108,50 @@ router.get('/auth/me', authMiddleware, (req: Request, res: Response) => {
   });
 });
 
+/* Update the authenticated player's display name */
+router.put('/auth/me', authMiddleware, (req: Request, res: Response) => {
+  const { displayName } = req.body;
+  if (!displayName || typeof displayName !== 'string' || displayName.trim().length === 0) {
+    res.status(400).json({ error: 'Display name is required' });
+    return;
+  }
+  const result = game.updateDisplayName(req.player.id, displayName.trim());
+  if (!result.success) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({ success: true, displayName: displayName.trim() });
+});
+
+/* Change the authenticated player's password (registered users only) */
+router.put('/auth/me/password', authMiddleware, (req: Request, res: Response) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ error: 'Current password and new password are required' });
+    return;
+  }
+  if (typeof newPassword !== 'string' || newPassword.length < 4) {
+    res.status(400).json({ error: 'New password must be at least 4 characters' });
+    return;
+  }
+  const result = game.changePassword(req.player.id, currentPassword, newPassword);
+  if (!result.success) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({ success: true });
+});
+
+/* Delete the authenticated player's account (registered users only) */
+router.delete('/auth/me', authMiddleware, (req: Request, res: Response) => {
+  const result = game.deleteAccount(req.player.id);
+  if (!result.success) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({ success: true });
+});
+
 /* Create a new game (player becomes white).
  * Optional body field: visibility ('public' | 'private', defaults to 'public'). */
 router.post('/games', authMiddleware, (req: Request, res: Response) => {

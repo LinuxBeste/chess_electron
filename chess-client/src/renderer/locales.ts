@@ -188,6 +188,38 @@ export type TranslationKeys = {
       gameplay: string;
       clock: string;
       advanced: string;
+      account: string;
+    };
+    account: {
+      section: string;
+      displayName: string;
+      displayNameDesc: string;
+      displayNamePlaceholder: string;
+      save: string;
+      saved: string;
+      saveFailed: string;
+      password: string;
+      currentPassword: string;
+      newPassword: string;
+      changePassword: string;
+      passwordChanged: string;
+      passwordChangeFailed: string;
+      passwordTooShort: string;
+      currentPasswordIncorrect: string;
+      stats: string;
+      statsLoading: string;
+      wins: string;
+      losses: string;
+      draws: string;
+      registered: string;
+      notRegistered: string;
+      signUpPrompt: string;
+      danger: string;
+      deleteAccount: string;
+      deleteConfirm: string;
+      deleteConfirmButton: string;
+      deleteFailed: string;
+      deleted: string;
     };
     general: {
       sound: string;
@@ -568,6 +600,38 @@ export const en: TranslationKeys = {
       gameplay: 'Gameplay',
       clock: 'Clock',
       advanced: 'Advanced',
+      account: 'Account',
+    },
+    account: {
+      section: 'Account',
+      displayName: 'Display Name',
+      displayNameDesc: 'How your name appears to other players',
+      displayNamePlaceholder: 'Enter display name...',
+      save: 'Save',
+      saved: 'Display name updated!',
+      saveFailed: 'Failed to update display name',
+      password: 'Password',
+      currentPassword: 'Current Password',
+      newPassword: 'New Password',
+      changePassword: 'Change Password',
+      passwordChanged: 'Password changed!',
+      passwordChangeFailed: 'Failed to change password',
+      passwordTooShort: 'Password must be at least 4 characters',
+      currentPasswordIncorrect: 'Current password is incorrect',
+      stats: 'Stats',
+      statsLoading: 'Loading stats...',
+      wins: 'Wins',
+      losses: 'Losses',
+      draws: 'Draws',
+      registered: 'Registered Account',
+      notRegistered: 'Temporary Account',
+      signUpPrompt: 'Sign up with a password to keep your stats and play from any device.',
+      danger: 'Danger Zone',
+      deleteAccount: 'Delete Account',
+      deleteConfirm: 'Are you sure? This will permanently delete your account and all stats. This action cannot be undone.',
+      deleteConfirmButton: 'Yes, delete my account',
+      deleteFailed: 'Failed to delete account',
+      deleted: 'Account deleted',
     },
     general: {
       sound: 'Sound',
@@ -948,6 +1012,38 @@ export const de: TranslationKeys = {
       gameplay: 'Spielablauf',
       clock: 'Uhr',
       advanced: 'Erweitert',
+      account: 'Konto',
+    },
+    account: {
+      section: 'Konto',
+      displayName: 'Anzeigename',
+      displayNameDesc: 'Wie dein Name für andere Spieler angezeigt wird',
+      displayNamePlaceholder: 'Anzeigenamen eingeben...',
+      save: 'Speichern',
+      saved: 'Anzeigename aktualisiert!',
+      saveFailed: 'Fehler beim Aktualisieren des Anzeigenamens',
+      password: 'Passwort',
+      currentPassword: 'Aktuelles Passwort',
+      newPassword: 'Neues Passwort',
+      changePassword: 'Passwort ändern',
+      passwordChanged: 'Passwort geändert!',
+      passwordChangeFailed: 'Passwortänderung fehlgeschlagen',
+      passwordTooShort: 'Passwort muss mindestens 4 Zeichen lang sein',
+      currentPasswordIncorrect: 'Aktuelles Passwort ist falsch',
+      stats: 'Statistiken',
+      statsLoading: 'Lade Statistiken...',
+      wins: 'Siege',
+      losses: 'Niederlagen',
+      draws: 'Remis',
+      registered: 'Registriertes Konto',
+      notRegistered: 'Temporäres Konto',
+      signUpPrompt: 'Registriere dich mit einem Passwort, um deine Statistiken zu behalten und von jedem Gerät aus zu spielen.',
+      danger: 'Gefahrenzone',
+      deleteAccount: 'Konto löschen',
+      deleteConfirm: 'Bist du sicher? Dies löscht dein Konto und alle Statistiken dauerhaft. Diese Aktion kann nicht rückgängig gemacht werden.',
+      deleteConfirmButton: 'Ja, Konto löschen',
+      deleteFailed: 'Fehler beim Löschen des Kontos',
+      deleted: 'Konto gelöscht',
     },
     general: {
       sound: 'Sound',

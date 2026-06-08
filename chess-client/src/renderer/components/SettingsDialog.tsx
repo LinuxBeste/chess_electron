@@ -1,4 +1,4 @@
-import { useState, useReducer } from 'react';
+import { useState, useReducer, useEffect } from 'react';
 import {
   type AppSettings,
   defaultSettings,
@@ -11,12 +11,15 @@ import {
 import { setSoundVolume } from '../sound';
 import { t, setLanguage, getLanguage } from '../translate';
 import { getLanguageNames } from '../locales';
+import { updateDisplayName as apiUpdateDisplayName, changePassword as apiChangePassword, deleteAccount as apiDeleteAccount, getMe } from '../api';
+import { useStoreValue } from '../hooks/useStore';
+import { store } from '../store';
 
 interface Props {
   onClose: () => void;
 }
 
-type TabId = 'general' | 'board' | 'display' | 'gameplay' | 'clock' | 'advanced';
+type TabId = 'general' | 'board' | 'display' | 'gameplay' | 'clock' | 'advanced' | 'account';
 
 function Section({ title }: { title: string }) {
   return (
@@ -851,9 +854,205 @@ function AdvancedTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: 
   );
 }
 
+function AccountTab() {
+  const token = useStoreValue('token');
+  const [displayName, setDisplayName] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [stats, setStats] = useState<{ wins: number; losses: number; draws: number } | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [displayNameMsg, setDisplayNameMsg] = useState('');
+  const [displayNameError, setDisplayNameError] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  useEffect(() => {
+    if (!token) return;
+    getMe().then((me) => {
+      setDisplayName(me.displayName);
+      if (me.stats) setStats(me.stats);
+      setStatsLoading(false);
+    }).catch(() => setStatsLoading(false));
+  }, [token]);
+
+  async function handleSaveDisplayName() {
+    if (!displayName.trim()) return;
+    setDisplayNameMsg('');
+    setDisplayNameError('');
+    try {
+      await apiUpdateDisplayName(displayName.trim());
+      store.set('username', displayName.trim());
+      setDisplayNameMsg(t('settings.account.saved'));
+    } catch (err: any) {
+      setDisplayNameError(err.message || t('settings.account.saveFailed'));
+    }
+  }
+
+  async function handleChangePassword() {
+    if (!currentPassword || !newPassword) return;
+    if (newPassword.length < 4) {
+      setPasswordError(t('settings.account.passwordTooShort'));
+      return;
+    }
+    setPasswordMsg('');
+    setPasswordError('');
+    try {
+      await apiChangePassword(currentPassword, newPassword);
+      setPasswordMsg(t('settings.account.passwordChanged'));
+      setCurrentPassword('');
+      setNewPassword('');
+    } catch (err: any) {
+      setPasswordError(err.message || t('settings.account.passwordChangeFailed'));
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeleteError('');
+    try {
+      await apiDeleteAccount();
+      store.set('token', null);
+      store.set('playerId', null);
+      store.set('username', null);
+      store.clearSession();
+      window.location.href = '/login';
+    } catch (err: any) {
+      setDeleteError(err.message || t('settings.account.deleteFailed'));
+    }
+  }
+
+  if (!token) return null;
+
+  return (
+    <>
+      <Section title={t('settings.account.section')} />
+
+      {/* Display Name */}
+      <div className="settings-row">
+        <div>
+          <div className="settings-label">{t('settings.account.displayName')}</div>
+          <div className="settings-desc">{t('settings.account.displayNameDesc')}</div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              className="settings-text-input"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder={t('settings.account.displayNamePlaceholder')}
+              style={{ width: 160, padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)', color: '#e0e0e0', fontSize: 13 }}
+            />
+            <button className="btn btn-primary btn-xs" onClick={handleSaveDisplayName} style={{ fontSize: 11 }}>
+              {t('settings.account.save')}
+            </button>
+          </div>
+          {displayNameMsg && <span style={{ fontSize: 11, color: '#4caf50' }}>{displayNameMsg}</span>}
+          {displayNameError && <span style={{ fontSize: 11, color: '#f44336' }}>{displayNameError}</span>}
+        </div>
+      </div>
+
+      {/* Password */}
+      <Section title={t('settings.account.password')} />
+      <div className="settings-row">
+        <div>
+          <div className="settings-label">{t('settings.account.currentPassword')}</div>
+        </div>
+        <input
+          type="password"
+          className="settings-text-input"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          style={{ width: 160, padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)', color: '#e0e0e0', fontSize: 13 }}
+        />
+      </div>
+      <div className="settings-row">
+        <div>
+          <div className="settings-label">{t('settings.account.newPassword')}</div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              type="password"
+              className="settings-text-input"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              style={{ width: 160, padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)', color: '#e0e0e0', fontSize: 13 }}
+            />
+            <button className="btn btn-primary btn-xs" onClick={handleChangePassword} style={{ fontSize: 11 }}>
+              {t('settings.account.changePassword')}
+            </button>
+          </div>
+          {passwordMsg && <span style={{ fontSize: 11, color: '#4caf50' }}>{passwordMsg}</span>}
+          {passwordError && <span style={{ fontSize: 11, color: '#f44336' }}>{passwordError}</span>}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <Section title={t('settings.account.stats')} />
+      {statsLoading ? (
+        <div style={{ fontSize: 13, color: '#888', padding: '8px 0' }}>{t('settings.account.statsLoading')}</div>
+      ) : stats ? (
+        <div style={{ display: 'flex', gap: 24, padding: '8px 0' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: '#4caf50' }}>{stats.wins}</div>
+            <div style={{ fontSize: 11, color: '#888' }}>{t('settings.account.wins')}</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: '#f44336' }}>{stats.losses}</div>
+            <div style={{ fontSize: 11, color: '#888' }}>{t('settings.account.losses')}</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: '#ff9800' }}>{stats.draws}</div>
+            <div style={{ fontSize: 11, color: '#888' }}>{t('settings.account.draws')}</div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 13, color: '#888', padding: '8px 0' }}>
+          {t('settings.account.notRegistered')}
+          <br />
+          <span style={{ fontSize: 11 }}>{t('settings.account.signUpPrompt')}</span>
+        </div>
+      )}
+
+      {/* Danger Zone */}
+      <Section title={t('settings.account.danger')} />
+      <div style={{ padding: '8px 0' }}>
+        {deleteConfirm ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 12, color: '#f44336', lineHeight: 1.4 }}>{t('settings.account.deleteConfirm')}</div>
+            {deleteError && <span style={{ fontSize: 11, color: '#f44336' }}>{deleteError}</span>}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="btn btn-danger btn-sm"
+                style={{ flex: 1, fontSize: 11 }}
+                onClick={handleDeleteAccount}
+              >
+                {t('settings.account.deleteConfirmButton')}
+              </button>
+              <button className="btn btn-ghost btn-sm" style={{ flex: 1, fontSize: 11 }} onClick={() => setDeleteConfirm(false)}>
+                {t('common.cancel')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ width: '100%', fontSize: 12, color: 'rgba(220,80,80,0.8)', borderColor: 'rgba(220,80,80,0.3)' }}
+            onClick={() => setDeleteConfirm(true)}
+          >
+            {t('settings.account.deleteAccount')}
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
 export default function SettingsDialog({ onClose }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('general');
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
+  const token = useStoreValue('token');
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'general', label: t('settings.tabs.general') },
@@ -862,6 +1061,7 @@ export default function SettingsDialog({ onClose }: Props) {
     { id: 'gameplay', label: t('settings.tabs.gameplay') },
     { id: 'clock', label: t('settings.tabs.clock') },
     { id: 'advanced', label: t('settings.tabs.advanced') },
+    ...(token ? [{ id: 'account' as TabId, label: t('settings.tabs.account') }] : []),
   ];
 
   function updateSettings(s: AppSettings) {
@@ -935,6 +1135,7 @@ export default function SettingsDialog({ onClose }: Props) {
           {activeTab === 'gameplay' && <GameplayTab settings={settings} onUpdate={updateSettings} />}
           {activeTab === 'clock' && <ClockTab settings={settings} onUpdate={updateSettings} />}
           {activeTab === 'advanced' && <AdvancedTab settings={settings} onUpdate={updateSettings} />}
+          {activeTab === 'account' && <AccountTab />}
         </div>
 
         <div style={{ padding: '0 28px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>

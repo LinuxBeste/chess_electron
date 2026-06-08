@@ -887,3 +887,116 @@ describe('Admin API — accounts CRUD', () => {
     }
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  Account settings (PUT /auth/me, password change, delete)            */
+/* ------------------------------------------------------------------ */
+
+describe('PUT /auth/me — update display name', () => {
+  let authHeader: string;
+
+  beforeAll(async () => {
+    const { token } = await registerPlayer('put_me');
+    authHeader = `Bearer ${token}`;
+  });
+
+  test('updates display name', async () => {
+    const res = await request.put('/auth/me').set('Authorization', authHeader).send({ displayName: 'New Name' }).expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.displayName).toBe('New Name');
+  });
+
+  test('rejects empty display name', async () => {
+    await request.put('/auth/me').set('Authorization', authHeader).send({ displayName: '' }).expect(400);
+    await request.put('/auth/me').set('Authorization', authHeader).send({ displayName: '   ' }).expect(400);
+    await request.put('/auth/me').set('Authorization', authHeader).send({}).expect(400);
+  });
+
+  test('requires auth', async () => {
+    await request.put('/auth/me').send({ displayName: 'X' }).expect(401);
+  });
+
+  test('reflects update in GET /auth/me', async () => {
+    const res = await request.get('/auth/me').set('Authorization', authHeader).expect(200);
+    expect(res.body.displayName).toBe('New Name');
+  });
+});
+
+describe('PUT /auth/me/password — change password', () => {
+  let authHeader: string;
+
+  beforeAll(async () => {
+    /* Register with a known password so we can test change */
+    const res = await request.post('/auth/register').send({ username: 'pw_change', password: 'oldpass' }).expect(201);
+    authHeader = `Bearer ${res.body.token}`;
+  });
+
+  test('changes password with valid old password', async () => {
+    await request
+      .put('/auth/me/password')
+      .set('Authorization', authHeader)
+      .send({ currentPassword: 'oldpass', newPassword: 'newpass' })
+      .expect(200);
+
+    /* Old password no longer works */
+    await request.post('/auth/login').send({ username: 'pw_change', password: 'oldpass' }).expect(401);
+
+    /* New password works */
+    const login = await request.post('/auth/login').send({ username: 'pw_change', password: 'newpass' }).expect(200);
+    expect(login.body.success).toBe(true);
+  });
+
+  test('rejects wrong current password', async () => {
+    await request
+      .put('/auth/me/password')
+      .set('Authorization', authHeader)
+      .send({ currentPassword: 'wrong', newPassword: 'newpass2' })
+      .expect(400);
+  });
+
+  test('rejects short new password', async () => {
+    await request
+      .put('/auth/me/password')
+      .set('Authorization', authHeader)
+      .send({ currentPassword: 'newpass', newPassword: 'ab' })
+      .expect(400);
+  });
+
+  test('rejects missing fields', async () => {
+    await request.put('/auth/me/password').set('Authorization', authHeader).send({}).expect(400);
+    await request.put('/auth/me/password').set('Authorization', authHeader).send({ currentPassword: 'x' }).expect(400);
+    await request.put('/auth/me/password').set('Authorization', authHeader).send({ newPassword: 'x' }).expect(400);
+  });
+
+  test('requires auth', async () => {
+    await request.put('/auth/me/password').send({ currentPassword: 'x', newPassword: 'y' }).expect(401);
+  });
+});
+
+describe('DELETE /auth/me — delete account', () => {
+  let authHeader: string;
+  let playerId: string;
+  let username: string;
+
+  beforeAll(async () => {
+    username = `del_me_${Date.now()}`;
+    const res = await request.post('/auth/register').send({ username, password: 'secret' }).expect(201);
+    authHeader = `Bearer ${res.body.token}`;
+    playerId = res.body.playerId;
+  });
+
+  test('deletes account and invalidates token', async () => {
+    await request.delete('/auth/me').set('Authorization', authHeader).expect(200);
+
+    /* Token no longer works */
+    await request.get('/auth/me').set('Authorization', authHeader).expect(401);
+
+    /* Can register again with same username */
+    const reReg = await request.post('/auth/register').send({ username, password: 'newsecret' }).expect(201);
+    expect(reReg.body.playerId).not.toBe(playerId);
+  });
+
+  test('requires auth', async () => {
+    await request.delete('/auth/me').expect(401);
+  });
+});

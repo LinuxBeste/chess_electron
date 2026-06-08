@@ -827,6 +827,72 @@ export function handleChatMessage(gameId: string, playerId: string, text: string
 /**
  * Return all games (any status) — used by the admin dashboard.
  */
+/**
+ * Update the authenticated player's display name.
+ * Updates both in-memory and DB for registered users.
+ */
+export function updateDisplayName(
+  playerId: string,
+  displayName: string,
+): { success: true } | { success: false; error: string } {
+  const player = players.get(playerId);
+  if (!player) return { success: false, error: 'Player not found' };
+  if (!displayName || displayName.trim().length === 0) return { success: false, error: 'Display name is required' };
+
+  player.displayName = displayName.trim();
+  if (player.isRegistered) {
+    db.updateUserDisplayName(playerId, displayName.trim());
+  }
+  return { success: true };
+}
+
+/**
+ * Change the authenticated player's password.
+ * Only works for registered users. Verifies the current password first.
+ */
+export function changePassword(
+  playerId: string,
+  currentPassword: string,
+  newPassword: string,
+): { success: true } | { success: false; error: string } {
+  const player = players.get(playerId);
+  if (!player || !player.isRegistered) return { success: false, error: 'Only registered users can change password' };
+  if (!currentPassword || !newPassword) return { success: false, error: 'Current and new password are required' };
+  if (newPassword.length < 4) return { success: false, error: 'New password must be at least 4 characters' };
+
+  const user = db.getUserById(playerId);
+  if (!user || !user.password_hash) return { success: false, error: 'Account not found' };
+  if (!verifyPassword(currentPassword, user.password_hash)) return { success: false, error: 'Current password is incorrect' };
+
+  const hash = hashPassword(newPassword);
+  db.updateUserPasswordHash(playerId, hash);
+  return { success: true };
+}
+
+/**
+ * Delete the authenticated player's account.
+ * Removes from DB, clears all tokens, and removes from in-memory maps.
+ * Only works for registered users.
+ */
+export function deleteAccount(playerId: string): { success: true } | { success: false; error: string } {
+  const player = players.get(playerId);
+  if (!player || !player.isRegistered) return { success: false, error: 'Only registered users can delete their account' };
+
+  /* Remove all tokens from the reverse index */
+  for (const token of player.tokens) {
+    tokenIndex.delete(token);
+  }
+
+  /* Remove from DB */
+  db.deleteUserTokens(playerId);
+  db.deleteUserRecord(playerId);
+
+  /* Remove from in-memory maps */
+  players.delete(playerId);
+
+  return { success: true };
+}
+
 export function getAllGames(): GameState[] {
   return Array.from(games.values()).map(enrichNames);
 }
