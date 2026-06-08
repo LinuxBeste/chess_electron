@@ -4,7 +4,7 @@ services:
     build: .
     image: chess-api
     ports:
-      - "${PORT:-25566}:3000"
+      - "${PORT:-25565}:3000"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]

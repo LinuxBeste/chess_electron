@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-PORT="${PORT:-25566}"
+PORT="${PORT:-25565}"
 TUNNEL="${TUNNEL:-}"
 CLIENT_ENV_FILE="../chess-client/.env"
 
@@ -17,12 +17,12 @@ Start the chess-api server.
 Options:
   --native, -n        Run natively (npm run dev) instead of Docker
   --tunnel <tool>     Expose via tunnel (ngrok | cloudflared)
-  --port <num>        Host port (default: 25566, maps to container port 3000)
+  --port <num>        Host port (default: 25565, maps to container port 3000)
   --no-client-env     Skip updating chess-client/.env with tunnel URL
   --help, -h          Show this help
 
 Examples:
-  $0                          # Docker on port 25566
+  $0                          # Docker on port 25565
   $0 --native                 # npm run dev on port 3000
   $0 --tunnel cloudflared     # Docker + cloudflare tunnel
   $0 --native --tunnel ngrok  # Native + ngrok tunnel
