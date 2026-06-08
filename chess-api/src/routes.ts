@@ -4,6 +4,7 @@
 import { Router, Request, Response } from 'express';
 import { PieceType } from './types';
 import * as game from './game';
+import * as db from './db';
 
 const router: ReturnType<typeof Router> = Router();
 
@@ -126,11 +127,13 @@ router.post('/auth/login', (req: Request, res: Response) => {
 /* Get the authenticated player's info (includes stats for registered users) */
 router.get('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const stats = game.getPlayerStats(req.player.id);
+  const user = db.getUserById(req.player.id);
   res.json({
     id: req.player.id,
     username: req.player.username,
     displayName: req.player.displayName,
     isRegistered: req.player.isRegistered,
+    createdAt: user?.created_at ?? null,
     ...(stats ? { stats } : {}),
   });
 });

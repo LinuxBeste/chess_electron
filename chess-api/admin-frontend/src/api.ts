@@ -67,3 +67,39 @@ export interface BanList {
   players: string[];
   ips: string[];
 }
+
+export interface SystemStats {
+  memory: {
+    total: number;
+    free: number;
+    used: number;
+    usagePercent: number;
+  };
+  cpu: {
+    cores: number;
+    model: string;
+    loadAverage1: number;
+    loadAverage5: number;
+    loadAverage15: number;
+  };
+  process: {
+    uptime: number;
+    nodeVersion: string;
+    pid: number;
+    memoryRss: number;
+    heapUsed: number;
+    heapTotal: number;
+  };
+  system: {
+    uptime: number;
+    platform: string;
+    hostname: string;
+    arch: string;
+  };
+  disk: {
+    total: number;
+    free: number;
+    used: number;
+    usagePercent: number;
+  };
+}

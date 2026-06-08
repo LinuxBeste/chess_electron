@@ -856,7 +856,10 @@ function AdvancedTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: 
 
 function AccountTab() {
   const token = useStoreValue('token');
+  const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [createdAt, setCreatedAt] = useState<number | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [stats, setStats] = useState<{ wins: number; losses: number; draws: number } | null>(null);
@@ -871,7 +874,10 @@ function AccountTab() {
   useEffect(() => {
     if (!token) return;
     getMe().then((me) => {
+      setUsername(me.username);
       setDisplayName(me.displayName);
+      setIsRegistered(me.isRegistered);
+      setCreatedAt(me.createdAt);
       if (me.stats) setStats(me.stats);
       setStatsLoading(false);
     }).catch(() => setStatsLoading(false));
@@ -927,6 +933,36 @@ function AccountTab() {
   return (
     <>
       <Section title={t('settings.account.section')} />
+
+      {/* Account Info */}
+      <div className="settings-row">
+        <div>
+          <div className="settings-label">{t('settings.account.username')}</div>
+          <div className="settings-desc">{t('settings.account.usernameDesc')}</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, color: '#e0e0e0' }}>{username}</span>
+          {isRegistered ? (
+            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(76,175,80,0.2)', color: '#4caf50', fontWeight: 600 }}>
+              {t('settings.account.registered')}
+            </span>
+          ) : (
+            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,152,0,0.2)', color: '#ff9800', fontWeight: 600 }}>
+              {t('settings.account.temporary')}
+            </span>
+          )}
+        </div>
+      </div>
+      {createdAt && (
+        <div className="settings-row">
+          <div>
+            <div className="settings-label">{t('settings.account.joined')}</div>
+          </div>
+          <div style={{ fontSize: 13, color: '#e0e0e0' }}>
+            {new Date(createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+        </div>
+      )}
 
       {/* Display Name */}
       <div className="settings-row">

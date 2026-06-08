@@ -111,6 +111,7 @@ export function getMe(): Promise<{
   username: string;
   displayName: string;
   isRegistered: boolean;
+  createdAt: number | null;
   stats?: { wins: number; losses: number; draws: number };
 }> {
   return request('/auth/me');

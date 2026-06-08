@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
+import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 import * as game from './game';
 import * as db from './db';
@@ -46,6 +47,64 @@ router.get('/admin/api/stats', adminAuthMiddleware, (_req: Request, res: Respons
   const registeredUsers = allPlayers.filter((p) => p.isRegistered).length;
   const totalUsers = db.loadAllUsers().length;
   res.json({ gamesActive, playersOnline, registeredUsers, totalUsers });
+});
+
+router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Response) => {
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMem = totalMem - freeMem;
+  const cpus = os.cpus();
+  const loadAvg = os.loadavg();
+  const rss = process.memoryUsage().rss;
+  const heapUsed = process.memoryUsage().heapUsed;
+  const heapTotal = process.memoryUsage().heapTotal;
+
+  let diskTotal = 0;
+  let diskFree = 0;
+  try {
+    const { execSync } = require('child_process');
+    const out = execSync('df -k /').toString().split('\n')[1]?.split(/\s+/);
+    if (out && out.length >= 4) {
+      diskTotal = parseInt(out[1], 10) * 1024 || 0;
+      diskFree = parseInt(out[3], 10) * 1024 || 0;
+    }
+  } catch {}
+
+  res.json({
+    memory: {
+      total: totalMem,
+      free: freeMem,
+      used: usedMem,
+      usagePercent: Math.round((usedMem / totalMem) * 100 * 100) / 100,
+    },
+    cpu: {
+      cores: cpus.length,
+      model: cpus[0]?.model || 'unknown',
+      loadAverage1: loadAvg[0],
+      loadAverage5: loadAvg[1],
+      loadAverage15: loadAvg[2],
+    },
+    process: {
+      uptime: process.uptime(),
+      nodeVersion: process.version,
+      pid: process.pid,
+      memoryRss: rss,
+      heapUsed,
+      heapTotal,
+    },
+    system: {
+      uptime: os.uptime(),
+      platform: os.platform(),
+      hostname: os.hostname(),
+      arch: os.arch(),
+    },
+    disk: {
+      total: diskTotal,
+      free: diskFree,
+      used: diskTotal - diskFree,
+      usagePercent: diskTotal > 0 ? Math.round(((diskTotal - diskFree) / diskTotal) * 100 * 100) / 100 : 0,
+    },
+  });
 });
 
 router.get('/admin/api/games', adminAuthMiddleware, (_req: Request, res: Response) => {

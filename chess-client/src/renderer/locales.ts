@@ -192,6 +192,11 @@ export type TranslationKeys = {
     };
     account: {
       section: string;
+      username: string;
+      usernameDesc: string;
+      registered: string;
+      temporary: string;
+      joined: string;
       displayName: string;
       displayNameDesc: string;
       displayNamePlaceholder: string;
@@ -211,7 +216,6 @@ export type TranslationKeys = {
       wins: string;
       losses: string;
       draws: string;
-      registered: string;
       notRegistered: string;
       signUpPrompt: string;
       danger: string;
@@ -604,6 +608,11 @@ export const en: TranslationKeys = {
     },
     account: {
       section: 'Account',
+      username: 'Username',
+      usernameDesc: 'Your login name (cannot be changed)',
+      registered: 'Registered',
+      temporary: 'Temporary',
+      joined: 'Joined',
       displayName: 'Display Name',
       displayNameDesc: 'How your name appears to other players',
       displayNamePlaceholder: 'Enter display name...',
@@ -623,7 +632,6 @@ export const en: TranslationKeys = {
       wins: 'Wins',
       losses: 'Losses',
       draws: 'Draws',
-      registered: 'Registered Account',
       notRegistered: 'Temporary Account',
       signUpPrompt: 'Sign up with a password to keep your stats and play from any device.',
       danger: 'Danger Zone',
@@ -1016,6 +1024,11 @@ export const de: TranslationKeys = {
     },
     account: {
       section: 'Konto',
+      username: 'Benutzername',
+      usernameDesc: 'Dein Anmeldename (kann nicht geändert werden)',
+      registered: 'Registriert',
+      temporary: 'Temporär',
+      joined: 'Beigetreten',
       displayName: 'Anzeigename',
       displayNameDesc: 'Wie dein Name für andere Spieler angezeigt wird',
       displayNamePlaceholder: 'Anzeigenamen eingeben...',
@@ -1035,7 +1048,6 @@ export const de: TranslationKeys = {
       wins: 'Siege',
       losses: 'Niederlagen',
       draws: 'Remis',
-      registered: 'Registriertes Konto',
       notRegistered: 'Temporäres Konto',
       signUpPrompt: 'Registriere dich mit einem Passwort, um deine Statistiken zu behalten und von jedem Gerät aus zu spielen.',
       danger: 'Gefahrenzone',
