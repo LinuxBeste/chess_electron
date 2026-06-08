@@ -67,12 +67,12 @@ The compose configuration includes:
 
 ## Environment Variables
 
-| Variable                  | Default  | Description                                                |
-| ------------------------- | -------- | ---------------------------------------------------------- |
-| `PORT`                    | `3000`   | HTTP/WS server port                                        |
-| `NODE_ENV`                | —        | Set to `test` to skip server startup (used by test runner) |
-| `ADMIN_USERNAME`          | `admin`  | Admin dashboard login username                             |
-| `ADMIN_PASSWORD`          | `admin`  | Admin dashboard login password                             |
+| Variable         | Default | Description                                                |
+| ---------------- | ------- | ---------------------------------------------------------- |
+| `PORT`           | `3000`  | HTTP/WS server port                                        |
+| `NODE_ENV`       | —       | Set to `test` to skip server startup (used by test runner) |
+| `ADMIN_USERNAME` | `admin` | Admin dashboard login username                             |
+| `ADMIN_PASSWORD` | `admin` | Admin dashboard login password                             |
 
 ## Testing
 

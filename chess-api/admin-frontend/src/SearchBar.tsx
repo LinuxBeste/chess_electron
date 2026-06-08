@@ -1,4 +1,8 @@
-export default function SearchBar({ value, onChange, placeholder }: {
+export default function SearchBar({
+  value,
+  onChange,
+  placeholder,
+}: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;

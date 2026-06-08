@@ -128,10 +128,7 @@ export function updateDisplayName(displayName: string): Promise<{ success: true;
 
 /* PUT /auth/me/password — auth required.
  * Change the authenticated player's password. */
-export function changePassword(
-  currentPassword: string,
-  newPassword: string,
-): Promise<{ success: true }> {
+export function changePassword(currentPassword: string, newPassword: string): Promise<{ success: true }> {
   return request('/auth/me/password', {
     method: 'PUT',
     body: JSON.stringify({ currentPassword, newPassword }),

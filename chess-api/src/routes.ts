@@ -231,35 +231,47 @@ router.post('/games/:gameId/join', authMiddleware, banCheckMiddleware, (req: Req
 });
 
 /* Make a move in a game */
-router.post('/games/:gameId/move', authMiddleware, banCheckMiddleware, rateLimitMiddleware, (req: Request, res: Response) => {
-  const { from, to, promotion } = req.body;
-  if (!from || !to) {
-    res.status(400).json({ error: 'from and to are required' });
-    return;
-  }
-  const result = game.makeMove(
-    req.params.gameId,
-    req.player.id,
-    from as string,
-    to as string,
-    promotion as PieceType | undefined,
-  );
-  if (!result.success) {
-    res.status(400).json({ error: result.error });
-    return;
-  }
-  res.json(result.state);
-});
+router.post(
+  '/games/:gameId/move',
+  authMiddleware,
+  banCheckMiddleware,
+  rateLimitMiddleware,
+  (req: Request, res: Response) => {
+    const { from, to, promotion } = req.body;
+    if (!from || !to) {
+      res.status(400).json({ error: 'from and to are required' });
+      return;
+    }
+    const result = game.makeMove(
+      req.params.gameId,
+      req.player.id,
+      from as string,
+      to as string,
+      promotion as PieceType | undefined,
+    );
+    if (!result.success) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json(result.state);
+  },
+);
 
 /* Resign from a game */
-router.post('/games/:gameId/resign', authMiddleware, banCheckMiddleware, rateLimitMiddleware, (req: Request, res: Response) => {
-  const result = game.resignGame(req.params.gameId, req.player.id);
-  if (!result.success) {
-    res.status(400).json({ error: result.error });
-    return;
-  }
-  res.json(result.state);
-});
+router.post(
+  '/games/:gameId/resign',
+  authMiddleware,
+  banCheckMiddleware,
+  rateLimitMiddleware,
+  (req: Request, res: Response) => {
+    const result = game.resignGame(req.params.gameId, req.player.id);
+    if (!result.success) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json(result.state);
+  },
+);
 
 /* Get match history for the authenticated player */
 router.get('/players/:playerId/games', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {

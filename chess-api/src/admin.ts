@@ -56,13 +56,17 @@ let prevNet: { rx: number; tx: number } | null = null;
 let prevDisk: { read: number; write: number } | null = null;
 
 function readProc(path: string): string | null {
-  try { return require('fs').readFileSync(path, 'utf-8'); } catch { return null; }
+  try {
+    return require('fs').readFileSync(path, 'utf-8');
+  } catch {
+    return null;
+  }
 }
 
 function sampleCpu(): { idle: number; total: number } | null {
   const content = readProc('/proc/stat');
   if (!content) return null;
-  const line = content.split('\n').find(l => l.startsWith('cpu '));
+  const line = content.split('\n').find((l) => l.startsWith('cpu '));
   if (!line) return null;
   const parts = line.trim().split(/\s+/).slice(1).map(Number);
   return { idle: parts[3] + (parts[4] || 0), total: parts.reduce((a, b) => a + b, 0) };
@@ -71,7 +75,8 @@ function sampleCpu(): { idle: number; total: number } | null {
 function sampleNet(): { rx: number; tx: number } | null {
   const content = readProc('/proc/net/dev');
   if (!content) return null;
-  let rx = 0, tx = 0;
+  let rx = 0,
+    tx = 0;
   for (const line of content.split('\n').slice(2)) {
     const parts = line.trim().split(/\s+/);
     if (parts.length < 10) continue;
@@ -84,8 +89,9 @@ function sampleNet(): { rx: number; tx: number } | null {
 function sampleDisk(): { read: number; write: number } | null {
   const content = readProc('/proc/diskstats');
   if (!content) return null;
-  let read = 0, write = 0;
-  for (const line of content.split('\n').filter(l => l.trim())) {
+  let read = 0,
+    write = 0;
+  for (const line of content.split('\n').filter((l) => l.trim())) {
     const parts = line.trim().split(/\s+/);
     if (parts.length < 14) continue;
     const name = parts[2];
@@ -109,14 +115,22 @@ router.get('/admin/api/system/metrics', adminAuthMiddleware, (_req: Request, res
   }
   if (cpu) prevCpu = cpu;
 
-  let rxRate = 0, txRate = 0;
+  let rxRate = 0,
+    txRate = 0;
   const net = sampleNet();
-  if (net && prevNet) { rxRate = Math.max(0, net.rx - prevNet.rx); txRate = Math.max(0, net.tx - prevNet.tx); }
+  if (net && prevNet) {
+    rxRate = Math.max(0, net.rx - prevNet.rx);
+    txRate = Math.max(0, net.tx - prevNet.tx);
+  }
   if (net) prevNet = net;
 
-  let readRate = 0, writeRate = 0;
+  let readRate = 0,
+    writeRate = 0;
   const disk = sampleDisk();
-  if (disk && prevDisk) { readRate = Math.max(0, disk.read - prevDisk.read); writeRate = Math.max(0, disk.write - prevDisk.write); }
+  if (disk && prevDisk) {
+    readRate = Math.max(0, disk.read - prevDisk.read);
+    writeRate = Math.max(0, disk.write - prevDisk.write);
+  }
   if (disk) prevDisk = disk;
 
   res.json({

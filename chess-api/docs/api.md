@@ -236,21 +236,25 @@ Login returns a bearer token valid until server restart.
 ### POST /admin/api/login
 
 **Request:**
+
 ```json
 { "username": "admin", "password": "admin" }
 ```
 
 **Response (200):**
+
 ```json
 { "token": "uuid-v4" }
 ```
 
 **Response (401):**
+
 ```json
 { "error": "Invalid admin credentials" }
 ```
 
 All subsequent admin endpoints require the token in the `Authorization` header:
+
 ```
 Authorization: Bearer <uuid>
 ```
@@ -260,6 +264,7 @@ Authorization: Bearer <uuid>
 Dashboard overview statistics.
 
 **Response:**
+
 ```json
 {
   "gamesActive": 2,
@@ -274,6 +279,7 @@ Dashboard overview statistics.
 All games currently tracked in memory (waiting, active, and finished).
 
 **Response:**
+
 ```json
 [
   {
@@ -295,6 +301,7 @@ All games currently tracked in memory (waiting, active, and finished).
 All players currently tracked in memory (both registered and temporary).
 
 **Response:**
+
 ```json
 [
   {
@@ -313,6 +320,7 @@ All players currently tracked in memory (both registered and temporary).
 All permanent (registered) accounts from the database.
 
 **Response:**
+
 ```json
 [
   {
@@ -332,6 +340,7 @@ All permanent (registered) accounts from the database.
 Update an account's display name.
 
 **Request:**
+
 ```json
 { "displayName": "New Name" }
 ```
@@ -343,6 +352,7 @@ Update an account's display name.
 Reset an account's password.
 
 **Request:**
+
 ```json
 { "newPassword": "new-secret" }
 ```

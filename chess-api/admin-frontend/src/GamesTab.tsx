@@ -19,7 +19,9 @@ export default function GamesTab() {
   const [query, setQuery] = useState('');
 
   function load() {
-    api<GameRow[]>('/games').then(setGames).catch((e) => setError(e.message));
+    api<GameRow[]>('/games')
+      .then(setGames)
+      .catch((e) => setError(e.message));
   }
 
   useEffect(load, []);
@@ -73,7 +75,9 @@ export default function GamesTab() {
                 <tr key={g.id} className="border-t border-[#2a2a2a] hover:bg-[#222]">
                   <td className="px-4 py-2.5 font-mono">{g.id.slice(0, 8)}&hellip;</td>
                   <td className="px-4 py-2.5">
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${statusColors[g.status] || 'bg-gray-800 text-gray-400'}`}>
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${statusColors[g.status] || 'bg-gray-800 text-gray-400'}`}
+                    >
                       {g.status}
                     </span>
                   </td>

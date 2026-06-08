@@ -2,7 +2,9 @@ const BASE = '/admin/api';
 
 let token: string | null = localStorage.getItem('admin_token');
 
-export function getToken() { return token; }
+export function getToken() {
+  return token;
+}
 
 export function setToken(t: string | null) {
   token = t;

@@ -9,7 +9,9 @@ export default function AccountsTab() {
   const [query, setQuery] = useState('');
 
   function load() {
-    api<AccountRow[]>('/accounts').then(setAccounts).catch((e) => setError(e.message));
+    api<AccountRow[]>('/accounts')
+      .then(setAccounts)
+      .catch((e) => setError(e.message));
   }
 
   useEffect(load, []);
@@ -81,7 +83,9 @@ export default function AccountsTab() {
                   <td className="px-4 py-2.5 font-mono">{a.id.slice(0, 8)}&hellip;</td>
                   <td className="px-4 py-2.5">{a.username}</td>
                   <td className="px-4 py-2.5">{a.displayName}</td>
-                  <td className="px-4 py-2.5">{a.wins} / {a.losses} / {a.draws}</td>
+                  <td className="px-4 py-2.5">
+                    {a.wins} / {a.losses} / {a.draws}
+                  </td>
                   <td className="px-4 py-2.5">{new Date(a.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-2.5 flex gap-1">
                     <button

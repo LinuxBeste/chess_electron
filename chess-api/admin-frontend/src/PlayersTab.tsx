@@ -10,7 +10,9 @@ export default function PlayersTab() {
   const [query, setQuery] = useState('');
 
   function load() {
-    api<PlayerRow[]>('/players').then(setPlayers).catch((e) => setError(e.message));
+    api<PlayerRow[]>('/players')
+      .then(setPlayers)
+      .catch((e) => setError(e.message));
   }
 
   useEffect(load, []);
@@ -65,7 +67,11 @@ export default function PlayersTab() {
   return (
     <div>
       <div className="mb-4">
-        <SearchBar value={query} onChange={setQuery} placeholder="Search players by ID, username, display name, IP..." />
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder="Search players by ID, username, display name, IP..."
+        />
       </div>
 
       {filtered.length === 0 ? (
@@ -91,19 +97,21 @@ export default function PlayersTab() {
                   <td className="px-4 py-2.5">{p.username}</td>
                   <td className="px-4 py-2.5">{p.displayName}</td>
                   <td className="px-4 py-2.5">
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${p.isRegistered ? 'bg-blue-900 text-blue-400' : 'bg-gray-800 text-gray-400'}`}>
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${p.isRegistered ? 'bg-blue-900 text-blue-400' : 'bg-gray-800 text-gray-400'}`}
+                    >
                       {p.isRegistered ? 'Registered' : 'Temporary'}
                     </span>
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className={`inline-flex items-center gap-1.5 ${p.online ? 'text-green-400' : 'text-gray-500'}`}>
+                    <span
+                      className={`inline-flex items-center gap-1.5 ${p.online ? 'text-green-400' : 'text-gray-500'}`}
+                    >
                       <span className={`w-2 h-2 rounded-full ${p.online ? 'bg-green-400' : 'bg-gray-600'}`} />
                       {p.online ? 'Online' : 'Offline'}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-[#888]">
-                    {p.ip || '\u2014'}
-                  </td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-[#888]">{p.ip || '\u2014'}</td>
                   <td className="px-4 py-2.5 flex gap-1">
                     <button
                       onClick={() => handleKick(p.id, p.displayName)}
@@ -127,7 +135,11 @@ export default function PlayersTab() {
                         disabled={actionId === 'ip:' + p.ip}
                         className="flex items-center gap-1 px-2.5 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-40"
                       >
-                        {actionId === 'ip:' + p.ip ? <RotateCcw size={12} className="animate-spin" /> : <ShieldBan size={12} />}
+                        {actionId === 'ip:' + p.ip ? (
+                          <RotateCcw size={12} className="animate-spin" />
+                        ) : (
+                          <ShieldBan size={12} />
+                        )}
                         Ban IP
                       </button>
                     )}

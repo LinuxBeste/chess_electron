@@ -869,7 +869,8 @@ export function changePassword(
 
   const user = db.getUserById(playerId);
   if (!user || !user.password_hash) return { success: false, error: 'Account not found' };
-  if (!verifyPassword(currentPassword, user.password_hash)) return { success: false, error: 'Current password is incorrect' };
+  if (!verifyPassword(currentPassword, user.password_hash))
+    return { success: false, error: 'Current password is incorrect' };
 
   const hash = hashPassword(newPassword);
   db.updateUserPasswordHash(playerId, hash);
@@ -883,7 +884,8 @@ export function changePassword(
  */
 export function deleteAccount(playerId: string): { success: true } | { success: false; error: string } {
   const player = players.get(playerId);
-  if (!player || !player.isRegistered) return { success: false, error: 'Only registered users can delete their account' };
+  if (!player || !player.isRegistered)
+    return { success: false, error: 'Only registered users can delete their account' };
 
   /* Remove all tokens from the reverse index */
   for (const token of player.tokens) {

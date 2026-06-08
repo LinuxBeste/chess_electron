@@ -809,11 +809,7 @@ describe('Admin API — accounts CRUD', () => {
   });
 
   test('PUT /admin/api/accounts/:id rejects missing displayName', async () => {
-    await request
-      .put(`/admin/api/accounts/${accountId}`)
-      .set('Authorization', authHeader)
-      .send({})
-      .expect(400);
+    await request.put(`/admin/api/accounts/${accountId}`).set('Authorization', authHeader).send({}).expect(400);
   });
 
   test('PUT /admin/api/accounts/:id rejects non-existent account', async () => {
@@ -854,13 +850,13 @@ describe('Admin API — accounts CRUD', () => {
 
   test('DELETE /admin/api/accounts/:id deletes account', async () => {
     /* Create a fresh account to delete */
-    const reg = await request.post('/auth/register').send({ username: 'adm_delete_me', password: 'secret' }).expect(201);
+    const reg = await request
+      .post('/auth/register')
+      .send({ username: 'adm_delete_me', password: 'secret' })
+      .expect(201);
     const delId = reg.body.playerId;
 
-    await request
-      .delete(`/admin/api/accounts/${delId}`)
-      .set('Authorization', authHeader)
-      .expect(200);
+    await request.delete(`/admin/api/accounts/${delId}`).set('Authorization', authHeader).expect(200);
 
     /* Verify it's gone from the accounts list */
     const res = await request.get('/admin/api/accounts').set('Authorization', authHeader).expect(200);
@@ -868,10 +864,7 @@ describe('Admin API — accounts CRUD', () => {
   });
 
   test('DELETE /admin/api/accounts/:id rejects non-existent account', async () => {
-    await request
-      .delete('/admin/api/accounts/non-existent')
-      .set('Authorization', authHeader)
-      .expect(404);
+    await request.delete('/admin/api/accounts/non-existent').set('Authorization', authHeader).expect(404);
   });
 
   test('GET /admin/api/accounts returns correct shape', async () => {
@@ -901,7 +894,11 @@ describe('PUT /auth/me — update display name', () => {
   });
 
   test('updates display name', async () => {
-    const res = await request.put('/auth/me').set('Authorization', authHeader).send({ displayName: 'New Name' }).expect(200);
+    const res = await request
+      .put('/auth/me')
+      .set('Authorization', authHeader)
+      .send({ displayName: 'New Name' })
+      .expect(200);
     expect(res.body.success).toBe(true);
     expect(res.body.displayName).toBe('New Name');
   });

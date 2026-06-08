@@ -25,12 +25,18 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   function renderTab() {
     switch (active) {
-      case 'overview': return <OverviewTab />;
-      case 'games': return <GamesTab />;
-      case 'players': return <PlayersTab />;
-      case 'accounts': return <AccountsTab />;
-      case 'bans': return <BansTab />;
-      default: return null;
+      case 'overview':
+        return <OverviewTab />;
+      case 'games':
+        return <GamesTab />;
+      case 'players':
+        return <PlayersTab />;
+      case 'accounts':
+        return <AccountsTab />;
+      case 'bans':
+        return <BansTab />;
+      default:
+        return null;
     }
   }
 

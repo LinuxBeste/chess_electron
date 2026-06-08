@@ -11,7 +11,9 @@ export default function BansTab() {
   const [query, setQuery] = useState('');
 
   function load() {
-    api<BanList>('/bans').then(setBans).catch((e) => setError(e.message));
+    api<BanList>('/bans')
+      .then(setBans)
+      .catch((e) => setError(e.message));
   }
 
   useEffect(load, []);
@@ -20,9 +22,7 @@ export default function BansTab() {
     ? bans.players.filter((pid) => pid.toLowerCase().includes(query.toLowerCase()))
     : bans.players;
 
-  const filteredIps = query
-    ? bans.ips.filter((ip) => ip.toLowerCase().includes(query.toLowerCase()))
-    : bans.ips;
+  const filteredIps = query ? bans.ips.filter((ip) => ip.toLowerCase().includes(query.toLowerCase())) : bans.ips;
 
   async function handleAddIpBan() {
     const ip = newIp.trim();

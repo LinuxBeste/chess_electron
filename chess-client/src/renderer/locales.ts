@@ -636,7 +636,8 @@ export const en: TranslationKeys = {
       signUpPrompt: 'Sign up with a password to keep your stats and play from any device.',
       danger: 'Danger Zone',
       deleteAccount: 'Delete Account',
-      deleteConfirm: 'Are you sure? This will permanently delete your account and all stats. This action cannot be undone.',
+      deleteConfirm:
+        'Are you sure? This will permanently delete your account and all stats. This action cannot be undone.',
       deleteConfirmButton: 'Yes, delete my account',
       deleteFailed: 'Failed to delete account',
       deleted: 'Account deleted',
@@ -1049,10 +1050,12 @@ export const de: TranslationKeys = {
       losses: 'Niederlagen',
       draws: 'Remis',
       notRegistered: 'Temporäres Konto',
-      signUpPrompt: 'Registriere dich mit einem Passwort, um deine Statistiken zu behalten und von jedem Gerät aus zu spielen.',
+      signUpPrompt:
+        'Registriere dich mit einem Passwort, um deine Statistiken zu behalten und von jedem Gerät aus zu spielen.',
       danger: 'Gefahrenzone',
       deleteAccount: 'Konto löschen',
-      deleteConfirm: 'Bist du sicher? Dies löscht dein Konto und alle Statistiken dauerhaft. Diese Aktion kann nicht rückgängig gemacht werden.',
+      deleteConfirm:
+        'Bist du sicher? Dies löscht dein Konto und alle Statistiken dauerhaft. Diese Aktion kann nicht rückgängig gemacht werden.',
       deleteConfirmButton: 'Ja, Konto löschen',
       deleteFailed: 'Fehler beim Löschen des Kontos',
       deleted: 'Konto gelöscht',

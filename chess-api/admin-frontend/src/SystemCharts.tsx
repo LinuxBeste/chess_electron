@@ -32,15 +32,29 @@ const CHARTS: ChartDef[] = [
   { label: 'Disk Write', color: '#9c27b0', extract: (s) => s.disk.write, format: (v) => fmtRate(v) },
 ];
 
-function Sparkline({ data, width, height, color, maxVal }: { data: number[]; width: number; height: number; color: string; maxVal: number }) {
+function Sparkline({
+  data,
+  width,
+  height,
+  color,
+  maxVal,
+}: {
+  data: number[];
+  width: number;
+  height: number;
+  color: string;
+  maxVal: number;
+}) {
   if (data.length < 2 || maxVal <= 0) {
     return <svg width={width} height={height} />;
   }
-  const points = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = height - (v / maxVal) * height;
-    return `${x},${y}`;
-  }).join(' ');
+  const points = data
+    .map((v, i) => {
+      const x = (i / (data.length - 1)) * width;
+      const y = height - (v / maxVal) * height;
+      return `${x},${y}`;
+    })
+    .join(' ');
   const area = points + ` ${width},${height} 0,${height}`;
   return (
     <svg width={width} height={height} style={{ display: 'block' }}>
@@ -57,7 +71,9 @@ function ChartCard({ def, samples }: { def: ChartDef; samples: SystemMetricsSamp
   return (
     <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-        <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{def.label}</span>
+        <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          {def.label}
+        </span>
         <span style={{ fontSize: 18, fontWeight: 700, color: def.color }}>{def.format(current)}</span>
       </div>
       <Sparkline data={vals} width={280} height={60} color={def.color} maxVal={maxVal} />
@@ -77,7 +93,9 @@ export default function SystemCharts() {
     }
     poll();
     intervalRef.current = setInterval(poll, POLL_MS);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, []);
 
   if (samples.length === 0) return null;

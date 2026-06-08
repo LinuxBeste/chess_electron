@@ -11,7 +11,12 @@ import {
 import { setSoundVolume } from '../sound';
 import { t, setLanguage, getLanguage } from '../translate';
 import { getLanguageNames } from '../locales';
-import { updateDisplayName as apiUpdateDisplayName, changePassword as apiChangePassword, deleteAccount as apiDeleteAccount, getMe } from '../api';
+import {
+  updateDisplayName as apiUpdateDisplayName,
+  changePassword as apiChangePassword,
+  deleteAccount as apiDeleteAccount,
+  getMe,
+} from '../api';
 import { useStoreValue } from '../hooks/useStore';
 import { store } from '../store';
 
@@ -873,14 +878,16 @@ function AccountTab() {
 
   useEffect(() => {
     if (!token) return;
-    getMe().then((me) => {
-      setUsername(me.username);
-      setDisplayName(me.displayName);
-      setIsRegistered(me.isRegistered);
-      setCreatedAt(me.createdAt);
-      if (me.stats) setStats(me.stats);
-      setStatsLoading(false);
-    }).catch(() => setStatsLoading(false));
+    getMe()
+      .then((me) => {
+        setUsername(me.username);
+        setDisplayName(me.displayName);
+        setIsRegistered(me.isRegistered);
+        setCreatedAt(me.createdAt);
+        if (me.stats) setStats(me.stats);
+        setStatsLoading(false);
+      })
+      .catch(() => setStatsLoading(false));
   }, [token]);
 
   async function handleSaveDisplayName() {
@@ -943,11 +950,29 @@ function AccountTab() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13, color: '#e0e0e0' }}>{username}</span>
           {isRegistered ? (
-            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(76,175,80,0.2)', color: '#4caf50', fontWeight: 600 }}>
+            <span
+              style={{
+                fontSize: 10,
+                padding: '2px 6px',
+                borderRadius: 4,
+                background: 'rgba(76,175,80,0.2)',
+                color: '#4caf50',
+                fontWeight: 600,
+              }}
+            >
               {t('settings.account.registered')}
             </span>
           ) : (
-            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,152,0,0.2)', color: '#ff9800', fontWeight: 600 }}>
+            <span
+              style={{
+                fontSize: 10,
+                padding: '2px 6px',
+                borderRadius: 4,
+                background: 'rgba(255,152,0,0.2)',
+                color: '#ff9800',
+                fontWeight: 600,
+              }}
+            >
               {t('settings.account.temporary')}
             </span>
           )}
@@ -977,7 +1002,15 @@ function AccountTab() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder={t('settings.account.displayNamePlaceholder')}
-              style={{ width: 160, padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)', color: '#e0e0e0', fontSize: 13 }}
+              style={{
+                width: 160,
+                padding: '4px 8px',
+                borderRadius: 4,
+                border: '1px solid rgba(255,255,255,0.15)',
+                background: 'rgba(0,0,0,0.3)',
+                color: '#e0e0e0',
+                fontSize: 13,
+              }}
             />
             <button className="btn btn-primary btn-xs" onClick={handleSaveDisplayName} style={{ fontSize: 11 }}>
               {t('settings.account.save')}
@@ -999,7 +1032,15 @@ function AccountTab() {
           className="settings-text-input"
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
-          style={{ width: 160, padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)', color: '#e0e0e0', fontSize: 13 }}
+          style={{
+            width: 160,
+            padding: '4px 8px',
+            borderRadius: 4,
+            border: '1px solid rgba(255,255,255,0.15)',
+            background: 'rgba(0,0,0,0.3)',
+            color: '#e0e0e0',
+            fontSize: 13,
+          }}
         />
       </div>
       <div className="settings-row">
@@ -1013,7 +1054,15 @@ function AccountTab() {
               className="settings-text-input"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              style={{ width: 160, padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.3)', color: '#e0e0e0', fontSize: 13 }}
+              style={{
+                width: 160,
+                padding: '4px 8px',
+                borderRadius: 4,
+                border: '1px solid rgba(255,255,255,0.15)',
+                background: 'rgba(0,0,0,0.3)',
+                color: '#e0e0e0',
+                fontSize: 13,
+              }}
             />
             <button className="btn btn-primary btn-xs" onClick={handleChangePassword} style={{ fontSize: 11 }}>
               {t('settings.account.changePassword')}
@@ -1059,14 +1108,14 @@ function AccountTab() {
             <div style={{ fontSize: 12, color: '#f44336', lineHeight: 1.4 }}>{t('settings.account.deleteConfirm')}</div>
             {deleteError && <span style={{ fontSize: 11, color: '#f44336' }}>{deleteError}</span>}
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                className="btn btn-danger btn-sm"
-                style={{ flex: 1, fontSize: 11 }}
-                onClick={handleDeleteAccount}
-              >
+              <button className="btn btn-danger btn-sm" style={{ flex: 1, fontSize: 11 }} onClick={handleDeleteAccount}>
                 {t('settings.account.deleteConfirmButton')}
               </button>
-              <button className="btn btn-ghost btn-sm" style={{ flex: 1, fontSize: 11 }} onClick={() => setDeleteConfirm(false)}>
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ flex: 1, fontSize: 11 }}
+                onClick={() => setDeleteConfirm(false)}
+              >
                 {t('common.cancel')}
               </button>
             </div>
