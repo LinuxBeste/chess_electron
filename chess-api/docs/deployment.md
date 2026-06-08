@@ -7,27 +7,32 @@
 ## Local Development
 
 ```bash
-# Install dependencies
-npm install
+# Install dependencies (from workspace root)
+pnpm install
 
-# Type-check
-npx tsc --noEmit
+# Build (admin frontend + API server)
+pnpm run build
 
 # Run tests
-npm test
-
-# Build
-npm run build
+pnpm test
 
 # Start
-npm start
+pnpm start
 ```
 
 Server listens on port 3000 by default. Override with `PORT` environment variable.
 
 ```bash
-PORT=4000 npm start
+PORT=4000 pnpm start
 ```
+
+## Admin Dashboard
+
+The admin dashboard is a React SPA (Vite + TailwindCSS + lucide-react) served at `/admin/`.
+It is built automatically as part of `pnpm run build` — the Vite output goes into `dist/admin/`
+and is served as static files by Express.
+
+Default credentials: `admin` / `admin` (configurable via `ADMIN_USERNAME` / `ADMIN_PASSWORD` env vars).
 
 ## Docker
 
@@ -39,7 +44,7 @@ docker build -t chess-api .
 
 The `Dockerfile` uses a multi-stage build:
 
-1. **builder** stage — installs all dependencies, compiles TypeScript
+1. **builder** stage — installs all dependencies (API + admin frontend), builds the React app with Vite, compiles TypeScript
 2. **runner** stage — copies only production dependencies and compiled JS
 
 ### Run
@@ -62,20 +67,22 @@ The compose configuration includes:
 
 ## Environment Variables
 
-| Variable   | Default | Description                                                |
-| ---------- | ------- | ---------------------------------------------------------- |
-| `PORT`     | `3000`  | HTTP/WS server port                                        |
-| `NODE_ENV` | —       | Set to `test` to skip server startup (used by test runner) |
+| Variable                  | Default  | Description                                                |
+| ------------------------- | -------- | ---------------------------------------------------------- |
+| `PORT`                    | `3000`   | HTTP/WS server port                                        |
+| `NODE_ENV`                | —        | Set to `test` to skip server startup (used by test runner) |
+| `ADMIN_USERNAME`          | `admin`  | Admin dashboard login username                             |
+| `ADMIN_PASSWORD`          | `admin`  | Admin dashboard login password                             |
 
 ## Testing
 
 ```bash
-npm test
+pnpm test
 ```
 
 Runs Jest with `--forceExit --detectOpenHandles`. The test suite:
 
 - `chess.test.ts` — 22+ test cases covering the full chess engine
-- `api.test.ts` — 15+ integration tests covering the full API surface
+- `api.test.ts` — 70+ integration tests covering the full API surface and admin routes
 
 Tests are designed to run outside Docker without any external services.

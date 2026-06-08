@@ -223,6 +223,138 @@ Get all legal moves for the authenticated player in a game. Requires auth.
 }
 ```
 
+## Admin Dashboard
+
+The admin dashboard is served at `/admin/` (React SPA, built with Vite). It provides
+server management features for operators.
+
+### Authentication
+
+Admin credentials are configured via environment variables (default: `admin`/`admin`).
+Login returns a bearer token valid until server restart.
+
+### POST /admin/api/login
+
+**Request:**
+```json
+{ "username": "admin", "password": "admin" }
+```
+
+**Response (200):**
+```json
+{ "token": "uuid-v4" }
+```
+
+**Response (401):**
+```json
+{ "error": "Invalid admin credentials" }
+```
+
+All subsequent admin endpoints require the token in the `Authorization` header:
+```
+Authorization: Bearer <uuid>
+```
+
+### GET /admin/api/stats
+
+Dashboard overview statistics.
+
+**Response:**
+```json
+{
+  "gamesActive": 2,
+  "playersOnline": 4,
+  "registeredUsers": 10,
+  "totalUsers": 15
+}
+```
+
+### GET /admin/api/games
+
+All games currently tracked in memory (waiting, active, and finished).
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "status": "active",
+    "white": "alice",
+    "black": "bob",
+    "turn": "white",
+    "moves": 12,
+    "createdAt": 1700000000000,
+    "winner": null,
+    "visibility": "public"
+  }
+]
+```
+
+### GET /admin/api/players
+
+All players currently tracked in memory (both registered and temporary).
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "username": "alice",
+    "displayName": "alice",
+    "isRegistered": true,
+    "online": true,
+    "tokens": 2
+  }
+]
+```
+
+### GET /admin/api/accounts
+
+All permanent (registered) accounts from the database.
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "username": "alice",
+    "displayName": "Alice",
+    "createdAt": 1700000000000,
+    "wins": 5,
+    "losses": 2,
+    "draws": 1
+  }
+]
+```
+
+### PUT /admin/api/accounts/:id
+
+Update an account's display name.
+
+**Request:**
+```json
+{ "displayName": "New Name" }
+```
+
+**Response:** `{ "success": true }`
+
+### POST /admin/api/accounts/:id/reset-password
+
+Reset an account's password.
+
+**Request:**
+```json
+{ "newPassword": "new-secret" }
+```
+
+**Response:** `{ "success": true }`
+
+### DELETE /admin/api/accounts/:id
+
+Delete an account and all its session tokens.
+
+**Response:** `{ "success": true }`
+
 ## WebSocket
 
 Connect to the WebSocket endpoint at the same host/port with the token as a query parameter:

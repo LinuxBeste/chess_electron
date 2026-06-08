@@ -825,11 +825,29 @@ export function handleChatMessage(gameId: string, playerId: string, text: string
 }
 
 /**
+ * Return all games (any status) — used by the admin dashboard.
+ */
+export function getAllGames(): GameState[] {
+  return Array.from(games.values()).map(enrichNames);
+}
+
+/**
+ * Return all players currently tracked in memory.
+ */
+export function getAllPlayers(): Player[] {
+  return Array.from(players.values());
+}
+
+/**
+ * Return the set of player IDs that currently have at least one
+ * open WebSocket connection (i.e. are online right now).
+ */
+export function getOnlinePlayerIds(): Set<string> {
+  return new Set(wsConnections.keys());
+}
+
+/**
  * Aggregate stats for the health check endpoint.
- *
- * Games are counted as active when their status is 'active' (not waiting,
- * not finished).  Players are counted as online when they have at least
- * one open WebSocket connection.
  */
 export function getStats(): { gamesActive: number; playersOnline: number } {
   let gamesActive = 0;

@@ -655,3 +655,235 @@ describe('GET /players/:playerId/games', () => {
     await request.get('/players/some-id/games').expect(401);
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  Admin Dashboard API                                                  */
+/* ------------------------------------------------------------------ */
+
+describe('Admin API — auth', () => {
+  test('POST /admin/api/login with default credentials', async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' }).expect(200);
+    expect(res.body).toHaveProperty('token');
+    expect(typeof res.body.token).toBe('string');
+  });
+
+  test('POST /admin/api/login rejects wrong password', async () => {
+    await request.post('/admin/api/login').send({ username: 'admin', password: 'wrong' }).expect(401);
+  });
+
+  test('POST /admin/api/login rejects wrong username', async () => {
+    await request.post('/admin/api/login').send({ username: 'hacker', password: 'admin' }).expect(401);
+  });
+
+  test('POST /admin/api/login rejects missing fields', async () => {
+    await request.post('/admin/api/login').send({}).expect(400);
+  });
+
+  test('admin endpoints reject missing token', async () => {
+    await request.get('/admin/api/stats').expect(401);
+    await request.get('/admin/api/games').expect(401);
+    await request.get('/admin/api/players').expect(401);
+    await request.get('/admin/api/accounts').expect(401);
+  });
+
+  test('admin endpoints reject invalid token', async () => {
+    const header = 'Bearer invalid-token';
+    await request.get('/admin/api/stats').set('Authorization', header).expect(401);
+    await request.get('/admin/api/games').set('Authorization', header).expect(401);
+    await request.get('/admin/api/players').set('Authorization', header).expect(401);
+    await request.get('/admin/api/accounts').set('Authorization', header).expect(401);
+  });
+});
+
+describe('Admin API — stats', () => {
+  let authHeader: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
+    authHeader = `Bearer ${res.body.token}`;
+  });
+
+  test('GET /admin/api/stats returns overview counts', async () => {
+    const res = await request.get('/admin/api/stats').set('Authorization', authHeader).expect(200);
+    expect(res.body).toHaveProperty('gamesActive');
+    expect(res.body).toHaveProperty('playersOnline');
+    expect(res.body).toHaveProperty('registeredUsers');
+    expect(res.body).toHaveProperty('totalUsers');
+    expect(typeof res.body.gamesActive).toBe('number');
+    expect(typeof res.body.playersOnline).toBe('number');
+  });
+});
+
+describe('Admin API — games', () => {
+  let authHeader: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
+    authHeader = `Bearer ${res.body.token}`;
+  });
+
+  test('GET /admin/api/games returns game list', async () => {
+    /* Create a couple of games to make the list non-empty */
+    const p1 = await registerPlayer('adm_g1');
+    await createGame(p1.authHeader);
+    const p2 = await registerPlayer('adm_g2');
+    const g2 = await createGame(p2.authHeader);
+    const p3 = await registerPlayer('adm_g3');
+    await joinGame(g2, p3.authHeader);
+
+    const res = await request.get('/admin/api/games').set('Authorization', authHeader).expect(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(2);
+    expect(res.body.some((g: any) => g.status === 'waiting')).toBe(true);
+    expect(res.body.some((g: any) => g.status === 'active')).toBe(true);
+    /* Each entry has the expected shape */
+    for (const g of res.body) {
+      expect(g).toHaveProperty('id');
+      expect(g).toHaveProperty('status');
+      expect(g).toHaveProperty('white');
+      expect(g).toHaveProperty('moves');
+      expect(g).toHaveProperty('createdAt');
+    }
+  });
+});
+
+describe('Admin API — players', () => {
+  let authHeader: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
+    authHeader = `Bearer ${res.body.token}`;
+  });
+
+  test('GET /admin/api/players returns player list', async () => {
+    /* Register some players to make the list non-empty */
+    await registerPlayer('adm_p1');
+    await registerPlayer('adm_p2');
+
+    const res = await request.get('/admin/api/players').set('Authorization', authHeader).expect(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(3); /* + the one from beforeAll */
+    for (const p of res.body) {
+      expect(p).toHaveProperty('id');
+      expect(p).toHaveProperty('username');
+      expect(p).toHaveProperty('displayName');
+      expect(p).toHaveProperty('isRegistered');
+      expect(p).toHaveProperty('online');
+      expect(p).toHaveProperty('tokens');
+    }
+  });
+});
+
+describe('Admin API — accounts CRUD', () => {
+  let authHeader: string;
+  let accountId: string;
+  let accountName: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
+    authHeader = `Bearer ${res.body.token}`;
+    /* Create a registered account to manipulate */
+    const reg = await request.post('/auth/register').send({ username: 'adm_crud', password: 'secret' }).expect(201);
+    accountId = reg.body.playerId;
+    accountName = reg.body.displayName;
+  });
+
+  test('GET /admin/api/accounts lists all registered users', async () => {
+    const res = await request.get('/admin/api/accounts').set('Authorization', authHeader).expect(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    const target = res.body.find((a: any) => a.id === accountId);
+    expect(target).toBeDefined();
+    expect(target.username).toBe('adm_crud');
+  });
+
+  test('PUT /admin/api/accounts/:id updates display name', async () => {
+    await request
+      .put(`/admin/api/accounts/${accountId}`)
+      .set('Authorization', authHeader)
+      .send({ displayName: 'Admin Test' })
+      .expect(200);
+
+    const res = await request.get('/admin/api/accounts').set('Authorization', authHeader).expect(200);
+    const target = res.body.find((a: any) => a.id === accountId);
+    expect(target.displayName).toBe('Admin Test');
+  });
+
+  test('PUT /admin/api/accounts/:id rejects missing displayName', async () => {
+    await request
+      .put(`/admin/api/accounts/${accountId}`)
+      .set('Authorization', authHeader)
+      .send({})
+      .expect(400);
+  });
+
+  test('PUT /admin/api/accounts/:id rejects non-existent account', async () => {
+    await request
+      .put('/admin/api/accounts/non-existent')
+      .set('Authorization', authHeader)
+      .send({ displayName: 'X' })
+      .expect(404);
+  });
+
+  test('POST /admin/api/accounts/:id/reset-password resets password', async () => {
+    await request
+      .post(`/admin/api/accounts/${accountId}/reset-password`)
+      .set('Authorization', authHeader)
+      .send({ newPassword: 'newpass123' })
+      .expect(200);
+
+    /* Verify login works with the new password */
+    const login = await request.post('/auth/login').send({ username: 'adm_crud', password: 'newpass123' }).expect(200);
+    expect(login.body.success).toBe(true);
+  });
+
+  test('POST /admin/api/accounts/:id/reset-password rejects short password', async () => {
+    await request
+      .post(`/admin/api/accounts/${accountId}/reset-password`)
+      .set('Authorization', authHeader)
+      .send({ newPassword: 'ab' })
+      .expect(400);
+  });
+
+  test('POST /admin/api/accounts/:id/reset-password rejects non-existent account', async () => {
+    await request
+      .post('/admin/api/accounts/non-existent/reset-password')
+      .set('Authorization', authHeader)
+      .send({ newPassword: 'valid123' })
+      .expect(404);
+  });
+
+  test('DELETE /admin/api/accounts/:id deletes account', async () => {
+    /* Create a fresh account to delete */
+    const reg = await request.post('/auth/register').send({ username: 'adm_delete_me', password: 'secret' }).expect(201);
+    const delId = reg.body.playerId;
+
+    await request
+      .delete(`/admin/api/accounts/${delId}`)
+      .set('Authorization', authHeader)
+      .expect(200);
+
+    /* Verify it's gone from the accounts list */
+    const res = await request.get('/admin/api/accounts').set('Authorization', authHeader).expect(200);
+    expect(res.body.some((a: any) => a.id === delId)).toBe(false);
+  });
+
+  test('DELETE /admin/api/accounts/:id rejects non-existent account', async () => {
+    await request
+      .delete('/admin/api/accounts/non-existent')
+      .set('Authorization', authHeader)
+      .expect(404);
+  });
+
+  test('GET /admin/api/accounts returns correct shape', async () => {
+    const res = await request.get('/admin/api/accounts').set('Authorization', authHeader).expect(200);
+    for (const a of res.body) {
+      expect(a).toHaveProperty('id');
+      expect(a).toHaveProperty('username');
+      expect(a).toHaveProperty('displayName');
+      expect(a).toHaveProperty('wins');
+      expect(a).toHaveProperty('losses');
+      expect(a).toHaveProperty('draws');
+      expect(a).toHaveProperty('createdAt');
+    }
+  });
+});

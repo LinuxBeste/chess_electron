@@ -1,9 +1,17 @@
 FROM node:20-alpine AS builder
 RUN apk add --no-cache python3 make g++
 RUN corepack enable && corepack prepare pnpm@9 --activate
+
+# Install API deps
 WORKDIR /app
 COPY package.json ./
 RUN pnpm install --no-frozen-lockfile
+
+# Copy admin-frontend source and install its deps
+COPY admin-frontend/ ./admin-frontend/
+RUN cd admin-frontend && pnpm install --no-frozen-lockfile
+
+# Build both (admin-frontend → dist/admin/ via Vite, then API via tsc)
 COPY tsconfig.json ./
 COPY src/ ./src/
 RUN pnpm run build

@@ -3,11 +3,13 @@
 ## Layering
 
 ```
-src/index.ts          Express app + WebSocket server setup
-src/routes.ts         Thin route handlers → parse input, delegate, respond
+src/index.ts          Express app + WebSocket server setup, static file serving
+src/routes.ts         Player API route handlers → parse input, delegate, respond
+src/admin.ts          Admin API route handlers → auth, stats, accounts CRUD
 src/game.ts           Game orchestration, auth, WebSocket broadcasting
 src/chess.ts          Pure chess engine — no I/O, no side effects
 src/types.ts          Shared TypeScript interfaces
+admin-frontend/src/   React SPA components (Vite + TailwindCSS + lucide-react)
 ```
 
 Data flows **downward**: routes call game functions, game functions call chess functions. Chess has no knowledge of HTTP, WebSocket, or game state — it operates on plain data structures (`Board`, `Move`, etc.).
@@ -15,10 +17,23 @@ Data flows **downward**: routes call game functions, game functions call chess f
 ## Data Flow
 
 ```
-Client (HTTP)  →  routes.ts  →  game.ts  →  chess.ts  (pure functions)
-                                              ↓
-Client (WS)    ←  game.ts broadcasts ← applyMove, getLegalMoves, getGameStatus
+Player Client (HTTP)  →  routes.ts  →  game.ts  →  chess.ts  (pure functions)
+                                                    ↓
+Player Client (WS)    ←  game.ts broadcasts ← applyMove, getLegalMoves, getGameStatus
+
+Admin Browser (HTTP)  →  admin.ts  →  game.ts / db.ts  ← via Bearer admin token
 ```
+
+## Admin Dashboard
+
+The admin dashboard is a separate React SPA (`admin-frontend/`) built with Vite. During
+`pnpm run build`, Vite outputs the compiled assets to `dist/admin/`, which Express
+serves as static files at the `/admin/` path. The admin API routes (`admin.ts`) handle
+backend operations (auth, stats, accounts CRUD) at `/admin/api/*`.
+
+Admin login credentials are configured via environment variables (`ADMIN_USERNAME`,
+`ADMIN_PASSWORD`). On successful login, a UUID bearer token is generated and stored
+in-memory for the duration of the server process.
 
 ## Key Design Decisions
 

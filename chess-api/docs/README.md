@@ -13,10 +13,13 @@ Production-ready multiplayer chess REST API server with WebSocket real-time upda
 
 ```bash
 cd chess-api
-npm install
-npm run build
-npm start        # starts on port 3000
+pnpm install
+pnpm run build
+pnpm start        # starts on port 3000
 ```
+
+Access the admin dashboard at [http://localhost:3000/admin](http://localhost:3000/admin)
+(default login: `admin` / `admin`).
 
 ### With Docker
 
@@ -30,7 +33,8 @@ docker compose up --build
 - **HTTP:** Express 4
 - **WebSocket:** ws (token-authenticated)
 - **Auth:** Bearer tokens (UUID v4)
-- **Storage:** In-memory (ephemeral)
+- **Admin dashboard:** React 19 + Vite + TailwindCSS + lucide-react
+- **Storage:** In-memory (ephemeral) + SQLite (registered users)
 - **Tests:** Jest + supertest
 - **Container:** Multi-stage Docker build on node:20-alpine
 
@@ -38,14 +42,17 @@ docker compose up --build
 
 ```
 chess-api/
+  admin-frontend/   React SPA (Vite + TailwindCSS + lucide-react)
+    src/            Components (LoginPage, Dashboard, OverviewTab, GamesTab, PlayersTab, AccountsTab)
   src/
-    types.ts     Shared interfaces (Piece, Board, Move, GameState, etc.)
-    chess.ts     Complete chess engine (~600 lines)
-    game.ts      Game orchestration, auth, WebSocket broadcasting
-    routes.ts    Express route handlers
-    index.ts     App setup, server start, WebSocket server
+    types.ts        Shared interfaces (Piece, Board, Move, GameState, etc.)
+    chess.ts        Complete chess engine (~600 lines)
+    game.ts         Game orchestration, auth, WebSocket broadcasting
+    routes.ts       Express route handlers (player API)
+    admin.ts        Admin API route handlers (dashboard, accounts CRUD)
+    index.ts        App setup, server start, WebSocket server
   tests/
-    chess.test.ts    Unit tests for chess engine
-    api.test.ts      Integration tests for full API surface
-  docs/              This documentation
+    chess.test.ts   Unit tests for chess engine
+    api.test.ts     Integration tests for full API surface + admin routes
+  docs/             This documentation
 ```

@@ -1,5 +1,6 @@
 packages:
   - "chess-api"
+  - "chess-api/admin-frontend"
   - "chess-client"
   - "website"
 allowBuilds:

@@ -113,3 +113,25 @@ export function loadAllTokens(): { token: string; user_id: string }[] {
     user_id: string;
   }[];
 }
+
+/* ─── Admin dashboard helpers ─── */
+
+export function updateUserDisplayName(id: string, displayName: string): void {
+  const d = getDb();
+  d.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(displayName, id);
+}
+
+export function updateUserPasswordHash(id: string, passwordHash: string): void {
+  const d = getDb();
+  d.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, id);
+}
+
+export function deleteUserTokens(id: string): void {
+  const d = getDb();
+  d.prepare('DELETE FROM user_tokens WHERE user_id = ?').run(id);
+}
+
+export function deleteUserRecord(id: string): void {
+  const d = getDb();
+  d.prepare('DELETE FROM users WHERE id = ?').run(id);
+}

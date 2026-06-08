@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Multiplayer chess REST API with WebSocket support",
   "scripts": {
-    "build": "tsc",
+    "build": "cd admin-frontend && pnpm run build && cd .. && tsc",
     "start": "node dist/index.js",
     "start:dev": "bash start.sh --native",
     "start:docker": "bash start.sh",

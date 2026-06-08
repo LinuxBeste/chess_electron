@@ -4,10 +4,12 @@
 
 import express, { Express } from 'express';
 import cors from 'cors';
+import path from 'path';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
 import routes from './routes';
+import adminRouter from './admin';
 import * as game from './game';
 
 export const app: Express = express();
@@ -32,6 +34,12 @@ app.use(cors({ origin: CORS_ORIGIN, credentials: CORS_ORIGIN !== '*' }));
 app.use(express.json());
 /* Attach all API routes */
 app.use(routes);
+
+/* Serve admin dashboard static files (React build output in dist/admin/) */
+const adminDir = path.join(path.resolve(__dirname, '..'), 'dist', 'admin');
+app.use('/admin', express.static(adminDir));
+/* Attach admin API routes (login, stats, accounts CRUD) */
+app.use(adminRouter);
 
 /**
  * Create an HTTP server with WebSocket upgrade support.

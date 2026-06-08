@@ -11,6 +11,8 @@
 | `MAX_GAMES_PER_PLAYER`    | `1`     | Max concurrent games per player      |
 | `RATE_LIMIT_WINDOW_MS`    | `60000` | Rate limit window (ms)               |
 | `RATE_LIMIT_MAX_REQUESTS` | `30`    | Max requests per window per player   |
+| `ADMIN_USERNAME`          | `admin` | Admin dashboard login username       |
+| `ADMIN_PASSWORD`          | `admin` | Admin dashboard login password       |
 
 ## chess-client
 
