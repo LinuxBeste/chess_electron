@@ -28,6 +28,9 @@ function authMiddleware(req: Request, res: Response, next: () => void): void {
     return;
   }
   req.player = player;
+  /* Track player IP for ban enforcement */
+  const ip = req.ip || req.socket.remoteAddress || '';
+  game.setPlayerIp(player.id, ip);
   next();
 }
 
@@ -37,6 +40,18 @@ function authMiddleware(req: Request, res: Response, next: () => void): void {
 function rateLimitMiddleware(req: Request, res: Response, next: () => void): void {
   if (!game.checkRateLimit(req.player.id)) {
     res.status(429).json({ error: 'Too many requests. Please slow down.' });
+    return;
+  }
+  next();
+}
+
+/**
+ * Ban-check middleware: rejects requests from banned players or IPs.
+ * Must run after authMiddleware so req.player is available. */
+function banCheckMiddleware(req: Request, res: Response, next: () => void): void {
+  const ip = req.ip || req.socket.remoteAddress || '';
+  if (game.isBanned(req.player.id, ip)) {
+    res.status(403).json({ error: 'You have been banned' });
     return;
   }
   next();
@@ -60,6 +75,11 @@ router.get('/health', (_req: Request, res: Response) => {
  *   - Registered  (with password): persisted to SQLite, unique username.
  */
 router.post('/auth/register', (req: Request, res: Response) => {
+  const ip = req.ip || req.socket.remoteAddress || '';
+  if (game.isBanned('', ip)) {
+    res.status(403).json({ error: 'Your IP has been banned' });
+    return;
+  }
   const { username, password } = req.body;
   if (!username || typeof username !== 'string' || username.trim().length === 0) {
     res.status(400).json({ error: 'Username is required' });
@@ -71,6 +91,7 @@ router.post('/auth/register', (req: Request, res: Response) => {
   }
   try {
     const result = game.registerPlayer(username.trim(), password || undefined);
+    game.setPlayerIp(result.playerId, ip);
     res.status(201).json(result);
   } catch (err: any) {
     if (err?.message?.includes('UNIQUE constraint')) {
@@ -83,6 +104,11 @@ router.post('/auth/register', (req: Request, res: Response) => {
 
 /* Log in as an existing registered user */
 router.post('/auth/login', (req: Request, res: Response) => {
+  const ip = req.ip || req.socket.remoteAddress || '';
+  if (game.isBanned('', ip)) {
+    res.status(403).json({ error: 'Your IP has been banned' });
+    return;
+  }
   const { username, password } = req.body;
   if (!username || typeof username !== 'string' || !password || typeof password !== 'string') {
     res.status(400).json({ error: 'Username and password are required' });
@@ -93,11 +119,12 @@ router.post('/auth/login', (req: Request, res: Response) => {
     res.status(401).json({ error: result.error });
     return;
   }
+  game.setPlayerIp(result.playerId, ip);
   res.json(result);
 });
 
 /* Get the authenticated player's info (includes stats for registered users) */
-router.get('/auth/me', authMiddleware, (req: Request, res: Response) => {
+router.get('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const stats = game.getPlayerStats(req.player.id);
   res.json({
     id: req.player.id,
@@ -109,7 +136,7 @@ router.get('/auth/me', authMiddleware, (req: Request, res: Response) => {
 });
 
 /* Update the authenticated player's display name */
-router.put('/auth/me', authMiddleware, (req: Request, res: Response) => {
+router.put('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const { displayName } = req.body;
   if (!displayName || typeof displayName !== 'string' || displayName.trim().length === 0) {
     res.status(400).json({ error: 'Display name is required' });
@@ -124,7 +151,7 @@ router.put('/auth/me', authMiddleware, (req: Request, res: Response) => {
 });
 
 /* Change the authenticated player's password (registered users only) */
-router.put('/auth/me/password', authMiddleware, (req: Request, res: Response) => {
+router.put('/auth/me/password', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) {
     res.status(400).json({ error: 'Current password and new password are required' });
@@ -143,7 +170,7 @@ router.put('/auth/me/password', authMiddleware, (req: Request, res: Response) =>
 });
 
 /* Delete the authenticated player's account (registered users only) */
-router.delete('/auth/me', authMiddleware, (req: Request, res: Response) => {
+router.delete('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const result = game.deleteAccount(req.player.id);
   if (!result.success) {
     res.status(400).json({ error: result.error });
@@ -154,7 +181,7 @@ router.delete('/auth/me', authMiddleware, (req: Request, res: Response) => {
 
 /* Create a new game (player becomes white).
  * Optional body field: visibility ('public' | 'private', defaults to 'public'). */
-router.post('/games', authMiddleware, (req: Request, res: Response) => {
+router.post('/games', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const visibility: 'public' | 'private' = req.body.visibility === 'private' ? 'private' : 'public';
   const g = game.createGame(req.player.id, visibility);
   res.status(201).json(g);
@@ -181,7 +208,7 @@ router.get('/games/:gameId', (req: Request, res: Response) => {
 });
 
 /* Abort a waiting game (creator only) */
-router.post('/games/:gameId/abort', authMiddleware, (req: Request, res: Response) => {
+router.post('/games/:gameId/abort', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const result = game.abortGame(req.params.gameId, req.player.id);
   if (!result.success) {
     res.status(400).json({ error: result.error });
@@ -191,7 +218,7 @@ router.post('/games/:gameId/abort', authMiddleware, (req: Request, res: Response
 });
 
 /* Join a game as the black player */
-router.post('/games/:gameId/join', authMiddleware, (req: Request, res: Response) => {
+router.post('/games/:gameId/join', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const result = game.joinGame(req.params.gameId, req.player.id);
   if (!result.success) {
     res.status(400).json({ error: result.error });
@@ -201,7 +228,7 @@ router.post('/games/:gameId/join', authMiddleware, (req: Request, res: Response)
 });
 
 /* Make a move in a game */
-router.post('/games/:gameId/move', authMiddleware, rateLimitMiddleware, (req: Request, res: Response) => {
+router.post('/games/:gameId/move', authMiddleware, banCheckMiddleware, rateLimitMiddleware, (req: Request, res: Response) => {
   const { from, to, promotion } = req.body;
   if (!from || !to) {
     res.status(400).json({ error: 'from and to are required' });
@@ -222,7 +249,7 @@ router.post('/games/:gameId/move', authMiddleware, rateLimitMiddleware, (req: Re
 });
 
 /* Resign from a game */
-router.post('/games/:gameId/resign', authMiddleware, rateLimitMiddleware, (req: Request, res: Response) => {
+router.post('/games/:gameId/resign', authMiddleware, banCheckMiddleware, rateLimitMiddleware, (req: Request, res: Response) => {
   const result = game.resignGame(req.params.gameId, req.player.id);
   if (!result.success) {
     res.status(400).json({ error: result.error });
@@ -232,7 +259,7 @@ router.post('/games/:gameId/resign', authMiddleware, rateLimitMiddleware, (req: 
 });
 
 /* Get match history for the authenticated player */
-router.get('/players/:playerId/games', authMiddleware, (req: Request, res: Response) => {
+router.get('/players/:playerId/games', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   if (req.player.id !== req.params.playerId) {
     res.status(403).json({ error: 'Can only view your own match history' });
     return;
@@ -242,7 +269,7 @@ router.get('/players/:playerId/games', authMiddleware, (req: Request, res: Respo
 });
 
 /* Get all legal moves for the authenticated player in a game */
-router.get('/games/:gameId/moves', authMiddleware, (req: Request, res: Response) => {
+router.get('/games/:gameId/moves', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const result = game.getLegalMovesForPlayer(req.params.gameId, req.player.id);
   if (!result.success) {
     res.status(400).json({ error: result.error });

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Flag, RotateCcw } from 'lucide-react';
 import { api, GameRow } from './api';
 
 const statusColors: Record<string, string> = {
@@ -13,10 +14,26 @@ const statusColors: Record<string, string> = {
 export default function GamesTab() {
   const [games, setGames] = useState<GameRow[]>([]);
   const [error, setError] = useState('');
+  const [ending, setEnding] = useState<string | null>(null);
 
-  useEffect(() => {
+  function load() {
     api<GameRow[]>('/games').then(setGames).catch((e) => setError(e.message));
-  }, []);
+  }
+
+  useEffect(load, []);
+
+  async function handleEndGame(gameId: string) {
+    if (!confirm('End this game? It will be marked as a draw.')) return;
+    setEnding(gameId);
+    try {
+      await api('/games/' + gameId + '/end', { method: 'POST' });
+      load();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setEnding(null);
+    }
+  }
 
   if (error) return <p className="text-red-500 text-sm">{error}</p>;
 
@@ -34,7 +51,7 @@ export default function GamesTab() {
             <th className="text-left px-4 py-2.5">Turn</th>
             <th className="text-left px-4 py-2.5">Moves</th>
             <th className="text-left px-4 py-2.5">Winner</th>
-            <th className="text-left px-4 py-2.5">Vis</th>
+            <th className="text-left px-4 py-2.5">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -51,7 +68,18 @@ export default function GamesTab() {
               <td className="px-4 py-2.5 capitalize">{g.turn}</td>
               <td className="px-4 py-2.5">{g.moves}</td>
               <td className="px-4 py-2.5">{g.winner || '\u2014'}</td>
-              <td className="px-4 py-2.5">{g.visibility}</td>
+              <td className="px-4 py-2.5">
+                {(g.status === 'active' || g.status === 'waiting') && (
+                  <button
+                    onClick={() => handleEndGame(g.id)}
+                    disabled={ending === g.id}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50"
+                  >
+                    {ending === g.id ? <RotateCcw size={12} className="animate-spin" /> : <Flag size={12} />}
+                    End
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

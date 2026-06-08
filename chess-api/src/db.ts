@@ -36,6 +36,13 @@ function migrate(): void {
       user_id TEXT NOT NULL REFERENCES users(id),
       created_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS bans (
+      id TEXT PRIMARY KEY,
+      player_id TEXT,
+      ip TEXT,
+      banned_at INTEGER NOT NULL
+    );
   `);
 }
 
@@ -134,4 +141,30 @@ export function deleteUserTokens(id: string): void {
 export function deleteUserRecord(id: string): void {
   const d = getDb();
   d.prepare('DELETE FROM users WHERE id = ?').run(id);
+}
+
+/* ─── Bans ─── */
+
+export function saveBan(id: string, playerId: string | null, ip: string | null): void {
+  const d = getDb();
+  d.prepare('INSERT OR REPLACE INTO bans (id, player_id, ip, banned_at) VALUES (?, ?, ?, ?)').run(
+    id,
+    playerId,
+    ip,
+    Date.now(),
+  );
+}
+
+export function loadAllBans(): { id: string; player_id: string | null; ip: string | null }[] {
+  const d = getDb();
+  return d.prepare('SELECT id, player_id, ip FROM bans').all() as {
+    id: string;
+    player_id: string | null;
+    ip: string | null;
+  }[];
+}
+
+export function deleteBanById(id: string): void {
+  const d = getDb();
+  d.prepare('DELETE FROM bans WHERE id = ?').run(id);
 }

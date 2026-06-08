@@ -1,13 +1,56 @@
 import { useEffect, useState } from 'react';
+import { Ban, LogOut, RotateCcw, ShieldBan } from 'lucide-react';
 import { api, PlayerRow } from './api';
 
 export default function PlayersTab() {
   const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [error, setError] = useState('');
+  const [actionId, setActionId] = useState<string | null>(null);
 
-  useEffect(() => {
+  function load() {
     api<PlayerRow[]>('/players').then(setPlayers).catch((e) => setError(e.message));
-  }, []);
+  }
+
+  useEffect(load, []);
+
+  async function handleBan(id: string, name: string) {
+    if (!confirm(`Ban player "${name}"? They will be disconnected and cannot rejoin.`)) return;
+    setActionId(id);
+    try {
+      await api('/players/' + id + '/ban', { method: 'POST' });
+      load();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function handleKick(id: string, name: string) {
+    if (!confirm(`Kick player "${name}"? They will be disconnected but can reconnect.`)) return;
+    setActionId(id);
+    try {
+      await api('/players/' + id + '/kick', { method: 'POST' });
+      load();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function handleBanIp(ip: string) {
+    if (!confirm(`Ban IP ${ip}? All players on this IP will be disconnected.`)) return;
+    setActionId('ip:' + ip);
+    try {
+      await api('/bans/ip', { method: 'POST', body: JSON.stringify({ ip }) });
+      load();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setActionId(null);
+    }
+  }
 
   if (error) return <p className="text-red-500 text-sm">{error}</p>;
   if (players.length === 0) return <p className="text-[#666]">No players.</p>;
@@ -22,7 +65,8 @@ export default function PlayersTab() {
             <th className="text-left px-4 py-2.5">Display Name</th>
             <th className="text-left px-4 py-2.5">Type</th>
             <th className="text-left px-4 py-2.5">Status</th>
-            <th className="text-left px-4 py-2.5">Sessions</th>
+            <th className="text-left px-4 py-2.5">IP</th>
+            <th className="text-left px-4 py-2.5">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -42,7 +86,37 @@ export default function PlayersTab() {
                   {p.online ? 'Online' : 'Offline'}
                 </span>
               </td>
-              <td className="px-4 py-2.5">{p.tokens}</td>
+              <td className="px-4 py-2.5 font-mono text-xs text-[#888]">
+                {p.ip || '\u2014'}
+              </td>
+              <td className="px-4 py-2.5 flex gap-1">
+                <button
+                  onClick={() => handleKick(p.id, p.displayName)}
+                  disabled={actionId === p.id || !p.online}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-40"
+                >
+                  {actionId === p.id ? <RotateCcw size={12} className="animate-spin" /> : <LogOut size={12} />}
+                  Kick
+                </button>
+                <button
+                  onClick={() => handleBan(p.id, p.displayName)}
+                  disabled={actionId === p.id}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-40"
+                >
+                  {actionId === p.id ? <RotateCcw size={12} className="animate-spin" /> : <Ban size={12} />}
+                  Ban
+                </button>
+                {p.ip && (
+                  <button
+                    onClick={() => handleBanIp(p.ip!)}
+                    disabled={actionId === 'ip:' + p.ip}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-40"
+                  >
+                    {actionId === 'ip:' + p.ip ? <RotateCcw size={12} className="animate-spin" /> : <ShieldBan size={12} />}
+                    Ban IP
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

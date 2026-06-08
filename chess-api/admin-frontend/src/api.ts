@@ -50,6 +50,7 @@ export interface PlayerRow {
   isRegistered: boolean;
   online: boolean;
   tokens: number;
+  ip: string | null;
 }
 
 export interface AccountRow {
@@ -60,4 +61,9 @@ export interface AccountRow {
   wins: number;
   losses: number;
   draws: number;
+}
+
+export interface BanList {
+  players: string[];
+  ips: string[];
 }

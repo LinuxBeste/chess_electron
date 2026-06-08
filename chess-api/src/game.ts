@@ -57,6 +57,13 @@ const wsConnections = new Map<string, Set<WebSocket>>();
 /* Spectator WebSocket connections per game. Non-players can watch active games. */
 const spectatorConnections = new Map<string, Set<WebSocket>>();
 
+/* Track playerId → IP address for ban enforcement. Updated on auth/WS connect. */
+const playerIps = new Map<string, string>();
+
+/* Banned players (IDs) and IPs — enforced by authMiddleware. */
+const bannedPlayers = new Set<string>();
+const bannedIps = new Set<string>();
+
 /* Tracks active draw offers: gameId → playerId of the player who offered.
  * Offers are cleared when the opponent declines, the offering player cancels,
  * or any move is made. */
@@ -893,6 +900,169 @@ export function deleteAccount(playerId: string): { success: true } | { success: 
   return { success: true };
 }
 
+/**
+ * Track which IP a player is using (for ban enforcement).
+ */
+export function setPlayerIp(playerId: string, ip: string): void {
+  playerIps.set(playerId, ip);
+}
+
+/**
+ * Get the tracked IP for a player.
+ */
+export function getPlayerIp(playerId: string): string | undefined {
+  return playerIps.get(playerId);
+}
+
+/* ─── Ban system ─── */
+
+export function isBanned(playerId: string, ip?: string): boolean {
+  if (bannedPlayers.has(playerId)) return true;
+  if (ip && bannedIps.has(ip)) return true;
+  const trackedIp = playerIps.get(playerId);
+  if (trackedIp && bannedIps.has(trackedIp)) return true;
+  return false;
+}
+
+export function banPlayer(playerId: string): { success: true } | { success: false; error: string } {
+  const player = players.get(playerId);
+  if (!player) return { success: false, error: 'Player not found' };
+  if (bannedPlayers.has(playerId)) return { success: false, error: 'Player already banned' };
+
+  bannedPlayers.add(playerId);
+  db.saveBan(playerId, playerId, null);
+
+  /* Disconnect all WebSocket connections */
+  const conns = wsConnections.get(playerId);
+  if (conns) {
+    for (const ws of conns) {
+      ws.close(4001, 'Banned');
+    }
+    wsConnections.delete(playerId);
+  }
+
+  /* Remove from any active games */
+  for (const [gameId, g] of games) {
+    if (g.players.white === playerId || g.players.black === playerId) {
+      if (g.status === 'waiting') {
+        games.delete(gameId);
+      } else if (g.status === 'active') {
+        g.status = 'resigned';
+        g.winner = g.players.white === playerId ? 'black' : 'white';
+        const winnerId = g.players.white === playerId ? g.players.black : g.players.white;
+        if (winnerId) {
+          sendToPlayer(winnerId, { type: 'game_over', reason: 'opponent_banned', gameId });
+        }
+      }
+    }
+  }
+
+  return { success: true };
+}
+
+export function banIp(ip: string): { success: true } | { success: false; error: string } {
+  if (!ip) return { success: false, error: 'IP is required' };
+  if (bannedIps.has(ip)) return { success: false, error: 'IP already banned' };
+
+  bannedIps.add(ip);
+  db.saveBan(`ip:${ip}`, null, ip);
+
+  /* Disconnect all players using this IP */
+  for (const [playerId, trackedIp] of playerIps) {
+    if (trackedIp === ip) {
+      const conns = wsConnections.get(playerId);
+      if (conns) {
+        for (const ws of conns) {
+          ws.close(4001, 'Banned');
+        }
+        wsConnections.delete(playerId);
+      }
+    }
+  }
+
+  return { success: true };
+}
+
+export function unbanPlayer(playerId: string): void {
+  bannedPlayers.delete(playerId);
+  db.deleteBanById(playerId);
+}
+
+export function unbanIp(ip: string): void {
+  bannedIps.delete(ip);
+  db.deleteBanById(`ip:${ip}`);
+}
+
+export function getBannedPlayers(): string[] {
+  return Array.from(bannedPlayers);
+}
+
+export function getBannedIps(): string[] {
+  return Array.from(bannedIps);
+}
+
+export function loadPersistedBans(): void {
+  const allBans = db.loadAllBans();
+  for (const b of allBans) {
+    if (b.player_id) {
+      bannedPlayers.add(b.player_id);
+    }
+    if (b.ip) {
+      bannedIps.add(b.ip);
+    }
+  }
+}
+
+/* ─── Admin kick / end-game ─── */
+
+/**
+ * Kick a player: disconnect their WebSocket and remove from any active games.
+ * Does NOT ban them — they can reconnect.
+ */
+export function kickPlayer(playerId: string): { success: true } | { success: false; error: string } {
+  const player = players.get(playerId);
+  if (!player) return { success: false, error: 'Player not found' };
+
+  /* Disconnect all WebSocket connections */
+  const conns = wsConnections.get(playerId);
+  if (conns) {
+    for (const ws of conns) {
+      ws.close(4001, 'Kicked by admin');
+    }
+    wsConnections.delete(playerId);
+  }
+
+  /* Remove from waiting games */
+  for (const [gameId, g] of games) {
+    if (g.status === 'waiting' && g.players.white === playerId) {
+      games.delete(gameId);
+    }
+  }
+
+  return { success: true };
+}
+
+/**
+ * Admin force-end a game. Sets status to 'draw' and notifies both players.
+ */
+export function endGame(gameId: string): { success: true } | { success: false; error: string } {
+  const g = games.get(gameId);
+  if (!g) return { success: false, error: 'Game not found' };
+  if (g.status === 'draw' || g.status === 'stalemate' || g.status === 'resigned' || g.status === 'checkmate') {
+    return { success: false, error: 'Game is already over' };
+  }
+
+  g.status = 'draw';
+  g.winner = null;
+
+  const message = { type: 'game_over', reason: 'admin_ended', gameId };
+  if (g.players.white) sendToPlayer(g.players.white, message);
+  if (g.players.black) sendToPlayer(g.players.black, message);
+  sendToSpectators(gameId, message);
+
+  return { success: true };
+}
+
 export function getAllGames(): GameState[] {
   return Array.from(games.values()).map(enrichNames);
 }
@@ -992,5 +1162,6 @@ export function loadPersistedUsers(): void {
 const isTestEnv = typeof process.env.JEST_WORKER_ID !== 'undefined' || process.env.NODE_ENV === 'test';
 if (!isTestEnv) {
   loadPersistedUsers();
+  loadPersistedBans();
   startWaitingGameSweep();
 }

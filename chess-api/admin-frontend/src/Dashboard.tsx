@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { LogOut, LayoutDashboard, Swords, Users, UserCog } from 'lucide-react';
+import { LogOut, LayoutDashboard, Swords, Users, UserCog, ShieldBan } from 'lucide-react';
 import { setToken } from './api';
 import OverviewTab from './OverviewTab';
 import GamesTab from './GamesTab';
 import PlayersTab from './PlayersTab';
 import AccountsTab from './AccountsTab';
+import BansTab from './BansTab';
 
 const tabs = [
   { key: 'overview', label: 'Overview', icon: LayoutDashboard },
   { key: 'games', label: 'Active Games', icon: Swords },
   { key: 'players', label: 'Active Players', icon: Users },
   { key: 'accounts', label: 'Accounts', icon: UserCog },
+  { key: 'bans', label: 'Bans', icon: ShieldBan },
 ];
 
 export default function Dashboard({ onLogout }: { onLogout: () => void }) {
@@ -27,6 +29,7 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
       case 'games': return <GamesTab />;
       case 'players': return <PlayersTab />;
       case 'accounts': return <AccountsTab />;
+      case 'bans': return <BansTab />;
       default: return null;
     }
   }

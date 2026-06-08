@@ -74,6 +74,7 @@ router.get('/admin/api/players', adminAuthMiddleware, (_req: Request, res: Respo
     isRegistered: p.isRegistered,
     online: onlineIds.has(p.id),
     tokens: p.tokens.length,
+    ip: game.getPlayerIp(p.id) || null,
   }));
   res.json(list);
 });
@@ -137,6 +138,65 @@ router.delete('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res
   }
   db.deleteUserTokens(req.params.id);
   db.deleteUserRecord(req.params.id);
+  res.json({ success: true });
+});
+
+/* ─── Admin bans, kicks, end-game ─── */
+
+router.post('/admin/api/players/:id/ban', adminAuthMiddleware, (req: Request, res: Response) => {
+  const result = game.banPlayer(req.params.id);
+  if (!result.success) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({ success: true });
+});
+
+router.post('/admin/api/players/:id/kick', adminAuthMiddleware, (req: Request, res: Response) => {
+  const result = game.kickPlayer(req.params.id);
+  if (!result.success) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({ success: true });
+});
+
+router.post('/admin/api/games/:id/end', adminAuthMiddleware, (req: Request, res: Response) => {
+  const result = game.endGame(req.params.id);
+  if (!result.success) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({ success: true });
+});
+
+router.post('/admin/api/bans/ip', adminAuthMiddleware, (req: Request, res: Response) => {
+  const { ip } = req.body;
+  if (!ip || typeof ip !== 'string') {
+    res.status(400).json({ error: 'IP is required' });
+    return;
+  }
+  const result = game.banIp(ip.trim());
+  if (!result.success) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({ success: true });
+});
+
+router.get('/admin/api/bans', adminAuthMiddleware, (_req: Request, res: Response) => {
+  const players = game.getBannedPlayers();
+  const ips = game.getBannedIps();
+  res.json({ players, ips });
+});
+
+router.delete('/admin/api/bans/player/:id', adminAuthMiddleware, (req: Request, res: Response) => {
+  game.unbanPlayer(req.params.id);
+  res.json({ success: true });
+});
+
+router.delete('/admin/api/bans/ip/:ip', adminAuthMiddleware, (req: Request, res: Response) => {
+  game.unbanIp(req.params.ip);
   res.json({ success: true });
 });
 
