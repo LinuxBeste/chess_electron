@@ -47,6 +47,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Rebuild native modules for CI Node version
+        run: pnpm rebuild better-sqlite3
+
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
