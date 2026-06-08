@@ -99,7 +99,8 @@ router.post('/auth/register', (req: Request, res: Response) => {
       res.status(409).json({ error: 'Username is already taken' });
       return;
     }
-    res.status(500).json({ error: 'Registration failed' });
+    console.error('Register error:', err);
+    res.status(500).json({ error: 'Registration failed: ' + String(err?.message || err) });
   }
 });
 

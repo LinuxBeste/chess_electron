@@ -44,11 +44,16 @@ router.post('/admin/api/login', (req: Request, res: Response) => {
 });
 
 router.get('/admin/api/stats', adminAuthMiddleware, (_req: Request, res: Response) => {
-  const { gamesActive, playersOnline } = game.getStats();
-  const allPlayers = game.getAllPlayers();
-  const registeredUsers = allPlayers.filter((p) => p.isRegistered).length;
-  const totalUsers = db.loadAllUsers().length;
-  res.json({ gamesActive, playersOnline, registeredUsers, totalUsers });
+  try {
+    const { gamesActive, playersOnline } = game.getStats();
+    const allPlayers = game.getAllPlayers();
+    const registeredUsers = allPlayers.filter((p) => p.isRegistered).length;
+    const totalUsers = db.loadAllUsers().length;
+    res.json({ gamesActive, playersOnline, registeredUsers, totalUsers });
+  } catch (err) {
+    console.error('Stats error:', err);
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 /* ─── Live metrics (delta-tracked CPU/net/disk) ─── */
