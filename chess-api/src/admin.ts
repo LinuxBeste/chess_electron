@@ -63,7 +63,11 @@ let prevNet: { rx: number; tx: number } | null = null;
 let prevDisk: { read: number; write: number } | null = null;
 
 function readProc(path: string): string | null {
-  try { return fs.readFileSync(path, 'utf-8'); } catch { return null; }
+  try {
+    return fs.readFileSync(path, 'utf-8');
+  } catch {
+    return null;
+  }
 }
 
 function sampleCpu(): { idle: number; total: number } | null {
