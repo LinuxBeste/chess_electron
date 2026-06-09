@@ -303,14 +303,23 @@ router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: R
       res.status(400).json({ error: 'Username cannot be empty' });
       return;
     }
-    const existing = db.getUserByUsername(username.trim());
+    const trimmed = username.trim();
+    if (trimmed.length < 2) {
+      res.status(400).json({ error: 'Username must be at least 2 characters' });
+      return;
+    }
+    if (trimmed.length > 30) {
+      res.status(400).json({ error: 'Username must be at most 30 characters' });
+      return;
+    }
+    const existing = db.getUserByUsername(trimmed);
     if (existing && existing.id !== req.params.id) {
       res.status(409).json({ error: 'Username is already taken' });
       return;
     }
-    db.updateUsername(req.params.id, username.trim());
+    db.updateUsername(req.params.id, trimmed);
     const player = game.getAllPlayers().find((p) => p.id === req.params.id);
-    if (player) player.username = username.trim();
+    if (player) player.username = trimmed;
   }
 
   if (displayName !== undefined) {

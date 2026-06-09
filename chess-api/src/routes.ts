@@ -105,12 +105,21 @@ router.post('/auth/register', (req: Request, res: Response) => {
     res.status(400).json({ error: 'Username is required' });
     return;
   }
+  const trimmed = username.trim();
+  if (trimmed.length < 2) {
+    res.status(400).json({ error: 'Username must be at least 2 characters' });
+    return;
+  }
+  if (trimmed.length > 30) {
+    res.status(400).json({ error: 'Username must be at most 30 characters' });
+    return;
+  }
   if (password !== undefined && (typeof password !== 'string' || password.length < 4)) {
     res.status(400).json({ error: 'Password must be at least 4 characters' });
     return;
   }
   try {
-    const result = game.registerPlayer(username.trim(), password || undefined);
+    const result = game.registerPlayer(trimmed, password || undefined);
     game.setPlayerIp(result.playerId, ip);
     res.status(201).json(result);
   } catch (err: any) {
@@ -382,37 +391,48 @@ router.get('/games/:gameId/moves', authMiddleware, banCheckMiddleware, (req: Req
 /* ─── Friends ─── */
 
 /* Send a friend request by username */
-router.post('/friends/request', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  if (!req.player.isRegistered) {
-    res.status(403).json({ error: 'Only registered users can send friend requests' });
-    return;
-  }
-  const { username } = req.body;
-  if (!username || typeof username !== 'string') {
-    res.status(400).json({ error: 'Username is required' });
-    return;
-  }
-  const targetUser = db.getUserByUsername(username.trim());
-  if (!targetUser) {
-    res.status(404).json({ error: 'User not found' });
-    return;
-  }
-  if (targetUser.id === req.player.id) {
-    res.status(400).json({ error: 'Cannot send friend request to yourself' });
-    return;
-  }
-  if (db.areFriends(req.player.id, targetUser.id)) {
-    res.status(409).json({ error: 'Already friends with this user' });
-    return;
-  }
-  if (db.hasPendingRequest(req.player.id, targetUser.id)) {
-    res.status(409).json({ error: 'Friend request already pending' });
-    return;
-  }
-  const requestId = db.createFriendRequest(req.player.id, targetUser.id);
-  game.broadcastFriendRequest(req.player.id, targetUser.id, requestId);
-  res.status(201).json({ id: requestId });
-});
+router.post(
+  '/friends/request',
+  authMiddleware,
+  banCheckMiddleware,
+  rateLimitMiddleware,
+  (req: Request, res: Response) => {
+    if (!req.player.isRegistered) {
+      res.status(403).json({ error: 'Only registered users can send friend requests' });
+      return;
+    }
+    const { username } = req.body;
+    if (!username || typeof username !== 'string') {
+      res.status(400).json({ error: 'Username is required' });
+      return;
+    }
+    const trimmed = username.trim();
+    if (trimmed.length < 2 || trimmed.length > 30) {
+      res.status(400).json({ error: 'Username must be between 2 and 30 characters' });
+      return;
+    }
+    const targetUser = db.getUserByUsername(trimmed);
+    if (!targetUser) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    if (targetUser.id === req.player.id) {
+      res.status(400).json({ error: 'Cannot send friend request to yourself' });
+      return;
+    }
+    if (db.areFriends(req.player.id, targetUser.id)) {
+      res.status(409).json({ error: 'Already friends with this user' });
+      return;
+    }
+    if (db.hasPendingRequest(req.player.id, targetUser.id)) {
+      res.status(409).json({ error: 'Friend request already pending' });
+      return;
+    }
+    const requestId = db.createFriendRequest(req.player.id, targetUser.id);
+    game.broadcastFriendRequest(req.player.id, targetUser.id, requestId);
+    res.status(201).json({ id: requestId });
+  },
+);
 
 /* List pending friend requests (incoming and outgoing) */
 router.get('/friends/requests', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {

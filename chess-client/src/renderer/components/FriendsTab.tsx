@@ -55,7 +55,14 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
 
   async function handleAdd() {
     const name = addUsername.trim();
-    if (!name) return;
+    if (name.length < 2) {
+      setAddError(t('friends.usernameTooShort'));
+      return;
+    }
+    if (name.length > 30) {
+      setAddError(t('friends.usernameTooLong'));
+      return;
+    }
     setAddLoading(true);
     setAddError('');
     try {
@@ -305,6 +312,7 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleAdd();
             }}
+            maxLength={30}
             style={{ flex: 1 }}
           />
           <button className="btn btn-sm btn-primary" onClick={handleAdd} disabled={addLoading}>

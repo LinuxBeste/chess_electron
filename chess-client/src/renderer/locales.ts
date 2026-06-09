@@ -64,6 +64,8 @@ export type TranslationKeys = {
     failedDecline: string;
     failedRemove: string;
     failedChallenge: string;
+    usernameTooShort: string;
+    usernameTooLong: string;
   };
   login: {
     tagline: string;
@@ -520,6 +522,8 @@ export const en: TranslationKeys = {
     failedDecline: 'Failed to decline request',
     failedRemove: 'Failed to remove friend',
     failedChallenge: 'Failed to send challenge',
+    usernameTooShort: 'Username must be at least 2 characters',
+    usernameTooLong: 'Username must be at most 30 characters',
   },
   login: {
     tagline: 'Every move matters.',
@@ -977,6 +981,8 @@ export const de: TranslationKeys = {
     failedDecline: 'Anfrage konnte nicht abgelehnt werden',
     failedRemove: 'Freund konnte nicht entfernt werden',
     failedChallenge: 'Herausforderung konnte nicht gesendet werden',
+    usernameTooShort: 'Benutzername muss mindestens 2 Zeichen lang sein',
+    usernameTooLong: 'Benutzername darf höchstens 30 Zeichen lang sein',
   },
   login: {
     tagline: 'Jeder Zug zählt.',
