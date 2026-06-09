@@ -140,7 +140,7 @@ jobs:
             runner: macos-latest
             builder-args: --mac
           - os: windows
-            runner: windows-latest
+            runner: windows-2022
             builder-args: --win
 
     defaults:
