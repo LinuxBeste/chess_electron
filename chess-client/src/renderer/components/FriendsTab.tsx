@@ -23,7 +23,6 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
   const friends = useStoreValue('friends');
   const incomingRequests = useStoreValue('incomingRequests');
   const outgoingRequests = useStoreValue('outgoingRequests');
-  const playerId = useStoreValue('playerId');
   const [addUsername, setAddUsername] = useState('');
   const [addError, setAddError] = useState('');
   const [addLoading, setAddLoading] = useState(false);

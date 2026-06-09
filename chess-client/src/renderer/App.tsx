@@ -7,7 +7,7 @@
  * in index.tsx for Electron compatibility (file:// protocol).
  */
 
-import { useEffect, lazy, Suspense, useRef, useState, useCallback } from 'react';
+import { useEffect, lazy, Suspense, useRef, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ToastContainer from './components/ToastContainer';
@@ -176,7 +176,7 @@ export default function App() {
       store.toast(t('friends.challengeAccepted'), 'info');
       navigate(`/game/${msg.gameId}`);
     });
-    const unsubChallengeDecline = socketManager.onChallengeDecline((msg) => {
+    const unsubChallengeDecline = socketManager.onChallengeDecline((_msg) => {
       store.toast(t('friends.challengeDeclined'), 'info');
     });
 
