@@ -235,7 +235,9 @@ router.delete('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Reque
     const filePath = path.join(__dirname, '..', 'data', 'avatars', path.basename(user.avatar_url));
     try {
       fs.unlinkSync(filePath);
-    } catch { /* file might not exist */ }
+    } catch {
+      /* file might not exist */
+    }
   }
   db.updateUserAvatar(req.player.id, null);
   res.json({ success: true });

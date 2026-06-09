@@ -45,7 +45,7 @@ export default function AccountEditModal({ account, onClose, onSaved }: Props) {
   }
 
   async function handleClearAvatar() {
-    if (!confirm('Clear this account\'s profile picture?')) return;
+    if (!confirm("Clear this account's profile picture?")) return;
     try {
       await api('/accounts/' + account.id + '/avatar', { method: 'DELETE' });
       onSaved();
@@ -77,7 +77,9 @@ export default function AccountEditModal({ account, onClose, onSaved }: Props) {
         justifyContent: 'center',
         zIndex: 100,
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         style={{
@@ -98,9 +100,7 @@ export default function AccountEditModal({ account, onClose, onSaved }: Props) {
           </button>
         </div>
 
-        {error && (
-          <p style={{ color: '#f44336', fontSize: 12, marginBottom: 12 }}>{error}</p>
-        )}
+        {error && <p style={{ color: '#f44336', fontSize: 12, marginBottom: 12 }}>{error}</p>}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Avatar preview */}
@@ -141,13 +141,7 @@ export default function AccountEditModal({ account, onClose, onSaved }: Props) {
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 4 }}>Wins</label>
-              <input
-                type="number"
-                min={0}
-                style={inputStyle}
-                value={wins}
-                onChange={(e) => setWins(e.target.value)}
-              />
+              <input type="number" min={0} style={inputStyle} value={wins} onChange={(e) => setWins(e.target.value)} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 4 }}>Losses</label>

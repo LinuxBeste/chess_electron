@@ -345,7 +345,11 @@ router.delete('/admin/api/accounts/:id/avatar', adminAuthMiddleware, (req: Reque
   }
   if (user.avatar_url) {
     const filePath = path.join(__dirname, '..', 'data', 'avatars', path.basename(user.avatar_url));
-    try { fs.unlinkSync(filePath); } catch { /* ok */ }
+    try {
+      fs.unlinkSync(filePath);
+    } catch {
+      /* ok */
+    }
   }
   db.updateUserAvatar(req.params.id, null);
   res.json({ success: true });

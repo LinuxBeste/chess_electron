@@ -1105,16 +1105,10 @@ describe('POST /auth/me/avatar — profile picture', () => {
 
 describe('GET /players/:playerId/profile', () => {
   test('returns profile for registered user', async () => {
-    const res = await request
-      .post('/auth/register')
-      .send({ username: 'prof_reg', password: 'test1234' })
-      .expect(201);
+    const res = await request.post('/auth/register').send({ username: 'prof_reg', password: 'test1234' }).expect(201);
     const auth = `Bearer ${res.body.token}`;
 
-    const profile = await request
-      .get(`/players/${res.body.playerId}/profile`)
-      .set('Authorization', auth)
-      .expect(200);
+    const profile = await request.get(`/players/${res.body.playerId}/profile`).set('Authorization', auth).expect(200);
 
     expect(profile.body.id).toBe(res.body.playerId);
     expect(profile.body.username).toBe('prof_reg');
@@ -1129,10 +1123,7 @@ describe('GET /players/:playerId/profile', () => {
     const res = await request.post('/auth/register').send({ username: 'prof_anon' }).expect(201);
     const auth = `Bearer ${res.body.token}`;
 
-    const profile = await request
-      .get(`/players/${res.body.playerId}/profile`)
-      .set('Authorization', auth)
-      .expect(200);
+    const profile = await request.get(`/players/${res.body.playerId}/profile`).set('Authorization', auth).expect(200);
 
     expect(profile.body.id).toBe(res.body.playerId);
     expect(profile.body.isRegistered).toBe(false);
@@ -1141,10 +1132,7 @@ describe('GET /players/:playerId/profile', () => {
   });
 
   test('returns avatarUrl after upload', async () => {
-    const res = await request
-      .post('/auth/register')
-      .send({ username: 'prof_av', password: 'test1234' })
-      .expect(201);
+    const res = await request.post('/auth/register').send({ username: 'prof_av', password: 'test1234' }).expect(201);
     const auth = `Bearer ${res.body.token}`;
 
     const upload = await request
@@ -1153,10 +1141,7 @@ describe('GET /players/:playerId/profile', () => {
       .attach('avatar', Buffer.from('x'), { filename: 'x.png', contentType: 'image/png' })
       .expect(200);
 
-    const profile = await request
-      .get(`/players/${res.body.playerId}/profile`)
-      .set('Authorization', auth)
-      .expect(200);
+    const profile = await request.get(`/players/${res.body.playerId}/profile`).set('Authorization', auth).expect(200);
 
     expect(profile.body.avatarUrl).toBe(upload.body.avatarUrl);
   });

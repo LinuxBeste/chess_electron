@@ -162,17 +162,38 @@ export default function LobbyPage() {
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           {game.whiteAvatarUrl ? (
-                            <img src={avatarSrc(game.whiteAvatarUrl)} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                            <img
+                              src={avatarSrc(game.whiteAvatarUrl)}
+                              alt=""
+                              style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                            />
                           ) : (
-                            <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#555', flexShrink: 0 }}>
+                            <div
+                              style={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: '50%',
+                                background: '#2a2a2a',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 10,
+                                color: '#555',
+                                flexShrink: 0,
+                              }}
+                            >
                               {(creatorName || '?')[0].toUpperCase()}
                             </div>
                           )}
                           <span
                             onClick={() => creatorId && setProfilePlayerId(creatorId)}
                             style={{
-                              fontSize: 15, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px',
-                              cursor: 'pointer', borderBottom: '1px dashed transparent',
+                              fontSize: 15,
+                              fontWeight: 500,
+                              color: 'var(--text)',
+                              letterSpacing: '0.2px',
+                              cursor: 'pointer',
+                              borderBottom: '1px dashed transparent',
                             }}
                             onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = 'var(--muted)')}
                             onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = 'transparent')}
@@ -243,17 +264,37 @@ export default function LobbyPage() {
                     <div style={{ minWidth: 0 }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         {game.whiteAvatarUrl ? (
-                          <img src={avatarSrc(game.whiteAvatarUrl)} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
+                          <img
+                            src={avatarSrc(game.whiteAvatarUrl)}
+                            alt=""
+                            style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }}
+                          />
                         ) : (
-                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#2a2a2a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#555' }}>
+                          <div
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: '50%',
+                              background: '#2a2a2a',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 9,
+                              color: '#555',
+                            }}
+                          >
                             {(wName || '?')[0].toUpperCase()}
                           </div>
                         )}
                         <span
                           onClick={() => game.players.white && setProfilePlayerId(game.players.white)}
                           style={{
-                            fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px',
-                            cursor: 'pointer', borderBottom: '1px dashed transparent',
+                            fontSize: 14,
+                            fontWeight: 500,
+                            color: 'var(--text)',
+                            letterSpacing: '0.2px',
+                            cursor: 'pointer',
+                            borderBottom: '1px dashed transparent',
                           }}
                           onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = 'var(--muted)')}
                           onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = 'transparent')}
@@ -264,17 +305,37 @@ export default function LobbyPage() {
                       <span style={{ fontSize: 12, color: 'var(--muted)', margin: '0 4px' }}>{t('common.vs')}</span>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         {game.blackAvatarUrl ? (
-                          <img src={avatarSrc(game.blackAvatarUrl)} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
+                          <img
+                            src={avatarSrc(game.blackAvatarUrl)}
+                            alt=""
+                            style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }}
+                          />
                         ) : (
-                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#2a2a2a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#555' }}>
+                          <div
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: '50%',
+                              background: '#2a2a2a',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 9,
+                              color: '#555',
+                            }}
+                          >
                             {(bName || '?')[0].toUpperCase()}
                           </div>
                         )}
                         <span
                           onClick={() => game.players.black && setProfilePlayerId(game.players.black)}
                           style={{
-                            fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px',
-                            cursor: 'pointer', borderBottom: '1px dashed transparent',
+                            fontSize: 14,
+                            fontWeight: 500,
+                            color: 'var(--text)',
+                            letterSpacing: '0.2px',
+                            cursor: 'pointer',
+                            borderBottom: '1px dashed transparent',
                           }}
                           onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = 'var(--muted)')}
                           onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = 'transparent')}
@@ -408,9 +469,7 @@ export default function LobbyPage() {
         )}
       </div>
 
-      {profilePlayerId && (
-        <PlayerProfileDialog playerId={profilePlayerId} onClose={() => setProfilePlayerId(null)} />
-      )}
+      {profilePlayerId && <PlayerProfileDialog playerId={profilePlayerId} onClose={() => setProfilePlayerId(null)} />}
     </div>
   );
 }

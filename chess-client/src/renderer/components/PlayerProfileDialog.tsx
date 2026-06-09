@@ -24,7 +24,9 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
   return (
     <div
       className="modal-overlay"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         className="modal-card"
@@ -117,7 +119,15 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
 
             {/* Stats */}
             {profile.stats ? (
-              <div style={{ display: 'flex', gap: 24, justifyContent: 'center', padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 24,
+                  justifyContent: 'center',
+                  padding: '12px 0',
+                  borderTop: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
                 <div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: '#4caf50' }}>{profile.stats.wins}</div>
                   <div style={{ fontSize: 11, color: '#888' }}>{t('settings.account.wins')}</div>
@@ -132,7 +142,15 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
                 </div>
               </div>
             ) : (
-              <p style={{ fontSize: 12, color: '#888', margin: '12px 0 0', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: '#888',
+                  margin: '12px 0 0',
+                  borderTop: '1px solid rgba(255,255,255,0.06)',
+                  paddingTop: 12,
+                }}
+              >
                 {t('stats.unregistered')}
               </p>
             )}

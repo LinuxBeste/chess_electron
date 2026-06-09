@@ -48,9 +48,25 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
             {isLoggedIn && (
               <span className="navbar-player" style={{ gap: 8 }}>
                 {avatarUrl ? (
-                  <img src={avatarSrc(avatarUrl)} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+                  <img
+                    src={avatarSrc(avatarUrl)}
+                    alt=""
+                    style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }}
+                  />
                 ) : (
-                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#555' }}>
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      background: '#2a2a2a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 11,
+                      color: '#555',
+                    }}
+                  >
                     {(username || '?')[0].toUpperCase()}
                   </div>
                 )}
@@ -60,7 +76,19 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
             )}
             {isOffline && (
               <span className="navbar-player" style={{ gap: 8 }}>
-                <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#555' }}>
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    background: '#2a2a2a',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 11,
+                    color: '#555',
+                  }}
+                >
                   {(username || '?')[0].toUpperCase()}
                 </div>
                 <span className="navbar-dot offline" />

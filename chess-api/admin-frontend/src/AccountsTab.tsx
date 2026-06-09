@@ -47,13 +47,7 @@ export default function AccountsTab() {
 
   function AvatarCell({ url, username }: { url: string | null; username: string }) {
     if (url) {
-      return (
-        <img
-          src={url}
-          alt=""
-          style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }}
-        />
-      );
+      return <img src={url} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />;
     }
     return (
       <div
@@ -102,7 +96,9 @@ export default function AccountsTab() {
               {filtered.map((a) => (
                 <tr key={a.id} className="border-t border-[#2a2a2a] hover:bg-[#222]">
                   <td className="px-4 py-2.5 font-mono">{a.id.slice(0, 8)}&hellip;</td>
-                  <td className="px-4 py-2.5"><AvatarCell url={a.avatarUrl} username={a.username} /></td>
+                  <td className="px-4 py-2.5">
+                    <AvatarCell url={a.avatarUrl} username={a.username} />
+                  </td>
                   <td className="px-4 py-2.5">{a.username}</td>
                   <td className="px-4 py-2.5">{a.displayName}</td>
                   <td className="px-4 py-2.5">
@@ -136,13 +132,7 @@ export default function AccountsTab() {
         </div>
       )}
 
-      {editAccount && (
-        <AccountEditModal
-          account={editAccount}
-          onClose={() => setEditAccount(null)}
-          onSaved={load}
-        />
-      )}
+      {editAccount && <AccountEditModal account={editAccount} onClose={() => setEditAccount(null)} onSaved={load} />}
     </div>
   );
 }

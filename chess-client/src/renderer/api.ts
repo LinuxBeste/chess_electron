@@ -268,7 +268,10 @@ export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
 
   if (!res.ok) {
     let msg = 'Upload failed';
-    try { const b = await res.json(); if (b.error) msg = b.error; } catch {}
+    try {
+      const b = await res.json();
+      if (b.error) msg = b.error;
+    } catch {}
     throw new ApiError(res.status, msg);
   }
 

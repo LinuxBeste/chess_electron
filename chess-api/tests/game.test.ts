@@ -699,7 +699,6 @@ describe('game state enrichment', () => {
 /* ------------------------------------------------------------------ */
 
 describe('chat messages', () => {
-
   test('handleChatMessage does not throw for non-existent game', () => {
     const pid = registerPlayer('chat_ghost');
     const ws = { readyState: 1, send: () => {} } as any;

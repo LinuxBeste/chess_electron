@@ -531,10 +531,26 @@ export default function GamePage() {
             ) : (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {game?.blackAvatarUrl ? (
-                  <img src={api.avatarSrc(game.blackAvatarUrl)} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+                  <img
+                    src={api.avatarSrc(game.blackAvatarUrl)}
+                    alt=""
+                    style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }}
+                  />
                 ) : (
-                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#2a2a2a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#555' }}>
-                    {((game?.blackName || t('common.black'))[0]).toUpperCase()}
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      background: '#2a2a2a',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 11,
+                      color: '#555',
+                    }}
+                  >
+                    {(game?.blackName || t('common.black'))[0].toUpperCase()}
                   </div>
                 )}
                 <span
@@ -606,10 +622,26 @@ export default function GamePage() {
             ) : (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {game?.whiteAvatarUrl ? (
-                  <img src={api.avatarSrc(game.whiteAvatarUrl)} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+                  <img
+                    src={api.avatarSrc(game.whiteAvatarUrl)}
+                    alt=""
+                    style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }}
+                  />
                 ) : (
-                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#2a2a2a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#555' }}>
-                    {((game?.whiteName || t('common.white'))[0]).toUpperCase()}
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      background: '#2a2a2a',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 11,
+                      color: '#555',
+                    }}
+                  >
+                    {(game?.whiteName || t('common.white'))[0].toUpperCase()}
                   </div>
                 )}
                 <span
@@ -701,9 +733,7 @@ export default function GamePage() {
       </div>
       {promotion && <PromotionDialog color={playerColor} onSelect={handlePromotionSelect} />}
 
-      {profilePlayerId && (
-        <PlayerProfileDialog playerId={profilePlayerId} onClose={() => setProfilePlayerId(null)} />
-      )}
+      {profilePlayerId && <PlayerProfileDialog playerId={profilePlayerId} onClose={() => setProfilePlayerId(null)} />}
     </div>
   );
 }

@@ -105,24 +105,63 @@ export default function MatchHistoryDialog({ onClose }: Props) {
                       fontSize: 13,
                     }}
                   >
-                    <span style={{ color: 'var(--text)', fontWeight: 500, letterSpacing: '0.2px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span
+                      style={{
+                        color: 'var(--text)',
+                        fontWeight: 500,
+                        letterSpacing: '0.2px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
                       {t('common.vs')}{' '}
                       {isWhite ? (
                         g.blackAvatarUrl ? (
-                          <img src={api.avatarSrc(g.blackAvatarUrl)} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
+                          <img
+                            src={api.avatarSrc(g.blackAvatarUrl)}
+                            alt=""
+                            style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }}
+                          />
                         ) : (
-                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#2a2a2a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#555' }}>
+                          <div
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: '50%',
+                              background: '#2a2a2a',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 9,
+                              color: '#555',
+                            }}
+                          >
                             {(opponentName || '?')[0].toUpperCase()}
                           </div>
                         )
+                      ) : g.whiteAvatarUrl ? (
+                        <img
+                          src={api.avatarSrc(g.whiteAvatarUrl)}
+                          alt=""
+                          style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }}
+                        />
                       ) : (
-                        g.whiteAvatarUrl ? (
-                          <img src={api.avatarSrc(g.whiteAvatarUrl)} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
-                        ) : (
-                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#2a2a2a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#555' }}>
-                            {(opponentName || '?')[0].toUpperCase()}
-                          </div>
-                        )
+                        <div
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: '50%',
+                            background: '#2a2a2a',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 9,
+                            color: '#555',
+                          }}
+                        >
+                          {(opponentName || '?')[0].toUpperCase()}
+                        </div>
                       )}
                       <span
                         onClick={() => {
@@ -157,9 +196,7 @@ export default function MatchHistoryDialog({ onClose }: Props) {
         </div>
       </div>
 
-      {profilePlayerId && (
-        <PlayerProfileDialog playerId={profilePlayerId} onClose={() => setProfilePlayerId(null)} />
-      )}
+      {profilePlayerId && <PlayerProfileDialog playerId={profilePlayerId} onClose={() => setProfilePlayerId(null)} />}
     </div>
   );
 }

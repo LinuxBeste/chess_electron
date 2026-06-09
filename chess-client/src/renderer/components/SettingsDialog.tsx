@@ -1010,12 +1010,7 @@ function AccountTab() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 11, color: '#aaa', cursor: 'pointer' }}>
                 {t('settings.account.avatarUpload')}
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={handleUploadAvatar}
-                />
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUploadAvatar} />
               </label>
               {avatarUrl && (
                 <button
@@ -1037,8 +1032,16 @@ function AccountTab() {
           )}
         </div>
       </div>
-      {avatarMsg && <span style={{ fontSize: 11, color: '#4caf50', display: 'block', marginTop: -8, marginBottom: 8 }}>{avatarMsg}</span>}
-      {avatarError && <span style={{ fontSize: 11, color: '#f44336', display: 'block', marginTop: -8, marginBottom: 8 }}>{avatarError}</span>}
+      {avatarMsg && (
+        <span style={{ fontSize: 11, color: '#4caf50', display: 'block', marginTop: -8, marginBottom: 8 }}>
+          {avatarMsg}
+        </span>
+      )}
+      {avatarError && (
+        <span style={{ fontSize: 11, color: '#f44336', display: 'block', marginTop: -8, marginBottom: 8 }}>
+          {avatarError}
+        </span>
+      )}
 
       {/* Account Info */}
       <div className="settings-row">
