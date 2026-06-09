@@ -117,6 +117,34 @@ export function createServer(): http.Server {
           game.acceptDraw(msg.gameId as string, player.id);
         } else if (msg.type === 'decline_draw' && typeof msg.gameId === 'string') {
           game.declineDraw(msg.gameId as string, player.id);
+        } else if (msg.type === 'challenge' && typeof msg.toPlayerId === 'string' && typeof msg.gameId === 'string') {
+          game.sendToPlayer(msg.toPlayerId as string, {
+            type: 'challenge',
+            gameId: msg.gameId,
+            fromPlayerId: player.id,
+            fromUsername: player.username,
+            fromDisplayName: player.displayName,
+          });
+        } else if (
+          msg.type === 'challenge_accept' &&
+          typeof msg.toPlayerId === 'string' &&
+          typeof msg.gameId === 'string'
+        ) {
+          game.sendToPlayer(msg.toPlayerId as string, {
+            type: 'challenge_accept',
+            gameId: msg.gameId,
+            fromPlayerId: player.id,
+          });
+        } else if (
+          msg.type === 'challenge_decline' &&
+          typeof msg.toPlayerId === 'string' &&
+          typeof msg.gameId === 'string'
+        ) {
+          game.sendToPlayer(msg.toPlayerId as string, {
+            type: 'challenge_decline',
+            gameId: msg.gameId,
+            fromPlayerId: player.id,
+          });
         }
       } catch {
         /* Ignore malformed messages */

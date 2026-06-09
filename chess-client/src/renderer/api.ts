@@ -15,7 +15,7 @@
  * function are already excellent.
  */
 
-import type { GameState, LegalMoveHint, PieceType } from '../types';
+import type { GameState, LegalMoveHint, PieceType, FriendInfo, FriendRequestInfo } from '../types';
 import { store } from './store';
 
 /** Base URL — can be overridden via setBaseUrl() for testing or env config. */
@@ -300,4 +300,42 @@ export interface PlayerProfile {
  * View another player's public profile. */
 export function getPlayerProfile(playerId: string): Promise<PlayerProfile> {
   return request(`/players/${playerId}/profile`);
+}
+
+/* ─── Friends ─── */
+
+/* POST /friends/request — auth required. */
+export function sendFriendRequest(username: string): Promise<{ id: string }> {
+  return request('/friends/request', {
+    method: 'POST',
+    body: JSON.stringify({ username }),
+  });
+}
+
+/* GET /friends/requests — auth required. */
+export function getFriendRequests(): Promise<{
+  incoming: FriendRequestInfo[];
+  outgoing: FriendRequestInfo[];
+}> {
+  return request('/friends/requests');
+}
+
+/* POST /friends/requests/:id/accept — auth required. */
+export function acceptFriendRequest(id: string): Promise<{ success: boolean }> {
+  return request(`/friends/requests/${id}/accept`, { method: 'POST' });
+}
+
+/* POST /friends/requests/:id/decline — auth required. */
+export function declineFriendRequest(id: string): Promise<{ success: boolean }> {
+  return request(`/friends/requests/${id}/decline`, { method: 'POST' });
+}
+
+/* DELETE /friends/:friendId — auth required. */
+export function removeFriend(friendId: string): Promise<{ success: boolean }> {
+  return request(`/friends/${friendId}`, { method: 'DELETE' });
+}
+
+/* GET /friends — auth required. */
+export function getFriends(): Promise<FriendInfo[]> {
+  return request('/friends');
 }

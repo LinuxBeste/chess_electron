@@ -7,14 +7,14 @@
  * in index.tsx for Electron compatibility (file:// protocol).
  */
 
-import { useEffect, lazy, Suspense, useRef, useState } from 'react';
+import { useEffect, lazy, Suspense, useRef, useState, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ToastContainer from './components/ToastContainer';
 import ErrorBoundary from './components/ErrorBoundary';
 import { store } from './store';
 import { socketManager } from './socket';
-import { ApiError, setBaseUrl, getMe } from './api';
+import { ApiError, setBaseUrl, getMe, getFriends, getFriendRequests, joinGame } from './api';
 import { type AppSettings, loadSettings, saveSettings, applyTheme, getSetting } from './settings';
 import { setSoundVolume } from './sound';
 import { t, setLanguage, getLanguage } from './translate';
@@ -39,6 +39,11 @@ function Loading() {
 export default function App() {
   const navigate = useNavigate();
   const [langKey, setLangKey] = useState(0);
+  const [pendingChallenge, setPendingChallenge] = useState<{
+    gameId: string;
+    fromPlayerId: string;
+    fromDisplayName: string;
+  } | null>(null);
 
   function handleLanguageChange() {
     const next = getLanguage() === 'de' ? 'en' : 'de';
@@ -125,7 +130,64 @@ export default function App() {
         });
     }
 
-    return () => unsubToken();
+    /* ─── Friend WS event handlers ─── */
+    const unsubFriendOnline = socketManager.onFriendOnline((msg) => {
+      const cur = store.get('friends');
+      store.set(
+        'friends',
+        cur.map((f) => (f.playerId === msg.playerId ? { ...f, isOnline: true, currentGameId: msg.currentGameId } : f)),
+      );
+    });
+    const unsubFriendOffline = socketManager.onFriendOffline((msg) => {
+      const cur = store.get('friends');
+      store.set(
+        'friends',
+        cur.map((f) => (f.playerId === msg.playerId ? { ...f, isOnline: false, currentGameId: null } : f)),
+      );
+    });
+    const unsubFriendRequest = socketManager.onFriendRequest((msg) => {
+      store.toast(t('friends.friendRequestFrom', { name: msg.fromDisplayName }), 'info');
+      /* Refresh friend requests */
+      getFriendRequests()
+        .then((r) => {
+          store.set('incomingRequests', r.incoming);
+          store.set('outgoingRequests', r.outgoing);
+        })
+        .catch(() => {});
+    });
+    const unsubFriendRequestAccepted = socketManager.onFriendRequestAccepted((msg) => {
+      store.toast(t('friends.friendRequestAccepted', { name: msg.byDisplayName }), 'info');
+      getFriends()
+        .then((f) => store.set('friends', f))
+        .catch(() => {});
+      getFriendRequests()
+        .then((r) => {
+          store.set('incomingRequests', r.incoming);
+          store.set('outgoingRequests', r.outgoing);
+        })
+        .catch(() => {});
+    });
+    const unsubChallenge = socketManager.onChallenge((msg) => {
+      setPendingChallenge({ gameId: msg.gameId, fromPlayerId: msg.fromPlayerId, fromDisplayName: msg.fromDisplayName });
+    });
+    const unsubChallengeAccept = socketManager.onChallengeAccept((msg) => {
+      store.toast(t('friends.challengeAccepted'), 'info');
+      navigate(`/game/${msg.gameId}`);
+    });
+    const unsubChallengeDecline = socketManager.onChallengeDecline((msg) => {
+      store.toast(t('friends.challengeDeclined'), 'info');
+    });
+
+    return () => {
+      unsubToken();
+      unsubFriendOnline();
+      unsubFriendOffline();
+      unsubFriendRequest();
+      unsubFriendRequestAccepted();
+      unsubChallenge();
+      unsubChallengeAccept();
+      unsubChallengeDecline();
+    };
   }, []);
 
   /* Auto-logout: track user activity and clear session after inactivity period */
@@ -165,10 +227,55 @@ export default function App() {
     };
   }, []);
 
+  async function handleAcceptChallenge() {
+    if (!pendingChallenge) return;
+    const { gameId, fromPlayerId } = pendingChallenge;
+    try {
+      await joinGame(gameId);
+      socketManager.send({ type: 'challenge_accept', toPlayerId: fromPlayerId, gameId });
+      setPendingChallenge(null);
+      navigate(`/game/${gameId}`);
+    } catch {
+      store.toast('Failed to join game', 'error');
+    }
+  }
+
+  function handleDeclineChallenge() {
+    if (!pendingChallenge) return;
+    socketManager.send({
+      type: 'challenge_decline',
+      toPlayerId: pendingChallenge.fromPlayerId,
+      gameId: pendingChallenge.gameId,
+    });
+    setPendingChallenge(null);
+  }
+
   return (
     <ErrorBoundary>
       <Navbar key={langKey} onLanguageChange={handleLanguageChange} />
       <ToastContainer />
+
+      {/* Challenge dialog */}
+      {pendingChallenge && (
+        <div className="modal-overlay" onClick={() => setPendingChallenge(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#e0e0e0', marginBottom: 12 }}>
+              {t('game.challengeTitle')}
+            </h3>
+            <p style={{ fontSize: 14, color: '#888', marginBottom: 20 }}>
+              {pendingChallenge.fromDisplayName} {t('game.challengedYou')}
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button className="btn btn-primary" onClick={handleAcceptChallenge}>
+                {t('game.accept')}
+              </button>
+              <button className="btn btn-ghost" onClick={handleDeclineChallenge}>
+                {t('game.decline')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div id="app-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Suspense fallback={<Loading />}>
           <Routes key={langKey}>

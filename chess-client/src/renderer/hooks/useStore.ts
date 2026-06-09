@@ -22,6 +22,9 @@ type StateMap = {
   toasts: import('../../types').ToastMessage[];
   currentView: string;
   offline: boolean;
+  friends: import('../../types').FriendInfo[];
+  incomingRequests: import('../../types').FriendRequestInfo[];
+  outgoingRequests: import('../../types').FriendRequestInfo[];
 };
 
 export function useStoreValue<K extends keyof StateMap>(key: K): StateMap[K] {

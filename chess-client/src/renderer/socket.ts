@@ -72,6 +72,56 @@ export interface DrawDeclinedMessage {
   gameId: string;
 }
 
+/* ─── Friend messages ─── */
+
+export interface FriendOnlineMessage {
+  type: 'friend_online';
+  playerId: string;
+  username: string;
+  displayName: string;
+  currentGameId: string | null;
+}
+
+export interface FriendOfflineMessage {
+  type: 'friend_offline';
+  playerId: string;
+}
+
+export interface FriendRequestWsMessage {
+  type: 'friend_request';
+  requestId: string;
+  fromPlayerId: string;
+  fromUsername: string;
+  fromDisplayName: string;
+}
+
+export interface FriendRequestAcceptedMessage {
+  type: 'friend_request_accepted';
+  byPlayerId: string;
+  byUsername: string;
+  byDisplayName: string;
+}
+
+export interface ChallengeMessage {
+  type: 'challenge';
+  gameId: string;
+  fromPlayerId: string;
+  fromUsername: string;
+  fromDisplayName: string;
+}
+
+export interface ChallengeAcceptMessage {
+  type: 'challenge_accept';
+  gameId: string;
+  fromPlayerId: string;
+}
+
+export interface ChallengeDeclineMessage {
+  type: 'challenge_decline';
+  gameId: string;
+  fromPlayerId: string;
+}
+
 type WsMessage =
   | MoveMessage
   | GameOverMessage
@@ -79,7 +129,14 @@ type WsMessage =
   | ChatMessage
   | GameAbortedMessage
   | DrawOfferedMessage
-  | DrawDeclinedMessage;
+  | DrawDeclinedMessage
+  | FriendOnlineMessage
+  | FriendOfflineMessage
+  | FriendRequestWsMessage
+  | FriendRequestAcceptedMessage
+  | ChallengeMessage
+  | ChallengeAcceptMessage
+  | ChallengeDeclineMessage;
 
 /** Handler type for move events */
 export type MoveHandler = (msg: MoveMessage) => void;
@@ -102,6 +159,15 @@ export type DrawOfferedHandler = (msg: DrawOfferedMessage) => void;
 /** Handler type for draw-declined events */
 export type DrawDeclinedHandler = (msg: DrawDeclinedMessage) => void;
 
+/** Handler type for friend events */
+export type FriendOnlineHandler = (msg: FriendOnlineMessage) => void;
+export type FriendOfflineHandler = (msg: FriendOfflineMessage) => void;
+export type FriendRequestHandler = (msg: FriendRequestWsMessage) => void;
+export type FriendRequestAcceptedHandler = (msg: FriendRequestAcceptedMessage) => void;
+export type ChallengeHandler = (msg: ChallengeMessage) => void;
+export type ChallengeAcceptHandler = (msg: ChallengeAcceptMessage) => void;
+export type ChallengeDeclineHandler = (msg: ChallengeDeclineMessage) => void;
+
 /** Maximum number of reconnect attempts before giving up */
 const MAX_RETRIES = 5;
 
@@ -122,6 +188,13 @@ class SocketManager {
   private gameAbortedHandlers = new Set<GameAbortedHandler>();
   private drawOfferedHandlers = new Set<DrawOfferedHandler>();
   private drawDeclinedHandlers = new Set<DrawDeclinedHandler>();
+  private friendOnlineHandlers = new Set<FriendOnlineHandler>();
+  private friendOfflineHandlers = new Set<FriendOfflineHandler>();
+  private friendRequestHandlers = new Set<FriendRequestHandler>();
+  private friendRequestAcceptedHandlers = new Set<FriendRequestAcceptedHandler>();
+  private challengeHandlers = new Set<ChallengeHandler>();
+  private challengeAcceptHandlers = new Set<ChallengeAcceptHandler>();
+  private challengeDeclineHandlers = new Set<ChallengeDeclineHandler>();
   private serverUrl = 'http://localhost:3000';
 
   /** Set a custom server URL for the WebSocket connection */
@@ -185,6 +258,27 @@ class SocketManager {
             break;
           case 'draw_declined':
             this.drawDeclinedHandlers.forEach((h) => h(msg as DrawDeclinedMessage));
+            break;
+          case 'friend_online':
+            this.friendOnlineHandlers.forEach((h) => h(msg as FriendOnlineMessage));
+            break;
+          case 'friend_offline':
+            this.friendOfflineHandlers.forEach((h) => h(msg as FriendOfflineMessage));
+            break;
+          case 'friend_request':
+            this.friendRequestHandlers.forEach((h) => h(msg as FriendRequestWsMessage));
+            break;
+          case 'friend_request_accepted':
+            this.friendRequestAcceptedHandlers.forEach((h) => h(msg as FriendRequestAcceptedMessage));
+            break;
+          case 'challenge':
+            this.challengeHandlers.forEach((h) => h(msg as ChallengeMessage));
+            break;
+          case 'challenge_accept':
+            this.challengeAcceptHandlers.forEach((h) => h(msg as ChallengeAcceptMessage));
+            break;
+          case 'challenge_decline':
+            this.challengeDeclineHandlers.forEach((h) => h(msg as ChallengeDeclineMessage));
             break;
         }
       } catch {
@@ -284,6 +378,55 @@ class SocketManager {
     this.drawDeclinedHandlers.add(handler);
     return () => {
       this.drawDeclinedHandlers.delete(handler);
+    };
+  }
+
+  onFriendOnline(handler: FriendOnlineHandler): () => void {
+    this.friendOnlineHandlers.add(handler);
+    return () => {
+      this.friendOnlineHandlers.delete(handler);
+    };
+  }
+
+  onFriendOffline(handler: FriendOfflineHandler): () => void {
+    this.friendOfflineHandlers.add(handler);
+    return () => {
+      this.friendOfflineHandlers.delete(handler);
+    };
+  }
+
+  onFriendRequest(handler: FriendRequestHandler): () => void {
+    this.friendRequestHandlers.add(handler);
+    return () => {
+      this.friendRequestHandlers.delete(handler);
+    };
+  }
+
+  onFriendRequestAccepted(handler: FriendRequestAcceptedHandler): () => void {
+    this.friendRequestAcceptedHandlers.add(handler);
+    return () => {
+      this.friendRequestAcceptedHandlers.delete(handler);
+    };
+  }
+
+  onChallenge(handler: ChallengeHandler): () => void {
+    this.challengeHandlers.add(handler);
+    return () => {
+      this.challengeHandlers.delete(handler);
+    };
+  }
+
+  onChallengeAccept(handler: ChallengeAcceptHandler): () => void {
+    this.challengeAcceptHandlers.add(handler);
+    return () => {
+      this.challengeAcceptHandlers.delete(handler);
+    };
+  }
+
+  onChallengeDecline(handler: ChallengeDeclineHandler): () => void {
+    this.challengeDeclineHandlers.add(handler);
+    return () => {
+      this.challengeDeclineHandlers.delete(handler);
     };
   }
 }

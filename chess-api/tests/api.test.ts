@@ -1150,3 +1150,178 @@ describe('GET /players/:playerId/profile', () => {
     await request.get('/players/some-id/profile').expect(401);
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  Friends                                                           */
+/* ------------------------------------------------------------------ */
+
+describe('Friends', () => {
+  async function registerUser(username: string) {
+    const res = await request.post('/auth/register').send({ username, password: 'test1234' }).expect(201);
+    return { ...res.body, auth: `Bearer ${res.body.token}` };
+  }
+
+  test('send friend request by username', async () => {
+    const a = await registerUser('friend_a');
+    const b = await registerUser('friend_b');
+
+    const res = await request
+      .post('/friends/request')
+      .set('Authorization', a.auth)
+      .send({ username: 'friend_b' })
+      .expect(201);
+    expect(res.body).toHaveProperty('id');
+  });
+
+  test('friend request to non-existent user returns 404', async () => {
+    const a = await registerUser('friend_c');
+    await request.post('/friends/request').set('Authorization', a.auth).send({ username: 'no_such_user' }).expect(404);
+  });
+
+  test('friend request to self returns 400', async () => {
+    const a = await registerUser('friend_d');
+    await request.post('/friends/request').set('Authorization', a.auth).send({ username: 'friend_d' }).expect(400);
+  });
+
+  test('duplicate friend request returns 409', async () => {
+    const a = await registerUser('friend_e');
+    const b = await registerUser('friend_f');
+
+    await request.post('/friends/request').set('Authorization', a.auth).send({ username: 'friend_f' }).expect(201);
+    await request.post('/friends/request').set('Authorization', a.auth).send({ username: 'friend_f' }).expect(409);
+  });
+
+  test('requires auth for friends endpoints', async () => {
+    await request.post('/friends/request').send({ username: 'x' }).expect(401);
+    await request.get('/friends/requests').expect(401);
+    await request.get('/friends').expect(401);
+  });
+
+  test('list pending requests (incoming and outgoing)', async () => {
+    const a = await registerUser('friend_g');
+    const b = await registerUser('friend_h');
+
+    await request.post('/friends/request').set('Authorization', a.auth).send({ username: 'friend_h' }).expect(201);
+
+    /* b sees incoming */
+    const bReq = await request.get('/friends/requests').set('Authorization', b.auth).expect(200);
+    expect(bReq.body.incoming).toHaveLength(1);
+    expect(bReq.body.incoming[0].username).toBe('friend_g');
+    expect(bReq.body.outgoing).toHaveLength(0);
+
+    /* a sees outgoing */
+    const aReq = await request.get('/friends/requests').set('Authorization', a.auth).expect(200);
+    expect(aReq.body.outgoing).toHaveLength(1);
+    expect(aReq.body.outgoing[0].username).toBe('friend_h');
+    expect(aReq.body.incoming).toHaveLength(0);
+  });
+
+  test('accept friend request', async () => {
+    const a = await registerUser('friend_i');
+    const b = await registerUser('friend_j');
+
+    const fr = await request
+      .post('/friends/request')
+      .set('Authorization', a.auth)
+      .send({ username: 'friend_j' })
+      .expect(201);
+
+    /* b accepts */
+    await request.post(`/friends/requests/${fr.body.id}/accept`).set('Authorization', b.auth).expect(200);
+
+    /* Are friends now? */
+    const aFriends = await request.get('/friends').set('Authorization', a.auth).expect(200);
+    expect(aFriends.body).toHaveLength(1);
+    expect(aFriends.body[0].playerId).toBe(b.playerId);
+
+    const bFriends = await request.get('/friends').set('Authorization', b.auth).expect(200);
+    expect(bFriends.body).toHaveLength(1);
+    expect(bFriends.body[0].playerId).toBe(a.playerId);
+  });
+
+  test('decline friend request', async () => {
+    const a = await registerUser('friend_k');
+    const b = await registerUser('friend_l');
+
+    const fr = await request
+      .post('/friends/request')
+      .set('Authorization', a.auth)
+      .send({ username: 'friend_l' })
+      .expect(201);
+
+    await request.post(`/friends/requests/${fr.body.id}/decline`).set('Authorization', b.auth).expect(200);
+
+    /* No friends */
+    const aFriends = await request.get('/friends').set('Authorization', a.auth).expect(200);
+    expect(aFriends.body).toHaveLength(0);
+  });
+
+  test('non-recipient cannot accept/decline', async () => {
+    const a = await registerUser('friend_m');
+    const b = await registerUser('friend_n');
+    const c = await registerUser('friend_o');
+
+    const fr = await request
+      .post('/friends/request')
+      .set('Authorization', a.auth)
+      .send({ username: 'friend_n' })
+      .expect(201);
+
+    /* c (not the recipient) tries to accept */
+    await request.post(`/friends/requests/${fr.body.id}/accept`).set('Authorization', c.auth).expect(403);
+
+    /* c (not the recipient) tries to decline */
+    await request.post(`/friends/requests/${fr.body.id}/decline`).set('Authorization', c.auth).expect(403);
+  });
+
+  test('remove friend', async () => {
+    const a = await registerUser('friend_p');
+    const b = await registerUser('friend_q');
+
+    const fr = await request
+      .post('/friends/request')
+      .set('Authorization', a.auth)
+      .send({ username: 'friend_q' })
+      .expect(201);
+    await request.post(`/friends/requests/${fr.body.id}/accept`).set('Authorization', b.auth).expect(200);
+
+    /* a removes b */
+    await request.delete(`/friends/${b.playerId}`).set('Authorization', a.auth).expect(200);
+
+    const aFriends = await request.get('/friends').set('Authorization', a.auth).expect(200);
+    expect(aFriends.body).toHaveLength(0);
+
+    const bFriends = await request.get('/friends').set('Authorization', b.auth).expect(200);
+    expect(bFriends.body).toHaveLength(0);
+  });
+
+  test('remove non-friend returns 404', async () => {
+    const a = await registerUser('friend_r');
+    const b = await registerUser('friend_s');
+
+    await request.delete(`/friends/${b.playerId}`).set('Authorization', a.auth).expect(404);
+  });
+
+  test('friend list includes online status', async () => {
+    /* Online status is based on WS connections, which we can't test via HTTP.
+     * But we verify the endpoint returns the expected shape with isOnline=false. */
+    const a = await registerUser('friend_t');
+    const b = await registerUser('friend_u');
+
+    const fr = await request
+      .post('/friends/request')
+      .set('Authorization', a.auth)
+      .send({ username: 'friend_u' })
+      .expect(201);
+    await request.post(`/friends/requests/${fr.body.id}/accept`).set('Authorization', b.auth).expect(200);
+
+    const aFriends = await request.get('/friends').set('Authorization', a.auth).expect(200);
+    expect(aFriends.body[0]).toMatchObject({
+      playerId: b.playerId,
+      username: 'friend_u',
+      displayName: 'friend_u',
+      isOnline: false,
+      currentGameId: null,
+    });
+  });
+});

@@ -29,10 +29,41 @@ export type TranslationKeys = {
   navbar: {
     chess: string;
     tagline: string;
+    friends: string;
     stats: string;
     settings: string;
     history: string;
     logout: string;
+  };
+  friends: {
+    title: string;
+    friends: string;
+    requests: string;
+    sent: string;
+    add: string;
+    addPlaceholder: string;
+    requestSent: string;
+    accept: string;
+    decline: string;
+    remove: string;
+    challenge: string;
+    challengeSent: string;
+    inGame: string;
+    pending: string;
+    noFriends: string;
+    noRequests: string;
+    noSent: string;
+    friendRequest: string;
+    friendRequestFrom: string;
+    friendRequestAccepted: string;
+    challengeAccepted: string;
+    challengeDeclined: string;
+    friendOnline: string;
+    friendOffline: string;
+    failedAccept: string;
+    failedDecline: string;
+    failedRemove: string;
+    failedChallenge: string;
   };
   login: {
     tagline: string;
@@ -105,6 +136,8 @@ export type TranslationKeys = {
     failedLoad: string;
     moveFailed: string;
     failedResign: string;
+    challengedYou: string;
+    challengeTitle: string;
   };
   localGame: {
     blackToMove: string;
@@ -452,10 +485,41 @@ export const en: TranslationKeys = {
   navbar: {
     chess: '♚ Chess',
     tagline: 'Where every move matters.',
+    friends: 'Friends',
     stats: 'Stats',
     settings: 'Settings',
     history: 'History',
     logout: 'Logout',
+  },
+  friends: {
+    title: 'Friends',
+    friends: 'Friends',
+    requests: 'Requests',
+    sent: 'Sent',
+    add: 'Add',
+    addPlaceholder: 'Enter username...',
+    requestSent: 'Friend request sent to {name}',
+    accept: 'Accept',
+    decline: 'Decline',
+    remove: 'Remove',
+    challenge: 'Challenge',
+    challengeSent: 'Challenge sent to {name}!',
+    inGame: 'In game',
+    pending: 'Pending',
+    noFriends: 'No friends yet. Add some!',
+    noRequests: 'No pending requests',
+    noSent: 'No sent requests',
+    friendRequest: 'Friend Request',
+    friendRequestFrom: '{name} sent you a friend request',
+    friendRequestAccepted: '{name} accepted your friend request!',
+    challengeAccepted: 'Challenge accepted!',
+    challengeDeclined: 'Challenge declined',
+    friendOnline: '{name} is now online',
+    friendOffline: '{name} went offline',
+    failedAccept: 'Failed to accept request',
+    failedDecline: 'Failed to decline request',
+    failedRemove: 'Failed to remove friend',
+    failedChallenge: 'Failed to send challenge',
   },
   login: {
     tagline: 'Every move matters.',
@@ -528,6 +592,8 @@ export const en: TranslationKeys = {
     failedLoad: 'Failed to load game',
     moveFailed: 'Move failed',
     failedResign: 'Failed to resign',
+    challengedYou: 'challenged you to a game!',
+    challengeTitle: 'Challenge!',
   },
   localGame: {
     blackToMove: '◄ Black to move',
@@ -876,10 +942,41 @@ export const de: TranslationKeys = {
   navbar: {
     chess: '♚ Schach',
     tagline: 'Wo jeder Zug zählt.',
+    friends: 'Freunde',
     stats: 'Statistik',
     settings: 'Einstellungen',
     history: 'Verlauf',
     logout: 'Abmelden',
+  },
+  friends: {
+    title: 'Freunde',
+    friends: 'Freunde',
+    requests: 'Anfragen',
+    sent: 'Gesendet',
+    add: 'Hinzufügen',
+    addPlaceholder: 'Benutzername eingeben...',
+    requestSent: 'Freundschaftsanfrage an {name} gesendet',
+    accept: 'Annehmen',
+    decline: 'Ablehnen',
+    remove: 'Entfernen',
+    challenge: 'Fordern',
+    challengeSent: 'Herausforderung an {name} gesendet!',
+    inGame: 'Im Spiel',
+    pending: 'Ausstehend',
+    noFriends: 'Noch keine Freunde. Füge welche hinzu!',
+    noRequests: 'Keine ausstehenden Anfragen',
+    noSent: 'Keine gesendeten Anfragen',
+    friendRequest: 'Freundschaftsanfrage',
+    friendRequestFrom: '{name} hat dir eine Freundschaftsanfrage gesendet',
+    friendRequestAccepted: '{name} hat deine Freundschaftsanfrage angenommen!',
+    challengeAccepted: 'Herausforderung angenommen!',
+    challengeDeclined: 'Herausforderung abgelehnt',
+    friendOnline: '{name} ist jetzt online',
+    friendOffline: '{name} ist offline gegangen',
+    failedAccept: 'Anfrage konnte nicht angenommen werden',
+    failedDecline: 'Anfrage konnte nicht abgelehnt werden',
+    failedRemove: 'Freund konnte nicht entfernt werden',
+    failedChallenge: 'Herausforderung konnte nicht gesendet werden',
   },
   login: {
     tagline: 'Jeder Zug zählt.',
@@ -952,6 +1049,8 @@ export const de: TranslationKeys = {
     failedLoad: 'Spiel laden fehlgeschlagen',
     moveFailed: 'Zug fehlgeschlagen',
     failedResign: 'Aufgeben fehlgeschlagen',
+    challengedYou: 'fordert dich zu einem Spiel heraus!',
+    challengeTitle: 'Herausforderung!',
   },
   localGame: {
     blackToMove: '◄ Schwarz ist am Zug',

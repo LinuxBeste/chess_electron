@@ -70,6 +70,26 @@ export interface LegalMoveHint {
 /** WS connection status */
 export type WsStatus = 'disconnected' | 'connecting' | 'connected';
 
+/** Friend info returned by the friends API */
+export interface FriendInfo {
+  playerId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isOnline: boolean;
+  currentGameId: string | null;
+}
+
+/** Friend request info */
+export interface FriendRequestInfo {
+  id: string;
+  playerId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  createdAt: number;
+}
+
 /** Electron preload API exposed via contextBridge */
 declare global {
   interface Window {

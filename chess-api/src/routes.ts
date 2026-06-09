@@ -379,4 +379,116 @@ router.get('/games/:gameId/moves', authMiddleware, banCheckMiddleware, (req: Req
   res.json({ moves: result.moves });
 });
 
+/* ─── Friends ─── */
+
+/* Send a friend request by username */
+router.post('/friends/request', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  const { username } = req.body;
+  if (!username || typeof username !== 'string') {
+    res.status(400).json({ error: 'Username is required' });
+    return;
+  }
+  const targetUser = db.getUserByUsername(username.trim());
+  if (!targetUser) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
+  if (targetUser.id === req.player.id) {
+    res.status(400).json({ error: 'Cannot send friend request to yourself' });
+    return;
+  }
+  if (db.areFriends(req.player.id, targetUser.id)) {
+    res.status(409).json({ error: 'Already friends with this user' });
+    return;
+  }
+  if (db.hasPendingRequest(req.player.id, targetUser.id)) {
+    res.status(409).json({ error: 'Friend request already pending' });
+    return;
+  }
+  const requestId = db.createFriendRequest(req.player.id, targetUser.id);
+  game.broadcastFriendRequest(req.player.id, targetUser.id, requestId);
+  res.status(201).json({ id: requestId });
+});
+
+/* List pending friend requests (incoming and outgoing) */
+router.get('/friends/requests', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  const incoming = db.getPendingIncomingRequests(req.player.id);
+  const outgoing = db.getPendingOutgoingRequests(req.player.id);
+
+  const enrich = (rows: db.FriendRequestRow[], key: 'from_user_id' | 'to_user_id') =>
+    rows.map((r) => {
+      const pid = r[key];
+      const p = game.getPlayerById(pid);
+      const u = db.getUserById(pid);
+      return {
+        id: r.id,
+        playerId: pid,
+        username: p?.username ?? u?.username ?? '?',
+        displayName: p?.displayName ?? u?.display_name ?? '?',
+        avatarUrl: u?.avatar_url ?? null,
+        createdAt: r.created_at,
+      };
+    });
+
+  res.json({
+    incoming: enrich(incoming, 'from_user_id'),
+    outgoing: enrich(outgoing, 'to_user_id'),
+  });
+});
+
+/* Accept a friend request */
+router.post('/friends/requests/:id/accept', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  const fr = db.getFriendRequest(req.params.id);
+  if (!fr) {
+    res.status(404).json({ error: 'Friend request not found' });
+    return;
+  }
+  if (fr.to_user_id !== req.player.id) {
+    res.status(403).json({ error: 'Not your friend request to accept' });
+    return;
+  }
+  if (fr.status !== 'pending') {
+    res.status(400).json({ error: 'Friend request is no longer pending' });
+    return;
+  }
+  db.updateFriendRequestStatus(fr.id, 'accepted');
+  db.addFriendRelationship(fr.from_user_id, fr.to_user_id);
+  game.broadcastFriendRequestAccepted(req.player.id, fr.from_user_id);
+  res.json({ success: true });
+});
+
+/* Decline a friend request */
+router.post('/friends/requests/:id/decline', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  const fr = db.getFriendRequest(req.params.id);
+  if (!fr) {
+    res.status(404).json({ error: 'Friend request not found' });
+    return;
+  }
+  if (fr.to_user_id !== req.player.id) {
+    res.status(403).json({ error: 'Not your friend request to decline' });
+    return;
+  }
+  if (fr.status !== 'pending') {
+    res.status(400).json({ error: 'Friend request is no longer pending' });
+    return;
+  }
+  db.updateFriendRequestStatus(fr.id, 'declined');
+  res.json({ success: true });
+});
+
+/* Remove a friend */
+router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  if (!db.areFriends(req.player.id, req.params.friendId)) {
+    res.status(404).json({ error: 'Not friends with this user' });
+    return;
+  }
+  db.removeFriendRelationship(req.player.id, req.params.friendId);
+  res.json({ success: true });
+});
+
+/* List friends with online status and current game */
+router.get('/friends', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  res.json(game.getFriendList(req.player.id));
+});
+
 export default router;

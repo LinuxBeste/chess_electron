@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import SettingsDialog from './SettingsDialog';
 import MatchHistoryDialog from './MatchHistoryDialog';
 import StatsDialog from './StatsDialog';
+import FriendsTab from './FriendsTab';
 import { t, getLanguage } from '../translate';
 import { getLanguageNames } from '../locales';
 import { avatarSrc } from '../api';
@@ -25,6 +26,7 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showFriends, setShowFriends] = useState(false);
   const username = useStoreValue('username');
   const token = useStoreValue('token');
   const avatarUrl = useStoreValue('avatarUrl');
@@ -100,6 +102,11 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
                 {t('navbar.stats')}
               </button>
             )}
+            {isLoggedIn && (
+              <button className="navbar-btn" onClick={() => setShowFriends(true)}>
+                {t('navbar.friends')}
+              </button>
+            )}
             <button className="navbar-btn" onClick={() => setShowSettings(true)}>
               {t('navbar.settings')}
             </button>
@@ -129,6 +136,7 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
       {showHistory && <MatchHistoryDialog onClose={() => setShowHistory(false)} />}
       {showStats && <StatsDialog onClose={() => setShowStats(false)} />}
+      {showFriends && <FriendsTab onClose={() => setShowFriends(false)} />}
     </nav>
   );
 }

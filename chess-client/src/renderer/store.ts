@@ -10,7 +10,7 @@
  * are updated.
  */
 
-import type { GameState, ViewName, WsStatus, ToastMessage } from '../types';
+import type { GameState, ViewName, WsStatus, ToastMessage, FriendInfo, FriendRequestInfo } from '../types';
 
 interface StateMap {
   token: string | null;
@@ -22,6 +22,9 @@ interface StateMap {
   toasts: ToastMessage[];
   currentView: ViewName;
   offline: boolean;
+  friends: FriendInfo[];
+  incomingRequests: FriendRequestInfo[];
+  outgoingRequests: FriendRequestInfo[];
 }
 
 /* Typed observable store. subscribe/get/set are key-constrained to StateMap keys. */
@@ -36,6 +39,9 @@ class Store {
     toasts: [],
     currentView: 'login',
     offline: false,
+    friends: [],
+    incomingRequests: [],
+    outgoingRequests: [],
   };
 
   /* Listeners stored by key string; cast internally since the map is heterogenous */

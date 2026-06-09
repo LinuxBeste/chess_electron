@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
@@ -42,6 +43,22 @@ function migrate(): void {
       player_id TEXT,
       ip TEXT,
       banned_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS friend_requests (
+      id TEXT PRIMARY KEY,
+      from_user_id TEXT NOT NULL REFERENCES users(id),
+      to_user_id TEXT NOT NULL REFERENCES users(id),
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS friends (
+      user_id TEXT NOT NULL REFERENCES users(id),
+      friend_id TEXT NOT NULL REFERENCES users(id),
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (user_id, friend_id)
     );
   `);
 
@@ -195,4 +212,96 @@ export function loadAllBans(): { id: string; player_id: string | null; ip: strin
 export function deleteBanById(id: string): void {
   const d = getDb();
   d.prepare('DELETE FROM bans WHERE id = ?').run(id);
+}
+
+/* ─── Friends ─── */
+
+export interface FriendRequestRow {
+  id: string;
+  from_user_id: string;
+  to_user_id: string;
+  status: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export function createFriendRequest(fromUserId: string, toUserId: string): string {
+  const d = getDb();
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  d.prepare(
+    'INSERT INTO friend_requests (id, from_user_id, to_user_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+  ).run(id, fromUserId, toUserId, 'pending', now, now);
+  return id;
+}
+
+export function getFriendRequest(id: string): FriendRequestRow | undefined {
+  const d = getDb();
+  return d.prepare('SELECT * FROM friend_requests WHERE id = ?').get(id) as FriendRequestRow | undefined;
+}
+
+export function getPendingIncomingRequests(userId: string): FriendRequestRow[] {
+  const d = getDb();
+  return d
+    .prepare('SELECT * FROM friend_requests WHERE to_user_id = ? AND status = ? ORDER BY created_at DESC')
+    .all(userId, 'pending') as FriendRequestRow[];
+}
+
+export function getPendingOutgoingRequests(userId: string): FriendRequestRow[] {
+  const d = getDb();
+  return d
+    .prepare('SELECT * FROM friend_requests WHERE from_user_id = ? AND status = ? ORDER BY created_at DESC')
+    .all(userId, 'pending') as FriendRequestRow[];
+}
+
+export function hasPendingRequest(fromUserId: string, toUserId: string): boolean {
+  const d = getDb();
+  const row = d
+    .prepare(
+      'SELECT 1 FROM friend_requests WHERE ((from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)) AND status = ?',
+    )
+    .get(fromUserId, toUserId, toUserId, fromUserId, 'pending');
+  return !!row;
+}
+
+export function updateFriendRequestStatus(id: string, status: string): void {
+  const d = getDb();
+  d.prepare('UPDATE friend_requests SET status = ?, updated_at = ? WHERE id = ?').run(status, Date.now(), id);
+}
+
+export function addFriendRelationship(userId: string, friendId: string): void {
+  const d = getDb();
+  const now = Date.now();
+  d.prepare('INSERT OR IGNORE INTO friends (user_id, friend_id, created_at) VALUES (?, ?, ?)').run(
+    userId,
+    friendId,
+    now,
+  );
+  d.prepare('INSERT OR IGNORE INTO friends (user_id, friend_id, created_at) VALUES (?, ?, ?)').run(
+    friendId,
+    userId,
+    now,
+  );
+}
+
+export function removeFriendRelationship(userId: string, friendId: string): void {
+  const d = getDb();
+  d.prepare('DELETE FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)').run(
+    userId,
+    friendId,
+    friendId,
+    userId,
+  );
+}
+
+export function getFriendIds(userId: string): string[] {
+  const d = getDb();
+  const rows = d.prepare('SELECT friend_id FROM friends WHERE user_id = ?').all(userId) as { friend_id: string }[];
+  return rows.map((r) => r.friend_id);
+}
+
+export function areFriends(userId: string, friendId: string): boolean {
+  const d = getDb();
+  const row = d.prepare('SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?').get(userId, friendId);
+  return !!row;
 }

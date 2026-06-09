@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getPlayerProfile, PlayerProfile, avatarSrc } from '../api';
+import { getPlayerProfile, sendFriendRequest, PlayerProfile, avatarSrc } from '../api';
+import { store } from '../store';
 import { t } from '../translate';
 
 interface Props {
@@ -14,12 +15,29 @@ function fmtDate(ts: number): string {
 export default function PlayerProfileDialog({ playerId, onClose }: Props) {
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [error, setError] = useState('');
+  const [friendLoading, setFriendLoading] = useState(false);
+  const [friendMsg, setFriendMsg] = useState('');
 
   useEffect(() => {
     getPlayerProfile(playerId)
       .then(setProfile)
       .catch((e) => setError(e.message || 'Failed to load profile'));
   }, [playerId]);
+
+  async function handleAddFriend() {
+    if (!profile?.username) return;
+    setFriendLoading(true);
+    setFriendMsg('');
+    try {
+      await sendFriendRequest(profile.username);
+      setFriendMsg(t('friends.requestSent', { name: profile.displayName || profile.username }));
+      store.toast(t('friends.requestSent', { name: profile.displayName || profile.username }), 'info');
+    } catch (e: any) {
+      setFriendMsg(e.message || 'Failed');
+    } finally {
+      setFriendLoading(false);
+    }
+  }
 
   return (
     <div
@@ -116,6 +134,19 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
                 {t('settings.account.joined')}: {fmtDate(profile.createdAt)}
               </p>
             )}
+
+            {/* Add Friend */}
+            {profile.isRegistered && (
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={handleAddFriend}
+                disabled={friendLoading}
+                style={{ marginBottom: 16 }}
+              >
+                {friendLoading ? '...' : t('friends.add')}
+              </button>
+            )}
+            {friendMsg && <p style={{ fontSize: 12, color: '#888', margin: '-8px 0 16px' }}>{friendMsg}</p>}
 
             {/* Stats */}
             {profile.stats ? (

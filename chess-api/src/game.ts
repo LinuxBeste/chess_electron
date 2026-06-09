@@ -205,10 +205,14 @@ export function addToken(playerId: string): string | null {
  * real-time updates in all of them.
  */
 export function registerWSConnection(playerId: string, ws: WebSocket): void {
+  const wasOffline = !wsConnections.has(playerId) || wsConnections.get(playerId)!.size === 0;
   if (!wsConnections.has(playerId)) {
     wsConnections.set(playerId, new Set());
   }
   wsConnections.get(playerId)!.add(ws);
+  if (wasOffline) {
+    notifyFriendsOnline(playerId);
+  }
 }
 
 /**
@@ -219,6 +223,10 @@ export function registerWSConnection(playerId: string, ws: WebSocket): void {
  */
 export function removeWSConnection(playerId: string, ws: WebSocket): void {
   wsConnections.get(playerId)?.delete(ws);
+  const isNowOffline = !wsConnections.has(playerId) || wsConnections.get(playerId)!.size === 0;
+  if (isNowOffline && players.has(playerId)) {
+    notifyFriendsOffline(playerId);
+  }
 }
 
 /**
@@ -249,7 +257,7 @@ export function cleanupPlayerWaitingGames(playerId: string): void {
  * while allowing different event shapes (move events, game_over events, etc.).
  * Only sends to connections in the OPEN state (readyState === 1).
  */
-function sendToPlayer(playerId: string, message: Record<string, unknown>): void {
+export function sendToPlayer(playerId: string, message: Record<string, unknown>): void {
   const conns = wsConnections.get(playerId);
   if (!conns) return;
   const data = JSON.stringify(message);
@@ -1114,6 +1122,89 @@ export function getStats(): { gamesActive: number; playersOnline: number } {
     if (g.status === 'active') gamesActive++;
   }
   return { gamesActive, playersOnline: wsConnections.size };
+}
+
+/* ─── Friend system ─── */
+
+export interface FriendInfo {
+  playerId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isOnline: boolean;
+  currentGameId: string | null;
+}
+
+function getPlayerCurrentGameId(playerId: string): string | null {
+  for (const [id, g] of games) {
+    if (g.status === 'active' && (g.players.white === playerId || g.players.black === playerId)) {
+      return id;
+    }
+  }
+  return null;
+}
+
+function sendToFriends(playerId: string, message: Record<string, unknown>): void {
+  const friendIds = db.getFriendIds(playerId);
+  for (const fid of friendIds) {
+    sendToPlayer(fid, message);
+  }
+}
+
+function notifyFriendsOnline(playerId: string): void {
+  const player = players.get(playerId);
+  if (!player) return;
+  const currentGameId = getPlayerCurrentGameId(playerId);
+  sendToFriends(playerId, {
+    type: 'friend_online',
+    playerId,
+    username: player.username,
+    displayName: player.displayName,
+    currentGameId,
+  });
+}
+
+function notifyFriendsOffline(playerId: string): void {
+  sendToFriends(playerId, { type: 'friend_offline', playerId });
+}
+
+export function broadcastFriendRequest(fromPlayerId: string, toPlayerId: string, requestId: string): void {
+  const fromPlayer = players.get(fromPlayerId);
+  if (!fromPlayer) return;
+  sendToPlayer(toPlayerId, {
+    type: 'friend_request',
+    requestId,
+    fromPlayerId,
+    fromUsername: fromPlayer.username,
+    fromDisplayName: fromPlayer.displayName,
+  });
+}
+
+export function broadcastFriendRequestAccepted(acceptorId: string, requesterId: string): void {
+  const acceptor = players.get(acceptorId);
+  if (!acceptor) return;
+  sendToPlayer(requesterId, {
+    type: 'friend_request_accepted',
+    byPlayerId: acceptorId,
+    byUsername: acceptor.username,
+    byDisplayName: acceptor.displayName,
+  });
+}
+
+export function getFriendList(playerId: string): FriendInfo[] {
+  const friendIds = db.getFriendIds(playerId);
+  return friendIds.map((fid) => {
+    const player = players.get(fid);
+    const user = db.getUserById(fid);
+    return {
+      playerId: fid,
+      username: player?.username ?? user?.username ?? '?',
+      displayName: player?.displayName ?? user?.display_name ?? '?',
+      avatarUrl: user?.avatar_url ?? null,
+      isOnline: wsConnections.has(fid) && wsConnections.get(fid)!.size > 0,
+      currentGameId: getPlayerCurrentGameId(fid),
+    };
+  });
 }
 
 /* ─── Periodic sweep of stale waiting games ─── */
