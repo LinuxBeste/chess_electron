@@ -17,6 +17,7 @@ type StateMap = {
   playerId: string | null;
   username: string | null;
   avatarUrl: string | null;
+  isRegistered: boolean;
   currentGame: import('../../types').GameState | null;
   wsStatus: import('../../types').WsStatus;
   toasts: import('../../types').ToastMessage[];

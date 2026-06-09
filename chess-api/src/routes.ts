@@ -383,6 +383,10 @@ router.get('/games/:gameId/moves', authMiddleware, banCheckMiddleware, (req: Req
 
 /* Send a friend request by username */
 router.post('/friends/request', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  if (!req.player.isRegistered) {
+    res.status(403).json({ error: 'Only registered users can send friend requests' });
+    return;
+  }
   const { username } = req.body;
   if (!username || typeof username !== 'string') {
     res.status(400).json({ error: 'Username is required' });
@@ -412,6 +416,10 @@ router.post('/friends/request', authMiddleware, banCheckMiddleware, (req: Reques
 
 /* List pending friend requests (incoming and outgoing) */
 router.get('/friends/requests', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  if (!req.player.isRegistered) {
+    res.status(403).json({ error: 'Only registered users can view friend requests' });
+    return;
+  }
   const incoming = db.getPendingIncomingRequests(req.player.id);
   const outgoing = db.getPendingOutgoingRequests(req.player.id);
 
@@ -438,6 +446,10 @@ router.get('/friends/requests', authMiddleware, banCheckMiddleware, (req: Reques
 
 /* Accept a friend request */
 router.post('/friends/requests/:id/accept', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  if (!req.player.isRegistered) {
+    res.status(403).json({ error: 'Only registered users can accept friend requests' });
+    return;
+  }
   const fr = db.getFriendRequest(req.params.id);
   if (!fr) {
     res.status(404).json({ error: 'Friend request not found' });
@@ -459,6 +471,10 @@ router.post('/friends/requests/:id/accept', authMiddleware, banCheckMiddleware, 
 
 /* Decline a friend request */
 router.post('/friends/requests/:id/decline', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  if (!req.player.isRegistered) {
+    res.status(403).json({ error: 'Only registered users can decline friend requests' });
+    return;
+  }
   const fr = db.getFriendRequest(req.params.id);
   if (!fr) {
     res.status(404).json({ error: 'Friend request not found' });
@@ -478,6 +494,10 @@ router.post('/friends/requests/:id/decline', authMiddleware, banCheckMiddleware,
 
 /* Remove a friend */
 router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  if (!req.player.isRegistered) {
+    res.status(403).json({ error: 'Only registered users can remove friends' });
+    return;
+  }
   if (!db.areFriends(req.player.id, req.params.friendId)) {
     res.status(404).json({ error: 'Not friends with this user' });
     return;
@@ -488,6 +508,10 @@ router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, (req: Re
 
 /* List friends with online status and current game */
 router.get('/friends', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  if (!req.player.isRegistered) {
+    res.status(403).json({ error: 'Only registered users can list friends' });
+    return;
+  }
   res.json(game.getFriendList(req.player.id));
 });
 

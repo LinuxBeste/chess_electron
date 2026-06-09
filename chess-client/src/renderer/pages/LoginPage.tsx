@@ -69,6 +69,7 @@ export default function LoginPage() {
       store.set('token', result.token);
       store.set('playerId', result.playerId);
       store.set('username', trimmed);
+      store.set('isRegistered', result.isRegistered);
       navigate('/lobby');
     } catch (err: any) {
       store.toast(err.message || t('login.failedConnect'));
@@ -93,6 +94,7 @@ export default function LoginPage() {
       store.set('token', result.token);
       store.set('playerId', result.playerId);
       store.set('username', result.displayName);
+      store.set('isRegistered', result.isRegistered);
       navigate('/lobby');
     } catch (err: any) {
       store.toast(err.message || t('login.registrationFailed'));
@@ -113,6 +115,7 @@ export default function LoginPage() {
       store.set('token', result.token);
       store.set('playerId', result.playerId);
       store.set('username', result.displayName);
+      store.set('isRegistered', true);
       navigate('/lobby');
     } catch (err: any) {
       store.toast(err.message || t('login.loginFailed'));

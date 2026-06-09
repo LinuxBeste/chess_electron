@@ -113,9 +113,11 @@ export default function App() {
       store.set('playerId', session.playerId);
       store.set('username', session.username);
       store.set('avatarUrl', session.avatarUrl);
+      store.set('isRegistered', session.isRegistered);
       getMe()
         .then((me) => {
           store.set('avatarUrl', me.avatarUrl);
+          store.set('isRegistered', me.isRegistered);
           navigate('/lobby', { replace: true });
         })
         .catch((err) => {

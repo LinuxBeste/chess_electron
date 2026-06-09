@@ -30,6 +30,7 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
   const username = useStoreValue('username');
   const token = useStoreValue('token');
   const avatarUrl = useStoreValue('avatarUrl');
+  const isRegistered = useStoreValue('isRegistered');
   const wsStatus = useStoreValue('wsStatus');
   const offline = useStoreValue('offline');
   const navigate = useNavigate();
@@ -102,7 +103,7 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
                 {t('navbar.stats')}
               </button>
             )}
-            {isLoggedIn && (
+            {isLoggedIn && isRegistered && (
               <button className="navbar-btn" onClick={() => setShowFriends(true)}>
                 {t('navbar.friends')}
               </button>
