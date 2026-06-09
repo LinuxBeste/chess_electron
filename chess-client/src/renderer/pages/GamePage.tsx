@@ -19,6 +19,7 @@ import Board from '../components/Board';
 import MoveHistory from '../components/MoveHistory';
 import Chat from '../components/Chat';
 import PromotionDialog from '../components/PromotionDialog';
+import PlayerProfileDialog from '../components/PlayerProfileDialog';
 import { deserializeBoard, cloneBoard, createInitialBoard, squareToIndices } from '../chess';
 import { getSetting } from '../settings';
 import { playMoveSound, playCaptureSound, playCheckSound, playGameOverSound } from '../sound';
@@ -48,6 +49,7 @@ export default function GamePage() {
   const [whiteTime, setWhiteTime] = useState(initialMs);
   const [blackTime, setBlackTime] = useState(initialMs);
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
+  const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null);
   const [resignConfirmed, setResignConfirmed] = useState(false);
   const [waiting, setWaiting] = useState(false);
@@ -523,8 +525,28 @@ export default function GamePage() {
     <div className="game-layout">
       <div className="game-center">
         <div className="player-bar">
-          <span className="player-name">
-            {game?.players.black === store.get('playerId') ? t('game.youBlack') : t('common.black')}
+          <span className="player-name" style={{ gap: 8 }}>
+            {game?.players.black === store.get('playerId') ? (
+              t('game.youBlack')
+            ) : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {game?.blackAvatarUrl ? (
+                  <img src={api.avatarSrc(game.blackAvatarUrl)} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#2a2a2a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#555' }}>
+                    {((game?.blackName || t('common.black'))[0]).toUpperCase()}
+                  </div>
+                )}
+                <span
+                  onClick={() => game?.players.black && setProfilePlayerId(game.players.black)}
+                  style={{ cursor: 'pointer', borderBottom: '1px dashed transparent' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = 'var(--muted)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = 'transparent')}
+                >
+                  {game?.blackName || t('common.black')}
+                </span>
+              </span>
+            )}
           </span>
           <span className="player-clock">{formatTime(blackTime)}</span>
         </div>
@@ -578,8 +600,28 @@ export default function GamePage() {
           )}
         </Board>
         <div className="player-bar">
-          <span className="player-name">
-            {game?.players.white === store.get('playerId') ? t('game.youWhite') : t('common.white')}
+          <span className="player-name" style={{ gap: 8 }}>
+            {game?.players.white === store.get('playerId') ? (
+              t('game.youWhite')
+            ) : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {game?.whiteAvatarUrl ? (
+                  <img src={api.avatarSrc(game.whiteAvatarUrl)} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#2a2a2a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#555' }}>
+                    {((game?.whiteName || t('common.white'))[0]).toUpperCase()}
+                  </div>
+                )}
+                <span
+                  onClick={() => game?.players.white && setProfilePlayerId(game.players.white)}
+                  style={{ cursor: 'pointer', borderBottom: '1px dashed transparent' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = 'var(--muted)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = 'transparent')}
+                >
+                  {game?.whiteName || t('common.white')}
+                </span>
+              </span>
+            )}
           </span>
           <span className="player-clock">{formatTime(whiteTime)}</span>
         </div>
@@ -658,6 +700,10 @@ export default function GamePage() {
         {gameId && <Chat gameId={gameId} />}
       </div>
       {promotion && <PromotionDialog color={playerColor} onSelect={handlePromotionSelect} />}
+
+      {profilePlayerId && (
+        <PlayerProfileDialog playerId={profilePlayerId} onClose={() => setProfilePlayerId(null)} />
+      )}
     </div>
   );
 }

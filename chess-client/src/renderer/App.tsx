@@ -107,8 +107,10 @@ export default function App() {
       store.set('token', session.token);
       store.set('playerId', session.playerId);
       store.set('username', session.username);
+      store.set('avatarUrl', session.avatarUrl);
       getMe()
-        .then(() => {
+        .then((me) => {
+          store.set('avatarUrl', me.avatarUrl);
           navigate('/lobby', { replace: true });
         })
         .catch((err) => {

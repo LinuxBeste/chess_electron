@@ -2,11 +2,30 @@
  * and sends the response.  No business logic lives here. */
 
 import { Router, Request, Response } from 'express';
+import multer from 'multer';
 import { PieceType } from './types';
 import * as game from './game';
 import * as db from './db';
+import fs from 'fs';
+import path from 'path';
 
 const router: ReturnType<typeof Router> = Router();
+
+/* ─── Avatar file upload middleware ─── */
+const avatarUpload = multer({
+  storage: multer.diskStorage({
+    destination: path.join(__dirname, '..', 'data', 'avatars'),
+    filename: (_req, file, cb) => {
+      const ext = file.mimetype === 'image/png' ? '.png' : '.jpg';
+      cb(null, 'temp' + ext);
+    },
+  }),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
 
 /**
  * Middleware: extract and validate the bearer token from the
@@ -135,6 +154,7 @@ router.get('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: R
     displayName: req.player.displayName,
     isRegistered: req.player.isRegistered,
     createdAt: user?.created_at ?? null,
+    avatarUrl: user?.avatar_url ?? null,
     ...(stats ? { stats } : {}),
   });
 });
@@ -171,6 +191,69 @@ router.put('/auth/me/password', authMiddleware, banCheckMiddleware, (req: Reques
     return;
   }
   res.json({ success: true });
+});
+
+/* Upload profile picture (registered users only) */
+router.post('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  if (!req.player.isRegistered) {
+    res.status(400).json({ error: 'Only registered accounts can set a profile picture' });
+    return;
+  }
+  avatarUpload.single('avatar')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        res.status(400).json({ error: 'File too large. Maximum size is 2 MB.' });
+        return;
+      }
+      res.status(400).json({ error: 'Upload failed: ' + err.message });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: 'No file provided' });
+      return;
+    }
+
+    const ext = path.extname(req.file.filename) || '.jpg';
+    const finalName = req.player.id + ext;
+    const finalPath = path.join(__dirname, '..', 'data', 'avatars', finalName);
+    try {
+      fs.renameSync(req.file.path, finalPath);
+    } catch {
+      /* file may already be under the final name on some platforms */
+    }
+
+    const avatarUrl = '/avatars/' + finalName;
+    db.updateUserAvatar(req.player.id, avatarUrl);
+    res.json({ avatarUrl });
+  });
+});
+
+/* Remove profile picture */
+router.delete('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  const user = db.getUserById(req.player.id);
+  if (user?.avatar_url) {
+    const filePath = path.join(__dirname, '..', 'data', 'avatars', path.basename(user.avatar_url));
+    try {
+      fs.unlinkSync(filePath);
+    } catch { /* file might not exist */ }
+  }
+  db.updateUserAvatar(req.player.id, null);
+  res.json({ success: true });
+});
+
+/* Get a player's public profile */
+router.get('/players/:playerId/profile', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  const player = game.getPlayerById(req.params.playerId);
+  const user = db.getUserById(req.params.playerId);
+  res.json({
+    id: req.params.playerId,
+    username: player?.username ?? user?.username ?? null,
+    displayName: player?.displayName ?? user?.display_name ?? null,
+    isRegistered: player?.isRegistered ?? !!user,
+    avatarUrl: user?.avatar_url ?? null,
+    createdAt: user?.created_at ?? null,
+    stats: user ? { wins: user.wins, losses: user.losses, draws: user.draws } : null,
+  });
 });
 
 /* Delete the authenticated player's account (registered users only) */

@@ -30,10 +30,24 @@ const tokenIndex = new Map<string, string>();
 function enrichNames(g: GameState): GameState {
   const whitePlayer = g.players.white ? players.get(g.players.white) : undefined;
   const blackPlayer = g.players.black ? players.get(g.players.black) : undefined;
+
+  let whiteAvatarUrl: string | undefined;
+  let blackAvatarUrl: string | undefined;
+  if (whitePlayer?.isRegistered) {
+    const user = db.getUserById(whitePlayer.id);
+    if (user?.avatar_url) whiteAvatarUrl = user.avatar_url;
+  }
+  if (blackPlayer?.isRegistered) {
+    const user = db.getUserById(blackPlayer.id);
+    if (user?.avatar_url) blackAvatarUrl = user.avatar_url;
+  }
+
   return {
     ...g,
     whiteName: whitePlayer?.displayName ?? whitePlayer?.username ?? g.whiteName,
     blackName: blackPlayer?.displayName ?? blackPlayer?.username ?? g.blackName,
+    whiteAvatarUrl,
+    blackAvatarUrl,
   };
 }
 
@@ -1067,6 +1081,13 @@ export function endGame(gameId: string): { success: true } | { success: false; e
 
 export function getAllGames(): GameState[] {
   return Array.from(games.values()).map(enrichNames);
+}
+
+/**
+ * Get a player by ID from the in-memory store.
+ */
+export function getPlayerById(playerId: string): Player | undefined {
+  return players.get(playerId);
 }
 
 /**

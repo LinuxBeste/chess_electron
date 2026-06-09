@@ -16,6 +16,9 @@ import {
   changePassword as apiChangePassword,
   deleteAccount as apiDeleteAccount,
   getMe,
+  uploadAvatar as apiUploadAvatar,
+  deleteAvatar as apiDeleteAvatar,
+  avatarSrc,
 } from '../api';
 import { useStoreValue } from '../hooks/useStore';
 import { store } from '../store';
@@ -865,6 +868,7 @@ function AccountTab() {
   const [displayName, setDisplayName] = useState('');
   const [isRegistered, setIsRegistered] = useState(false);
   const [createdAt, setCreatedAt] = useState<number | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [stats, setStats] = useState<{ wins: number; losses: number; draws: number } | null>(null);
@@ -875,6 +879,8 @@ function AccountTab() {
   const [passwordError, setPasswordError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [avatarMsg, setAvatarMsg] = useState('');
+  const [avatarError, setAvatarError] = useState('');
 
   useEffect(() => {
     if (!token) return;
@@ -884,6 +890,7 @@ function AccountTab() {
         setDisplayName(me.displayName);
         setIsRegistered(me.isRegistered);
         setCreatedAt(me.createdAt);
+        setAvatarUrl(me.avatarUrl);
         if (me.stats) setStats(me.stats);
         setStatsLoading(false);
       })
@@ -900,6 +907,34 @@ function AccountTab() {
       setDisplayNameMsg(t('settings.account.saved'));
     } catch (err: any) {
       setDisplayNameError(err.message || t('settings.account.saveFailed'));
+    }
+  }
+
+  async function handleUploadAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarMsg('');
+    setAvatarError('');
+    try {
+      const result = await apiUploadAvatar(file);
+      setAvatarUrl(result.avatarUrl);
+      store.set('avatarUrl', result.avatarUrl);
+      setAvatarMsg(t('settings.account.avatarUpdated'));
+    } catch (err: any) {
+      setAvatarError(err.message || t('settings.account.avatarFailed'));
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    setAvatarMsg('');
+    setAvatarError('');
+    try {
+      await apiDeleteAvatar();
+      setAvatarUrl(null);
+      store.set('avatarUrl', null);
+      setAvatarMsg(t('settings.account.avatarRemoved'));
+    } catch (err: any) {
+      setAvatarError(err.message || t('settings.account.avatarFailed'));
     }
   }
 
@@ -940,6 +975,70 @@ function AccountTab() {
   return (
     <>
       <Section title={t('settings.account.section')} />
+
+      {/* Profile Picture */}
+      <div className="settings-row" style={{ alignItems: 'center' }}>
+        <div>
+          <div className="settings-label">{t('settings.account.avatar')}</div>
+          <div className="settings-desc">{t('settings.account.avatarDesc')}</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {avatarUrl ? (
+            <img
+              src={avatarSrc(avatarUrl)}
+              alt=""
+              style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                background: '#2a2a2a',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 18,
+                color: '#555',
+              }}
+            >
+              {(username || '?')[0].toUpperCase()}
+            </div>
+          )}
+          {isRegistered && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 11, color: '#aaa', cursor: 'pointer' }}>
+                {t('settings.account.avatarUpload')}
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={handleUploadAvatar}
+                />
+              </label>
+              {avatarUrl && (
+                <button
+                  onClick={handleRemoveAvatar}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#f44336',
+                    fontSize: 11,
+                    cursor: 'pointer',
+                    padding: 0,
+                    textAlign: 'left',
+                  }}
+                >
+                  {t('settings.account.avatarRemove')}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      {avatarMsg && <span style={{ fontSize: 11, color: '#4caf50', display: 'block', marginTop: -8, marginBottom: 8 }}>{avatarMsg}</span>}
+      {avatarError && <span style={{ fontSize: 11, color: '#f44336', display: 'block', marginTop: -8, marginBottom: 8 }}>{avatarError}</span>}
 
       {/* Account Info */}
       <div className="settings-row">

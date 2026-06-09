@@ -26,6 +26,18 @@ export function setBaseUrl(url: string): void {
   BASE_URL = url;
 }
 
+/** Get the current API base URL. */
+export function getBaseUrl(): string {
+  return BASE_URL;
+}
+
+/** Convert a relative avatar URL to an absolute URL for use in <img> tags. */
+export function avatarSrc(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${BASE_URL}${url}`;
+}
+
 /** Error thrown when the API returns a non-2xx response. */
 export class ApiError extends Error {
   constructor(
@@ -112,6 +124,7 @@ export function getMe(): Promise<{
   displayName: string;
   isRegistered: boolean;
   createdAt: number | null;
+  avatarUrl: string | null;
   stats?: { wins: number; losses: number; draws: number };
 }> {
   return request('/auth/me');
@@ -233,4 +246,55 @@ export function getPlayerGames(playerId: string): Promise<GameState[]> {
  * and ../chess-api/docs/api.md lines 126-138. */
 export function getLegalMoves(gameId: string): Promise<{ moves: LegalMoveHint[] }> {
   return request(`/games/${gameId}/moves`);
+}
+
+/* ─── Profile Pictures ─── */
+
+/* POST /auth/me/avatar — auth required.
+ * Upload a profile picture. */
+export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+  const token = store.get('token');
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}/auth/me/avatar`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    let msg = 'Upload failed';
+    try { const b = await res.json(); if (b.error) msg = b.error; } catch {}
+    throw new ApiError(res.status, msg);
+  }
+
+  return res.json();
+}
+
+/* DELETE /auth/me/avatar — auth required.
+ * Remove profile picture. */
+export function deleteAvatar(): Promise<{ success: true }> {
+  return request('/auth/me/avatar', { method: 'DELETE' });
+}
+
+/* ─── Player Profiles ─── */
+
+export interface PlayerProfile {
+  id: string;
+  username: string | null;
+  displayName: string | null;
+  isRegistered: boolean;
+  avatarUrl: string | null;
+  createdAt: number | null;
+  stats: { wins: number; losses: number; draws: number } | null;
+}
+
+/* GET /players/:playerId/profile — auth required.
+ * View another player's public profile. */
+export function getPlayerProfile(playerId: string): Promise<PlayerProfile> {
+  return request(`/players/${playerId}/profile`);
 }

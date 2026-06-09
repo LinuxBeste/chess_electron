@@ -4,6 +4,7 @@ import * as api from '../api';
 import { useNavigate } from 'react-router-dom';
 import type { GameState } from '../../types';
 import { t } from '../translate';
+import PlayerProfileDialog from './PlayerProfileDialog';
 
 interface Props {
   onClose: () => void;
@@ -13,6 +14,7 @@ export default function MatchHistoryDialog({ onClose }: Props) {
   const navigate = useNavigate();
   const [games, setGames] = useState<GameState[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
 
   useEffect(() => {
     const pid = store.get('playerId');
@@ -103,8 +105,36 @@ export default function MatchHistoryDialog({ onClose }: Props) {
                       fontSize: 13,
                     }}
                   >
-                    <span style={{ color: 'var(--text)', fontWeight: 500, letterSpacing: '0.2px' }}>
-                      {t('common.vs')} {opponentName}
+                    <span style={{ color: 'var(--text)', fontWeight: 500, letterSpacing: '0.2px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {t('common.vs')}{' '}
+                      {isWhite ? (
+                        g.blackAvatarUrl ? (
+                          <img src={api.avatarSrc(g.blackAvatarUrl)} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#2a2a2a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#555' }}>
+                            {(opponentName || '?')[0].toUpperCase()}
+                          </div>
+                        )
+                      ) : (
+                        g.whiteAvatarUrl ? (
+                          <img src={api.avatarSrc(g.whiteAvatarUrl)} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#2a2a2a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#555' }}>
+                            {(opponentName || '?')[0].toUpperCase()}
+                          </div>
+                        )
+                      )}
+                      <span
+                        onClick={() => {
+                          const oppId = isWhite ? g.players.black : g.players.white;
+                          if (oppId) setProfilePlayerId(oppId);
+                        }}
+                        style={{ cursor: 'pointer', borderBottom: '1px dashed transparent' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = 'var(--muted)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = 'transparent')}
+                      >
+                        {opponentName}
+                      </span>
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ color: resultColor, fontWeight: 600, letterSpacing: '0.3px' }}>{resultText}</span>
@@ -126,6 +156,10 @@ export default function MatchHistoryDialog({ onClose }: Props) {
           )}
         </div>
       </div>
+
+      {profilePlayerId && (
+        <PlayerProfileDialog playerId={profilePlayerId} onClose={() => setProfilePlayerId(null)} />
+      )}
     </div>
   );
 }

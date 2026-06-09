@@ -54,6 +54,8 @@ export interface GameState {
   players: { white?: string; black?: string };
   whiteName?: string;
   blackName?: string;
+  whiteAvatarUrl?: string;
+  blackAvatarUrl?: string;
   moveHistory: string[];
   boardHistory: { board: SerializedSquare[]; move: string }[];
   enPassantTarget: string | null;

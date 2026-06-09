@@ -13,6 +13,8 @@ import * as api from '../api';
 import { useNavigate } from 'react-router-dom';
 import type { GameState } from '../../types';
 import { t } from '../translate';
+import { avatarSrc } from '../api';
+import PlayerProfileDialog from '../components/PlayerProfileDialog';
 
 export default function LobbyPage() {
   const navigate = useNavigate();
@@ -23,6 +25,7 @@ export default function LobbyPage() {
   const [joinId, setJoinId] = useState('');
   const [spectateId, setSpectateId] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
+  const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const [liveStatus, setLiveStatus] = useState('');
 
   /* Poll the server for open and active games. Errors are surfaced as status
@@ -158,7 +161,22 @@ export default function LobbyPage() {
                       />
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
+                          {game.whiteAvatarUrl ? (
+                            <img src={avatarSrc(game.whiteAvatarUrl)} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                          ) : (
+                            <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#555', flexShrink: 0 }}>
+                              {(creatorName || '?')[0].toUpperCase()}
+                            </div>
+                          )}
+                          <span
+                            onClick={() => creatorId && setProfilePlayerId(creatorId)}
+                            style={{
+                              fontSize: 15, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px',
+                              cursor: 'pointer', borderBottom: '1px dashed transparent',
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = 'var(--muted)')}
+                            onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = 'transparent')}
+                          >
                             {creatorName}
                           </span>
                           {game.visibility === 'private' && (
@@ -223,12 +241,46 @@ export default function LobbyPage() {
                       }}
                     />
                     <div style={{ minWidth: 0 }}>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
-                        {wName}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {game.whiteAvatarUrl ? (
+                          <img src={avatarSrc(game.whiteAvatarUrl)} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#2a2a2a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#555' }}>
+                            {(wName || '?')[0].toUpperCase()}
+                          </div>
+                        )}
+                        <span
+                          onClick={() => game.players.white && setProfilePlayerId(game.players.white)}
+                          style={{
+                            fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px',
+                            cursor: 'pointer', borderBottom: '1px dashed transparent',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = 'var(--muted)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = 'transparent')}
+                        >
+                          {wName}
+                        </span>
                       </span>
                       <span style={{ fontSize: 12, color: 'var(--muted)', margin: '0 4px' }}>{t('common.vs')}</span>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px' }}>
-                        {bName}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {game.blackAvatarUrl ? (
+                          <img src={avatarSrc(game.blackAvatarUrl)} alt="" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#2a2a2a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#555' }}>
+                            {(bName || '?')[0].toUpperCase()}
+                          </div>
+                        )}
+                        <span
+                          onClick={() => game.players.black && setProfilePlayerId(game.players.black)}
+                          style={{
+                            fontSize: 14, fontWeight: 500, color: 'var(--text)', letterSpacing: '0.2px',
+                            cursor: 'pointer', borderBottom: '1px dashed transparent',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = 'var(--muted)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = 'transparent')}
+                        >
+                          {bName}
+                        </span>
                       </span>
                       <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{statusLabel}</div>
                     </div>
@@ -355,6 +407,10 @@ export default function LobbyPage() {
           </div>
         )}
       </div>
+
+      {profilePlayerId && (
+        <PlayerProfileDialog playerId={profilePlayerId} onClose={() => setProfilePlayerId(null)} />
+      )}
     </div>
   );
 }

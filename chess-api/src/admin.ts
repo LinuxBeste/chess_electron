@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
+import path from 'path';
 import os from 'os';
 import fs from 'fs';
 import { execSync } from 'child_process';
@@ -280,6 +281,7 @@ router.get('/admin/api/accounts', adminAuthMiddleware, (_req: Request, res: Resp
     id: u.id,
     username: u.username,
     displayName: u.display_name,
+    avatarUrl: u.avatar_url,
     createdAt: u.created_at,
     wins: u.wins,
     losses: u.losses,
@@ -289,21 +291,63 @@ router.get('/admin/api/accounts', adminAuthMiddleware, (_req: Request, res: Resp
 });
 
 router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: Response) => {
-  const { displayName } = req.body;
-  if (!displayName || typeof displayName !== 'string' || displayName.trim().length === 0) {
-    res.status(400).json({ error: 'displayName is required' });
-    return;
-  }
+  const { username, displayName, wins, losses, draws } = req.body;
   const user = db.getUserById(req.params.id);
   if (!user) {
     res.status(404).json({ error: 'Account not found' });
     return;
   }
-  db.updateUserDisplayName(req.params.id, displayName.trim());
-  const player = game.getAllPlayers().find((p) => p.id === req.params.id);
-  if (player) {
-    player.displayName = displayName.trim();
+
+  if (username !== undefined) {
+    if (typeof username !== 'string' || username.trim().length === 0) {
+      res.status(400).json({ error: 'Username cannot be empty' });
+      return;
+    }
+    const existing = db.getUserByUsername(username.trim());
+    if (existing && existing.id !== req.params.id) {
+      res.status(409).json({ error: 'Username is already taken' });
+      return;
+    }
+    db.updateUsername(req.params.id, username.trim());
+    const player = game.getAllPlayers().find((p) => p.id === req.params.id);
+    if (player) player.username = username.trim();
   }
+
+  if (displayName !== undefined) {
+    if (typeof displayName !== 'string' || displayName.trim().length === 0) {
+      res.status(400).json({ error: 'displayName cannot be empty' });
+      return;
+    }
+    db.updateUserDisplayName(req.params.id, displayName.trim());
+    const player = game.getAllPlayers().find((p) => p.id === req.params.id);
+    if (player) player.displayName = displayName.trim();
+  }
+
+  if (wins !== undefined || losses !== undefined || draws !== undefined) {
+    const newWins = wins !== undefined ? wins : user.wins;
+    const newLosses = losses !== undefined ? losses : user.losses;
+    const newDraws = draws !== undefined ? draws : user.draws;
+    if (typeof newWins !== 'number' || typeof newLosses !== 'number' || typeof newDraws !== 'number') {
+      res.status(400).json({ error: 'Stats must be numbers' });
+      return;
+    }
+    db.updateUserStats(req.params.id, newWins, newLosses, newDraws);
+  }
+
+  res.json({ success: true });
+});
+
+router.delete('/admin/api/accounts/:id/avatar', adminAuthMiddleware, (req: Request, res: Response) => {
+  const user = db.getUserById(req.params.id);
+  if (!user) {
+    res.status(404).json({ error: 'Account not found' });
+    return;
+  }
+  if (user.avatar_url) {
+    const filePath = path.join(__dirname, '..', 'data', 'avatars', path.basename(user.avatar_url));
+    try { fs.unlinkSync(filePath); } catch { /* ok */ }
+  }
+  db.updateUserAvatar(req.params.id, null);
   res.json({ success: true });
 });
 

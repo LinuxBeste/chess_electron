@@ -15,6 +15,7 @@ import MatchHistoryDialog from './MatchHistoryDialog';
 import StatsDialog from './StatsDialog';
 import { t, getLanguage } from '../translate';
 import { getLanguageNames } from '../locales';
+import { avatarSrc } from '../api';
 
 interface NavbarProps {
   onLanguageChange: () => void;
@@ -26,6 +27,7 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
   const [showStats, setShowStats] = useState(false);
   const username = useStoreValue('username');
   const token = useStoreValue('token');
+  const avatarUrl = useStoreValue('avatarUrl');
   const wsStatus = useStoreValue('wsStatus');
   const offline = useStoreValue('offline');
   const navigate = useNavigate();
@@ -44,13 +46,23 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
         {(isLoggedIn || isOffline) && (
           <>
             {isLoggedIn && (
-              <span className="navbar-player">
+              <span className="navbar-player" style={{ gap: 8 }}>
+                {avatarUrl ? (
+                  <img src={avatarSrc(avatarUrl)} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#555' }}>
+                    {(username || '?')[0].toUpperCase()}
+                  </div>
+                )}
                 <span className={`navbar-dot ${wsStatus === 'connected' ? 'online' : 'offline'}`} />
                 {username}
               </span>
             )}
             {isOffline && (
-              <span className="navbar-player">
+              <span className="navbar-player" style={{ gap: 8 }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#555' }}>
+                  {(username || '?')[0].toUpperCase()}
+                </div>
                 <span className="navbar-dot offline" />
                 {username}
               </span>
@@ -74,6 +86,7 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
                 store.set('token', null);
                 store.set('playerId', null);
                 store.set('username', null);
+                store.set('avatarUrl', null);
                 store.set('offline', false);
                 store.clearSession();
                 store.set('currentGame', null);

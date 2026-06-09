@@ -5,6 +5,7 @@
 import express, { Express } from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
@@ -35,6 +36,10 @@ app.use(express.json());
 /* Attach all API routes */
 app.use(routes);
 
+/* Ensure avatar upload directory exists, then serve it */
+const avatarDir = path.join(path.resolve(__dirname, '..'), 'data', 'avatars');
+fs.mkdirSync(avatarDir, { recursive: true });
+app.use('/avatars', express.static(avatarDir));
 /* Serve admin dashboard static files (React build output in dist/admin/) */
 const adminDir = path.join(path.resolve(__dirname, '..'), 'dist', 'admin');
 app.use('/admin', express.static(adminDir));

@@ -808,8 +808,12 @@ describe('Admin API — accounts CRUD', () => {
     expect(target.displayName).toBe('Admin Test');
   });
 
-  test('PUT /admin/api/accounts/:id rejects missing displayName', async () => {
-    await request.put(`/admin/api/accounts/${accountId}`).set('Authorization', authHeader).send({}).expect(400);
+  test('PUT /admin/api/accounts/:id rejects empty displayName', async () => {
+    await request
+      .put(`/admin/api/accounts/${accountId}`)
+      .set('Authorization', authHeader)
+      .send({ displayName: '' })
+      .expect(400);
   });
 
   test('PUT /admin/api/accounts/:id rejects non-existent account', async () => {
@@ -995,5 +999,169 @@ describe('DELETE /auth/me — delete account', () => {
 
   test('requires auth', async () => {
     await request.delete('/auth/me').expect(401);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Profile Pictures (avatar)                                            */
+/* ------------------------------------------------------------------ */
+
+describe('POST /auth/me/avatar — profile picture', () => {
+  test('uploads avatar for registered user', async () => {
+    const res = await request.post('/auth/register').send({ username: 'av_up', password: 'test1234' }).expect(201);
+    const auth = `Bearer ${res.body.token}`;
+
+    const upload = await request
+      .post('/auth/me/avatar')
+      .set('Authorization', auth)
+      .attach('avatar', Buffer.from('test-image'), { filename: 'avatar.png', contentType: 'image/png' })
+      .expect(200);
+
+    expect(upload.body).toHaveProperty('avatarUrl');
+    expect(upload.body.avatarUrl).toMatch(/^\/avatars\//);
+
+    const me = await request.get('/auth/me').set('Authorization', auth).expect(200);
+    expect(me.body.avatarUrl).toBe(upload.body.avatarUrl);
+  });
+
+  test('rejects upload without auth', async () => {
+    await request
+      .post('/auth/me/avatar')
+      .attach('avatar', Buffer.from('x'), { filename: 'x.png', contentType: 'image/png' })
+      .expect(401);
+  });
+
+  test('rejects upload for unregistered (anonymous) player', async () => {
+    const res = await request.post('/auth/register').send({ username: 'av_anon' }).expect(201);
+    const auth = `Bearer ${res.body.token}`;
+
+    await request
+      .post('/auth/me/avatar')
+      .set('Authorization', auth)
+      .attach('avatar', Buffer.from('x'), { filename: 'x.png', contentType: 'image/png' })
+      .expect(400);
+  });
+
+  test('rejects non-image file type', async () => {
+    const res = await request.post('/auth/register').send({ username: 'av_txt', password: 'test1234' }).expect(201);
+    const auth = `Bearer ${res.body.token}`;
+
+    await request
+      .post('/auth/me/avatar')
+      .set('Authorization', auth)
+      .attach('avatar', Buffer.from('text'), { filename: 'test.txt', contentType: 'text/plain' })
+      .expect(400);
+  });
+
+  test('DELETE /auth/me/avatar removes avatar', async () => {
+    const res = await request.post('/auth/register').send({ username: 'av_del', password: 'test1234' }).expect(201);
+    const auth = `Bearer ${res.body.token}`;
+
+    await request
+      .post('/auth/me/avatar')
+      .set('Authorization', auth)
+      .attach('avatar', Buffer.from('x'), { filename: 'x.png', contentType: 'image/png' })
+      .expect(200);
+
+    await request.delete('/auth/me/avatar').set('Authorization', auth).expect(200);
+
+    const me = await request.get('/auth/me').set('Authorization', auth).expect(200);
+    expect(me.body.avatarUrl).toBeNull();
+  });
+
+  test('game state includes avatarUrl after upload', async () => {
+    const white = await request
+      .post('/auth/register')
+      .send({ username: 'av_game_w', password: 'test1234' })
+      .expect(201);
+    const black = await request
+      .post('/auth/register')
+      .send({ username: 'av_game_b', password: 'test1234' })
+      .expect(201);
+    const wh = `Bearer ${white.body.token}`;
+    const bh = `Bearer ${black.body.token}`;
+
+    const upload = await request
+      .post('/auth/me/avatar')
+      .set('Authorization', wh)
+      .attach('avatar', Buffer.from('x'), { filename: 'x.png', contentType: 'image/png' })
+      .expect(200);
+    const avatarUrl = upload.body.avatarUrl;
+
+    const gameRes = await request.post('/games').set('Authorization', wh).expect(201);
+    expect(gameRes.body.whiteAvatarUrl).toBe(avatarUrl);
+    expect(gameRes.body.whiteName).toBe('av_game_w');
+
+    const joinRes = await request.post(`/games/${gameRes.body.id}/join`).set('Authorization', bh).expect(200);
+    expect(joinRes.body.whiteAvatarUrl).toBe(avatarUrl);
+    expect(joinRes.body.blackAvatarUrl).toBeUndefined();
+    expect(joinRes.body.blackName).toBe('av_game_b');
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Player Profiles                                                      */
+/* ------------------------------------------------------------------ */
+
+describe('GET /players/:playerId/profile', () => {
+  test('returns profile for registered user', async () => {
+    const res = await request
+      .post('/auth/register')
+      .send({ username: 'prof_reg', password: 'test1234' })
+      .expect(201);
+    const auth = `Bearer ${res.body.token}`;
+
+    const profile = await request
+      .get(`/players/${res.body.playerId}/profile`)
+      .set('Authorization', auth)
+      .expect(200);
+
+    expect(profile.body.id).toBe(res.body.playerId);
+    expect(profile.body.username).toBe('prof_reg');
+    expect(profile.body.displayName).toBe('prof_reg');
+    expect(profile.body.isRegistered).toBe(true);
+    expect(profile.body.avatarUrl).toBeNull();
+    expect(typeof profile.body.createdAt).toBe('number');
+    expect(profile.body.stats).toEqual({ wins: 0, losses: 0, draws: 0 });
+  });
+
+  test('returns limited profile for anonymous user', async () => {
+    const res = await request.post('/auth/register').send({ username: 'prof_anon' }).expect(201);
+    const auth = `Bearer ${res.body.token}`;
+
+    const profile = await request
+      .get(`/players/${res.body.playerId}/profile`)
+      .set('Authorization', auth)
+      .expect(200);
+
+    expect(profile.body.id).toBe(res.body.playerId);
+    expect(profile.body.isRegistered).toBe(false);
+    expect(profile.body.avatarUrl).toBeNull();
+    expect(profile.body.stats).toBeNull();
+  });
+
+  test('returns avatarUrl after upload', async () => {
+    const res = await request
+      .post('/auth/register')
+      .send({ username: 'prof_av', password: 'test1234' })
+      .expect(201);
+    const auth = `Bearer ${res.body.token}`;
+
+    const upload = await request
+      .post('/auth/me/avatar')
+      .set('Authorization', auth)
+      .attach('avatar', Buffer.from('x'), { filename: 'x.png', contentType: 'image/png' })
+      .expect(200);
+
+    const profile = await request
+      .get(`/players/${res.body.playerId}/profile`)
+      .set('Authorization', auth)
+      .expect(200);
+
+    expect(profile.body.avatarUrl).toBe(upload.body.avatarUrl);
+  });
+
+  test('requires auth', async () => {
+    await request.get('/players/some-id/profile').expect(401);
   });
 });

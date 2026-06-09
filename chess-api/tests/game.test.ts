@@ -673,6 +673,32 @@ describe('chat messages', () => {
     const ws = { readyState: 1, send: () => {} } as any;
     expect(() => game.handleChatMessage('any-game', 'fake-player', 'hello', ws)).not.toThrow();
   });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Game state enrichment (names + avatar URLs)                          */
+/* ------------------------------------------------------------------ */
+
+describe('game state enrichment', () => {
+  test('enrichNames adds display names and leaves avatarUrl undefined for anonymous players', () => {
+    const { playerId: wId } = game.registerPlayer('anon_w');
+    const { playerId: bId } = game.registerPlayer('anon_b');
+
+    const g = game.createGame(wId);
+    const r = game.joinGame(g.id, bId);
+    expect(r.success).toBe(true);
+    expect(r.game!.whiteName).toBe('anon_w');
+    expect(r.game!.blackName).toBe('anon_b');
+    expect(r.game!.whiteAvatarUrl).toBeUndefined();
+    expect(r.game!.blackAvatarUrl).toBeUndefined();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Chat Messages                                                        */
+/* ------------------------------------------------------------------ */
+
+describe('chat messages', () => {
 
   test('handleChatMessage does not throw for non-existent game', () => {
     const pid = registerPlayer('chat_ghost');

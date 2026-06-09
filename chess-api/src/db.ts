@@ -44,6 +44,12 @@ function migrate(): void {
       banned_at INTEGER NOT NULL
     );
   `);
+
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL`);
+  } catch {
+    /* column already exists */
+  }
 }
 
 export interface DbUser {
@@ -55,6 +61,7 @@ export interface DbUser {
   wins: number;
   losses: number;
   draws: number;
+  avatar_url: string | null;
 }
 
 export function createUser(id: string, username: string, passwordHash: string | null, displayName: string): void {
@@ -119,6 +126,27 @@ export function loadAllTokens(): { token: string; user_id: string }[] {
     token: string;
     user_id: string;
   }[];
+}
+
+/* ─── Avatar ─── */
+
+export function updateUserAvatar(id: string, url: string | null): void {
+  const d = getDb();
+  d.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(url, id);
+}
+
+/* ─── Username (admin only) ─── */
+
+export function updateUsername(id: string, username: string): void {
+  const d = getDb();
+  d.prepare('UPDATE users SET username = ? WHERE id = ?').run(username, id);
+}
+
+/* ─── Stats (admin only) ─── */
+
+export function updateUserStats(id: string, wins: number, losses: number, draws: number): void {
+  const d = getDb();
+  d.prepare('UPDATE users SET wins = ?, losses = ?, draws = ? WHERE id = ?').run(wins, losses, draws, id);
 }
 
 /* ─── Admin dashboard helpers ─── */

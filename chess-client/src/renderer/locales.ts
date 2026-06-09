@@ -197,6 +197,13 @@ export type TranslationKeys = {
       registered: string;
       temporary: string;
       joined: string;
+      avatar: string;
+      avatarDesc: string;
+      avatarUpload: string;
+      avatarRemove: string;
+      avatarUpdated: string;
+      avatarRemoved: string;
+      avatarFailed: string;
       displayName: string;
       displayNameDesc: string;
       displayNamePlaceholder: string;
@@ -613,6 +620,13 @@ export const en: TranslationKeys = {
       registered: 'Registered',
       temporary: 'Temporary',
       joined: 'Joined',
+      avatar: 'Profile Picture',
+      avatarDesc: 'Shown on your profile',
+      avatarUpload: 'Upload photo',
+      avatarRemove: 'Remove',
+      avatarUpdated: 'Profile picture updated!',
+      avatarRemoved: 'Profile picture removed.',
+      avatarFailed: 'Failed to update profile picture',
       displayName: 'Display Name',
       displayNameDesc: 'How your name appears to other players',
       displayNamePlaceholder: 'Enter display name...',
@@ -1030,6 +1044,13 @@ export const de: TranslationKeys = {
       registered: 'Registriert',
       temporary: 'Temporär',
       joined: 'Beigetreten',
+      avatar: 'Profilbild',
+      avatarDesc: 'Wird auf deinem Profil angezeigt',
+      avatarUpload: 'Foto hochladen',
+      avatarRemove: 'Entfernen',
+      avatarUpdated: 'Profilbild aktualisiert!',
+      avatarRemoved: 'Profilbild entfernt.',
+      avatarFailed: 'Fehler beim Aktualisieren des Profilbilds',
       displayName: 'Anzeigename',
       displayNameDesc: 'Wie dein Name für andere Spieler angezeigt wird',
       displayNamePlaceholder: 'Anzeigenamen eingeben...',

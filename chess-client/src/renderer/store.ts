@@ -16,6 +16,7 @@ interface StateMap {
   token: string | null;
   playerId: string | null;
   username: string | null;
+  avatarUrl: string | null;
   currentGame: GameState | null;
   wsStatus: WsStatus;
   toasts: ToastMessage[];
@@ -29,6 +30,7 @@ class Store {
     token: null,
     playerId: null,
     username: null,
+    avatarUrl: null,
     currentGame: null,
     wsStatus: 'disconnected',
     toasts: [],
@@ -63,7 +65,7 @@ class Store {
         (h as (value: StateMap[K]) => void)(value);
       }
     }
-    if (key === 'token' || key === 'playerId' || key === 'username') {
+    if (key === 'token' || key === 'playerId' || key === 'username' || key === 'avatarUrl') {
       this.persistSession();
     }
   }
@@ -88,13 +90,14 @@ class Store {
     const token = this.get('token');
     const playerId = this.get('playerId');
     const username = this.get('username');
+    const avatarUrl = this.get('avatarUrl');
     if (token && playerId && username) {
-      localStorage.setItem('chess_session', JSON.stringify({ token, playerId, username }));
+      localStorage.setItem('chess_session', JSON.stringify({ token, playerId, username, avatarUrl }));
     }
   }
 
   /* Restore session from localStorage */
-  restoreSession(): { token: string; playerId: string; username: string } | null {
+  restoreSession(): { token: string; playerId: string; username: string; avatarUrl: string | null } | null {
     const raw = localStorage.getItem('chess_session');
     if (!raw) return null;
     try {
@@ -107,6 +110,7 @@ class Store {
 
   clearSession(): void {
     localStorage.removeItem('chess_session');
+    this.set('avatarUrl', null);
   }
 }
 
