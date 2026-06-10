@@ -4,12 +4,17 @@ import ToastContainer from '../src/renderer/components/ToastContainer';
 import { store } from '../src/renderer/store';
 
 describe('ToastContainer', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   test('renders nothing when no toasts', () => {
     const { container } = render(<ToastContainer />);
     expect(container.querySelector('.toast-bar')?.children.length || 0).toBe(0);
   });
 
   test('renders toast after store.toast is called', () => {
+    jest.useFakeTimers();
     render(<ToastContainer />);
     act(() => {
       store.toast('Test error', 'error');
@@ -18,6 +23,7 @@ describe('ToastContainer', () => {
   });
 
   test('renders info toast with correct class', () => {
+    jest.useFakeTimers();
     render(<ToastContainer />);
     act(() => {
       store.toast('Info message', 'info');
@@ -37,6 +43,5 @@ describe('ToastContainer', () => {
       jest.advanceTimersByTime(4000);
     });
     expect(screen.queryByText('Auto remove')).toBeNull();
-    jest.useRealTimers();
   });
 });

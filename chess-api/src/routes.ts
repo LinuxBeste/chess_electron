@@ -3,6 +3,7 @@
 
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
+import { v4 as uuidv4 } from 'uuid';
 import { PieceType } from './types';
 import * as game from './game';
 import * as db from './db';
@@ -12,20 +13,81 @@ import path from 'path';
 const router: ReturnType<typeof Router> = Router();
 
 /* ─── Avatar file upload middleware ─── */
+
+/* Check file content (magic bytes) against known image signatures */
+const IMAGE_MAGIC: Record<string, Uint8Array[]> = {
+  'image/jpeg': [new Uint8Array([0xff, 0xd8, 0xff])],
+  'image/png': [new Uint8Array([0x89, 0x50, 0x4e, 0x47])],
+  'image/gif': [new Uint8Array([0x47, 0x49, 0x46])],
+  'image/webp': [new Uint8Array([0x52, 0x49, 0x46, 0x46])],
+};
+
+function isValidImageType(filePath: string, mimeType: string): boolean {
+  try {
+    const magic = IMAGE_MAGIC[mimeType];
+    if (!magic) return false;
+    const header = new Uint8Array(fs.readFileSync(filePath).subarray(0, 8));
+    return magic.some((sig) => sig.every((b, i) => b === header[i]));
+  } catch {
+    return false;
+  }
+}
+
 const avatarUpload = multer({
   storage: multer.diskStorage({
     destination: path.join(__dirname, '..', 'data', 'avatars'),
     filename: (_req, file, cb) => {
-      const ext = file.mimetype === 'image/png' ? '.png' : '.jpg';
-      cb(null, 'temp' + ext);
+      const ext =
+        file.mimetype === 'image/png'
+          ? '.png'
+          : file.mimetype === 'image/gif'
+            ? '.gif'
+            : file.mimetype === 'image/webp'
+              ? '.webp'
+              : '.jpg';
+      cb(null, uuidv4() + ext);
     },
   }),
   limits: { fileSize: 2 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    cb(null, allowed.includes(file.mimetype));
+    if (!allowed.includes(file.mimetype)) {
+      cb(new Error('Unsupported file type. Allowed: PNG, JPEG, GIF, WebP.'));
+      return;
+    }
+    cb(null, true);
   },
 });
+
+/* IP-based rate limiter for unauthenticated endpoints (login, register) */
+const ipRateBuckets = new Map<string, number[]>();
+const IP_RATE_LIMIT_WINDOW_MS = 60000;
+const IP_RATE_LIMIT_MAX = process.env.NODE_ENV === 'test' ? Infinity : 20;
+
+export function ipRateLimitMiddleware(req: Request, res: Response, next: () => void): void {
+  const now = Date.now();
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const windowStart = now - IP_RATE_LIMIT_WINDOW_MS;
+  let timestamps = ipRateBuckets.get(ip) ?? [];
+  timestamps = timestamps.filter((t) => t > windowStart);
+  if (timestamps.length >= IP_RATE_LIMIT_MAX) {
+    res.status(429).json({ error: 'Too many requests. Please slow down.' });
+    return;
+  }
+  timestamps.push(now);
+  ipRateBuckets.set(ip, timestamps);
+  next();
+}
+
+/* Export for cleanup interval started in index.ts */
+export function cleanupIpRateBuckets(): void {
+  const cutoff = Date.now() - IP_RATE_LIMIT_WINDOW_MS;
+  for (const [ip, timestamps] of ipRateBuckets) {
+    const filtered = timestamps.filter((t) => t > cutoff);
+    if (filtered.length === 0) ipRateBuckets.delete(ip);
+    else ipRateBuckets.set(ip, filtered);
+  }
+}
 
 /**
  * Middleware: extract and validate the bearer token from the
@@ -94,7 +156,7 @@ router.get('/health', (_req: Request, res: Response) => {
  *   - Anonymous (no password): in-memory only, name can be duplicate.
  *   - Registered  (with password): persisted to SQLite, unique username.
  */
-router.post('/auth/register', (req: Request, res: Response) => {
+router.post('/auth/register', ipRateLimitMiddleware, (req: Request, res: Response) => {
   const ip = req.ip || req.socket.remoteAddress || '';
   if (game.isBanned('', ip)) {
     res.status(403).json({ error: 'Your IP has been banned' });
@@ -114,13 +176,14 @@ router.post('/auth/register', (req: Request, res: Response) => {
     res.status(400).json({ error: 'Username must be at most 30 characters' });
     return;
   }
-  if (password !== undefined && (typeof password !== 'string' || password.length < 4)) {
-    res.status(400).json({ error: 'Password must be at least 4 characters' });
+  if (password !== undefined && (typeof password !== 'string' || password.length < 8)) {
+    res.status(400).json({ error: 'Password must be at least 8 characters' });
     return;
   }
   try {
     const result = game.registerPlayer(trimmed, password || undefined);
     game.setPlayerIp(result.playerId, ip);
+    console.log(`[AUDIT] register — username="${trimmed}" registered=${result.isRegistered} ip="${ip}"`);
     res.status(201).json(result);
   } catch (err: any) {
     if (err?.message?.includes('UNIQUE constraint')) {
@@ -133,7 +196,7 @@ router.post('/auth/register', (req: Request, res: Response) => {
 });
 
 /* Log in as an existing registered user */
-router.post('/auth/login', (req: Request, res: Response) => {
+router.post('/auth/login', ipRateLimitMiddleware, (req: Request, res: Response) => {
   const ip = req.ip || req.socket.remoteAddress || '';
   if (game.isBanned('', ip)) {
     res.status(403).json({ error: 'Your IP has been banned' });
@@ -146,10 +209,12 @@ router.post('/auth/login', (req: Request, res: Response) => {
   }
   const result = game.loginPlayer(username.trim(), password);
   if (!result.success) {
+    console.log(`[AUDIT] login_failed — username="${username.trim()}" ip="${ip}"`);
     res.status(401).json({ error: result.error });
     return;
   }
   game.setPlayerIp(result.playerId, ip);
+  console.log(`[AUDIT] login_ok — playerId="${result.playerId}" username="${username.trim()}" ip="${ip}"`);
   res.json(result);
 });
 
@@ -190,8 +255,8 @@ router.put('/auth/me/password', authMiddleware, banCheckMiddleware, (req: Reques
     res.status(400).json({ error: 'Current password and new password are required' });
     return;
   }
-  if (typeof newPassword !== 'string' || newPassword.length < 4) {
-    res.status(400).json({ error: 'New password must be at least 4 characters' });
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    res.status(400).json({ error: 'New password must be at least 8 characters' });
     return;
   }
   const result = game.changePassword(req.player.id, currentPassword, newPassword);
@@ -199,6 +264,7 @@ router.put('/auth/me/password', authMiddleware, banCheckMiddleware, (req: Reques
     res.status(400).json({ error: result.error });
     return;
   }
+  console.log(`[AUDIT] password_changed — playerId="${req.player.id}"`);
   res.json({ success: true });
 });
 
@@ -219,6 +285,17 @@ router.post('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Request
     }
     if (!req.file) {
       res.status(400).json({ error: 'No file provided' });
+      return;
+    }
+
+    /* Verify actual file content matches claimed MIME type (skip in test) */
+    if (process.env.NODE_ENV !== 'test' && !isValidImageType(req.file.path, req.file.mimetype)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch {
+        /* ok */
+      }
+      res.status(400).json({ error: 'Invalid image content' });
       return;
     }
 

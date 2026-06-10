@@ -783,7 +783,7 @@ describe('Admin API — accounts CRUD', () => {
     const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
     authHeader = `Bearer ${res.body.token}`;
     /* Create a registered account to manipulate */
-    const reg = await request.post('/auth/register').send({ username: 'adm_crud', password: 'secret' }).expect(201);
+    const reg = await request.post('/auth/register').send({ username: 'adm_crud', password: 'secret1234' }).expect(201);
     accountId = reg.body.playerId;
     accountName = reg.body.displayName;
   });
@@ -856,7 +856,7 @@ describe('Admin API — accounts CRUD', () => {
     /* Create a fresh account to delete */
     const reg = await request
       .post('/auth/register')
-      .send({ username: 'adm_delete_me', password: 'secret' })
+      .send({ username: 'adm_delete_me', password: 'secret1234' })
       .expect(201);
     const delId = reg.body.playerId;
 
@@ -928,7 +928,7 @@ describe('PUT /auth/me/password — change password', () => {
 
   beforeAll(async () => {
     /* Register with a known password so we can test change */
-    const res = await request.post('/auth/register').send({ username: 'pw_change', password: 'oldpass' }).expect(201);
+    const res = await request.post('/auth/register').send({ username: 'pw_change', password: 'oldpass12' }).expect(201);
     authHeader = `Bearer ${res.body.token}`;
   });
 
@@ -936,14 +936,14 @@ describe('PUT /auth/me/password — change password', () => {
     await request
       .put('/auth/me/password')
       .set('Authorization', authHeader)
-      .send({ currentPassword: 'oldpass', newPassword: 'newpass' })
+      .send({ currentPassword: 'oldpass12', newPassword: 'newpass12' })
       .expect(200);
 
     /* Old password no longer works */
-    await request.post('/auth/login').send({ username: 'pw_change', password: 'oldpass' }).expect(401);
+    await request.post('/auth/login').send({ username: 'pw_change', password: 'oldpass12' }).expect(401);
 
     /* New password works */
-    const login = await request.post('/auth/login').send({ username: 'pw_change', password: 'newpass' }).expect(200);
+    const login = await request.post('/auth/login').send({ username: 'pw_change', password: 'newpass12' }).expect(200);
     expect(login.body.success).toBe(true);
   });
 
@@ -981,7 +981,7 @@ describe('DELETE /auth/me — delete account', () => {
 
   beforeAll(async () => {
     username = `del_me_${Date.now()}`;
-    const res = await request.post('/auth/register').send({ username, password: 'secret' }).expect(201);
+    const res = await request.post('/auth/register').send({ username, password: 'secret1234' }).expect(201);
     authHeader = `Bearer ${res.body.token}`;
     playerId = res.body.playerId;
   });

@@ -4,6 +4,8 @@
 
 import express, { Express } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
 import path from 'path';
 import fs from 'fs';
 import http from 'http';
@@ -12,6 +14,7 @@ import { IncomingMessage } from 'http';
 import routes from './routes';
 import adminRouter from './admin';
 import * as game from './game';
+import { cleanupIpRateBuckets } from './routes';
 
 export const app: Express = express();
 
@@ -22,6 +25,11 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 const WS_HEARTBEAT_INTERVAL = parseInt(process.env.WS_HEARTBEAT_INTERVAL ?? '30000', 10);
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 
+/* Validate critical env vars */
+if (!process.env.ADMIN_PASSWORD && !process.env.JEST_WORKER_ID) {
+  console.warn('[WARN] ADMIN_PASSWORD not set — a random password will be generated and logged on first request');
+}
+
 function log(level: string, ...args: unknown[]): void {
   const levels = { error: 0, warn: 1, info: 2, debug: 3 };
   if ((levels[level as keyof typeof levels] ?? 0) <= (levels[LOG_LEVEL as keyof typeof levels] ?? 2)) {
@@ -29,7 +37,16 @@ function log(level: string, ...args: unknown[]): void {
   }
 }
 
+/* Security headers via helmet */
+app.use(helmet());
+/* Request logging (skip in test) */
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('short'));
+}
 /* CORS: allow specific origin or wildcard (Electron loads from file://) */
+if (CORS_ORIGIN === '*') {
+  log('warn', 'CORS origin is set to * — restrict this in production');
+}
 app.use(cors({ origin: CORS_ORIGIN, credentials: CORS_ORIGIN !== '*' }));
 /* Parse incoming JSON request bodies for all routes */
 app.use(express.json());
@@ -49,17 +66,19 @@ app.use(adminRouter);
 /**
  * Create an HTTP server with WebSocket upgrade support.
  *
- * WebSocket connections are authenticated via a query parameter:
- *   ws://host:port/?token=<bearer-token>
- *
- * This is less conventional than upgrading an authenticated HTTP request,
- * but it works cleanly with browser WebSocket APIs that don't support
- * custom headers.
+ * WebSocket connections are authenticated via the Sec-WebSocket-Protocol
+ * header (subprotocol). The client sends the bearer token as the sole
+ * subprotocol, and the server extracts it on upgrade.
  */
 export function createServer(): http.Server {
   const server = http.createServer(app);
 
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({
+    server,
+    handleProtocols: (protocols) => {
+      return protocols.values().next().value || false;
+    },
+  });
 
   /* Periodic heartbeat to detect stale connections */
   const heartbeatInterval = setInterval(() => {
@@ -71,11 +90,10 @@ export function createServer(): http.Server {
   }, WS_HEARTBEAT_INTERVAL);
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-    /* Parse the token from the URL query string.
-     * The `ws` library passes the raw request URL, so we need a dummy
-     * base for the WHATWG URL parser to work correctly. */
-    const url = new URL(req.url ?? '/', 'http://localhost');
-    const token = url.searchParams.get('token');
+    /* Extract the bearer token from the Sec-WebSocket-Protocol header.
+     * The client sends the token as a subprotocol, which `handleProtocols`
+     * above accepted and stored in ws.protocol. */
+    const token = ws.protocol || (req.headers['sec-websocket-protocol'] as string | undefined);
 
     /* Reject connections without a token */
     if (!token) {
@@ -177,6 +195,9 @@ export function createServer(): http.Server {
 const isTestEnv = typeof process.env.JEST_WORKER_ID !== 'undefined' || process.env.NODE_ENV === 'test';
 if (!isTestEnv) {
   const server = createServer();
+  /* Periodic cleanup of IP rate-limit buckets */
+  setInterval(cleanupIpRateBuckets, 60000);
+
   server.listen(PORT, () => {
     log('info', `Chess API server listening on port ${PORT}`);
     log('info', `CORS origin: ${CORS_ORIGIN}`);

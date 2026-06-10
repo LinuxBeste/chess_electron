@@ -3,15 +3,33 @@ import crypto from 'crypto';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
 import * as game from './game';
 import * as db from './db';
+import { ipRateLimitMiddleware } from './routes';
 
 const router: ReturnType<typeof Router> = Router();
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
+function audit(action: string, detail: string): void {
+  console.log(`[AUDIT] ${action} — ${detail}`);
+}
+
+let ADMIN_USERNAME: string;
+let ADMIN_PASSWORD: string;
+
+function initAdminCreds(): void {
+  ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+  if (process.env.ADMIN_PASSWORD) {
+    ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+  } else {
+    ADMIN_PASSWORD = crypto.randomBytes(24).toString('hex');
+    console.log(`[WARN] No ADMIN_PASSWORD set. Generated random password: ${ADMIN_PASSWORD}`);
+    console.log(`[WARN] Set ADMIN_PASSWORD env var to use a custom password.`);
+  }
+}
+
+initAdminCreds();
 
 const adminTokens = new Set<string>();
 
@@ -29,18 +47,20 @@ function adminAuthMiddleware(req: Request, res: Response, next: () => void): voi
   next();
 }
 
-router.post('/admin/api/login', (req: Request, res: Response) => {
+router.post('/admin/api/login', ipRateLimitMiddleware, (req: Request, res: Response) => {
   const { username, password } = req.body;
   if (!username || !password) {
     res.status(400).json({ error: 'Username and password are required' });
     return;
   }
   if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+    audit('admin_login_failed', `username="${username}" ip="${req.ip || ''}"`);
     res.status(401).json({ error: 'Invalid admin credentials' });
     return;
   }
   const token = uuidv4();
   adminTokens.add(token);
+  audit('admin_login_ok', `username="${username}" ip="${req.ip || ''}"`);
   res.json({ token });
 });
 
@@ -163,7 +183,7 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
   let diskTotal = 0;
   let diskFree = 0;
   try {
-    const out = execSync('df -k /').toString().split('\n')[1]?.split(/\s+/);
+    const out = execFileSync('df', ['-k', '/'], { maxBuffer: 65536 }).toString().split('\n')[1]?.split(/\s+/);
     if (out && out.length >= 4) {
       diskTotal = parseInt(out[1], 10) * 1024 || 0;
       diskFree = parseInt(out[3], 10) * 1024 || 0;
@@ -223,10 +243,10 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
 
 router.get('/admin/api/system/processes', adminAuthMiddleware, (_req: Request, res: Response) => {
   try {
-    const out = execSync('ps aux --sort=-%cpu | head -21', { maxBuffer: 65536 }).toString();
+    const out = execFileSync('ps', ['aux', '--sort=-%cpu', '--no-headers'], { maxBuffer: 65536 }).toString();
     const lines = out.split('\n');
     const processes = [];
-    for (const line of lines.slice(1)) {
+    for (const line of lines) {
       if (!line.trim()) continue;
       const parts = line.trim().split(/\s+/);
       if (parts.length < 11) continue;
@@ -343,6 +363,7 @@ router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: R
     db.updateUserStats(req.params.id, newWins, newLosses, newDraws);
   }
 
+  audit('admin_account_updated', `account="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
@@ -361,13 +382,14 @@ router.delete('/admin/api/accounts/:id/avatar', adminAuthMiddleware, (req: Reque
     }
   }
   db.updateUserAvatar(req.params.id, null);
+  audit('admin_avatar_cleared', `account="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
 router.post('/admin/api/accounts/:id/reset-password', adminAuthMiddleware, (req: Request, res: Response) => {
   const { newPassword } = req.body;
-  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 4) {
-    res.status(400).json({ error: 'newPassword must be at least 4 characters' });
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+    res.status(400).json({ error: 'newPassword must be at least 8 characters' });
     return;
   }
   const user = db.getUserById(req.params.id);
@@ -379,6 +401,7 @@ router.post('/admin/api/accounts/:id/reset-password', adminAuthMiddleware, (req:
   const key = crypto.pbkdf2Sync(newPassword, salt, 100000, 64, 'sha512').toString('hex');
   const hash = `${salt}:${key}`;
   db.updateUserPasswordHash(req.params.id, hash);
+  audit('admin_password_reset', `account="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
@@ -390,6 +413,7 @@ router.delete('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res
   }
   db.deleteUserTokens(req.params.id);
   db.deleteUserRecord(req.params.id);
+  audit('admin_account_deleted', `account="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
@@ -401,6 +425,7 @@ router.post('/admin/api/players/:id/ban', adminAuthMiddleware, (req: Request, re
     res.status(400).json({ error: result.error });
     return;
   }
+  audit('admin_player_banned', `player="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
@@ -410,6 +435,7 @@ router.post('/admin/api/players/:id/kick', adminAuthMiddleware, (req: Request, r
     res.status(400).json({ error: result.error });
     return;
   }
+  audit('admin_player_kicked', `player="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
@@ -419,6 +445,7 @@ router.post('/admin/api/games/:id/end', adminAuthMiddleware, (req: Request, res:
     res.status(400).json({ error: result.error });
     return;
   }
+  audit('admin_game_ended', `game="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
@@ -433,6 +460,7 @@ router.post('/admin/api/bans/ip', adminAuthMiddleware, (req: Request, res: Respo
     res.status(400).json({ error: result.error });
     return;
   }
+  audit('admin_ip_banned', `ip="${ip.trim()}" by admin`);
   res.json({ success: true });
 });
 
@@ -444,11 +472,13 @@ router.get('/admin/api/bans', adminAuthMiddleware, (_req: Request, res: Response
 
 router.delete('/admin/api/bans/player/:id', adminAuthMiddleware, (req: Request, res: Response) => {
   game.unbanPlayer(req.params.id);
+  audit('admin_player_unbanned', `player="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
 router.delete('/admin/api/bans/ip/:ip', adminAuthMiddleware, (req: Request, res: Response) => {
   game.unbanIp(req.params.ip);
+  audit('admin_ip_unbanned', `ip="${req.params.ip}" by admin`);
   res.json({ success: true });
 });
 

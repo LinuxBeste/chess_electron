@@ -1,0 +1,8 @@
+# Caddyfile — reverse proxy with auto TLS (Let's Encrypt)
+# Place alongside docker-compose.yml and uncomment the caddy service.
+#
+# Replace example.com with your actual domain before using in production.
+
+example.com {
+    reverse_proxy chess-api:3000
+}

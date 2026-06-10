@@ -205,9 +205,9 @@ class SocketManager {
   /**
    * Connect to the WebSocket endpoint.
    *
-   * The token is read from the store and appended as a query parameter.
-   * This authentication method confirmed in ../chess-api/src/index.ts
-   * lines 34-45: the server parses `req.url` for the `token` query param.
+   * The token is sent as a Sec-WebSocket-Protocol subprotocol header,
+   * avoiding exposure in URL query strings (which can be logged by
+   * proxies and web servers).
    */
   connect(): void {
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
@@ -221,8 +221,7 @@ class SocketManager {
     store.set('wsStatus', 'connecting');
 
     const wsBase = this.serverUrl.replace(/^http/, 'ws');
-    const wsUrl = `${wsBase}/?token=${encodeURIComponent(token!)}`;
-    this.ws = new WebSocket(wsUrl);
+    this.ws = new WebSocket(wsBase, [token]);
 
     this.ws.onopen = () => {
       this.retryCount = 0;

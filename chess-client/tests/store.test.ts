@@ -126,9 +126,11 @@ describe('Store', () => {
   });
 
   test('toast with info type', () => {
+    jest.useFakeTimers();
     const store = new Store();
     store.toast('Info message', 'info');
     expect(store.get('toasts')[0].type).toBe('info');
+    jest.useRealTimers();
   });
 
   test('multiple toasts accumulate', () => {

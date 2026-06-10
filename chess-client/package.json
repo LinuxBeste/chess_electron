@@ -14,7 +14,7 @@
     "start": "electron .",
     "dev": "pnpm run build && electron .",
     "typecheck": "tsc --noEmit",
-    "test": "jest --forceExit",
+    "test": "jest",
     "package": "pnpm run build && electron-builder",
     "package:linux": "pnpm run build && electron-builder --linux",
     "package:mac": "pnpm run build && electron-builder --mac",
