@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getPlayerProfile, sendFriendRequest, PlayerProfile, avatarSrc } from '../api';
 import { store } from '../store';
 import { t } from '../translate';
+import logger from '../logger';
 
 interface Props {
   playerId: string;
@@ -19,20 +20,30 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
   const [friendMsg, setFriendMsg] = useState('');
 
   useEffect(() => {
+    logger.info('Loading profile for playerId=' + playerId);
     getPlayerProfile(playerId)
-      .then(setProfile)
-      .catch((e) => setError(e.message || 'Failed to load profile'));
+      .then((p) => {
+        logger.info('Profile loaded: username=' + (p.username || '?'));
+        setProfile(p);
+      })
+      .catch((e) => {
+        logger.error('Profile load failed: playerId=' + playerId + ' error=' + e);
+        setError(e.message || 'Failed to load profile');
+      });
   }, [playerId]);
 
   async function handleAddFriend() {
     if (!profile?.username) return;
+    logger.info('Sending friend request from profile: username=' + profile.username);
     setFriendLoading(true);
     setFriendMsg('');
     try {
       await sendFriendRequest(profile.username);
+      logger.info('Friend request sent from profile: username=' + profile.username);
       setFriendMsg(t('friends.requestSent', { name: profile.displayName || profile.username }));
       store.toast(t('friends.requestSent', { name: profile.displayName || profile.username }), 'info');
     } catch (e: any) {
+      logger.error('Friend request failed from profile: ' + e);
       setFriendMsg(e.message || 'Failed');
     } finally {
       setFriendLoading(false);

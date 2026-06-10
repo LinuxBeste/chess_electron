@@ -8,6 +8,7 @@
 
 import { Component, type ReactNode } from 'react';
 import { t } from '../translate';
+import logger from '../logger';
 
 interface Props {
   children: ReactNode;
@@ -22,6 +23,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: Error) {
+    logger.error('ErrorBoundary caught: ' + error.message);
     return { hasError: true, error };
   }
 

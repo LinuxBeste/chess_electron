@@ -15,6 +15,7 @@
  */
 
 import { store } from './store';
+import logger from './logger';
 import type { SerializedSquare } from '../types';
 
 /** Shape of a "move" WS message — confirmed in ../chess-api/src/game.ts lines 324-331 */
@@ -199,6 +200,7 @@ class SocketManager {
 
   /** Set a custom server URL for the WebSocket connection */
   setServerUrl(url: string): void {
+    logger.info('Socket: setting server URL', url);
     this.serverUrl = url;
   }
 
@@ -210,12 +212,18 @@ class SocketManager {
    * proxies and web servers).
    */
   connect(): void {
+    logger.info('Socket: connect called');
+
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+      logger.info('Socket: already connected or connecting');
       return;
     }
 
     const token = store.get('token');
-    if (!token) return;
+    if (!token) {
+      logger.warn('Socket: no token available, cannot connect');
+      return;
+    }
 
     this.shouldReconnect = true;
     store.set('wsStatus', 'connecting');
@@ -226,6 +234,7 @@ class SocketManager {
     this.ws.onopen = () => {
       this.retryCount = 0;
       store.set('wsStatus', 'connected');
+      logger.info('Socket: connection opened');
     };
 
     /**
@@ -235,6 +244,7 @@ class SocketManager {
     this.ws.onmessage = (event: MessageEvent) => {
       try {
         const msg: WsMessage = JSON.parse(event.data);
+        logger.info('Socket: received message type:', msg.type);
 
         switch (msg.type) {
           case 'move':
@@ -281,21 +291,23 @@ class SocketManager {
             break;
         }
       } catch {
-        /* Silently drop malformed messages — they're not from our server */
+        logger.warn('Socket: failed to parse incoming message');
       }
     };
 
     this.ws.onclose = () => {
+      logger.info('Socket: connection closed');
       store.set('wsStatus', 'disconnected');
       this.scheduleReconnect();
     };
 
-    this.ws.onerror = () => {
-      /* onclose will fire after onerror, so reconnect logic lives there */
+    this.ws.onerror = (event: Event) => {
+      logger.error('Socket: connection error', event);
     };
   }
 
   disconnect(): void {
+    logger.info('Socket: disconnect called');
     this.shouldReconnect = false;
     if (this.ws) {
       this.ws.close();
@@ -308,16 +320,19 @@ class SocketManager {
   private scheduleReconnect(): void {
     if (!this.shouldReconnect) return;
     if (this.retryCount >= MAX_RETRIES) {
+      logger.warn('Socket: max reconnect attempts reached');
       store.set('wsStatus', 'disconnected');
       return;
     }
 
     const delay = Math.min(INITIAL_BACKOFF_MS * Math.pow(2, this.retryCount), MAX_BACKOFF_MS);
     this.retryCount++;
+    logger.info('Socket: scheduling reconnect attempt', this.retryCount, 'in', delay, 'ms');
     store.set('wsStatus', 'connecting');
 
     setTimeout(() => {
       if (this.shouldReconnect) {
+        logger.info('Socket: attempting reconnect');
         this.connect();
       }
     }, delay);
@@ -326,12 +341,15 @@ class SocketManager {
   /** Send a JSON message through the WebSocket */
   send(msg: Record<string, unknown>): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      const msgType = (msg as { type?: string }).type ?? 'unknown';
+      logger.info('Socket: sending message type:', msgType);
       this.ws.send(JSON.stringify(msg));
     }
   }
 
   /** onMove/onGameOver return unsubscribe functions */
   onMove(handler: MoveHandler): () => void {
+    logger.info('Socket: move handler registered');
     this.moveHandlers.add(handler);
     return () => {
       this.moveHandlers.delete(handler);
@@ -339,6 +357,7 @@ class SocketManager {
   }
 
   onGameOver(handler: GameOverHandler): () => void {
+    logger.info('Socket: game_over handler registered');
     this.gameOverHandlers.add(handler);
     return () => {
       this.gameOverHandlers.delete(handler);
@@ -346,6 +365,7 @@ class SocketManager {
   }
 
   onGameStarted(handler: GameStartedHandler): () => void {
+    logger.info('Socket: game_started handler registered');
     this.gameStartedHandlers.add(handler);
     return () => {
       this.gameStartedHandlers.delete(handler);
@@ -353,6 +373,7 @@ class SocketManager {
   }
 
   onChat(handler: ChatHandler): () => void {
+    logger.info('Socket: chat_message handler registered');
     this.chatHandlers.add(handler);
     return () => {
       this.chatHandlers.delete(handler);
@@ -360,6 +381,7 @@ class SocketManager {
   }
 
   onGameAborted(handler: GameAbortedHandler): () => void {
+    logger.info('Socket: game_aborted handler registered');
     this.gameAbortedHandlers.add(handler);
     return () => {
       this.gameAbortedHandlers.delete(handler);
@@ -367,6 +389,7 @@ class SocketManager {
   }
 
   onDrawOffered(handler: DrawOfferedHandler): () => void {
+    logger.info('Socket: draw_offered handler registered');
     this.drawOfferedHandlers.add(handler);
     return () => {
       this.drawOfferedHandlers.delete(handler);
@@ -374,6 +397,7 @@ class SocketManager {
   }
 
   onDrawDeclined(handler: DrawDeclinedHandler): () => void {
+    logger.info('Socket: draw_declined handler registered');
     this.drawDeclinedHandlers.add(handler);
     return () => {
       this.drawDeclinedHandlers.delete(handler);
@@ -381,6 +405,7 @@ class SocketManager {
   }
 
   onFriendOnline(handler: FriendOnlineHandler): () => void {
+    logger.info('Socket: friend_online handler registered');
     this.friendOnlineHandlers.add(handler);
     return () => {
       this.friendOnlineHandlers.delete(handler);
@@ -388,6 +413,7 @@ class SocketManager {
   }
 
   onFriendOffline(handler: FriendOfflineHandler): () => void {
+    logger.info('Socket: friend_offline handler registered');
     this.friendOfflineHandlers.add(handler);
     return () => {
       this.friendOfflineHandlers.delete(handler);
@@ -395,6 +421,7 @@ class SocketManager {
   }
 
   onFriendRequest(handler: FriendRequestHandler): () => void {
+    logger.info('Socket: friend_request handler registered');
     this.friendRequestHandlers.add(handler);
     return () => {
       this.friendRequestHandlers.delete(handler);
@@ -402,6 +429,7 @@ class SocketManager {
   }
 
   onFriendRequestAccepted(handler: FriendRequestAcceptedHandler): () => void {
+    logger.info('Socket: friend_request_accepted handler registered');
     this.friendRequestAcceptedHandlers.add(handler);
     return () => {
       this.friendRequestAcceptedHandlers.delete(handler);
@@ -409,6 +437,7 @@ class SocketManager {
   }
 
   onChallenge(handler: ChallengeHandler): () => void {
+    logger.info('Socket: challenge handler registered');
     this.challengeHandlers.add(handler);
     return () => {
       this.challengeHandlers.delete(handler);
@@ -416,6 +445,7 @@ class SocketManager {
   }
 
   onChallengeAccept(handler: ChallengeAcceptHandler): () => void {
+    logger.info('Socket: challenge_accept handler registered');
     this.challengeAcceptHandlers.add(handler);
     return () => {
       this.challengeAcceptHandlers.delete(handler);
@@ -423,6 +453,7 @@ class SocketManager {
   }
 
   onChallengeDecline(handler: ChallengeDeclineHandler): () => void {
+    logger.info('Socket: challenge_decline handler registered');
     this.challengeDeclineHandlers.add(handler);
     return () => {
       this.challengeDeclineHandlers.delete(handler);

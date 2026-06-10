@@ -15,6 +15,7 @@ import { socketManager } from '../socket';
 import { t } from '../translate';
 import type { FriendInfo, FriendRequestInfo } from '../../types';
 import PlayerProfileDialog from './PlayerProfileDialog';
+import logger from '../logger';
 
 type Tab = 'friends' | 'requests' | 'sent';
 
@@ -29,6 +30,7 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
 
   useEffect(() => {
+    logger.debug('FriendsTab mounted, loading friends and requests');
     loadFriends();
     loadRequests();
   }, []);
@@ -37,8 +39,9 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
     try {
       const f = await getFriends();
       store.set('friends', f);
-    } catch {
-      /* silently fail */
+      logger.debug('Friend list refreshed', { count: f.length });
+    } catch (err: any) {
+      logger.error('Failed to load friends list', { error: err.message });
     }
   }
 
@@ -47,8 +50,12 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
       const r = await getFriendRequests();
       store.set('incomingRequests', r.incoming);
       store.set('outgoingRequests', r.outgoing);
-    } catch {
-      /* silently fail */
+      logger.debug('Friend requests loaded', {
+        incoming: r.incoming.length,
+        outgoing: r.outgoing.length,
+      });
+    } catch (err: any) {
+      logger.error('Failed to load friend requests', { error: err.message });
     }
   }
 
@@ -66,10 +73,12 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
     setAddError('');
     try {
       await sendFriendRequest(name);
+      logger.info('Friend request sent', { username: name });
       setAddUsername('');
       loadRequests();
       store.toast(t('friends.requestSent', { name }), 'info');
     } catch (e: any) {
+      logger.error('Failed to send friend request', { username: name, error: e.message });
       setAddError(e.message || 'Failed to send request');
     } finally {
       setAddLoading(false);
@@ -79,9 +88,11 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
   async function handleAccept(id: string) {
     try {
       await acceptFriendRequest(id);
+      logger.info('Friend request accepted', { requestId: id });
       loadRequests();
       loadFriends();
-    } catch {
+    } catch (err: any) {
+      logger.error('Failed to accept friend request', { requestId: id, error: err.message });
       store.toast(t('friends.failedAccept'), 'error');
     }
   }
@@ -89,8 +100,10 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
   async function handleDecline(id: string) {
     try {
       await declineFriendRequest(id);
+      logger.info('Friend request declined', { requestId: id });
       loadRequests();
-    } catch {
+    } catch (err: any) {
+      logger.error('Failed to decline friend request', { requestId: id, error: err.message });
       store.toast(t('friends.failedDecline'), 'error');
     }
   }
@@ -98,8 +111,10 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
   async function handleRemove(friendId: string) {
     try {
       await removeFriend(friendId);
+      logger.info('Friend removed', { friendId });
       loadFriends();
-    } catch {
+    } catch (err: any) {
+      logger.error('Failed to remove friend', { friendId, error: err.message });
       store.toast(t('friends.failedRemove'), 'error');
     }
   }
@@ -112,8 +127,14 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
         toPlayerId: friend.playerId,
         gameId: game.id,
       });
+      logger.info('Challenge sent to friend', {
+        friendId: friend.playerId,
+        friendName: friend.displayName,
+        gameId: game.id,
+      });
       store.toast(t('friends.challengeSent', { name: friend.displayName }), 'info');
-    } catch {
+    } catch (err: any) {
+      logger.error('Failed to challenge friend', { friendId: friend.playerId, error: err.message });
       store.toast(t('friends.failedChallenge'), 'error');
     }
   }

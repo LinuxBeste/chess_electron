@@ -1,3 +1,4 @@
+import logger from './logger';
 import { en, de, type TranslationKeys } from './locales';
 import { loadSettings } from './settings';
 
@@ -10,13 +11,16 @@ export function setLanguage(lang: string): void {
   try {
     localStorage.setItem('chess_locale', lang);
   } catch {}
+  logger.info('Language changed', lang);
 }
 
 export function getLanguage(): string {
+  logger.debug('Language accessed', currentLang);
   return currentLang;
 }
 
 export function t(path: string, vars?: Record<string, string | number>): string {
+  logger.debug('Translation accessed', { lang: currentLang, key: path });
   const keys = path.split('.');
   let value: unknown = current;
   for (const key of keys) {
@@ -38,4 +42,7 @@ try {
     const saved = localStorage.getItem('chess_locale');
     if (saved === 'de' || saved === 'en') setLanguage(saved);
   }
-} catch {}
+  logger.info('Translation initialized', currentLang);
+} catch (e) {
+  logger.warn('Translation initialization failed', e);
+}

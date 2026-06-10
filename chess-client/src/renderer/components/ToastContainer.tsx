@@ -7,9 +7,11 @@
  */
 
 import { useStoreValue } from '../hooks/useStore';
+import logger from '../logger';
 
 export default function ToastContainer() {
   const toasts = useStoreValue('toasts');
+  if (toasts.length > 0) logger.debug('ToastContainer rendering ' + toasts.length + ' toasts');
   return (
     <div className="toast-bar">
       {toasts.map((t) => (

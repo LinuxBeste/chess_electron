@@ -9,11 +9,13 @@
  * the URL bar — compatible with both HTTP and file:// serving.
  */
 
+import logger from './logger';
 import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import App from './App';
 
 const container = document.getElementById('app')!;
+logger.info('App initializing...');
 const root = createRoot(container);
 root.render(
   <HashRouter>

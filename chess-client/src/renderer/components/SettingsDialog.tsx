@@ -22,6 +22,7 @@ import {
 } from '../api';
 import { useStoreValue } from '../hooks/useStore';
 import { store } from '../store';
+import logger from '../logger';
 
 interface Props {
   onClose: () => void;
@@ -763,12 +764,14 @@ function AdvancedTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: 
   ];
 
   function handleClearAll() {
+    logger.info('All local data cleared');
     clearAllLocalData();
     setConfirmClear(false);
     dispatch();
   }
 
   function handleClearKey(key: string) {
+    logger.debug('Local storage key cleared', { key });
     clearLocalStorageKey(key);
     dispatch();
   }
@@ -893,19 +896,26 @@ function AccountTab() {
         setAvatarUrl(me.avatarUrl);
         if (me.stats) setStats(me.stats);
         setStatsLoading(false);
+        logger.debug('Account info loaded', { username: me.username, isRegistered: me.isRegistered });
       })
-      .catch(() => setStatsLoading(false));
+      .catch((err: any) => {
+        logger.error('Failed to load account info', { error: err.message });
+        setStatsLoading(false);
+      });
   }, [token]);
 
   async function handleSaveDisplayName() {
     if (!displayName.trim()) return;
     setDisplayNameMsg('');
     setDisplayNameError('');
+    const newName = displayName.trim();
     try {
-      await apiUpdateDisplayName(displayName.trim());
-      store.set('username', displayName.trim());
+      await apiUpdateDisplayName(newName);
+      store.set('username', newName);
       setDisplayNameMsg(t('settings.account.saved'));
+      logger.info('Display name updated', { displayName: newName });
     } catch (err: any) {
+      logger.error('Failed to update display name', { error: err.message });
       setDisplayNameError(err.message || t('settings.account.saveFailed'));
     }
   }
@@ -915,12 +925,15 @@ function AccountTab() {
     if (!file) return;
     setAvatarMsg('');
     setAvatarError('');
+    logger.info('Avatar upload started', { fileSize: file.size, fileType: file.type });
     try {
       const result = await apiUploadAvatar(file);
       setAvatarUrl(result.avatarUrl);
       store.set('avatarUrl', result.avatarUrl);
       setAvatarMsg(t('settings.account.avatarUpdated'));
+      logger.info('Avatar uploaded successfully');
     } catch (err: any) {
+      logger.error('Avatar upload failed', { error: err.message });
       setAvatarError(err.message || t('settings.account.avatarFailed'));
     }
   }
@@ -928,12 +941,15 @@ function AccountTab() {
   async function handleRemoveAvatar() {
     setAvatarMsg('');
     setAvatarError('');
+    logger.info('Avatar removal requested');
     try {
       await apiDeleteAvatar();
       setAvatarUrl(null);
       store.set('avatarUrl', null);
       setAvatarMsg(t('settings.account.avatarRemoved'));
+      logger.info('Avatar removed successfully');
     } catch (err: any) {
+      logger.error('Avatar removal failed', { error: err.message });
       setAvatarError(err.message || t('settings.account.avatarFailed'));
     }
   }
@@ -951,13 +967,16 @@ function AccountTab() {
       setPasswordMsg(t('settings.account.passwordChanged'));
       setCurrentPassword('');
       setNewPassword('');
+      logger.info('Password changed successfully');
     } catch (err: any) {
+      logger.error('Password change failed', { error: err.message });
       setPasswordError(err.message || t('settings.account.passwordChangeFailed'));
     }
   }
 
   async function handleDeleteAccount() {
     setDeleteError('');
+    logger.warn('Account deletion initiated');
     try {
       await apiDeleteAccount();
       store.set('token', null);
@@ -965,7 +984,9 @@ function AccountTab() {
       store.set('username', null);
       store.clearSession();
       window.location.href = '/login';
+      logger.info('Account deleted successfully');
     } catch (err: any) {
+      logger.error('Account deletion failed', { error: err.message });
       setDeleteError(err.message || t('settings.account.deleteFailed'));
     }
   }
@@ -1252,6 +1273,7 @@ export default function SettingsDialog({ onClose }: Props) {
   ];
 
   function updateSettings(s: AppSettings) {
+    logger.debug('Settings updated', { tab: activeTab });
     setSettings(s);
     saveSettings(s);
     setSoundVolume(s.soundVolume);
@@ -1261,11 +1283,17 @@ export default function SettingsDialog({ onClose }: Props) {
   }
 
   function resetDefaults() {
+    logger.info('Settings reset to defaults');
     updateSettings({ ...defaultSettings });
   }
 
   function handleOverlayClick(e: React.MouseEvent) {
     if (e.target === e.currentTarget) onClose();
+  }
+
+  function handleTabChange(tabId: TabId) {
+    logger.debug('Settings tab changed', { from: activeTab, to: tabId });
+    setActiveTab(tabId);
   }
 
   return (
@@ -1308,7 +1336,7 @@ export default function SettingsDialog({ onClose }: Props) {
             <button
               key={tab.id}
               className={`settings-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
             >
               {tab.label}
             </button>

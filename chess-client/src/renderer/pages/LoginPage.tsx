@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import logger from '../logger';
 import { store } from '../store';
 import * as api from '../api';
 import { setBaseUrl } from '../api';
@@ -38,12 +39,15 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
+    logger.info('LoginPage mounted', { mode });
     if (store.get('token')) {
+      logger.info('Already authenticated, redirecting to lobby');
       navigate('/lobby', { replace: true });
       return;
     }
     const def = window.electronAPI?.defaultUsername;
     if (def && mode === 'quick' && window.electronAPI?.autoConnect !== false) {
+      logger.info('Auto-connecting with default username', { username: def });
       handleQuickPlay();
     } else {
       inputRef.current?.focus();
@@ -57,21 +61,25 @@ export default function LoginPage() {
       return;
     }
     if (offlineMode) {
+      logger.info('Quick play offline mode', { username: trimmed });
       store.set('username', trimmed);
       store.set('playerId', null);
       store.set('offline', true);
       navigate('/lobby');
       return;
     }
+    logger.info('Quick play attempt', { username: trimmed });
     setLoading(true);
     try {
       const result = await api.register(trimmed);
+      logger.info('Quick play success', { username: trimmed, isRegistered: result.isRegistered });
       store.set('token', result.token);
       store.set('playerId', result.playerId);
       store.set('username', trimmed);
       store.set('isRegistered', result.isRegistered);
       navigate('/lobby');
     } catch (err: any) {
+      logger.error('Quick play failed', { error: err.message });
       store.toast(err.message || t('login.failedConnect'));
     } finally {
       setLoading(false);
@@ -88,15 +96,18 @@ export default function LoginPage() {
       store.toast(t('login.passwordTooShort'), 'error');
       return;
     }
+    logger.info('Register attempt', { username: trimmed });
     setLoading(true);
     try {
       const result = await api.register(trimmed, registerPassword);
+      logger.info('Register success', { username: result.displayName, isRegistered: result.isRegistered });
       store.set('token', result.token);
       store.set('playerId', result.playerId);
       store.set('username', result.displayName);
       store.set('isRegistered', result.isRegistered);
       navigate('/lobby');
     } catch (err: any) {
+      logger.error('Register failed', { error: err.message });
       store.toast(err.message || t('login.registrationFailed'));
     } finally {
       setLoading(false);
@@ -109,15 +120,18 @@ export default function LoginPage() {
       store.toast(t('login.credentialsRequired'), 'error');
       return;
     }
+    logger.info('Sign in attempt', { username: trimmed });
     setLoading(true);
     try {
       const result = await api.login(trimmed, password);
+      logger.info('Sign in success', { username: result.displayName });
       store.set('token', result.token);
       store.set('playerId', result.playerId);
       store.set('username', result.displayName);
       store.set('isRegistered', true);
       navigate('/lobby');
     } catch (err: any) {
+      logger.error('Sign in failed', { error: err.message });
       store.toast(err.message || t('login.loginFailed'));
     } finally {
       setLoading(false);

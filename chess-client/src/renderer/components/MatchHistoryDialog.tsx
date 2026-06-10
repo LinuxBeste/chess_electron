@@ -4,6 +4,7 @@ import * as api from '../api';
 import { useNavigate } from 'react-router-dom';
 import type { GameState } from '../../types';
 import { t } from '../translate';
+import logger from '../logger';
 import PlayerProfileDialog from './PlayerProfileDialog';
 
 interface Props {
@@ -19,12 +20,14 @@ export default function MatchHistoryDialog({ onClose }: Props) {
   useEffect(() => {
     const pid = store.get('playerId');
     if (pid) {
+      logger.info('Fetching match history for playerId=' + pid);
       api
         .getPlayerGames(pid)
         .then((g) => {
+          logger.info('Match history loaded: count=' + g.length);
           setGames(g.slice(-20).reverse());
         })
-        .catch(() => {})
+        .catch((e) => logger.error('Match history fetch failed: ' + e))
         .finally(() => setLoading(false));
     } else {
       setLoading(false);

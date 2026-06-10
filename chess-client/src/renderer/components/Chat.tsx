@@ -10,6 +10,7 @@ import { useState, useRef, useEffect } from 'react';
 import { socketManager } from '../socket';
 import { store } from '../store';
 import { t } from '../translate';
+import logger from '../logger';
 
 interface ChatMessage {
   playerId: string;
@@ -30,21 +31,32 @@ export default function Chat({ gameId }: ChatProps) {
      returned from useEffect's cleanup to prevent duplicates on re-render. */
   useEffect(() => {
     const unsub = socketManager.onChat((msg) => {
-      setMessages((prev) => [...prev, msg as ChatMessage]);
+      const chatMsg = msg as ChatMessage;
+      const isMe = chatMsg.playerId === store.get('playerId');
+      logger.debug('Chat message received', {
+        from: isMe ? 'self' : chatMsg.username,
+        length: chatMsg.text.length,
+        gameId,
+      });
+      setMessages((prev) => [...prev, chatMsg]);
     });
     return () => unsub();
-  }, []);
+  }, [gameId]);
 
   /* Auto-scroll to bottom when a new message arrives */
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
+    if (messages.length > 0) {
+      logger.debug('Chat messages rendered', { count: messages.length, gameId });
+    }
   }, [messages.length]);
 
   const send = () => {
     const text = input.trim();
     if (!text) return;
+    logger.info('Chat message sent', { length: text.length, gameId });
     socketManager.send({ type: 'chat_message', gameId, text });
     setInput('');
   };

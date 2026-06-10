@@ -499,4 +499,45 @@ router.delete('/admin/api/bans/ip/:ip', adminAuthMiddleware, (req: Request, res:
   res.json({ success: true });
 });
 
+/* ─── Log viewer ─── */
+
+const LOG_DIR = path.join(__dirname, '..', 'logs');
+
+function tailFile(filePath: string, lines: number): string[] {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const allLines = content.split('\n').filter(Boolean);
+    return allLines.slice(-lines);
+  } catch {
+    return [];
+  }
+}
+
+router.get('/admin/api/logs', adminAuthMiddleware, (req: Request, res: Response) => {
+  const maxLines = Math.min(parseInt(req.query.lines as string) || 200, 5000);
+  const type = (req.query.type as string) || 'all';
+
+  const today = new Date().toISOString().slice(0, 10);
+  const result: Record<string, string[]> = {};
+
+  if (type === 'all' || type === 'app') {
+    result.app = tailFile(path.join(LOG_DIR, `app-${today}.log`), maxLines);
+  }
+  if (type === 'all' || type === 'audit') {
+    result.audit = tailFile(path.join(LOG_DIR, `audit-${today}.log`), maxLines);
+  }
+  if (type === 'all' || type === 'http') {
+    result.http = tailFile(path.join(LOG_DIR, `http-${today}.log`), maxLines);
+  }
+
+  const logFiles: string[] = [];
+  try {
+    const files = fs.readdirSync(LOG_DIR).filter((f) => f.endsWith('.log'));
+    logFiles.push(...files.sort().reverse());
+  } catch { /* ok */ }
+
+  logger.info('Admin logs viewed: type=' + type + ' lines=' + maxLines);
+  res.json({ logs: result, files: logFiles });
+});
+
 export default router;

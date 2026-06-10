@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import logger from '../logger';
 import { store } from '../store';
 import * as api from '../api';
 import { t } from '../translate';
@@ -11,18 +12,23 @@ export default function ResultPage() {
   const myId = store.get('playerId');
 
   useEffect(() => {
+    logger.info('ResultPage mounted', { gameId });
     if (game && game.id === gameId) return;
     if (!gameId) return;
+    logger.info('Fetching game for results', { gameId });
     api
       .getGame(gameId)
       .then((g) => {
+        logger.info('Game result loaded', { gameId, status: g.status });
         setGame(g);
         store.set('currentGame', g);
       })
-      .catch(() => {
+      .catch((err) => {
+        logger.error('Failed to load game results', { gameId, error: err });
         store.toast(t('game.failedLoad'));
         navigate('/lobby');
       });
+    return () => logger.info('ResultPage unmounting');
   }, []);
   const [rematching, setRematching] = useState(false);
 
@@ -69,12 +75,15 @@ export default function ResultPage() {
 
   async function handleRematch() {
     if (!game) return;
+    logger.info('Creating rematch', { previousGameId: game.id });
     setRematching(true);
     try {
       const g = await api.createGame(game.visibility === 'private' ? 'private' : 'public');
+      logger.info('Rematch created', { newGameId: g.id });
       store.set('currentGame', g);
       navigate(`/game/${g.id}`);
     } catch (err: any) {
+      logger.error('Rematch failed', { error: err?.message });
       store.toast(err?.message || t('result.failedRematch'));
       setRematching(false);
     }

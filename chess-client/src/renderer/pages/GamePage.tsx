@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import logger from '../logger';
 import { store } from '../store';
 import * as api from '../api';
 import { socketManager } from '../socket';
@@ -104,14 +105,18 @@ export default function GamePage() {
 
   useEffect(() => {
     if (!gameId) {
+      logger.warn('GamePage mounted without gameId, redirecting to lobby');
       navigate('/lobby');
       return;
     }
+    logger.info('GamePage mounted', { gameId, isSpectator });
     window.location.hash = `#game/${gameId}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
   }, []);
 
   useEffect(() => {
     if (!gameId) return;
+
+    logger.info('Registering WS handlers and fetching game', { gameId, isSpectator });
 
     const stored = store.get('currentGame');
     const initialGame = stored && stored.id === gameId ? stored : null;
@@ -136,6 +141,7 @@ export default function GamePage() {
     });
 
     if (initialGame) {
+      logger.info('Using cached game state', { gameId });
       initGame(initialGame);
     } else {
       fetchGame(gameId);
@@ -156,6 +162,7 @@ export default function GamePage() {
     }
 
     return () => {
+      logger.info('GamePage unmounting, cleaning up WS handlers', { gameId });
       unsubMove();
       unsubGameOver();
       unsubGameStarted();
@@ -226,11 +233,13 @@ export default function GamePage() {
   }
 
   async function fetchGame(gid: string) {
+    logger.info('Fetching game', { gameId: gid });
     try {
       const g = await api.getGame(gid);
       store.set('currentGame', g);
       initGame(g);
     } catch (err: any) {
+      logger.error('Failed to fetch game', { gameId: gid, error: err.message });
       store.toast(err.message || t('game.failedLoad'));
       navigate('/lobby');
     }
@@ -238,6 +247,7 @@ export default function GamePage() {
 
   function handleWsMove(msg: MoveMessage) {
     if (!gameRef.current) return;
+    logger.info('WS move received', { gameId: msg.gameId, from: msg.lastMove.from, to: msg.lastMove.to, turn: msg.turn, status: msg.status });
     const [toR, toF] = squareToIndices(msg.lastMove.to);
     const wasCapture = boardRef.current[toR]?.[toF] !== null;
     const newBoard = deserializeBoard(msg.board);
@@ -259,6 +269,7 @@ export default function GamePage() {
 
   function handleWsGameOver(msg: GameOverMessage) {
     if (!gameRef.current) return;
+    logger.info('WS game_over received', { gameId: msg.gameId, status: msg.status, winner: msg.winner });
     setBoard(deserializeBoard(msg.board));
     setLastMove(msg.lastMove);
     const updated = { ...gameRef.current, status: msg.status as GameStatus, winner: msg.winner || null };
@@ -269,6 +280,7 @@ export default function GamePage() {
   }
 
   function applyGameStarted(g: GameState) {
+    logger.info('Game started', { gameId: g.id });
     setGame(g);
     store.set('currentGame', g);
     setBoard(cloneBoard(g.board));
@@ -282,15 +294,18 @@ export default function GamePage() {
   }
 
   function handleWsGameStarted(msg: GameStartedMessage) {
+    logger.info('WS game_started received', { gameId: msg.game?.id });
     applyGameStarted(msg.game);
   }
 
   function handleWsGameAborted(_msg: GameAbortedMessage) {
+    logger.info('WS game_aborted received', { gameId: _msg.gameId });
     store.set('currentGame', null);
     navigate('/lobby');
   }
 
   function handleDrawOffered(msg: DrawOfferedMessage) {
+    logger.info('Draw offered', { gameId: msg.gameId, byPlayerId: msg.byPlayerId });
     if (msg.byPlayerId === store.get('playerId')) {
       setDrawPending(true);
     } else {
@@ -299,23 +314,27 @@ export default function GamePage() {
   }
 
   function handleDrawDeclined(_msg: DrawDeclinedMessage) {
+    logger.info('Draw declined', { gameId: _msg.gameId });
     setDrawPending(false);
   }
 
   function handleOfferDraw() {
     if (!gameId) return;
+    logger.info('Offering draw', { gameId });
     setMenuOpen(false);
     socketManager.send({ type: 'offer_draw', gameId });
   }
 
   function handleAcceptDraw() {
     if (!gameId) return;
+    logger.info('Accepting draw', { gameId });
     setDrawOfferedBy(null);
     socketManager.send({ type: 'accept_draw', gameId });
   }
 
   function handleDeclineDraw() {
     if (!gameId) return;
+    logger.info('Declining draw', { gameId });
     setDrawOfferedBy(null);
     socketManager.send({ type: 'decline_draw', gameId });
   }
@@ -402,6 +421,7 @@ export default function GamePage() {
 
   async function executeMove(from: string, to: string, promotion?: PieceType) {
     if (!gameRef.current) return;
+    logger.info('Executing move', { gameId: gameRef.current.id, from, to, promotion });
     setSelectedSquare(null);
     setLegalHints([]);
     const oldBoard = cloneBoard(boardRef.current);
@@ -417,6 +437,7 @@ export default function GamePage() {
     setLastMove({ from, to });
     try {
       const updated = await api.makeMove(gameRef.current.id, from, to, promotion);
+      logger.info('Move confirmed by server', { gameId: gameRef.current.id, status: updated.status, turn: updated.turn });
       setGame(updated);
       store.set('currentGame', updated);
       setBoard(cloneBoard(updated.board));
@@ -431,9 +452,11 @@ export default function GamePage() {
         else playMoveSound();
       }
       if (['checkmate', 'stalemate', 'resigned', 'draw'].includes(updated.status)) {
+        logger.info('Game ended after move', { gameId: gameRef.current.id, status: updated.status });
         if (getSetting('soundEnabled')) playGameOverSound();
       }
     } catch (err: any) {
+      logger.error('Move failed', { gameId: gameRef.current?.id, from, to, error: err.message });
       setBoard(oldBoard);
       setLastMove(gameRef.current?.lastMove || null);
       store.toast(err.message || t('game.moveFailed'));
@@ -456,6 +479,7 @@ export default function GamePage() {
   }
 
   async function handleAbort() {
+    logger.info('Aborting game', { gameId });
     try {
       if (gameId) await api.abortGame(gameId);
     } catch {}
@@ -465,6 +489,7 @@ export default function GamePage() {
 
   function handleResign() {
     if (isSpectator) {
+      logger.info('Spectator leaving game', { gameId });
       socketManager.send({ type: 'unspectate' });
       store.set('currentGame', null);
       navigate('/lobby');
@@ -476,13 +501,18 @@ export default function GamePage() {
       return;
     }
     if (!gameRef.current) return;
+    logger.info('Resigning game', { gameId: gameRef.current.id });
     api
       .resignGame(gameRef.current.id)
       .then((updated) => {
+        logger.info('Resignation successful', { gameId: updated.id, status: updated.status });
         store.set('currentGame', updated);
         navigate(`/result/${updated.id}`);
       })
-      .catch((err: any) => store.toast(err.message || t('game.failedResign')));
+      .catch((err: any) => {
+        logger.error('Resignation failed', { error: err.message });
+        store.toast(err.message || t('game.failedResign'));
+      });
     setResignConfirmed(false);
   }
 

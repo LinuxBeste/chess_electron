@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import logger from '../logger';
 import { store } from '../store';
 
 type StateMap = {
@@ -30,6 +31,13 @@ type StateMap = {
 
 export function useStoreValue<K extends keyof StateMap>(key: K): StateMap[K] {
   const [val, setVal] = useState<StateMap[K]>(store.get(key));
-  useEffect(() => store.subscribe(key, (v: StateMap[K]) => setVal(v)), [key]);
+  useEffect(() => {
+    logger.debug('Subscribing to store key', key);
+    const unsubscribe = store.subscribe(key, (v: StateMap[K]) => setVal(v));
+    return () => {
+      logger.debug('Unsubscribing from store key', key);
+      unsubscribe();
+    };
+  }, [key]);
   return val;
 }

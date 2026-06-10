@@ -10,6 +10,7 @@
  * are updated.
  */
 
+import logger from './logger';
 import type { GameState, ViewName, WsStatus, ToastMessage, FriendInfo, FriendRequestInfo } from '../types';
 
 interface StateMap {
@@ -52,6 +53,7 @@ class Store {
   private toastIdCounter = 0;
 
   subscribe<K extends keyof StateMap>(key: K, handler: (value: StateMap[K]) => void): () => void {
+    logger.info(`subscribe: ${key}`);
     if (!this.listeners.has(key)) {
       this.listeners.set(key, new Set());
     }
@@ -66,6 +68,7 @@ class Store {
   }
 
   set<K extends keyof StateMap>(key: K, value: StateMap[K]): void {
+    logger.info(`set: ${key}`);
     this.state[key] = value;
     const handlers = this.listeners.get(key);
     if (handlers) {
@@ -80,6 +83,7 @@ class Store {
 
   /* Auto-dismiss toast after 4s; tracks by incrementing ID for removal */
   toast(text: string, type: 'error' | 'info' = 'error'): void {
+    logger.info(`toast: [${type}] ${text}`);
     const id = ++this.toastIdCounter;
     const msg: ToastMessage = { text, type, id };
     const current = this.get('toasts');
@@ -95,6 +99,7 @@ class Store {
 
   /* Persist session to localStorage on change */
   persistSession(): void {
+    logger.info('session persisted');
     const token = this.get('token');
     const playerId = this.get('playerId');
     const username = this.get('username');
@@ -114,8 +119,12 @@ class Store {
     isRegistered: boolean;
   } | null {
     const raw = localStorage.getItem('chess_session');
-    if (!raw) return null;
+    if (!raw) {
+      logger.info('session not found');
+      return null;
+    }
     try {
+      logger.info('session restored');
       return JSON.parse(raw);
     } catch {
       localStorage.removeItem('chess_session');
@@ -124,6 +133,7 @@ class Store {
   }
 
   clearSession(): void {
+    logger.info('session cleared');
     localStorage.removeItem('chess_session');
     this.set('avatarUrl', null);
     this.set('isRegistered', false);

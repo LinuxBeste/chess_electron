@@ -17,6 +17,7 @@ import FriendsTab from './FriendsTab';
 import { t, getLanguage } from '../translate';
 import { getLanguageNames } from '../locales';
 import { avatarSrc } from '../api';
+import logger from '../logger';
 
 interface NavbarProps {
   onLanguageChange: () => void;
@@ -38,11 +39,49 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
   const isLoggedIn = !!(token && username);
   const isOffline = !!(offline && username);
 
+  function handleLogout() {
+    logger.info('User logged out', { username });
+    store.set('token', null);
+    store.set('playerId', null);
+    store.set('username', null);
+    store.set('avatarUrl', null);
+    store.set('offline', false);
+    store.clearSession();
+    store.set('currentGame', null);
+    navigate('/login');
+  }
+
+  function handleLanguageChange() {
+    const lang = getLanguage() === 'de' ? 'en' : 'de';
+    logger.info('Language changed', { language: lang });
+    onLanguageChange();
+  }
+
+  function handleOpenSettings() {
+    logger.debug('Settings dialog opened');
+    setShowSettings(true);
+  }
+
+  function handleOpenHistory() {
+    logger.debug('Match history dialog opened');
+    setShowHistory(true);
+  }
+
+  function handleOpenStats() {
+    logger.debug('Stats dialog opened');
+    setShowStats(true);
+  }
+
+  function handleOpenFriends() {
+    logger.debug('Friends dialog opened');
+    setShowFriends(true);
+  }
+
   return (
     <nav className="navbar">
       <span className="navbar-brand">{t('navbar.chess')}</span>
       <div className="navbar-center" />
-      <button className="navbar-btn" onClick={onLanguageChange} style={{ fontSize: 11, padding: '4px 8px' }}>
+      <button className="navbar-btn" onClick={handleLanguageChange} style={{ fontSize: 11, padding: '4px 8px' }}>
         {getLanguageNames()[getLanguage() === 'de' ? 'en' : 'de']}
       </button>
       <div className="navbar-actions">
@@ -99,36 +138,24 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
               </span>
             )}
             {isLoggedIn && (
-              <button className="navbar-btn" onClick={() => setShowStats(true)}>
+              <button className="navbar-btn" onClick={handleOpenStats}>
                 {t('navbar.stats')}
               </button>
             )}
             {isLoggedIn && isRegistered && (
-              <button className="navbar-btn" onClick={() => setShowFriends(true)}>
+              <button className="navbar-btn" onClick={handleOpenFriends}>
                 {t('navbar.friends')}
               </button>
             )}
-            <button className="navbar-btn" onClick={() => setShowSettings(true)}>
+            <button className="navbar-btn" onClick={handleOpenSettings}>
               {t('navbar.settings')}
             </button>
             {isLoggedIn && (
-              <button className="navbar-btn" onClick={() => setShowHistory(true)}>
+              <button className="navbar-btn" onClick={handleOpenHistory}>
                 {t('navbar.history')}
               </button>
             )}
-            <button
-              className="navbar-btn"
-              onClick={() => {
-                store.set('token', null);
-                store.set('playerId', null);
-                store.set('username', null);
-                store.set('avatarUrl', null);
-                store.set('offline', false);
-                store.clearSession();
-                store.set('currentGame', null);
-                navigate('/login');
-              }}
-            >
+            <button className="navbar-btn" onClick={handleLogout}>
               {t('navbar.logout')}
             </button>
           </>

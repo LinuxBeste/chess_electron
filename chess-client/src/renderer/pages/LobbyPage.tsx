@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import logger from '../logger';
 import { store } from '../store';
 import * as api from '../api';
 import { useNavigate } from 'react-router-dom';
@@ -29,8 +30,9 @@ export default function LobbyPage() {
   const [liveStatus, setLiveStatus] = useState('');
 
   /* Poll the server for open and active games. Errors are surfaced as status
-     messages so the UI degrades gracefully when the server is unreachable. */
+      messages so the UI degrades gracefully when the server is unreachable. */
   const poll = useCallback(async () => {
+    logger.debug('Polling open games...');
     try {
       const games = await api.getOpenGames();
       setOpenGames(games);
@@ -38,16 +40,22 @@ export default function LobbyPage() {
       const active = await api.getActiveGames();
       setLiveGames(active);
       setLiveStatus(active.length === 0 ? t('lobby.noActiveGames') : '');
+      logger.debug('Poll result', { openCount: games.length, activeCount: active.length });
     } catch {
+      logger.warn('Polling failed: server unreachable');
       setStatusMsg(t('lobby.cannotConnect'));
     }
   }, []);
 
   useEffect(() => {
+    logger.info('LobbyPage mounted');
     if (store.get('offline')) return;
     poll();
     const interval = setInterval(poll, 3000);
-    return () => clearInterval(interval);
+    return () => {
+      logger.info('LobbyPage unmounting');
+      clearInterval(interval);
+    };
   }, [poll]);
 
   /* If the player was in an active game (e.g. after a page refresh), resume it */
@@ -59,8 +67,10 @@ export default function LobbyPage() {
     try {
       const game = store.get('currentGame');
       if (game && game.status === 'active') {
+        logger.info('Checking active game', { gameId: game.id });
         const fresh = await api.getGame(game.id);
         if (fresh.status === 'active') {
+          logger.info('Resuming active game', { gameId: fresh.id });
           store.set('currentGame', fresh);
           navigate(`/game/${fresh.id}`);
         }
@@ -69,31 +79,41 @@ export default function LobbyPage() {
   }
 
   async function createGame() {
+    const visibility = isPrivate ? 'private' : 'public';
+    logger.info('Creating game', { visibility });
     try {
-      const game = await api.createGame(isPrivate ? 'private' : 'public');
+      const game = await api.createGame(visibility);
+      logger.info('Game created', { gameId: game.id, visibility });
       store.set('currentGame', game);
       navigate(`/game/${game.id}`);
     } catch (err: any) {
+      logger.error('Failed to create game', { error: err.message });
       store.toast(err.message || t('lobby.failedCreate'));
     }
   }
 
   async function joinGame(gid: string) {
+    logger.info('Joining game', { gameId: gid });
     try {
       const game = await api.joinGame(gid);
+      logger.info('Joined game', { gameId: game.id });
       store.set('currentGame', game);
       navigate(`/game/${game.id}`);
     } catch (err: any) {
+      logger.error('Failed to join game', { gameId: gid, error: err.message });
       store.toast(err.message || t('lobby.failedJoin'));
     }
   }
 
   async function spectateGame(gid: string) {
+    logger.info('Spectating game', { gameId: gid });
     try {
       const fresh = await api.getGame(gid);
+      logger.info('Now spectating game', { gameId: gid });
       store.set('currentGame', fresh);
       navigate(`/game/${gid}?spectate=1`);
     } catch (err: any) {
+      logger.error('Failed to spectate game', { gameId: gid, error: err.message });
       store.toast(err.message || t('lobby.failedLoad'));
     }
   }

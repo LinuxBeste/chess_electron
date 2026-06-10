@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import * as api from '../api';
 import { t } from '../translate';
+import logger from '../logger';
 
 interface Props {
   onClose: () => void;
@@ -11,13 +12,19 @@ export default function StatsDialog({ onClose }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    logger.info('StatsDialog: loading stats');
     api
       .getMe()
       .then((data) => {
-        if (data.stats) setStats(data.stats);
-        else setStats(null);
+        if (data.stats) {
+          logger.info('Stats loaded: wins=' + data.stats.wins + ' losses=' + data.stats.losses + ' draws=' + data.stats.draws);
+          setStats(data.stats);
+        } else {
+          logger.info('Stats: unregistered player');
+          setStats(null);
+        }
       })
-      .catch(() => {})
+      .catch((e) => logger.error('StatsDialog: failed to load stats: ' + e))
       .finally(() => setLoading(false));
   }, []);
 

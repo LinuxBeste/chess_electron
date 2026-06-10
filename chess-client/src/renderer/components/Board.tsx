@@ -12,6 +12,7 @@ import Square from './Square';
 import { squareToIndices, indicesToSquare } from '../chess';
 import { getSetting } from '../settings';
 import type { Board as BoardType, LegalMoveHint } from '../../types';
+import logger from '../logger';
 
 interface BoardProps {
   board: BoardType;
@@ -57,6 +58,17 @@ export default function Board({
     return () => ro.disconnect();
   }, []);
 
+  /* Log legal hints count when they change */
+  useEffect(() => {
+    if (legalHints.length > 0) {
+      logger.debug('Legal moves calculated', {
+        count: legalHints.length,
+        color: playerColor,
+        selectedSquare,
+      });
+    }
+  }, [legalHints.length, playerColor, selectedSquare]);
+
   const sqSize = boardSize / 8;
   const alwaysBottom = getSetting('alwaysWhiteBottom');
   const showCoordinates = getSetting('showCoordinates');
@@ -67,9 +79,10 @@ export default function Board({
 
   const handleClick = useCallback(
     (square: string) => {
+      logger.debug('Square clicked', { square, playerColor, isActive });
       onSquareClick(square);
     },
-    [onSquareClick],
+    [onSquareClick, playerColor, isActive],
   );
 
   /* Pointer-event-based drag-and-drop.  Uses pointer capture semantics
@@ -82,6 +95,7 @@ export default function Board({
       const [r, f] = squareToIndices(square);
       const piece = board[r]?.[f];
       if (!piece || piece.color !== playerColor) return;
+      logger.info('Piece drag started', { from: square, piece: piece.type, color: piece.color });
       setDragFrom(square);
       onDragStart(square);
     },
@@ -124,12 +138,17 @@ export default function Board({
       const tr = Math.floor(relY / sqSize);
       setDragFrom(null);
       setHoverSquare(null);
-      if (tf < 0 || tf >= 8 || tr < 0 || tr >= 8) return;
+      if (tf < 0 || tf >= 8 || tr < 0 || tr >= 8) {
+        logger.info('Piece drag cancelled', { from: dragFrom, reason: 'outside board' });
+        return;
+      }
       const bf = isWhiteBottom ? tf : 7 - tf;
       const br = isWhiteBottom ? tr : 7 - tr;
-      onDragEnd(indicesToSquare(br, bf));
+      const toSquare = indicesToSquare(br, bf);
+      logger.info('Piece dropped', { from: dragFrom, to: toSquare, playerColor });
+      onDragEnd(toSquare);
     },
-    [dragFrom, sqSize, isWhiteBottom, onDragEnd],
+    [dragFrom, sqSize, isWhiteBottom, onDragEnd, playerColor],
   );
 
   const getIsLegalHint = (sq: string) => legalHints.some((h) => h.to === sq);

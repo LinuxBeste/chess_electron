@@ -1,3 +1,5 @@
+import logger from './logger';
+
 /**
  * Client-side chess helpers: board creation, coordinate conversion,
  * deserialisation from WebSocket messages, and SVG piece rendering.
@@ -29,12 +31,14 @@ export function createInitialBoard(): Board {
     board[6][f] = { type: 'pawn', color: 'white' };
     board[7][f] = { type: backRank[f], color: 'white' };
   }
+  logger.info('Initial board created');
   return board;
 }
 
 export function squareToIndices(square: string): [number, number] {
   const file = square.charCodeAt(0) - 97;
   const rank = 8 - parseInt(square[1], 10);
+  logger.debug('Square converted to indices', { square, rank, file });
   return [rank, file];
 }
 
@@ -44,7 +48,9 @@ export function squareToIndices(square: string): [number, number] {
  * Confirmed in ../chess-api/src/chess.ts lines 39-41.
  */
 export function indicesToSquare(rank: number, file: number): string {
-  return String.fromCharCode(file + 97) + (8 - rank).toString();
+  const square = String.fromCharCode(file + 97) + (8 - rank).toString();
+  logger.debug('Indices converted to square', { rank, file, square });
+  return square;
 }
 
 /**
@@ -62,6 +68,7 @@ export function deserializeBoard(serialized: SerializedSquare[]): Board {
     const [rank, file] = squareToIndices(sq.square);
     board[rank][file] = { type: sq.piece as PieceType, color: sq.color as 'white' | 'black' };
   }
+  logger.debug('Board deserialized from', serialized.length, 'squares');
   return board;
 }
 
@@ -70,7 +77,9 @@ export function deserializeBoard(serialized: SerializedSquare[]): Board {
  * Each cell's Piece is spread so mutations to the clone don't affect the original.
  */
 export function cloneBoard(board: Board): Board {
-  return board.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
+  const cloned = board.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
+  logger.debug('Board cloned');
+  return cloned;
 }
 
 /**
@@ -81,9 +90,13 @@ export function findKing(board: Board, color: 'white' | 'black'): [number, numbe
   for (let r = 0; r < 8; r++) {
     for (let f = 0; f < 8; f++) {
       const p = board[r]?.[f];
-      if (p && p.type === 'king' && p.color === color) return [r, f];
+      if (p && p.type === 'king' && p.color === color) {
+        logger.debug('King found', { color, rank: r, file: f });
+        return [r, f];
+      }
     }
   }
+  logger.warn('King not found for color', color);
   return null;
 }
 
@@ -95,7 +108,11 @@ const PIECE_CHARS: Record<string, Record<string, string>> = {
 
 export function getPieceSvg(type: string, color: string): string {
   const char = PIECE_CHARS[color]?.[type];
-  if (!char) return '';
+  if (!char) {
+    logger.warn('Unknown piece', { type, color });
+    return '';
+  }
+  logger.debug('Piece rendered', { type, color });
   return `<span class="piece-char" style="font-size:36px;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;text-shadow:0 2px 4px rgba(0,0,0,0.4);color:${color === 'white' ? '#ffffff' : '#1a1a1a'}">${char}</span>`;
 }
 
@@ -121,5 +138,6 @@ export function el<K extends keyof HTMLElementTagNameMap>(
       elem.appendChild(child);
     }
   }
+  logger.debug('DOM element created', { tag, classes: classes.join(' ') });
   return elem;
 }

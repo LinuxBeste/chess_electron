@@ -1,3 +1,5 @@
+import logger from './logger';
+
 /**
  * AppSettings defines all user-configurable preferences.
  *
@@ -188,15 +190,24 @@ export function loadSettings(): AppSettings {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {
       cachedSettings = { ...defaultSettings, ...JSON.parse(raw) };
+      logger.info('Settings loaded from localStorage');
       return cachedSettings;
     }
-  } catch {}
+    logger.info('No saved settings found, using defaults');
+  } catch (e) {
+    logger.warn('Failed to parse settings from localStorage, using defaults', e);
+  }
   return cachedSettings;
 }
 
 export function saveSettings(settings: AppSettings): void {
   cachedSettings = settings;
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  logger.info('Settings saved', {
+    theme: settings.boardTheme,
+    soundEnabled: settings.soundEnabled,
+    language: settings.language,
+  });
   applyTheme(settings.boardTheme);
   applyBoardStyle(settings.boardStyle);
   applyBackground(settings.background);
@@ -207,7 +218,9 @@ export function saveSettings(settings: AppSettings): void {
 }
 
 export function getSetting<K extends keyof AppSettings>(key: K): AppSettings[K] {
-  return loadSettings()[key];
+  const val = loadSettings()[key];
+  logger.debug('Setting accessed', { key, value: val });
+  return val;
 }
 
 export function applyTheme(theme: string): void {
@@ -216,6 +229,7 @@ export function applyTheme(theme: string): void {
   if (theme !== 'default') {
     root.setAttribute('data-theme', theme);
   }
+  logger.info('Theme applied', theme);
 }
 
 export function applyBoardStyle(style: string): void {
@@ -224,6 +238,7 @@ export function applyBoardStyle(style: string): void {
   if (style !== 'default') {
     root.setAttribute('data-board-style', style);
   }
+  logger.info('Board style applied', style);
 }
 
 export function applyBackground(bg: string): void {
@@ -232,24 +247,28 @@ export function applyBackground(bg: string): void {
   if (bg !== 'default') {
     root.setAttribute('data-background', bg);
   }
+  logger.info('Background applied', bg);
 }
 
 export function applyBoardSize(size: string): void {
   const root = document.documentElement;
   root.removeAttribute('data-board-size');
   if (size !== 'medium') root.setAttribute('data-board-size', size);
+  logger.info('Board size applied', size);
 }
 
 export function applyCompactMode(enabled: boolean): void {
   const root = document.documentElement;
   if (enabled) root.setAttribute('data-compact', 'true');
   else root.removeAttribute('data-compact');
+  logger.info('Compact mode', enabled ? 'enabled' : 'disabled');
 }
 
 export function applyReduceMotion(enabled: boolean): void {
   const root = document.documentElement;
   if (enabled) root.setAttribute('data-reduce-motion', 'true');
   else root.removeAttribute('data-reduce-motion');
+  logger.info('Reduce motion', enabled ? 'enabled' : 'disabled');
 }
 
 export function getLocalStorageKeys(): string[] {
@@ -263,21 +282,29 @@ export function getLocalStorageKeys(): string[] {
 
 export function clearLocalStorageKey(key: string): void {
   localStorage.removeItem(key);
+  logger.info('LocalStorage key cleared', key);
 }
 
 export function clearAllLocalData(): void {
   localStorage.clear();
+  logger.info('All local data cleared');
 }
 
 export function applyBoardBorder(enabled: boolean): void {
   const root = document.documentElement;
   if (enabled) root.setAttribute('data-board-border', 'true');
   else root.removeAttribute('data-board-border');
+  logger.info('Board border', enabled ? 'enabled' : 'disabled');
 }
 
 /* Apply saved settings immediately on module load — prevents a flash
    of unstyled content before React mounts. */
 const initial = loadSettings();
+logger.info('Applying initial settings on module load', {
+  theme: initial.boardTheme,
+  language: initial.language,
+  soundEnabled: initial.soundEnabled,
+});
 applyTheme(initial.boardTheme);
 applyBoardStyle(initial.boardStyle);
 applyBackground(initial.background);

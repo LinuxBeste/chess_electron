@@ -9,6 +9,7 @@
 
 import { useEffect, lazy, Suspense, useRef, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import logger from './logger';
 import Navbar from './components/Navbar';
 import ToastContainer from './components/ToastContainer';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -54,19 +55,22 @@ export default function App() {
   }
 
   /* One-shot initialisation on app mount:
-     - Resolve server URL from Electron preload, localStorage, or default
-     - Load persisted settings and override with Electron env vars if present
-     - Restore last session (token + playerId) and validate against server
-     - Subscribe to token changes so the WebSocket connects/disconnects
-       automatically */
+      - Resolve server URL from Electron preload, localStorage, or default
+      - Load persisted settings and override with Electron env vars if present
+      - Restore last session (token + playerId) and validate against server
+      - Subscribe to token changes so the WebSocket connects/disconnects
+        automatically */
   useEffect(() => {
+    logger.info('App mounted, initializing...');
+
     /* Server URL resolution: Electron preload takes precedence, then
-       a stored override in localStorage, then the hardcoded default */
+        a stored override in localStorage, then the hardcoded default */
     const storedUrl = localStorage.getItem('chess_server_url');
     const serverUrl = storedUrl || window.electronAPI?.serverUrl || 'http://localhost:3000';
     setBaseUrl(serverUrl);
     const wsUrl = window.electronAPI?.wsUrl || serverUrl;
     socketManager.setServerUrl(wsUrl);
+    logger.info('Server URL set', { serverUrl, hasElectron: !!window.electronAPI });
 
     /* Merge Electron-provided defaults (if any) into persisted settings.
        This lets the Electron wrapper force specific themes for the standalone app
@@ -94,20 +98,24 @@ export default function App() {
     /* Subscribe to token changes FIRST so the initial restore triggers it */
     const unsubToken = store.subscribe('token', (token) => {
       if (token) {
+        logger.info('Token available, connecting WebSocket...');
         socketManager.connect();
       } else if (!store.get('offline')) {
+        logger.info('Token cleared, disconnecting WebSocket and redirecting to login');
         socketManager.disconnect();
         navigate('/login', { replace: true });
       } else {
+        logger.info('Offline mode, disconnecting WebSocket');
         socketManager.disconnect();
       }
     });
 
     /* Restore persisted session and validate credentials against the server.
-       If the token is stale (401), clear session and redirect to login.
-       The subscribe above will fire on store.set('token', ...) and connect
-       or disconnect the WebSocket accordingly. */
+        If the token is stale (401), clear session and redirect to login.
+        The subscribe above will fire on store.set('token', ...) and connect
+        or disconnect the WebSocket accordingly. */
     const session = store.restoreSession();
+    logger.info('Session restore', { hasSession: !!session });
     if (session) {
       store.set('token', session.token);
       store.set('playerId', session.playerId);
@@ -116,17 +124,20 @@ export default function App() {
       store.set('isRegistered', session.isRegistered);
       getMe()
         .then((me) => {
+          logger.info('Session validated, navigating to lobby');
           store.set('avatarUrl', me.avatarUrl);
           store.set('isRegistered', me.isRegistered);
           navigate('/lobby', { replace: true });
         })
         .catch((err) => {
           if (err instanceof ApiError && err.status === 401) {
+            logger.warn('Session token expired, clearing session');
             store.set('token', null);
             store.set('playerId', null);
             store.set('username', null);
             store.clearSession();
           } else {
+            logger.error('Failed to connect to server', err);
             store.toast(t('app.connectFailed'), 'error');
           }
         });
@@ -134,6 +145,7 @@ export default function App() {
 
     /* ─── Friend WS event handlers ─── */
     const unsubFriendOnline = socketManager.onFriendOnline((msg) => {
+      logger.info('Friend online', { playerId: msg.playerId, currentGameId: msg.currentGameId });
       const cur = store.get('friends');
       store.set(
         'friends',
@@ -141,6 +153,7 @@ export default function App() {
       );
     });
     const unsubFriendOffline = socketManager.onFriendOffline((msg) => {
+      logger.info('Friend offline', { playerId: msg.playerId });
       const cur = store.get('friends');
       store.set(
         'friends',
@@ -148,6 +161,7 @@ export default function App() {
       );
     });
     const unsubFriendRequest = socketManager.onFriendRequest((msg) => {
+      logger.info('Friend request received', { from: msg.fromDisplayName, fromPlayerId: msg.fromPlayerId });
       store.toast(t('friends.friendRequestFrom', { name: msg.fromDisplayName }), 'info');
       /* Refresh friend requests */
       getFriendRequests()
@@ -158,6 +172,7 @@ export default function App() {
         .catch(() => {});
     });
     const unsubFriendRequestAccepted = socketManager.onFriendRequestAccepted((msg) => {
+      logger.info('Friend request accepted', { by: msg.byDisplayName });
       store.toast(t('friends.friendRequestAccepted', { name: msg.byDisplayName }), 'info');
       getFriends()
         .then((f) => store.set('friends', f))
@@ -170,13 +185,16 @@ export default function App() {
         .catch(() => {});
     });
     const unsubChallenge = socketManager.onChallenge((msg) => {
+      logger.info('Challenge received', { from: msg.fromDisplayName, fromPlayerId: msg.fromPlayerId, gameId: msg.gameId });
       setPendingChallenge({ gameId: msg.gameId, fromPlayerId: msg.fromPlayerId, fromDisplayName: msg.fromDisplayName });
     });
     const unsubChallengeAccept = socketManager.onChallengeAccept((msg) => {
+      logger.info('Challenge accepted, navigating to game', { gameId: msg.gameId });
       store.toast(t('friends.challengeAccepted'), 'info');
       navigate(`/game/${msg.gameId}`);
     });
     const unsubChallengeDecline = socketManager.onChallengeDecline((_msg) => {
+      logger.info('Challenge declined', { gameId: _msg.gameId });
       store.toast(t('friends.challengeDeclined'), 'info');
     });
 
@@ -204,6 +222,7 @@ export default function App() {
       idleTimer.current = setTimeout(
         () => {
           if (store.get('token')) {
+            logger.info('Auto-logout due to inactivity', { idleMinutes });
             store.set('token', null);
             store.set('playerId', null);
             store.set('username', null);
@@ -232,18 +251,21 @@ export default function App() {
   async function handleAcceptChallenge() {
     if (!pendingChallenge) return;
     const { gameId, fromPlayerId } = pendingChallenge;
+    logger.info('Accepting challenge', { gameId, fromPlayerId });
     try {
       await joinGame(gameId);
       socketManager.send({ type: 'challenge_accept', toPlayerId: fromPlayerId, gameId });
       setPendingChallenge(null);
       navigate(`/game/${gameId}`);
-    } catch {
+    } catch (err) {
+      logger.error('Failed to accept challenge', err);
       store.toast('Failed to join game', 'error');
     }
   }
 
   function handleDeclineChallenge() {
     if (!pendingChallenge) return;
+    logger.info('Declining challenge', { gameId: pendingChallenge.gameId, fromPlayerId: pendingChallenge.fromPlayerId });
     socketManager.send({
       type: 'challenge_decline',
       toPlayerId: pendingChallenge.fromPlayerId,

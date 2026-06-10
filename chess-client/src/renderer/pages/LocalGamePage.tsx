@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import logger from '../logger';
 import Board from '../components/Board';
 import MoveHistory from '../components/MoveHistory';
 import PromotionDialog from '../components/PromotionDialog';
@@ -37,13 +38,18 @@ export default function LocalGamePage() {
   const [boardHistory, setBoardHistory] = useState<{ board: BoardType; move: string }[]>([]);
 
   /* Refs that always reflect current state — used inside closures that would
-     otherwise capture stale values from the render cycle */
+      otherwise capture stale values from the render cycle */
   const boardRef = useRef(board);
   boardRef.current = board;
   const turnRef = useRef(turn);
   turnRef.current = turn;
   const gameOverRef = useRef(gameOver);
   gameOverRef.current = gameOver;
+
+  useEffect(() => {
+    logger.info('LocalGamePage mounted');
+    return () => logger.info('LocalGamePage unmounting');
+  }, []);
 
   /* Countdown timer: decrement the active player every 50ms and detect timeout */
   useEffect(() => {
@@ -53,6 +59,7 @@ export default function LocalGamePage() {
         setWhiteTime((t) => {
           const next = t - 50;
           if (next <= 0) {
+            logger.info('Timeout: black wins');
             setGameOver({ status: 'timeout', winner: 'black' });
             return 0;
           }
@@ -62,6 +69,7 @@ export default function LocalGamePage() {
         setBlackTime((t) => {
           const next = t - 50;
           if (next <= 0) {
+            logger.info('Timeout: white wins');
             setGameOver({ status: 'timeout', winner: 'white' });
             return 0;
           }
@@ -261,8 +269,8 @@ export default function LocalGamePage() {
   }
 
   /* Commit a move to the board: clone, apply, check for terminal states,
-     then switch turn.  Sound effects are delayed by 100 ms so the board
-     re-renders first (avoiding audio clipping). */
+      then switch turn.  Sound effects are delayed by 100 ms so the board
+      re-renders first (avoiding audio clipping). */
   function executeMove(from: string, to: string, promotionPiece?: PieceType) {
     const newBoard = cloneBoard(boardRef.current);
     const [fr, ff] = squareToIndices(from);
@@ -271,6 +279,7 @@ export default function LocalGamePage() {
     if (!piece) return;
 
     const wasCapture = newBoard[tr][tf] !== null;
+    logger.info('Local move', { from, to, promotion: promotionPiece, capture: wasCapture });
     newBoard[tr][tf] = promotionPiece ? { type: promotionPiece, color: piece.color } : piece;
     newBoard[fr][ff] = null;
 
@@ -293,11 +302,13 @@ export default function LocalGamePage() {
     setBoardHistory((prev) => [...prev, { board: cloneBoard(newBoard), move: `${from}-${to}` }]);
 
     if (isCheckmate(newBoard, nextTurn)) {
+      logger.info('Game over: checkmate', { winner: turnRef.current });
       setGameOver({ status: 'checkmate', winner: turnRef.current });
       if (getSetting('soundEnabled')) setTimeout(() => playGameOverSound(), 100);
       return;
     }
     if (isStalemate(newBoard, nextTurn)) {
+      logger.info('Game over: stalemate');
       setGameOver({ status: 'stalemate' });
       if (getSetting('soundEnabled')) setTimeout(() => playGameOverSound(), 100);
       return;
@@ -406,6 +417,7 @@ export default function LocalGamePage() {
   }
 
   function newGame() {
+    logger.info('Starting new local game');
     setBoard(createInitialBoard());
     setTurn('white');
     setSelectedSquare(null);

@@ -1,3 +1,5 @@
+import logger from './logger';
+
 /**
  * Procedural sound effects using the Web Audio API.
  *
@@ -16,6 +18,7 @@ let cachedVolume = 1;
 
 export function setSoundVolume(pct: number): void {
   cachedVolume = Math.max(0, Math.min(1, pct / 100));
+  logger.info('Sound volume set', pct);
 }
 
 /* Lazily create AudioContext and resume if suspended (common after
@@ -49,18 +52,21 @@ function playTone(freq: number, duration: number, type: OscillatorType = 'sine',
 /* Short, light taps for normal moves */
 export function playMoveSound(): void {
   playTone(600, 0.1, 'sine', 0.1);
+  logger.debug('Move sound played');
 }
 
 /* Lower, harsher tone for captures (square wave + two-note sequence) */
 export function playCaptureSound(): void {
   playTone(300, 0.15, 'square', 0.08);
   setTimeout(() => playTone(200, 0.1, 'square', 0.06), 50);
+  logger.debug('Capture sound played');
 }
 
 /* Rising two-note alert for check */
 export function playCheckSound(): void {
   playTone(800, 0.08, 'sine', 0.12);
   setTimeout(() => playTone(1000, 0.12, 'sine', 0.12), 80);
+  logger.info('Check sound played');
 }
 
 /* Descending three-note sequence for game over */
@@ -68,4 +74,5 @@ export function playGameOverSound(): void {
   playTone(400, 0.2, 'sine', 0.1);
   setTimeout(() => playTone(300, 0.2, 'sine', 0.1), 200);
   setTimeout(() => playTone(200, 0.4, 'sine', 0.1), 400);
+  logger.info('Game-over sound played');
 }

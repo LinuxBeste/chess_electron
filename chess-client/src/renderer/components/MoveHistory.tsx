@@ -8,6 +8,7 @@
 
 import { useEffect, useRef } from 'react';
 import { t } from '../translate';
+import logger from '../logger';
 
 interface MoveHistoryProps {
   moves: string[];
@@ -20,6 +21,20 @@ export default function MoveHistory({ moves }: MoveHistoryProps) {
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [moves.length]);
+
+  /* Log when move history changes */
+  useEffect(() => {
+    const totalPairs = Math.ceil(moves.length / 2);
+    if (moves.length === 0) {
+      logger.debug('Move history rendered (empty)');
+    } else {
+      logger.debug('Move history updated', {
+        totalMoves: moves.length,
+        totalPairs,
+        lastMove: moves[moves.length - 1],
+      });
     }
   }, [moves.length]);
 
