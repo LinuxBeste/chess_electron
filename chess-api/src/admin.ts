@@ -185,7 +185,9 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
       diskTotal = parseInt(out[1], 10) * 1024 || 0;
       diskFree = parseInt(out[3], 10) * 1024 || 0;
     }
-  } catch {}
+  } catch (e) {
+    logger.warn('Failed to read disk info via df: ' + e);
+  }
 
   const nets = os.networkInterfaces();
   const addrs: { name: string; address: string; family: string }[] = [];
@@ -256,7 +258,8 @@ router.get('/admin/api/system/processes', adminAuthMiddleware, (_req: Request, r
       processes.push({ user, pid, cpu, mem, rss, command });
     }
     res.json(processes);
-  } catch {
+  } catch (e) {
+    logger.error('Failed to list processes: ' + e);
     res.json([]);
   }
 });

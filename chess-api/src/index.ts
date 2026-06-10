@@ -159,8 +159,8 @@ export function createServer(): http.Server {
             fromPlayerId: player.id,
           });
         }
-      } catch {
-        /* Ignore malformed messages */
+      } catch (e) {
+        logger.warn('WS malformed message from playerId=' + player.id + ': ' + e);
       }
     });
 
