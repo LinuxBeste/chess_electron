@@ -2,8 +2,8 @@ services:
   chess-api:
     build: .
     image: chess-api
-    expose:
-      - "3000"
+    ports:
+      - "${PORT:-25565}:3000"
     restart: unless-stopped
     volumes:
       - chess-data:/app/data
