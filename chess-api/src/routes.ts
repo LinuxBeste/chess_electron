@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PieceType } from './types';
 import * as game from './game';
 import * as db from './db';
+import logger from './logger';
 import fs from 'fs';
 import path from 'path';
 
@@ -183,15 +184,12 @@ router.post('/auth/register', ipRateLimitMiddleware, (req: Request, res: Respons
   try {
     const result = game.registerPlayer(trimmed, password || undefined);
     game.setPlayerIp(result.playerId, ip);
-    console.log(`[AUDIT] register — username="${trimmed}" registered=${result.isRegistered} ip="${ip}"`);
-    res.status(201).json(result);
-  } catch (err: any) {
-    if (err?.message?.includes('UNIQUE constraint')) {
-      res.status(409).json({ error: 'Username is already taken' });
-      return;
-    }
-    console.error('Register error:', err);
-    res.status(500).json({ error: 'Registration failed: ' + String(err?.message || err) });
+    logger.audit('register', `username="${trimmed}" registered=${result.isRegistered} ip="${ip}"`);
+    res.status(201).json({ playerId: result.playerId, token: result.token });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error('Register error:', msg);
+    res.status(500).json({ error: 'Registration failed: ' + msg });
   }
 });
 
@@ -209,12 +207,13 @@ router.post('/auth/login', ipRateLimitMiddleware, (req: Request, res: Response) 
   }
   const result = game.loginPlayer(username.trim(), password);
   if (!result.success) {
-    console.log(`[AUDIT] login_failed — username="${username.trim()}" ip="${ip}"`);
-    res.status(401).json({ error: result.error });
+    logger.audit('login_failed', `username="${username.trim()}" ip="${ip}"`);
+    res.status(401).json({ error: 'Invalid username or password' });
     return;
   }
-  game.setPlayerIp(result.playerId, ip);
-  console.log(`[AUDIT] login_ok — playerId="${result.playerId}" username="${username.trim()}" ip="${ip}"`);
+  const token = uuidv4();
+  game.loginPlayer(result.playerId, token);
+  logger.audit('login_ok', `playerId="${result.playerId}" username="${username.trim()}" ip="${ip}"`);
   res.json(result);
 });
 
@@ -264,7 +263,7 @@ router.put('/auth/me/password', authMiddleware, banCheckMiddleware, (req: Reques
     res.status(400).json({ error: result.error });
     return;
   }
-  console.log(`[AUDIT] password_changed — playerId="${req.player.id}"`);
+  logger.audit('password_changed', `playerId="${req.player.id}"`);
   res.json({ success: true });
 });
 
@@ -310,6 +309,7 @@ router.post('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Request
 
     const avatarUrl = '/avatars/' + finalName;
     db.updateUserAvatar(req.player.id, avatarUrl);
+    logger.info('Avatar uploaded: playerId=' + req.player.id + ' url=' + avatarUrl);
     res.json({ avatarUrl });
   });
 });
@@ -326,6 +326,7 @@ router.delete('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Reque
     }
   }
   db.updateUserAvatar(req.player.id, null);
+  logger.info('Avatar removed: playerId=' + req.player.id);
   res.json({ success: true });
 });
 
@@ -507,6 +508,7 @@ router.post(
     }
     const requestId = db.createFriendRequest(req.player.id, targetUser.id);
     game.broadcastFriendRequest(req.player.id, targetUser.id, requestId);
+    logger.info('Friend request sent: from=' + req.player.id + ' to=' + targetUser.id);
     res.status(201).json({ id: requestId });
   },
 );
@@ -563,6 +565,7 @@ router.post('/friends/requests/:id/accept', authMiddleware, banCheckMiddleware, 
   db.updateFriendRequestStatus(fr.id, 'accepted');
   db.addFriendRelationship(fr.from_user_id, fr.to_user_id);
   game.broadcastFriendRequestAccepted(req.player.id, fr.from_user_id);
+  logger.info('Friend request accepted: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
   res.json({ success: true });
 });
 
@@ -586,6 +589,7 @@ router.post('/friends/requests/:id/decline', authMiddleware, banCheckMiddleware,
     return;
   }
   db.updateFriendRequestStatus(fr.id, 'declined');
+  logger.info('Friend request declined: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
   res.json({ success: true });
 });
 
@@ -600,6 +604,7 @@ router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, (req: Re
     return;
   }
   db.removeFriendRelationship(req.player.id, req.params.friendId);
+  logger.info('Friend removed: playerId=' + req.player.id + ' friendId=' + req.params.friendId);
   res.json({ success: true });
 });
 

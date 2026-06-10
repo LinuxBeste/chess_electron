@@ -5,6 +5,7 @@ import { Player, GameState, Color, PieceType } from './types';
 import type { GameStatus } from './types';
 import * as chess from './chess';
 import * as db from './db';
+import logger from './logger';
 
 /* In-memory data stores.  Everything resets on process restart — there is
  * no database or persistent storage.  Three data structures:
@@ -102,6 +103,7 @@ export function registerPlayer(
   const playerId = uuidv4();
   const token = uuidv4();
 
+  const isRegistered = !!password;
   if (password) {
     const hash = hashPassword(password);
     db.createUser(playerId, username, hash, username);
@@ -109,13 +111,13 @@ export function registerPlayer(
     const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: true };
     players.set(playerId, player);
     tokenIndex.set(token, playerId);
-    return { playerId, token, isRegistered: true, displayName: username };
+  } else {
+    const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: false };
+    players.set(playerId, player);
+    tokenIndex.set(token, playerId);
   }
-
-  const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: false };
-  players.set(playerId, player);
-  tokenIndex.set(token, playerId);
-  return { playerId, token, isRegistered: false, displayName: username };
+  logger.info('Player registered: playerId=' + playerId + ' username="' + username + '" registered=' + isRegistered);
+  return { playerId, token, isRegistered, displayName: username };
 }
 
 /**
@@ -153,6 +155,7 @@ export function loginPlayer(
     tokenIndex.set(token, user.id);
   }
 
+  logger.info('Player login: playerId=' + user.id + ' username="' + user.username + '"');
   return { success: true, playerId: user.id, token, displayName: user.display_name };
 }
 
@@ -213,6 +216,7 @@ export function registerWSConnection(playerId: string, ws: WebSocket): void {
   if (wasOffline) {
     notifyFriendsOnline(playerId);
   }
+  logger.info('WS connected: playerId=' + playerId);
 }
 
 /**
@@ -227,6 +231,7 @@ export function removeWSConnection(playerId: string, ws: WebSocket): void {
   if (isNowOffline && players.has(playerId)) {
     notifyFriendsOffline(playerId);
   }
+  logger.info('WS disconnected: playerId=' + playerId);
 }
 
 /**
@@ -382,6 +387,7 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
     halfMoveClock: 0,
   };
   games.set(id, game);
+  logger.info('Game created: gameId=' + id + ' white=' + playerId + ' visibility=' + visibility);
   return enrichNames(game);
 }
 
@@ -426,6 +432,7 @@ export function abortGame(gameId: string, playerId: string): { success: boolean;
   if (game.players.black) sendToPlayer(game.players.black, { type: 'game_aborted', gameId });
 
   games.delete(gameId);
+  logger.info('Game aborted: gameId=' + gameId + ' by playerId=' + playerId);
   return { success: true };
 }
 
@@ -451,6 +458,8 @@ export function joinGame(gameId: string, playerId: string): { success: boolean; 
   /* Black joins and the game immediately becomes active */
   game.players.black = playerId;
   game.status = 'active';
+
+  logger.info('Game joined: gameId=' + gameId + ' white=' + game.players.white + ' black=' + playerId);
 
   /* Broadcast to all connected players so their game view updates.
      The enriched copy includes player display names for the UI. */
@@ -604,6 +613,8 @@ export function makeMove(
     recordGameResult(game, winner);
   }
 
+  const moveLog = notation || from + '-' + to;
+  logger.info('Move: gameId=' + gameId + ' player=' + playerId + ' move=' + moveLog + ' status=' + newStatus);
   return { success: true, state: enrichNames(game) };
 }
 
@@ -644,6 +655,7 @@ export function resignGame(gameId: string, playerId: string): { success: boolean
 
   recordGameResult(game, winner === 'white' ? 'white' : winner === 'black' ? 'black' : null);
 
+  logger.info('Resign: gameId=' + gameId + ' player=' + playerId + ' winner=' + winner);
   return { success: true, state: enrichNames(game) };
 }
 
@@ -688,6 +700,7 @@ export function offerDraw(gameId: string, playerId: string): boolean {
   drawOffers.set(gameId, playerId);
   const message = { type: 'draw_offered', gameId, byPlayerId: playerId };
   broadcastToGame(gameId, message);
+  logger.info('Draw offered: gameId=' + gameId + ' by playerId=' + playerId);
   return true;
 }
 
@@ -726,6 +739,7 @@ export function acceptDraw(gameId: string, playerId: string): { success: boolean
     reason: 'Draw by agreement',
   });
 
+  logger.info('Draw accepted: gameId=' + gameId + ' by playerId=' + playerId);
   return { success: true };
 }
 
@@ -921,6 +935,7 @@ export function deleteAccount(playerId: string): { success: true } | { success: 
   /* Remove from in-memory maps */
   players.delete(playerId);
 
+  logger.info('Account deleted: playerId=' + playerId);
   return { success: true };
 }
 
@@ -981,6 +996,7 @@ export function banPlayer(playerId: string): { success: true } | { success: fals
     }
   }
 
+  logger.info('Player banned: playerId=' + playerId);
   return { success: true };
 }
 
@@ -1063,6 +1079,7 @@ export function kickPlayer(playerId: string): { success: true } | { success: fal
     }
   }
 
+  logger.info('Player kicked: playerId=' + playerId);
   return { success: true };
 }
 
@@ -1084,6 +1101,7 @@ export function endGame(gameId: string): { success: true } | { success: false; e
   if (g.players.black) sendToPlayer(g.players.black, message);
   sendToSpectators(gameId, message);
 
+  logger.info('Game ended by admin: gameId=' + gameId);
   return { success: true };
 }
 

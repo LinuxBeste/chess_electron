@@ -14,6 +14,7 @@ import { IncomingMessage } from 'http';
 import routes from './routes';
 import adminRouter from './admin';
 import * as game from './game';
+import logger from './logger';
 import { cleanupIpRateBuckets } from './routes';
 
 export const app: Express = express();
@@ -23,29 +24,21 @@ export const app: Express = express();
 const PORT = parseInt(process.env.PORT ?? '3000', 10);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 const WS_HEARTBEAT_INTERVAL = parseInt(process.env.WS_HEARTBEAT_INTERVAL ?? '30000', 10);
-const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 
 /* Validate critical env vars */
 if (!process.env.ADMIN_PASSWORD && !process.env.JEST_WORKER_ID) {
-  console.warn('[WARN] ADMIN_PASSWORD not set — a random password will be generated and logged on first request');
-}
-
-function log(level: string, ...args: unknown[]): void {
-  const levels = { error: 0, warn: 1, info: 2, debug: 3 };
-  if ((levels[level as keyof typeof levels] ?? 0) <= (levels[LOG_LEVEL as keyof typeof levels] ?? 2)) {
-    console.log(`[${level.toUpperCase()}]`, ...args);
-  }
+  logger.warn('ADMIN_PASSWORD not set — a random password will be generated and logged on first request');
 }
 
 /* Security headers via helmet */
 app.use(helmet());
-/* Request logging (skip in test) */
+/* Request logging to both console and file (skip in test) */
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('short'));
+  app.use(morgan('short', { stream: logger.morganStream() }));
 }
 /* CORS: allow specific origin or wildcard (Electron loads from file://) */
 if (CORS_ORIGIN === '*') {
-  log('warn', 'CORS origin is set to * — restrict this in production');
+  logger.warn('CORS origin is set to * — restrict this in production');
 }
 app.use(cors({ origin: CORS_ORIGIN, credentials: CORS_ORIGIN !== '*' }));
 /* Parse incoming JSON request bodies for all routes */
@@ -110,6 +103,7 @@ export function createServer(): http.Server {
 
     /* Register the connection so the player receives game events */
     game.registerWSConnection(player.id, ws);
+    logger.info('WS connection established: playerId=' + player.id);
 
     let spectatingGameId: string | null = null;
 
@@ -121,6 +115,7 @@ export function createServer(): http.Server {
           if (game.registerSpectator(msg.gameId, ws)) {
             spectatingGameId = msg.gameId;
             ws.send(JSON.stringify({ type: 'spectate_ok', gameId: msg.gameId }));
+            logger.info('WS spectate: playerId=' + player.id + ' gameId=' + msg.gameId);
           } else {
             ws.send(JSON.stringify({ type: 'spectate_error', error: 'Game not found or not active' }));
           }
@@ -197,10 +192,13 @@ if (!isTestEnv) {
   const server = createServer();
   /* Periodic cleanup of IP rate-limit buckets */
   setInterval(cleanupIpRateBuckets, 60000);
+  /* Clean up old log files daily */
+  logger.cleanupOldLogs();
+  setInterval(logger.cleanupOldLogs, 86400000);
 
   server.listen(PORT, () => {
-    log('info', `Chess API server listening on port ${PORT}`);
-    log('info', `CORS origin: ${CORS_ORIGIN}`);
-    log('info', `WS heartbeat interval: ${WS_HEARTBEAT_INTERVAL}ms`);
+    logger.info('Chess API server listening on port ' + PORT);
+    logger.info('CORS origin: ' + CORS_ORIGIN);
+    logger.info('WS heartbeat interval: ' + WS_HEARTBEAT_INTERVAL + 'ms');
   });
 }
