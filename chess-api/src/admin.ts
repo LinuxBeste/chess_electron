@@ -534,7 +534,9 @@ router.get('/admin/api/logs', adminAuthMiddleware, (req: Request, res: Response)
   try {
     const files = fs.readdirSync(LOG_DIR).filter((f) => f.endsWith('.log'));
     logFiles.push(...files.sort().reverse());
-  } catch { /* ok */ }
+  } catch {
+    /* ok */
+  }
 
   logger.info('Admin logs viewed: type=' + type + ' lines=' + maxLines);
   res.json({ logs: result, files: logFiles });

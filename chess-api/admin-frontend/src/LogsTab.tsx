@@ -101,9 +101,9 @@ export default function LogsTab() {
         </label>
 
         <span className="text-xs text-[#555] ml-auto">
-          {hasApp && (data!.logs.app!.length + ' app lines')}
+          {hasApp && data!.logs.app!.length + ' app lines'}
           {hasAudit && (hasApp ? ' · ' : '') + data!.logs.audit!.length + ' audit lines'}
-          {hasHttp && ((hasApp || hasAudit) ? ' · ' : '') + data!.logs.http!.length + ' http lines'}
+          {hasHttp && (hasApp || hasAudit ? ' · ' : '') + data!.logs.http!.length + ' http lines'}
         </span>
       </div>
 
@@ -129,18 +129,10 @@ export default function LogsTab() {
 
       {/* Log content */}
       <div className="grid grid-cols-1 gap-4">
-        {hasApp && (
-          <LogSection title="App Logs" lines={data!.logs.app!} />
-        )}
-        {hasAudit && (
-          <LogSection title="Audit Logs" lines={data!.logs.audit!} highlight />
-        )}
-        {hasHttp && (
-          <LogSection title="HTTP Logs" lines={data!.logs.http!} />
-        )}
-        {!hasApp && !hasAudit && !hasHttp && (
-          <p className="text-xs text-[#666]">No log entries found for today.</p>
-        )}
+        {hasApp && <LogSection title="App Logs" lines={data!.logs.app!} />}
+        {hasAudit && <LogSection title="Audit Logs" lines={data!.logs.audit!} highlight />}
+        {hasHttp && <LogSection title="HTTP Logs" lines={data!.logs.http!} />}
+        {!hasApp && !hasAudit && !hasHttp && <p className="text-xs text-[#666]">No log entries found for today.</p>}
       </div>
     </div>
   );
@@ -161,9 +153,7 @@ function LogSection({ title, lines, highlight }: { title: string; lines: string[
   return (
     <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-[#1a1a1a] border-b border-[#2a2a2a]">
-        <h3 className={`text-sm font-semibold ${highlight ? 'text-purple-400' : 'text-[#e0e0e0]'}`}>
-          {title}
-        </h3>
+        <h3 className={`text-sm font-semibold ${highlight ? 'text-purple-400' : 'text-[#e0e0e0]'}`}>{title}</h3>
         <span className="text-xs text-[#555]">{lines.length} lines</span>
       </div>
       <pre

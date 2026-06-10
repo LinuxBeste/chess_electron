@@ -185,7 +185,11 @@ export default function App() {
         .catch(() => {});
     });
     const unsubChallenge = socketManager.onChallenge((msg) => {
-      logger.info('Challenge received', { from: msg.fromDisplayName, fromPlayerId: msg.fromPlayerId, gameId: msg.gameId });
+      logger.info('Challenge received', {
+        from: msg.fromDisplayName,
+        fromPlayerId: msg.fromPlayerId,
+        gameId: msg.gameId,
+      });
       setPendingChallenge({ gameId: msg.gameId, fromPlayerId: msg.fromPlayerId, fromDisplayName: msg.fromDisplayName });
     });
     const unsubChallengeAccept = socketManager.onChallengeAccept((msg) => {
@@ -265,7 +269,10 @@ export default function App() {
 
   function handleDeclineChallenge() {
     if (!pendingChallenge) return;
-    logger.info('Declining challenge', { gameId: pendingChallenge.gameId, fromPlayerId: pendingChallenge.fromPlayerId });
+    logger.info('Declining challenge', {
+      gameId: pendingChallenge.gameId,
+      fromPlayerId: pendingChallenge.fromPlayerId,
+    });
     socketManager.send({
       type: 'challenge_decline',
       toPlayerId: pendingChallenge.fromPlayerId,

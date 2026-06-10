@@ -17,7 +17,9 @@ export default function StatsDialog({ onClose }: Props) {
       .getMe()
       .then((data) => {
         if (data.stats) {
-          logger.info('Stats loaded: wins=' + data.stats.wins + ' losses=' + data.stats.losses + ' draws=' + data.stats.draws);
+          logger.info(
+            'Stats loaded: wins=' + data.stats.wins + ' losses=' + data.stats.losses + ' draws=' + data.stats.draws,
+          );
           setStats(data.stats);
         } else {
           logger.info('Stats: unregistered player');

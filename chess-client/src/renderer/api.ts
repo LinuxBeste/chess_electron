@@ -227,7 +227,12 @@ export async function deleteAccount(): Promise<{ success: true }> {
 /* GET /health — no auth required.
  * Response shape confirmed in ../chess-api/src/routes.ts line 35-43
  * and ../chess-api/docs/api.md lines 44-54. */
-export async function healthCheck(): Promise<{ status: string; uptime: number; gamesActive: number; playersOnline: number }> {
+export async function healthCheck(): Promise<{
+  status: string;
+  uptime: number;
+  gamesActive: number;
+  playersOnline: number;
+}> {
   logger.info('healthCheck called');
   try {
     const result = await request<{

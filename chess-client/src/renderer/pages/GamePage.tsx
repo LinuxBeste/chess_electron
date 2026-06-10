@@ -247,7 +247,13 @@ export default function GamePage() {
 
   function handleWsMove(msg: MoveMessage) {
     if (!gameRef.current) return;
-    logger.info('WS move received', { gameId: msg.gameId, from: msg.lastMove.from, to: msg.lastMove.to, turn: msg.turn, status: msg.status });
+    logger.info('WS move received', {
+      gameId: msg.gameId,
+      from: msg.lastMove.from,
+      to: msg.lastMove.to,
+      turn: msg.turn,
+      status: msg.status,
+    });
     const [toR, toF] = squareToIndices(msg.lastMove.to);
     const wasCapture = boardRef.current[toR]?.[toF] !== null;
     const newBoard = deserializeBoard(msg.board);
@@ -437,7 +443,11 @@ export default function GamePage() {
     setLastMove({ from, to });
     try {
       const updated = await api.makeMove(gameRef.current.id, from, to, promotion);
-      logger.info('Move confirmed by server', { gameId: gameRef.current.id, status: updated.status, turn: updated.turn });
+      logger.info('Move confirmed by server', {
+        gameId: gameRef.current.id,
+        status: updated.status,
+        turn: updated.turn,
+      });
       setGame(updated);
       store.set('currentGame', updated);
       setBoard(cloneBoard(updated.board));
