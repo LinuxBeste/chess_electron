@@ -143,6 +143,7 @@ function banCheckMiddleware(req: Request, res: Response, next: () => void): void
 /* Health check — no auth required */
 router.get('/health', (_req: Request, res: Response) => {
   const { gamesActive, playersOnline } = game.getStats();
+  logger.info('GET /health: gamesActive=' + gamesActive + ' playersOnline=' + playersOnline);
   res.json({
     status: 'ok',
     uptime: process.uptime(),
@@ -221,6 +222,7 @@ router.post('/auth/login', ipRateLimitMiddleware, (req: Request, res: Response) 
 router.get('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const stats = game.getPlayerStats(req.player.id);
   const user = db.getUserById(req.player.id);
+  logger.info('GET /auth/me: playerId=' + req.player.id + ' username=' + req.player.username);
   res.json({
     id: req.player.id,
     username: req.player.username,
@@ -244,6 +246,7 @@ router.put('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: R
     res.status(400).json({ error: result.error });
     return;
   }
+  logger.info('Display name updated: playerId=' + req.player.id + ' displayName=' + displayName.trim());
   res.json({ success: true, displayName: displayName.trim() });
 });
 
@@ -334,6 +337,7 @@ router.delete('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Reque
 router.get('/players/:playerId/profile', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const player = game.getPlayerById(req.params.playerId);
   const user = db.getUserById(req.params.playerId);
+  logger.info('GET /players/' + req.params.playerId + '/profile: viewed by playerId=' + req.player.id);
   res.json({
     id: req.params.playerId,
     username: player?.username ?? user?.username ?? null,
@@ -352,6 +356,7 @@ router.delete('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res
     res.status(400).json({ error: result.error });
     return;
   }
+  logger.audit('account_deleted', 'playerId=' + req.player.id + ' username=' + req.player.username);
   res.json({ success: true });
 });
 
@@ -360,26 +365,33 @@ router.delete('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res
 router.post('/games', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const visibility: 'public' | 'private' = req.body.visibility === 'private' ? 'private' : 'public';
   const g = game.createGame(req.player.id, visibility);
+  logger.info('Game created: gameId=' + g.id + ' by playerId=' + req.player.id + ' visibility=' + visibility);
   res.status(201).json(g);
 });
 
 /* List all open (waiting) games */
 router.get('/games', (_req: Request, res: Response) => {
-  res.json(game.getOpenGames());
+  const openGames = game.getOpenGames();
+  logger.info('GET /games: count=' + openGames.length);
+  res.json(openGames);
 });
 
 /* List all active games (for spectating) */
 router.get('/games/active', (_req: Request, res: Response) => {
-  res.json(game.getActiveGames());
+  const activeGames = game.getActiveGames();
+  logger.info('GET /games/active: count=' + activeGames.length);
+  res.json(activeGames);
 });
 
 /* Get a specific game by ID */
 router.get('/games/:gameId', (req: Request, res: Response) => {
   const g = game.getGame(req.params.gameId);
   if (!g) {
+    logger.info('GET /games/' + req.params.gameId + ': not found');
     res.status(404).json({ error: 'Game not found' });
     return;
   }
+  logger.info('GET /games/' + req.params.gameId + ': found');
   res.json(g);
 });
 
@@ -387,9 +399,11 @@ router.get('/games/:gameId', (req: Request, res: Response) => {
 router.post('/games/:gameId/abort', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const result = game.abortGame(req.params.gameId, req.player.id);
   if (!result.success) {
+    logger.info('Abort failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' error=' + result.error);
     res.status(400).json({ error: result.error });
     return;
   }
+  logger.info('Game aborted: gameId=' + req.params.gameId + ' by playerId=' + req.player.id);
   res.json({ success: true });
 });
 
@@ -397,9 +411,11 @@ router.post('/games/:gameId/abort', authMiddleware, banCheckMiddleware, (req: Re
 router.post('/games/:gameId/join', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const result = game.joinGame(req.params.gameId, req.player.id);
   if (!result.success) {
+    logger.info('Join failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' error=' + result.error);
     res.status(400).json({ error: result.error });
     return;
   }
+  logger.info('Game joined: gameId=' + req.params.gameId + ' by playerId=' + req.player.id);
   res.json(result.game);
 });
 
@@ -412,6 +428,7 @@ router.post(
   (req: Request, res: Response) => {
     const { from, to, promotion } = req.body;
     if (!from || !to) {
+      logger.info('Move failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' error=missing from/to');
       res.status(400).json({ error: 'from and to are required' });
       return;
     }
@@ -423,9 +440,32 @@ router.post(
       promotion as PieceType | undefined,
     );
     if (!result.success) {
+      logger.info(
+        'Move failed: gameId=' +
+          req.params.gameId +
+          ' playerId=' +
+          req.player.id +
+          ' move=' +
+          from +
+          '-' +
+          to +
+          ' error=' +
+          result.error,
+      );
       res.status(400).json({ error: result.error });
       return;
     }
+    logger.info(
+      'Move made: gameId=' +
+        req.params.gameId +
+        ' playerId=' +
+        req.player.id +
+        ' move=' +
+        from +
+        '-' +
+        to +
+        (promotion ? ' promotion=' + promotion : ''),
+    );
     res.json(result.state);
   },
 );
@@ -439,9 +479,13 @@ router.post(
   (req: Request, res: Response) => {
     const result = game.resignGame(req.params.gameId, req.player.id);
     if (!result.success) {
+      logger.info(
+        'Resign failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' error=' + result.error,
+      );
       res.status(400).json({ error: result.error });
       return;
     }
+    logger.info('Game resigned: gameId=' + req.params.gameId + ' playerId=' + req.player.id);
     res.json(result.state);
   },
 );
@@ -449,10 +493,12 @@ router.post(
 /* Get match history for the authenticated player */
 router.get('/players/:playerId/games', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   if (req.player.id !== req.params.playerId) {
+    logger.info('Match history forbidden: requester=' + req.player.id + ' target=' + req.params.playerId);
     res.status(403).json({ error: 'Can only view your own match history' });
     return;
   }
   const playerGames = game.getPlayerGames(req.params.playerId);
+  logger.info('Match history: playerId=' + req.params.playerId + ' count=' + playerGames.length);
   res.json(playerGames);
 });
 
@@ -460,10 +506,16 @@ router.get('/players/:playerId/games', authMiddleware, banCheckMiddleware, (req:
 router.get('/games/:gameId/moves', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const result = game.getLegalMovesForPlayer(req.params.gameId, req.player.id);
   if (!result.success) {
+    logger.info(
+      'Legal moves failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' error=' + result.error,
+    );
     res.status(400).json({ error: result.error });
     return;
   }
-  res.json({ moves: result.moves });
+  logger.info(
+    'Legal moves: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' count=' + result.moves!.length,
+  );
+  res.json({ moves: result.moves! });
 });
 
 /* ─── Friends ─── */
@@ -521,6 +573,14 @@ router.get('/friends/requests', authMiddleware, banCheckMiddleware, (req: Reques
   }
   const incoming = db.getPendingIncomingRequests(req.player.id);
   const outgoing = db.getPendingOutgoingRequests(req.player.id);
+  logger.info(
+    'Friend requests listed: playerId=' +
+      req.player.id +
+      ' incoming=' +
+      incoming.length +
+      ' outgoing=' +
+      outgoing.length,
+  );
 
   const enrich = (rows: db.FriendRequestRow[], key: 'from_user_id' | 'to_user_id') =>
     rows.map((r) => {
@@ -614,7 +674,9 @@ router.get('/friends', authMiddleware, banCheckMiddleware, (req: Request, res: R
     res.status(403).json({ error: 'Only registered users can list friends' });
     return;
   }
-  res.json(game.getFriendList(req.player.id));
+  const friends = game.getFriendList(req.player.id);
+  logger.info('Friend list: playerId=' + req.player.id + ' count=' + friends.length);
+  res.json(friends);
 });
 
 export default router;

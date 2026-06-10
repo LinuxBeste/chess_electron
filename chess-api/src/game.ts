@@ -180,8 +180,17 @@ function verifyPassword(password: string, stored: string): boolean {
  */
 export function authenticatePlayer(token: string): Player | null {
   const playerId = tokenIndex.get(token);
-  if (!playerId) return null;
-  return players.get(playerId) ?? null;
+  if (!playerId) {
+    logger.info('Auth failed: token not found');
+    return null;
+  }
+  const player = players.get(playerId) ?? null;
+  if (player) {
+    logger.info('Auth ok: playerId=' + playerId + ' username=' + player.username);
+  } else {
+    logger.info('Auth failed: playerId=' + playerId + ' not in memory');
+  }
+  return player;
 }
 
 /**
@@ -193,10 +202,14 @@ export function authenticatePlayer(token: string): Player | null {
  */
 export function addToken(playerId: string): string | null {
   const player = players.get(playerId);
-  if (!player) return null;
+  if (!player) {
+    logger.info('addToken: player not found playerId=' + playerId);
+    return null;
+  }
   const token = uuidv4();
   player.tokens.push(token);
   tokenIndex.set(token, playerId);
+  logger.info('Token added: playerId=' + playerId);
   return token;
 }
 
@@ -253,6 +266,9 @@ export function cleanupPlayerWaitingGames(playerId: string): void {
   for (const id of toDelete) {
     games.delete(id);
   }
+  if (toDelete.length > 0) {
+    logger.info('Cleaned up waiting games: playerId=' + playerId + ' count=' + toDelete.length);
+  }
 }
 
 /**
@@ -278,11 +294,15 @@ export function sendToPlayer(playerId: string, message: Record<string, unknown>)
  */
 export function registerSpectator(gameId: string, ws: WebSocket): boolean {
   const game = games.get(gameId);
-  if (!game || game.status !== 'active') return false;
+  if (!game || game.status !== 'active') {
+    logger.info('Spectator register failed: gameId=' + gameId + ' reason=not active or not found');
+    return false;
+  }
   if (!spectatorConnections.has(gameId)) {
     spectatorConnections.set(gameId, new Set());
   }
   spectatorConnections.get(gameId)!.add(ws);
+  logger.info('Spectator registered: gameId=' + gameId);
   return true;
 }
 
@@ -291,6 +311,7 @@ export function registerSpectator(gameId: string, ws: WebSocket): boolean {
  */
 export function removeSpectator(gameId: string, ws: WebSocket): void {
   spectatorConnections.get(gameId)?.delete(ws);
+  logger.info('Spectator removed: gameId=' + gameId);
 }
 
 function sendToSpectators(gameId: string, message: Record<string, unknown>): void {
@@ -344,6 +365,7 @@ export function checkRateLimit(playerId: string): boolean {
   let timestamps = rateLimitBuckets.get(playerId) ?? [];
   timestamps = timestamps.filter((t) => t > windowStart);
   if (timestamps.length >= RATE_LIMIT_MAX_REQUESTS) {
+    logger.info('Rate limit hit: playerId=' + playerId + ' count=' + timestamps.length);
     return false;
   }
   timestamps.push(now);
@@ -396,15 +418,19 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
  * Private games are excluded — they must be joined by direct ID.
  */
 export function getActiveGames(): GameState[] {
-  return Array.from(games.values())
+  const result = Array.from(games.values())
     .filter((g) => g.status === 'active')
     .map(enrichNames);
+  logger.info('getActiveGames: count=' + result.length);
+  return result;
 }
 
 export function getOpenGames(): GameState[] {
-  return Array.from(games.values())
+  const result = Array.from(games.values())
     .filter((g) => g.status === 'waiting' && g.visibility === 'public')
     .map(enrichNames);
+  logger.info('getOpenGames: count=' + result.length);
+  return result;
 }
 
 /**
@@ -412,6 +438,11 @@ export function getOpenGames(): GameState[] {
  */
 export function getGame(gameId: string): GameState | null {
   const g = games.get(gameId);
+  if (g) {
+    logger.info('getGame: gameId=' + gameId + ' status=' + g.status);
+  } else {
+    logger.info('getGame: gameId=' + gameId + ' not found');
+  }
   return g ? enrichNames(g) : null;
 }
 
@@ -681,6 +712,7 @@ function recordGameResult(game: GameState, winner: Color | null): void {
     if (whitePlayer?.isRegistered) db.addDraw(whiteId);
     if (blackPlayer?.isRegistered) db.addDraw(blackId);
   }
+  logger.info('Game result recorded: gameId=' + game.id + ' winner=' + winner);
 }
 
 /* ─── Draw offer system ─── */
@@ -749,20 +781,31 @@ export function acceptDraw(gameId: string, playerId: string): { success: boolean
  */
 export function declineDraw(gameId: string, playerId: string): boolean {
   const offererId = drawOffers.get(gameId);
-  if (!offererId) return false;
-  if (offererId === playerId) return false;
+  if (!offererId) {
+    logger.info('Decline draw failed: gameId=' + gameId + ' playerId=' + playerId + ' reason=no pending offer');
+    return false;
+  }
+  if (offererId === playerId) {
+    logger.info('Decline draw failed: gameId=' + gameId + ' playerId=' + playerId + ' reason=cannot decline own offer');
+    return false;
+  }
 
   const game = games.get(gameId);
   if (!game) {
     drawOffers.delete(gameId);
+    logger.info('Decline draw: gameId=' + gameId + ' game gone, cleaned up offer');
     return false;
   }
 
   const isPlayer = game.players.black === playerId || game.players.white === playerId;
-  if (!isPlayer) return false;
+  if (!isPlayer) {
+    logger.info('Decline draw failed: gameId=' + gameId + ' playerId=' + playerId + ' reason=not a player');
+    return false;
+  }
 
   drawOffers.delete(gameId);
   sendToPlayer(offererId, { type: 'draw_declined', gameId });
+  logger.info('Draw declined: gameId=' + gameId + ' by playerId=' + playerId);
   return true;
 }
 
@@ -770,7 +813,10 @@ export function declineDraw(gameId: string, playerId: string): boolean {
  * Cancel or clear a pending draw offer (e.g. when a move is made).
  */
 export function cancelDrawOffer(gameId: string): void {
-  drawOffers.delete(gameId);
+  if (drawOffers.has(gameId)) {
+    drawOffers.delete(gameId);
+    logger.info('Draw offer cancelled: gameId=' + gameId);
+  }
 }
 
 /**
@@ -785,16 +831,26 @@ export function getLegalMovesForPlayer(
   playerId: string,
 ): { success: boolean; error?: string; moves?: { from: string; to: string }[] } {
   const game = games.get(gameId);
-  if (!game) return { success: false, error: 'Game not found' };
+  if (!game) {
+    logger.info('Legal moves: gameId=' + gameId + ' playerId=' + playerId + ' error=not found');
+    return { success: false, error: 'Game not found' };
+  }
 
   let playerColor: Color | null = null;
   if (game.players.white === playerId) playerColor = 'white';
   else if (game.players.black === playerId) playerColor = 'black';
-  if (!playerColor) return { success: false, error: 'You are not a player in this game' };
+  if (!playerColor) {
+    logger.info('Legal moves: gameId=' + gameId + ' playerId=' + playerId + ' error=not a player');
+    return { success: false, error: 'You are not a player in this game' };
+  }
 
-  if (game.status !== 'active') return { success: false, error: 'Game is not active' };
+  if (game.status !== 'active') {
+    logger.info('Legal moves: gameId=' + gameId + ' playerId=' + playerId + ' error=game not active');
+    return { success: false, error: 'Game is not active' };
+  }
 
   const legalMoves = chess.getLegalMoves(game.board, playerColor, game.enPassantTarget, game.castlingRights);
+  logger.info('Legal moves: gameId=' + gameId + ' playerId=' + playerId + ' count=' + legalMoves.length);
   return { success: true, moves: legalMoves.map((m) => ({ from: m.from, to: m.to })) };
 }
 
@@ -802,7 +858,7 @@ export function getLegalMovesForPlayer(
  * Get completed games for a player (games they participated in that have ended).
  */
 export function getPlayerGames(playerId: string): GameState[] {
-  return Array.from(games.values())
+  const result = Array.from(games.values())
     .filter((g) => {
       const isPlayer = g.players.white === playerId || g.players.black === playerId;
       const isFinished =
@@ -810,6 +866,8 @@ export function getPlayerGames(playerId: string): GameState[] {
       return isPlayer && isFinished;
     })
     .map(enrichNames);
+  logger.info('getPlayerGames: playerId=' + playerId + ' count=' + result.length);
+  return result;
 }
 
 /**
@@ -818,8 +876,22 @@ export function getPlayerGames(playerId: string): GameState[] {
  */
 export function getPlayerStats(playerId: string): { wins: number; losses: number; draws: number } | null {
   const user = db.getUserById(playerId);
-  if (!user) return null;
-  return { wins: user.wins, losses: user.losses, draws: user.draws };
+  if (!user) {
+    logger.info('getPlayerStats: playerId=' + playerId + ' not registered');
+    return null;
+  }
+  const stats = { wins: user.wins, losses: user.losses, draws: user.draws };
+  logger.info(
+    'getPlayerStats: playerId=' +
+      playerId +
+      ' wins=' +
+      stats.wins +
+      ' losses=' +
+      stats.losses +
+      ' draws=' +
+      stats.draws,
+  );
+  return stats;
 }
 
 /**
@@ -832,16 +904,28 @@ const chatHistory = new Map<string, { playerId: string; username: string; text: 
  * Validates the player is part of the game or is spectating, then broadcasts.
  */
 export function handleChatMessage(gameId: string, playerId: string, text: string, ws: WebSocket): void {
-  if (!text) return;
+  if (!text) {
+    logger.info('Chat: empty message from playerId=' + playerId + ' gameId=' + gameId);
+    return;
+  }
   const player = players.get(playerId);
-  if (!player) return;
+  if (!player) {
+    logger.info('Chat: unknown player playerId=' + playerId + ' gameId=' + gameId);
+    return;
+  }
   const game = games.get(gameId);
-  if (!game) return;
+  if (!game) {
+    logger.info('Chat: unknown game gameId=' + gameId + ' playerId=' + playerId);
+    return;
+  }
 
   const isPlayer = game.players.white === playerId || game.players.black === playerId;
   const isSpectating = spectatorConnections.get(gameId)?.has(ws);
 
-  if (!isPlayer && !isSpectating) return;
+  if (!isPlayer && !isSpectating) {
+    logger.info('Chat: not a participant or spectator gameId=' + gameId + ' playerId=' + playerId);
+    return;
+  }
 
   if (!chatHistory.has(gameId)) {
     chatHistory.set(gameId, []);
@@ -859,6 +943,8 @@ export function handleChatMessage(gameId: string, playerId: string, text: string
     text,
     timestamp: Date.now(),
   };
+
+  logger.info('Chat: gameId=' + gameId + ' playerId=' + playerId + ' text="' + text + '"');
 
   /* Send to players and spectators */
   const { white, black } = game.players;
@@ -879,13 +965,20 @@ export function updateDisplayName(
   displayName: string,
 ): { success: true } | { success: false; error: string } {
   const player = players.get(playerId);
-  if (!player) return { success: false, error: 'Player not found' };
-  if (!displayName || displayName.trim().length === 0) return { success: false, error: 'Display name is required' };
+  if (!player) {
+    logger.info('updateDisplayName: player not found playerId=' + playerId);
+    return { success: false, error: 'Player not found' };
+  }
+  if (!displayName || displayName.trim().length === 0) {
+    logger.info('updateDisplayName: empty name playerId=' + playerId);
+    return { success: false, error: 'Display name is required' };
+  }
 
   player.displayName = displayName.trim();
   if (player.isRegistered) {
     db.updateUserDisplayName(playerId, displayName.trim());
   }
+  logger.info('Display name updated: playerId=' + playerId + ' displayName=' + displayName.trim());
   return { success: true };
 }
 
@@ -899,17 +992,32 @@ export function changePassword(
   newPassword: string,
 ): { success: true } | { success: false; error: string } {
   const player = players.get(playerId);
-  if (!player || !player.isRegistered) return { success: false, error: 'Only registered users can change password' };
-  if (!currentPassword || !newPassword) return { success: false, error: 'Current and new password are required' };
-  if (newPassword.length < 4) return { success: false, error: 'New password must be at least 4 characters' };
+  if (!player || !player.isRegistered) {
+    logger.info('changePassword: not registered playerId=' + playerId);
+    return { success: false, error: 'Only registered users can change password' };
+  }
+  if (!currentPassword || !newPassword) {
+    logger.info('changePassword: missing fields playerId=' + playerId);
+    return { success: false, error: 'Current and new password are required' };
+  }
+  if (newPassword.length < 4) {
+    logger.info('changePassword: too short playerId=' + playerId);
+    return { success: false, error: 'New password must be at least 4 characters' };
+  }
 
   const user = db.getUserById(playerId);
-  if (!user || !user.password_hash) return { success: false, error: 'Account not found' };
-  if (!verifyPassword(currentPassword, user.password_hash))
+  if (!user || !user.password_hash) {
+    logger.info('changePassword: account not found playerId=' + playerId);
+    return { success: false, error: 'Account not found' };
+  }
+  if (!verifyPassword(currentPassword, user.password_hash)) {
+    logger.info('changePassword: wrong current password playerId=' + playerId);
     return { success: false, error: 'Current password is incorrect' };
+  }
 
   const hash = hashPassword(newPassword);
   db.updateUserPasswordHash(playerId, hash);
+  logger.info('Password changed: playerId=' + playerId);
   return { success: true };
 }
 
@@ -944,22 +1052,34 @@ export function deleteAccount(playerId: string): { success: true } | { success: 
  */
 export function setPlayerIp(playerId: string, ip: string): void {
   playerIps.set(playerId, ip);
+  logger.info('Player IP set: playerId=' + playerId + ' ip=' + ip);
 }
 
 /**
  * Get the tracked IP for a player.
  */
 export function getPlayerIp(playerId: string): string | undefined {
-  return playerIps.get(playerId);
+  const ip = playerIps.get(playerId);
+  logger.info('getPlayerIp: playerId=' + playerId + (ip ? ' ip=' + ip : ' no IP'));
+  return ip;
 }
 
 /* ─── Ban system ─── */
 
 export function isBanned(playerId: string, ip?: string): boolean {
-  if (bannedPlayers.has(playerId)) return true;
-  if (ip && bannedIps.has(ip)) return true;
+  if (bannedPlayers.has(playerId)) {
+    logger.info('isBanned: player banned playerId=' + playerId);
+    return true;
+  }
+  if (ip && bannedIps.has(ip)) {
+    logger.info('isBanned: IP banned ip=' + ip + ' playerId=' + playerId);
+    return true;
+  }
   const trackedIp = playerIps.get(playerId);
-  if (trackedIp && bannedIps.has(trackedIp)) return true;
+  if (trackedIp && bannedIps.has(trackedIp)) {
+    logger.info('isBanned: tracked IP banned ip=' + trackedIp + ' playerId=' + playerId);
+    return true;
+  }
   return false;
 }
 
@@ -1001,11 +1121,18 @@ export function banPlayer(playerId: string): { success: true } | { success: fals
 }
 
 export function banIp(ip: string): { success: true } | { success: false; error: string } {
-  if (!ip) return { success: false, error: 'IP is required' };
-  if (bannedIps.has(ip)) return { success: false, error: 'IP already banned' };
+  if (!ip) {
+    logger.info('banIp: no IP provided');
+    return { success: false, error: 'IP is required' };
+  }
+  if (bannedIps.has(ip)) {
+    logger.info('banIp: IP already banned ip=' + ip);
+    return { success: false, error: 'IP already banned' };
+  }
 
   bannedIps.add(ip);
   db.saveBan(`ip:${ip}`, null, ip);
+  logger.info('IP banned: ip=' + ip);
 
   /* Disconnect all players using this IP */
   for (const [playerId, trackedIp] of playerIps) {
@@ -1026,19 +1153,25 @@ export function banIp(ip: string): { success: true } | { success: false; error: 
 export function unbanPlayer(playerId: string): void {
   bannedPlayers.delete(playerId);
   db.deleteBanById(playerId);
+  logger.info('Player unbanned: playerId=' + playerId);
 }
 
 export function unbanIp(ip: string): void {
   bannedIps.delete(ip);
   db.deleteBanById(`ip:${ip}`);
+  logger.info('IP unbanned: ip=' + ip);
 }
 
 export function getBannedPlayers(): string[] {
-  return Array.from(bannedPlayers);
+  const list = Array.from(bannedPlayers);
+  logger.info('getBannedPlayers: count=' + list.length);
+  return list;
 }
 
 export function getBannedIps(): string[] {
-  return Array.from(bannedIps);
+  const list = Array.from(bannedIps);
+  logger.info('getBannedIps: count=' + list.length);
+  return list;
 }
 
 export function loadPersistedBans(): void {
@@ -1051,6 +1184,7 @@ export function loadPersistedBans(): void {
       bannedIps.add(b.ip);
     }
   }
+  logger.info('Persisted bans loaded: playerBans=' + bannedPlayers.size + ' ipBans=' + bannedIps.size);
 }
 
 /* ─── Admin kick / end-game ─── */
@@ -1106,21 +1240,27 @@ export function endGame(gameId: string): { success: true } | { success: false; e
 }
 
 export function getAllGames(): GameState[] {
-  return Array.from(games.values()).map(enrichNames);
+  const result = Array.from(games.values()).map(enrichNames);
+  logger.info('getAllGames: count=' + result.length);
+  return result;
 }
 
 /**
  * Get a player by ID from the in-memory store.
  */
 export function getPlayerById(playerId: string): Player | undefined {
-  return players.get(playerId);
+  const player = players.get(playerId);
+  logger.info('getPlayerById: playerId=' + playerId + (player ? ' found' : ' not found'));
+  return player;
 }
 
 /**
  * Return all players currently tracked in memory.
  */
 export function getAllPlayers(): Player[] {
-  return Array.from(players.values());
+  const result = Array.from(players.values());
+  logger.info('getAllPlayers: count=' + result.length);
+  return result;
 }
 
 /**
@@ -1128,7 +1268,9 @@ export function getAllPlayers(): Player[] {
  * open WebSocket connection (i.e. are online right now).
  */
 export function getOnlinePlayerIds(): Set<string> {
-  return new Set(wsConnections.keys());
+  const result = new Set(wsConnections.keys());
+  logger.info('getOnlinePlayerIds: count=' + result.size);
+  return result;
 }
 
 /**
@@ -1139,7 +1281,9 @@ export function getStats(): { gamesActive: number; playersOnline: number } {
   for (const g of games.values()) {
     if (g.status === 'active') gamesActive++;
   }
-  return { gamesActive, playersOnline: wsConnections.size };
+  const stats = { gamesActive, playersOnline: wsConnections.size };
+  logger.info('getStats: gamesActive=' + stats.gamesActive + ' playersOnline=' + stats.playersOnline);
+  return stats;
 }
 
 /* ─── Friend system ─── */
@@ -1171,7 +1315,10 @@ function sendToFriends(playerId: string, message: Record<string, unknown>): void
 
 function notifyFriendsOnline(playerId: string): void {
   const player = players.get(playerId);
-  if (!player) return;
+  if (!player) {
+    logger.info('notifyFriendsOnline: player not found playerId=' + playerId);
+    return;
+  }
   const currentGameId = getPlayerCurrentGameId(playerId);
   sendToFriends(playerId, {
     type: 'friend_online',
@@ -1180,15 +1327,20 @@ function notifyFriendsOnline(playerId: string): void {
     displayName: player.displayName,
     currentGameId,
   });
+  logger.info('Friend online notified: playerId=' + playerId);
 }
 
 function notifyFriendsOffline(playerId: string): void {
   sendToFriends(playerId, { type: 'friend_offline', playerId });
+  logger.info('Friend offline notified: playerId=' + playerId);
 }
 
 export function broadcastFriendRequest(fromPlayerId: string, toPlayerId: string, requestId: string): void {
   const fromPlayer = players.get(fromPlayerId);
-  if (!fromPlayer) return;
+  if (!fromPlayer) {
+    logger.info('broadcastFriendRequest: sender not found fromPlayerId=' + fromPlayerId);
+    return;
+  }
   sendToPlayer(toPlayerId, {
     type: 'friend_request',
     requestId,
@@ -1196,22 +1348,27 @@ export function broadcastFriendRequest(fromPlayerId: string, toPlayerId: string,
     fromUsername: fromPlayer.username,
     fromDisplayName: fromPlayer.displayName,
   });
+  logger.info('Friend request broadcast: requestId=' + requestId + ' from=' + fromPlayerId + ' to=' + toPlayerId);
 }
 
 export function broadcastFriendRequestAccepted(acceptorId: string, requesterId: string): void {
   const acceptor = players.get(acceptorId);
-  if (!acceptor) return;
+  if (!acceptor) {
+    logger.info('broadcastFriendRequestAccepted: acceptor not found acceptorId=' + acceptorId);
+    return;
+  }
   sendToPlayer(requesterId, {
     type: 'friend_request_accepted',
     byPlayerId: acceptorId,
     byUsername: acceptor.username,
     byDisplayName: acceptor.displayName,
   });
+  logger.info('Friend request accepted broadcast: acceptor=' + acceptorId + ' requester=' + requesterId);
 }
 
 export function getFriendList(playerId: string): FriendInfo[] {
   const friendIds = db.getFriendIds(playerId);
-  return friendIds.map((fid) => {
+  const result = friendIds.map((fid) => {
     const player = players.get(fid);
     const user = db.getUserById(fid);
     return {
@@ -1223,6 +1380,8 @@ export function getFriendList(playerId: string): FriendInfo[] {
       currentGameId: getPlayerCurrentGameId(fid),
     };
   });
+  logger.info('getFriendList: playerId=' + playerId + ' count=' + result.length);
+  return result;
 }
 
 /* ─── Periodic sweep of stale waiting games ─── */
@@ -1243,6 +1402,9 @@ export function sweepStaleWaitingGames(): number {
   for (const id of toDelete) {
     games.delete(id);
   }
+  if (toDelete.length > 0) {
+    logger.info('Swept stale waiting games: count=' + toDelete.length);
+  }
   return toDelete.length;
 }
 
@@ -1252,9 +1414,16 @@ export function sweepStaleWaitingGames(): number {
  * load in non-test environments.
  */
 export function startWaitingGameSweep(): void {
-  if (WAITING_TTL_MS <= 0) return;
-  if (sweepTimer) return;
+  if (WAITING_TTL_MS <= 0) {
+    logger.info('Waiting game sweep disabled (TTL <= 0)');
+    return;
+  }
+  if (sweepTimer) {
+    logger.info('Waiting game sweep already running');
+    return;
+  }
   sweepTimer = setInterval(sweepStaleWaitingGames, Math.max(WAITING_TTL_MS / 2, 10_000));
+  logger.info('Waiting game sweep started (interval=' + Math.max(WAITING_TTL_MS / 2, 10_000) + 'ms)');
 }
 
 /**
@@ -1264,6 +1433,7 @@ export function stopWaitingGameSweep(): void {
   if (sweepTimer) {
     clearInterval(sweepTimer);
     sweepTimer = null;
+    logger.info('Waiting game sweep stopped');
   }
 }
 
@@ -1288,6 +1458,7 @@ export function loadPersistedUsers(): void {
       tokenIndex.set(t.token, t.user_id);
     }
   }
+  logger.info('Persisted users loaded: users=' + allUsers.length + ' tokens=' + allTokens.length);
 }
 
 /* Auto-start on module load unless we're in a test environment */

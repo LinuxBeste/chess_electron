@@ -67,6 +67,16 @@ router.get('/admin/api/stats', adminAuthMiddleware, (_req: Request, res: Respons
     const allPlayers = game.getAllPlayers();
     const registeredUsers = allPlayers.filter((p) => p.isRegistered).length;
     const totalUsers = db.loadAllUsers().length;
+    logger.info(
+      'Admin stats: gamesActive=' +
+        gamesActive +
+        ' playersOnline=' +
+        playersOnline +
+        ' registered=' +
+        registeredUsers +
+        ' totalUsers=' +
+        totalUsers,
+    );
     res.json({ gamesActive, playersOnline, registeredUsers, totalUsers });
   } catch (err) {
     logger.error('Stats error:', err);
@@ -158,6 +168,7 @@ router.get('/admin/api/system/metrics', adminAuthMiddleware, (_req: Request, res
   }
   if (disk) prevDisk = disk;
 
+  logger.info('Admin system metrics: cpu=' + cpuPercent + '% mem=' + Math.round((usedMem / totalMem) * 100) + '%');
   res.json({
     cpu: cpuPercent,
     memory: { used: usedMem, total: totalMem, percent: Math.round((usedMem / totalMem) * 10000) / 100 },
@@ -168,6 +179,7 @@ router.get('/admin/api/system/metrics', adminAuthMiddleware, (_req: Request, res
 });
 
 router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Response) => {
+  logger.info('Admin system info requested');
   const totalMem = os.totalmem();
   const freeMem = os.freemem();
   const usedMem = totalMem - freeMem;
@@ -257,6 +269,7 @@ router.get('/admin/api/system/processes', adminAuthMiddleware, (_req: Request, r
       const command = parts.slice(10).join(' ').slice(0, 80);
       processes.push({ user, pid, cpu, mem, rss, command });
     }
+    logger.info('Admin processes listed: count=' + processes.length);
     res.json(processes);
   } catch (e) {
     logger.error('Failed to list processes: ' + e);
@@ -277,6 +290,7 @@ router.get('/admin/api/games', adminAuthMiddleware, (_req: Request, res: Respons
     winner: g.winner,
     visibility: g.visibility,
   }));
+  logger.info('Admin games listed: count=' + list.length);
   res.json(list);
 });
 
@@ -292,6 +306,7 @@ router.get('/admin/api/players', adminAuthMiddleware, (_req: Request, res: Respo
     tokens: p.tokens.length,
     ip: game.getPlayerIp(p.id) || null,
   }));
+  logger.info('Admin players listed: count=' + list.length + ' online=' + onlineIds.size);
   res.json(list);
 });
 
@@ -307,6 +322,7 @@ router.get('/admin/api/accounts', adminAuthMiddleware, (_req: Request, res: Resp
     losses: u.losses,
     draws: u.draws,
   }));
+  logger.info('Admin accounts listed: count=' + list.length);
   res.json(list);
 });
 
@@ -467,6 +483,7 @@ router.post('/admin/api/bans/ip', adminAuthMiddleware, (req: Request, res: Respo
 router.get('/admin/api/bans', adminAuthMiddleware, (_req: Request, res: Response) => {
   const players = game.getBannedPlayers();
   const ips = game.getBannedIps();
+  logger.info('Admin bans listed: players=' + players.length + ' ips=' + ips.length);
   res.json({ players, ips });
 });
 

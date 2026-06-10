@@ -121,6 +121,7 @@ export function createServer(): http.Server {
           }
         } else if (msg.type === 'unspectate' && spectatingGameId) {
           game.removeSpectator(spectatingGameId, ws);
+          logger.info('WS unspectate: playerId=' + player.id + ' gameId=' + spectatingGameId);
           spectatingGameId = null;
         } else if (msg.type === 'chat_message' && typeof msg.gameId === 'string' && typeof msg.text === 'string') {
           game.handleChatMessage(msg.gameId, player.id, (msg.text as string).trim(), ws);
@@ -138,6 +139,7 @@ export function createServer(): http.Server {
             fromUsername: player.username,
             fromDisplayName: player.displayName,
           });
+          logger.info('WS challenge: from=' + player.id + ' to=' + msg.toPlayerId + ' gameId=' + msg.gameId);
         } else if (
           msg.type === 'challenge_accept' &&
           typeof msg.toPlayerId === 'string' &&
@@ -148,6 +150,7 @@ export function createServer(): http.Server {
             gameId: msg.gameId,
             fromPlayerId: player.id,
           });
+          logger.info('WS challenge accept: from=' + player.id + ' to=' + msg.toPlayerId + ' gameId=' + msg.gameId);
         } else if (
           msg.type === 'challenge_decline' &&
           typeof msg.toPlayerId === 'string' &&
@@ -158,6 +161,7 @@ export function createServer(): http.Server {
             gameId: msg.gameId,
             fromPlayerId: player.id,
           });
+          logger.info('WS challenge decline: from=' + player.id + ' to=' + msg.toPlayerId + ' gameId=' + msg.gameId);
         }
       } catch (e) {
         logger.warn('WS malformed message from playerId=' + player.id + ': ' + e);
@@ -165,7 +169,8 @@ export function createServer(): http.Server {
     });
 
     /* Prevent crash on WS errors — cleanup happens in 'close' */
-    ws.on('error', () => {
+    ws.on('error', (err) => {
+      logger.warn('WS error for playerId=' + player.id + ': ' + err);
       ws.close();
     });
 
