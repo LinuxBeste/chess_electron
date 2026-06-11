@@ -23,7 +23,14 @@ function appendLine(file: string, line: string): void {
   if (isTest) return;
   try {
     ensureDir(LOG_DIR);
-    fs.appendFileSync(path.join(LOG_DIR, file), line + '\n', 'utf-8');
+    const filePath = path.join(LOG_DIR, file);
+    const fd = fs.openSync(filePath, 'a');
+    try {
+      fs.writeSync(fd, line + '\n');
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
   } catch (err) {
     try {
       console.error(`[LOGGER] Failed to write to ${file}:`, err);
