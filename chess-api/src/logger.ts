@@ -24,8 +24,12 @@ function appendLine(file: string, line: string): void {
   try {
     ensureDir(LOG_DIR);
     fs.appendFileSync(path.join(LOG_DIR, file), line + '\n', 'utf-8');
-  } catch {
-    /* best-effort file logging */
+  } catch (err) {
+    try {
+      console.error(`[LOGGER] Failed to write to ${file}:`, err);
+    } catch {
+      /* noop */
+    }
   }
 }
 
