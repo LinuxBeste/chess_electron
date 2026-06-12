@@ -57,6 +57,12 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface ChatHistoryMessage {
+  type: 'chat_history';
+  gameId: string;
+  messages: { playerId: string; username: string; text: string; timestamp: number }[];
+}
+
 export interface GameAbortedMessage {
   type: 'game_aborted';
   gameId: string;
@@ -157,6 +163,7 @@ type WsMessage =
   | ChallengeAcceptMessage
   | ChallengeDeclineMessage
   | GameListUpdateMessage
+  | ChatHistoryMessage
   | RematchOfferMessage
   | RematchAcceptedMessage;
 
@@ -171,6 +178,7 @@ export type GameStartedHandler = (msg: GameStartedMessage) => void;
 
 /** Handler type for chat messages */
 export type ChatHandler = (msg: ChatMessage) => void;
+export type ChatHistoryHandler = (msg: ChatHistoryMessage) => void;
 
 /** Handler type for game-aborted events */
 export type GameAbortedHandler = (msg: GameAbortedMessage) => void;
@@ -210,6 +218,7 @@ class SocketManager {
   private gameOverHandlers = new Set<GameOverHandler>();
   private gameStartedHandlers = new Set<GameStartedHandler>();
   private chatHandlers = new Set<ChatHandler>();
+  private chatHistoryHandlers = new Set<ChatHistoryHandler>();
   private gameAbortedHandlers = new Set<GameAbortedHandler>();
   private drawOfferedHandlers = new Set<DrawOfferedHandler>();
   private drawDeclinedHandlers = new Set<DrawDeclinedHandler>();
@@ -285,6 +294,9 @@ class SocketManager {
             break;
           case 'chat_message':
             this.chatHandlers.forEach((h) => h(msg as ChatMessage));
+            break;
+          case 'chat_history':
+            this.chatHistoryHandlers.forEach((h) => h(msg as ChatHistoryMessage));
             break;
           case 'game_aborted':
             this.gameAbortedHandlers.forEach((h) => h(msg as GameAbortedMessage));
@@ -518,6 +530,19 @@ class SocketManager {
     return () => {
       this.rematchAcceptedHandlers.delete(handler);
     };
+  }
+
+  onChatHistory(handler: ChatHistoryHandler): () => void {
+    logger.info('Socket: chat_history handler registered');
+    this.chatHistoryHandlers.add(handler);
+    return () => {
+      this.chatHistoryHandlers.delete(handler);
+    };
+  }
+
+  requestChatHistory(gameId: string): void {
+    logger.info('Socket: requesting chat history', { gameId });
+    this.send({ type: 'get_chat_history', gameId });
   }
 
   sendRematchOffer(gameId: string): void {

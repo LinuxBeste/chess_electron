@@ -125,6 +125,8 @@ export function createServer(): http.Server {
           spectatingGameId = null;
         } else if (msg.type === 'chat_message' && typeof msg.gameId === 'string' && typeof msg.text === 'string') {
           game.handleChatMessage(msg.gameId, player.id, (msg.text as string).trim(), ws);
+        } else if (msg.type === 'get_chat_history' && typeof msg.gameId === 'string') {
+          game.sendChatHistory(msg.gameId as string, ws);
         } else if (msg.type === 'offer_draw' && typeof msg.gameId === 'string') {
           game.offerDraw(msg.gameId as string, player.id);
         } else if (msg.type === 'accept_draw' && typeof msg.gameId === 'string') {

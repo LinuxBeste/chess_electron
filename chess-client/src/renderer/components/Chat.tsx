@@ -27,9 +27,16 @@ export default function Chat({ gameId }: ChatProps) {
   const [input, setInput] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
 
-  /* Subscribe to incoming chat messages.  The unsubscribe function is
-     returned from useEffect's cleanup to prevent duplicates on re-render. */
+  /* Subscribe to incoming chat messages and request history on mount. */
   useEffect(() => {
+    socketManager.requestChatHistory(gameId);
+
+    const unsubHistory = socketManager.onChatHistory((msg) => {
+      if (msg.gameId === gameId) {
+        setMessages(msg.messages);
+      }
+    });
+
     const unsub = socketManager.onChat((msg) => {
       const chatMsg = msg as ChatMessage;
       const isMe = chatMsg.playerId === store.get('playerId');
@@ -40,7 +47,11 @@ export default function Chat({ gameId }: ChatProps) {
       });
       setMessages((prev) => [...prev, chatMsg]);
     });
-    return () => unsub();
+
+    return () => {
+      unsubHistory();
+      unsub();
+    };
   }, [gameId]);
 
   /* Auto-scroll to bottom when a new message arrives */

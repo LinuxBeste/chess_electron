@@ -1082,6 +1082,20 @@ export function handleChatMessage(gameId: string, playerId: string, text: string
 }
 
 /**
+ * Send the recent chat history for a game to a specific WebSocket.
+ * Used when a player reconnects or a spectator starts watching.
+ */
+export function sendChatHistory(gameId: string, ws: WebSocket): void {
+  const history = chatHistory.get(gameId);
+  if (!history || history.length === 0) {
+    ws.send(JSON.stringify({ type: 'chat_history', gameId, messages: [] }));
+    return;
+  }
+  ws.send(JSON.stringify({ type: 'chat_history', gameId, messages: history }));
+  logger.info('Chat history sent: gameId=' + gameId + ' count=' + history.length);
+}
+
+/**
  * Return all games (any status) — used by the admin dashboard.
  */
 /**
