@@ -56,7 +56,7 @@ function enrichNames(g: GameState): GameState {
   };
 }
 
-export const AI_PLAYER_ID = '_ai_';
+export const BOT_PLAYER_ID = '_bot_';
 
 /* Env-driven limits with defaults */
 const MAX_GAMES_PER_PLAYER = parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '20', 10);
@@ -453,17 +453,17 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
   return enrichNames(game);
 }
 
-export function createAIGame(playerId: string, skillLevel: number, playerColor: Color = 'white'): GameState {
+export function createBotGame(playerId: string, skillLevel: number, playerColor: Color = 'white'): GameState {
   const id = uuidv4();
-  const aiColor: Color = playerColor === 'white' ? 'black' : 'white';
+  const botColor: Color = playerColor === 'white' ? 'black' : 'white';
   const game: GameState = {
     id,
     board: chess.createInitialBoard(),
     turn: 'white',
     status: 'active',
-    players: { [playerColor]: playerId, [aiColor]: AI_PLAYER_ID },
-    whiteName: playerColor === 'white' ? undefined : 'AI',
-    blackName: playerColor === 'black' ? undefined : 'AI',
+    players: { [playerColor]: playerId,     [botColor]: BOT_PLAYER_ID },
+    whiteName: playerColor === 'white' ? undefined : 'Bot',
+    blackName: playerColor === 'black' ? undefined : 'Bot',
     moveHistory: [],
     boardHistory: [],
     enPassantTarget: null,
@@ -480,26 +480,26 @@ export function createAIGame(playerId: string, skillLevel: number, playerColor: 
   games.set(id, game);
 
   engineManager.startInstance(id, skillLevel).then(() => {
-    logger.info('AI engine ready for game', id);
-    if (aiColor === 'white') {
-      triggerAIMove(id);
+    logger.info('Bot engine ready for game', id);
+    if (botColor === 'white') {
+      triggerBotMove(id);
     }
   }).catch((err) => {
-    logger.error('Failed to start AI engine', err);
+    logger.error('Failed to start bot engine', err);
   });
 
-  logger.info('AI game created: gameId=' + id + ' player=' + playerId + ' color=' + playerColor + ' skill=' + skillLevel);
+  logger.info('Bot game created: gameId=' + id + ' player=' + playerId + ' color=' + playerColor + ' skill=' + skillLevel);
   broadcastGameListUpdate();
   return enrichNames(game);
 }
 
-async function triggerAIMove(gameId: string): Promise<void> {
+async function triggerBotMove(gameId: string): Promise<void> {
   const game = games.get(gameId);
   if (!game || game.status !== 'active') return;
 
-  const isAiWhite = game.players.white === AI_PLAYER_ID;
-  const aiColor: Color = isAiWhite ? 'white' : 'black';
-  if (game.turn !== aiColor) return;
+  const isBotWhite = game.players.white === BOT_PLAYER_ID;
+  const botColor: Color = isBotWhite ? 'white' : 'black';
+  if (game.turn !== botColor) return;
 
   await engineManager.setPosition(gameId, uciHistory.get(gameId) || []);
   const bestMove = await engineManager.getBestMove(gameId, 500);
@@ -509,10 +509,10 @@ async function triggerAIMove(gameId: string): Promise<void> {
   const to = bestMove.slice(2, 4);
   const promotion = bestMove.length > 4 ? bestMove.slice(4) as PieceType : undefined;
 
-  const legalMoves = chess.getLegalMoves(game.board, aiColor, game.enPassantTarget, game.castlingRights);
+  const legalMoves = chess.getLegalMoves(game.board, botColor, game.enPassantTarget, game.castlingRights);
   const matchedMove = legalMoves.find((m) => m.from === from && m.to === to && (!promotion || m.promotion === promotion));
   if (!matchedMove) {
-    logger.warn('AI generated illegal move', { gameId, bestMove });
+    logger.warn('Bot generated illegal move', { gameId, bestMove });
     return;
   }
 
@@ -564,11 +564,11 @@ async function triggerAIMove(gameId: string): Promise<void> {
     broadcastGameListUpdate();
   }
 
-  logger.info('AI move: gameId=' + gameId + ' move=' + notation + ' status=' + newStatus);
+  logger.info('Bot move: gameId=' + gameId + ' move=' + notation + ' status=' + newStatus);
 }
 
-export function isAIGame(game: GameState): boolean {
-  return game.players.white === AI_PLAYER_ID || game.players.black === AI_PLAYER_ID;
+export function isBotGame(game: GameState): boolean {
+  return game.players.white === BOT_PLAYER_ID || game.players.black === BOT_PLAYER_ID;
 }
 
 /**
@@ -807,9 +807,9 @@ export function makeMove(
   if (isTerminal) {
     recordGameResult(game, winner);
     broadcastGameListUpdate();
-  } else if (isAIGame(game)) {
-    /* AI opponent moves after the human's move */
-    setTimeout(() => { triggerAIMove(gameId); }, 100);
+  } else if (isBotGame(game)) {
+    /* Bot opponent moves after the human's move */
+    setTimeout(() => { triggerBotMove(gameId); }, 100);
   }
 
   const moveLog = notation || from + '-' + to;
@@ -853,7 +853,7 @@ export function resignGame(gameId: string, playerId: string): { success: boolean
   });
 
   recordGameResult(game, winner === 'white' ? 'white' : winner === 'black' ? 'black' : null);
-  if (isAIGame(game)) engineManager.destroyInstance(gameId);
+  if (isBotGame(game)) engineManager.destroyInstance(gameId);
   broadcastGameListUpdate();
 
   logger.info('Resign: gameId=' + gameId + ' player=' + playerId + ' winner=' + winner);
@@ -939,7 +939,7 @@ function recordGameResult(game: GameState, winner: Color | null): void {
     null,
     '5+0',
   );
-  if (isAIGame(game)) {
+  if (isBotGame(game)) {
     engineManager.destroyInstance(game.id);
     uciHistory.delete(game.id);
   }

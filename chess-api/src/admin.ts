@@ -588,14 +588,14 @@ router.delete('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, 
   res.json({ success: true });
 });
 
-/* ─── Admin: AI Games stats (count active AI games) ─── */
-router.get('/admin/api/ai-games', adminAuthMiddleware, (_req: Request, res: Response) => {
+/* ─── Admin: Bot Games stats (count active Bot games) ─── */
+router.get('/admin/api/bot-games', adminAuthMiddleware, (_req: Request, res: Response) => {
   const allGames = game.getAllGames();
-  const aiGames = allGames.filter((g: any) => game.isAIGame(g));
+  const botGames = allGames.filter((g: any) => game.isBotGame(g));
   res.json({
-    total: aiGames.length,
-    active: aiGames.filter((g: any) => g.status === 'active').length,
-    games: aiGames.map((g: any) => ({
+    total: botGames.length,
+    active: botGames.filter((g: any) => g.status === 'active').length,
+    games: botGames.map((g: any) => ({
       id: g.id,
       status: g.status,
       players: g.players,

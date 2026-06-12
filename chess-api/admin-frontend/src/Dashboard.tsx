@@ -25,7 +25,7 @@ import LogsTab from './LogsTab';
 import LeaderboardTab from './LeaderboardTab';
 import ArchiveTab from './ArchiveTab';
 import TournamentsTab from './TournamentsTab';
-import AIGamesTab from './AIGamesTab';
+import BotGamesTab from './BotGamesTab';
 import BroadcastTab from './BroadcastTab';
 import ConfigTab from './ConfigTab';
 
@@ -39,7 +39,7 @@ const tabs = [
   { key: 'leaderboard', label: 'Leaderboard', icon: Trophy },
   { key: 'archive', label: 'Archive', icon: Archive },
   { key: 'tournaments', label: 'Tournaments', icon: ListTree },
-  { key: 'ai-games', label: 'AI Games', icon: Bot },
+  { key: 'bot-games', label: 'Bot Games', icon: Bot },
   { key: 'broadcast', label: 'Broadcast', icon: Send },
   { key: 'config', label: 'Config', icon: Settings },
 ];
@@ -72,8 +72,8 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
         return <ArchiveTab />;
       case 'tournaments':
         return <TournamentsTab />;
-      case 'ai-games':
-        return <AIGamesTab />;
+      case 'bot-games':
+        return <BotGamesTab />;
       case 'broadcast':
         return <BroadcastTab />;
       case 'config':

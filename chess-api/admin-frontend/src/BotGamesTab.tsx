@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bot } from 'lucide-react';
 import { api } from './api';
 
-interface AIGameInfo {
+interface BotGameInfo {
   id: string;
   status: string;
   players: { white?: string; black?: string };
@@ -10,18 +10,18 @@ interface AIGameInfo {
   createdAt: number;
 }
 
-interface AIGamesResponse {
+interface BotGamesResponse {
   total: number;
   active: number;
-  games: AIGameInfo[];
+  games: BotGameInfo[];
 }
 
-export default function AIGamesTab() {
-  const [data, setData] = useState<AIGamesResponse | null>(null);
+export default function BotGamesTab() {
+  const [data, setData] = useState<BotGamesResponse | null>(null);
   const [error, setError] = useState('');
 
   function load() {
-    api<AIGamesResponse>('/ai-games')
+    api<BotGamesResponse>('/bot-games')
       .then(setData)
       .catch((e) => setError(e.message));
   }
@@ -37,7 +37,7 @@ export default function AIGamesTab() {
         <div className="px-6 py-4 border-b border-[#2a2a2a]">
           <h2 className="text-sm font-semibold text-[#e0e0e0] flex items-center gap-2">
             <Bot size={16} className="text-green-400" />
-            AI Games
+            Bot Games
           </h2>
         </div>
 
@@ -45,7 +45,7 @@ export default function AIGamesTab() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-[#222] border border-[#333] rounded-lg p-5 text-center">
               <div className="text-3xl font-bold text-[#4a9eff]">{data.total}</div>
-              <div className="text-xs text-[#888] mt-1">Total AI Games</div>
+              <div className="text-xs text-[#888] mt-1">Total Bot Games</div>
             </div>
             <div className="bg-[#222] border border-[#333] rounded-lg p-5 text-center">
               <div className="text-3xl font-bold text-green-400">{data.active}</div>
@@ -58,7 +58,7 @@ export default function AIGamesTab() {
           </div>
 
           {data.games.length === 0 ? (
-            <p className="text-[#666] text-center py-4">No AI games have been played yet.</p>
+            <p className="text-[#666] text-center py-4">No bot games have been played yet.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

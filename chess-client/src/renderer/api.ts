@@ -357,18 +357,18 @@ export async function createGame(visibility?: 'public' | 'private'): Promise<Gam
   }
 }
 
-/* POST /games/ai */
-export async function createAIGame(skillLevel: number, playerColor?: 'white' | 'black'): Promise<GameState> {
-  logger.info('createAIGame called', { skillLevel, playerColor });
+/* POST /games/bot */
+export async function createBotGame(skillLevel: number, playerColor?: 'white' | 'black'): Promise<GameState> {
+  logger.info('createBotGame called', { skillLevel, playerColor });
   try {
-    const result = await request<GameState>('/games/ai', {
+    const result = await request<GameState>('/games/bot', {
       method: 'POST',
       body: JSON.stringify({ skillLevel, playerColor }),
     });
-    logger.info('createAIGame ok: gameId=' + result.id);
+    logger.info('createBotGame ok: gameId=' + result.id);
     return result;
   } catch (err) {
-    logger.error('createAIGame failed: ' + err);
+    logger.error('createBotGame failed: ' + err);
     throw err;
   }
 }

@@ -25,8 +25,8 @@ const faqs = [
     a: 'The app supports Linux (AppImage/.deb), macOS (.dmg), and Windows (.exe). See the download page for the latest builds.',
   },
   {
-    q: 'Is there an AI opponent?',
-    a: 'Not yet. The focus is on multiplayer — playing against friends online or locally. AI is planned for a future release.',
+    q: 'Is there a bot opponent?',
+    a: 'Yes! You can play against the Stockfish engine at various difficulty levels. Select "Play vs Bot" in the lobby and choose your preferred difficulty and color.',
   },
   {
     q: 'Can I change the board appearance?',

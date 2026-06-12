@@ -369,12 +369,12 @@ router.post('/games', authMiddleware, banCheckMiddleware, (req: Request, res: Re
   res.status(201).json(g);
 });
 
-/* Create AI game */
-router.post('/games/ai', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+/* Create Bot game */
+router.post('/games/bot', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const skillLevel = Math.max(1, Math.min(20, parseInt(req.body.skillLevel as string) || 1));
   const playerColor: 'white' | 'black' = req.body.playerColor === 'black' ? 'black' : 'white';
-  const g = game.createAIGame(req.player.id, skillLevel, playerColor);
-  logger.info('AI game created: gameId=' + g.id + ' by playerId=' + req.player.id + ' skill=' + skillLevel);
+  const g = game.createBotGame(req.player.id, skillLevel, playerColor);
+  logger.info('Bot game created: gameId=' + g.id + ' by playerId=' + req.player.id + ' skill=' + skillLevel);
   res.status(201).json(g);
 });
 
