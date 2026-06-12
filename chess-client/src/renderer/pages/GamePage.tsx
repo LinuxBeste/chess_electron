@@ -34,7 +34,6 @@ import type {
   DrawDeclinedMessage,
   RematchOfferMessage,
   RematchAcceptedMessage,
-  SpectatorCountMessage,
 } from '../socket';
 import { t } from '../translate';
 

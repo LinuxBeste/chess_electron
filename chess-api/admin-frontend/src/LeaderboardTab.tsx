@@ -79,7 +79,7 @@ export default function LeaderboardTab() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((e, idx) => {
+                    {filtered.map((e) => {
                       const totalGames = e.wins + e.losses + e.draws;
                       const winPct = totalGames > 0 ? ((e.wins / totalGames) * 100).toFixed(1) : '—';
                       const rankColor =
