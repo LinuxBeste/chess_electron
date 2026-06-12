@@ -135,6 +135,12 @@ export interface GameListUpdateMessage {
   activeGames: import('../types').GameState[];
 }
 
+export interface SpectatorCountMessage {
+  type: 'spectator_count';
+  gameId: string;
+  count: number;
+}
+
 export interface RematchOfferMessage {
   type: 'rematch_offered';
   gameId: string;
@@ -164,6 +170,7 @@ type WsMessage =
   | ChallengeDeclineMessage
   | GameListUpdateMessage
   | ChatHistoryMessage
+  | SpectatorCountMessage
   | RematchOfferMessage
   | RematchAcceptedMessage;
 
@@ -179,6 +186,7 @@ export type GameStartedHandler = (msg: GameStartedMessage) => void;
 /** Handler type for chat messages */
 export type ChatHandler = (msg: ChatMessage) => void;
 export type ChatHistoryHandler = (msg: ChatHistoryMessage) => void;
+export type SpectatorCountHandler = (msg: SpectatorCountMessage) => void;
 
 /** Handler type for game-aborted events */
 export type GameAbortedHandler = (msg: GameAbortedMessage) => void;
@@ -231,6 +239,7 @@ class SocketManager {
   private challengeDeclineHandlers = new Set<ChallengeDeclineHandler>();
   private gameListUpdateHandlers = new Set<GameListUpdateHandler>();
   private rematchOfferHandlers = new Set<RematchOfferHandler>();
+  private spectatorCountHandlers = new Set<SpectatorCountHandler>();
   private rematchAcceptedHandlers = new Set<RematchAcceptedHandler>();
   private serverUrl = 'http://localhost:3000';
 
@@ -330,6 +339,9 @@ class SocketManager {
             break;
           case 'game_list_update':
             this.gameListUpdateHandlers.forEach((h) => h(msg as GameListUpdateMessage));
+            break;
+          case 'spectator_count':
+            this.spectatorCountHandlers.forEach((h) => h(msg as SpectatorCountMessage));
             break;
           case 'rematch_offered':
             this.rematchOfferHandlers.forEach((h) => h(msg as RematchOfferMessage));
@@ -529,6 +541,14 @@ class SocketManager {
     this.rematchAcceptedHandlers.add(handler);
     return () => {
       this.rematchAcceptedHandlers.delete(handler);
+    };
+  }
+
+  onSpectatorCount(handler: SpectatorCountHandler): () => void {
+    logger.info('Socket: spectator_count handler registered');
+    this.spectatorCountHandlers.add(handler);
+    return () => {
+      this.spectatorCountHandlers.delete(handler);
     };
   }
 

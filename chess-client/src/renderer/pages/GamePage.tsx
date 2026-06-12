@@ -34,6 +34,7 @@ import type {
   DrawDeclinedMessage,
   RematchOfferMessage,
   RematchAcceptedMessage,
+  SpectatorCountMessage,
 } from '../socket';
 import { t } from '../translate';
 
@@ -61,6 +62,7 @@ export default function GamePage() {
   const [drawOfferedBy, setDrawOfferedBy] = useState<string | null>(null);
   const [drawPending, setDrawPending] = useState(false);
   const [rematchOfferedBy, setRematchOfferedBy] = useState<string | null>(null);
+  const [spectatorCount, setSpectatorCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   /* Spectator mode = read-only; no move interaction.  The ?spectate=1
@@ -148,6 +150,9 @@ export default function GamePage() {
     const unsubRematchAccepted = socketManager.onRematchAccepted((msg) => {
       if (msg.gameId === gameId) handleRematchAccepted(msg);
     });
+    const unsubSpectatorCount = socketManager.onSpectatorCount((msg) => {
+      if (msg.gameId === gameId) setSpectatorCount(msg.count);
+    });
 
     if (initialGame) {
       logger.info('Using cached game state', { gameId });
@@ -180,6 +185,7 @@ export default function GamePage() {
       unsubDrawDeclined();
       unsubRematchOffer();
       unsubRematchAccepted();
+      unsubSpectatorCount();
       if (isSpectator) {
         socketManager.send({ type: 'unspectate' });
       }
@@ -750,6 +756,11 @@ export default function GamePage() {
           <span className="player-clock">{formatTime(whiteTime)}</span>
         </div>
         <div className="game-btn-row">
+          {spectatorCount > 0 && (
+            <span style={{ fontSize: 12, color: 'var(--muted)', marginRight: 8 }}>
+              {t('game.spectators')}: {spectatorCount}
+            </span>
+          )}
           {showReview && (
             <div className="review-controls active">
               <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(-1)}>

@@ -302,6 +302,8 @@ export function registerSpectator(gameId: string, ws: WebSocket): boolean {
     spectatorConnections.set(gameId, new Set());
   }
   spectatorConnections.get(gameId)!.add(ws);
+  sendChatHistory(gameId, ws);
+  broadcastSpectatorCount(gameId);
   logger.info('Spectator registered: gameId=' + gameId);
   return true;
 }
@@ -311,6 +313,7 @@ export function registerSpectator(gameId: string, ws: WebSocket): boolean {
  */
 export function removeSpectator(gameId: string, ws: WebSocket): void {
   spectatorConnections.get(gameId)?.delete(ws);
+  broadcastSpectatorCount(gameId);
   logger.info('Spectator removed: gameId=' + gameId);
 }
 
@@ -323,6 +326,18 @@ function sendToSpectators(gameId: string, message: Record<string, unknown>): voi
       ws.send(data);
     }
   }
+}
+
+function broadcastSpectatorCount(gameId: string): void {
+  const count = spectatorConnections.get(gameId)?.size ?? 0;
+  const message = { type: 'spectator_count', gameId, count };
+  const game = games.get(gameId);
+  if (game) {
+    const { white, black } = game.players;
+    if (white) sendToPlayer(white, message);
+    if (black) sendToPlayer(black, message);
+  }
+  sendToSpectators(gameId, message);
 }
 
 function broadcastGameListUpdate(): void {
@@ -718,23 +733,27 @@ export function resignGame(gameId: string, playerId: string): { success: boolean
  * Does nothing for anonymous (in-memory only) players.
  */
 function recordGameResult(game: GameState, winner: Color | null): void {
-  const whiteId = game.players.white;
-  const blackId = game.players.black;
-  if (!whiteId || !blackId) return;
-
-  const whitePlayer = players.get(whiteId);
-  const blackPlayer = players.get(blackId);
-
-  if (winner === 'white') {
-    if (whitePlayer?.isRegistered) db.addWin(whiteId);
-    if (blackPlayer?.isRegistered) db.addLoss(blackId);
-  } else if (winner === 'black') {
-    if (blackPlayer?.isRegistered) db.addWin(blackId);
-    if (whitePlayer?.isRegistered) db.addLoss(whiteId);
-  } else {
-    if (whitePlayer?.isRegistered) db.addDraw(whiteId);
-    if (blackPlayer?.isRegistered) db.addDraw(blackId);
+  game.winner = winner;
+  const user = db.getUserById(winner || '');
+  if (user) {
+    user.wins++;
+    const opponentId = game.players.white === winner ? game.players.black : game.players.white;
+    if (opponentId) {
+      const opponent = db.getUserById(opponentId);
+      if (opponent) opponent.losses++;
+    }
+  } else if (winner === null) {
+    if (game.players.white) {
+      const w = db.getUserById(game.players.white);
+      if (w) w.draws++;
+    }
+    if (game.players.black) {
+      const b = db.getUserById(game.players.black);
+      if (b) b.draws++;
+    }
   }
+  /* Clean up spectator connections when the game ends */
+  spectatorConnections.delete(game.id);
   logger.info('Game result recorded: gameId=' + game.id + ' winner=' + winner);
 }
 

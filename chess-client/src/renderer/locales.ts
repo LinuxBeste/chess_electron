@@ -141,6 +141,7 @@ export type TranslationKeys = {
     challengedYou: string;
     challengeTitle: string;
     opponentRematch: string;
+    spectators: string;
   };
   localGame: {
     blackToMove: string;
@@ -600,6 +601,7 @@ export const en: TranslationKeys = {
     challengedYou: 'challenged you to a game!',
     challengeTitle: 'Challenge!',
     opponentRematch: 'Opponent wants a rematch',
+    spectators: 'Spectators',
   },
   localGame: {
     blackToMove: '◄ Black to move',
@@ -1060,6 +1062,7 @@ export const de: TranslationKeys = {
     challengedYou: 'fordert dich zu einem Spiel heraus!',
     challengeTitle: 'Herausforderung!',
     opponentRematch: 'Gegner möchte Revanche',
+    spectators: 'Zuschauer',
   },
   localGame: {
     blackToMove: '◄ Schwarz ist am Zug',
