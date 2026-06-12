@@ -761,8 +761,11 @@ router.post('/tournaments', authMiddleware, banCheckMiddleware, (req: Request, r
     res.status(403).json({ error: 'Only registered users can create tournaments' });
     return;
   }
-  const name = (req.body.name as string || '').trim();
-  if (!name) { res.status(400).json({ error: 'Tournament name is required' }); return; }
+  const name = ((req.body.name as string) || '').trim();
+  if (!name) {
+    res.status(400).json({ error: 'Tournament name is required' });
+    return;
+  }
   const maxPlayers = Math.max(2, Math.min(64, parseInt(req.body.maxPlayers as string) || 8));
   const isPrivate = req.body.isPrivate === true;
   const t = db.createTournament(name, req.player.id, maxPlayers, isPrivate);
@@ -788,14 +791,29 @@ router.post('/tournaments/join-by-code', authMiddleware, banCheckMiddleware, (re
     res.status(403).json({ error: 'Only registered users can join tournaments' });
     return;
   }
-  const code = (req.body.code as string || '').trim().toUpperCase();
-  if (!code) { res.status(400).json({ error: 'Join code is required' }); return; }
+  const code = ((req.body.code as string) || '').trim().toUpperCase();
+  if (!code) {
+    res.status(400).json({ error: 'Join code is required' });
+    return;
+  }
   const t = db.getTournamentByJoinCode(code);
-  if (!t) { res.status(404).json({ error: 'Invalid join code' }); return; }
-  if (t.status !== 'waiting') { res.status(400).json({ error: 'Tournament is not open' }); return; }
-  if (db.isTournamentParticipant(t.id, req.player.id)) { res.status(409).json({ error: 'Already joined' }); return; }
+  if (!t) {
+    res.status(404).json({ error: 'Invalid join code' });
+    return;
+  }
+  if (t.status !== 'waiting') {
+    res.status(400).json({ error: 'Tournament is not open' });
+    return;
+  }
+  if (db.isTournamentParticipant(t.id, req.player.id)) {
+    res.status(409).json({ error: 'Already joined' });
+    return;
+  }
   const count = db.getParticipantCount(t.id);
-  if (count >= t.max_players) { res.status(400).json({ error: 'Tournament is full' }); return; }
+  if (count >= t.max_players) {
+    res.status(400).json({ error: 'Tournament is full' });
+    return;
+  }
   db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, count);
   logger.info('Tournament joined via code: tournamentId=' + t.id + ' playerId=' + req.player.id);
   res.json(db.getTournament(t.id));
@@ -803,7 +821,10 @@ router.post('/tournaments/join-by-code', authMiddleware, banCheckMiddleware, (re
 
 router.get('/tournaments/:id', (req: Request, res: Response) => {
   const t = db.getTournament(req.params.id);
-  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
+  if (!t) {
+    res.status(404).json({ error: 'Tournament not found' });
+    return;
+  }
   const participants = db.getTournamentParticipants(req.params.id);
   const matches = db.getTournamentMatches(req.params.id);
   const result: any = { ...t, participants, matches, participantCount: participants.length };
@@ -821,11 +842,23 @@ router.post('/tournaments/:id/join', authMiddleware, banCheckMiddleware, (req: R
     return;
   }
   const t = db.getTournament(req.params.id);
-  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
-  if (t.status !== 'waiting') { res.status(400).json({ error: 'Tournament is not open' }); return; }
-  if (db.isTournamentParticipant(t.id, req.player.id)) { res.status(409).json({ error: 'Already joined' }); return; }
+  if (!t) {
+    res.status(404).json({ error: 'Tournament not found' });
+    return;
+  }
+  if (t.status !== 'waiting') {
+    res.status(400).json({ error: 'Tournament is not open' });
+    return;
+  }
+  if (db.isTournamentParticipant(t.id, req.player.id)) {
+    res.status(409).json({ error: 'Already joined' });
+    return;
+  }
   const count = db.getParticipantCount(t.id);
-  if (count >= t.max_players) { res.status(400).json({ error: 'Tournament is full' }); return; }
+  if (count >= t.max_players) {
+    res.status(400).json({ error: 'Tournament is full' });
+    return;
+  }
   db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, count);
   logger.info('Tournament joined: tournamentId=' + t.id + ' playerId=' + req.player.id);
   res.json(db.getTournament(t.id));
@@ -837,8 +870,14 @@ router.post('/tournaments/:id/leave', authMiddleware, banCheckMiddleware, (req: 
     return;
   }
   const t = db.getTournament(req.params.id);
-  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
-  if (t.status !== 'waiting') { res.status(400).json({ error: 'Tournament already started' }); return; }
+  if (!t) {
+    res.status(404).json({ error: 'Tournament not found' });
+    return;
+  }
+  if (t.status !== 'waiting') {
+    res.status(400).json({ error: 'Tournament already started' });
+    return;
+  }
   db.removeTournamentParticipant(t.id, req.player.id);
   res.json({ success: true });
 });
@@ -849,11 +888,23 @@ router.put('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Request
     return;
   }
   const t = db.getTournament(req.params.id);
-  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
-  if (t.created_by !== req.player.id) { res.status(403).json({ error: 'Only the creator can edit' }); return; }
-  if (t.status !== 'waiting') { res.status(400).json({ error: 'Cannot edit a started tournament' }); return; }
-  const name = (req.body.name as string || '').trim();
-  if (!name) { res.status(400).json({ error: 'Tournament name is required' }); return; }
+  if (!t) {
+    res.status(404).json({ error: 'Tournament not found' });
+    return;
+  }
+  if (t.created_by !== req.player.id) {
+    res.status(403).json({ error: 'Only the creator can edit' });
+    return;
+  }
+  if (t.status !== 'waiting') {
+    res.status(400).json({ error: 'Cannot edit a started tournament' });
+    return;
+  }
+  const name = ((req.body.name as string) || '').trim();
+  if (!name) {
+    res.status(400).json({ error: 'Tournament name is required' });
+    return;
+  }
   const maxPlayers = Math.max(2, Math.min(64, parseInt(req.body.maxPlayers as string) || t.max_players));
   const isPrivate = req.body.isPrivate === true ? 1 : 0;
   db.updateTournamentDetails(t.id, name, maxPlayers, isPrivate);
@@ -867,9 +918,18 @@ router.delete('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Requ
     return;
   }
   const t = db.getTournament(req.params.id);
-  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
-  if (t.created_by !== req.player.id) { res.status(403).json({ error: 'Only the creator can delete' }); return; }
-  if (t.status !== 'waiting') { res.status(400).json({ error: 'Cannot delete a started tournament' }); return; }
+  if (!t) {
+    res.status(404).json({ error: 'Tournament not found' });
+    return;
+  }
+  if (t.created_by !== req.player.id) {
+    res.status(403).json({ error: 'Only the creator can delete' });
+    return;
+  }
+  if (t.status !== 'waiting') {
+    res.status(400).json({ error: 'Cannot delete a started tournament' });
+    return;
+  }
   db.deleteTournament(t.id);
   logger.info('Tournament deleted: tournamentId=' + t.id);
   res.json({ success: true });
@@ -881,14 +941,26 @@ router.post('/tournaments/:id/start', authMiddleware, banCheckMiddleware, (req: 
     return;
   }
   const t = db.getTournament(req.params.id);
-  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
-  if (t.created_by !== req.player.id) { res.status(403).json({ error: 'Only the creator can start' }); return; }
-  if (t.status !== 'waiting') { res.status(400).json({ error: 'Tournament already started' }); return; }
+  if (!t) {
+    res.status(404).json({ error: 'Tournament not found' });
+    return;
+  }
+  if (t.created_by !== req.player.id) {
+    res.status(403).json({ error: 'Only the creator can start' });
+    return;
+  }
+  if (t.status !== 'waiting') {
+    res.status(400).json({ error: 'Tournament already started' });
+    return;
+  }
 
   const participants = db.getTournamentParticipants(t.id);
   const playerIds = participants.map((p: any) => p.player_id);
   const count = playerIds.length;
-  if (count < 2) { res.status(400).json({ error: 'Need at least 2 players' }); return; }
+  if (count < 2) {
+    res.status(400).json({ error: 'Need at least 2 players' });
+    return;
+  }
 
   /* Generate bracket — power of 2, fill byes */
   const size = Math.pow(2, Math.ceil(Math.log2(count)));

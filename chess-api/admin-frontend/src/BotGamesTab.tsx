@@ -84,18 +84,14 @@ export default function BotGamesTab() {
                       <td className="px-3 py-2.5">
                         <span
                           className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
-                            g.status === 'active'
-                              ? 'bg-green-900 text-green-400'
-                              : 'bg-gray-800 text-gray-400'
+                            g.status === 'active' ? 'bg-green-900 text-green-400' : 'bg-gray-800 text-gray-400'
                           }`}
                         >
                           {g.status}
                         </span>
                       </td>
                       <td className="px-3 py-2.5 text-center">{g.moves}</td>
-                      <td className="px-3 py-2.5 text-xs text-[#888]">
-                        {new Date(g.createdAt).toLocaleString()}
-                      </td>
+                      <td className="px-3 py-2.5 text-xs text-[#888]">{new Date(g.createdAt).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>

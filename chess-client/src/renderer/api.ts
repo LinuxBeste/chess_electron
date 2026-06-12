@@ -281,7 +281,10 @@ export async function leaveTournament(id: string): Promise<any> {
   return request('/tournaments/' + id + '/leave', { method: 'POST' });
 }
 
-export async function updateTournament(id: string, data: { name?: string; maxPlayers?: number; isPrivate?: boolean }): Promise<any> {
+export async function updateTournament(
+  id: string,
+  data: { name?: string; maxPlayers?: number; isPrivate?: boolean },
+): Promise<any> {
   return request('/tournaments/' + id, {
     method: 'PUT',
     body: JSON.stringify(data),
@@ -322,8 +325,20 @@ export async function healthCheck(): Promise<{
 }
 
 /* GET /leaderboard */
-export async function getLeaderboard(page = 1, limit = 50): Promise<{
-  entries: { playerId: string; username: string; displayName: string; avatarUrl: string | null; rating: number; wins: number; losses: number; draws: number }[];
+export async function getLeaderboard(
+  page = 1,
+  limit = 50,
+): Promise<{
+  entries: {
+    playerId: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+    rating: number;
+    wins: number;
+    losses: number;
+    draws: number;
+  }[];
   total: number;
   page: number;
   limit: number;

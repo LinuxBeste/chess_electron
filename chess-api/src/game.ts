@@ -461,7 +461,7 @@ export function createBotGame(playerId: string, skillLevel: number, playerColor:
     board: chess.createInitialBoard(),
     turn: 'white',
     status: 'active',
-    players: { [playerColor]: playerId,     [botColor]: BOT_PLAYER_ID },
+    players: { [playerColor]: playerId, [botColor]: BOT_PLAYER_ID },
     whiteName: playerColor === 'white' ? undefined : 'Bot',
     blackName: playerColor === 'black' ? undefined : 'Bot',
     moveHistory: [],
@@ -479,16 +479,21 @@ export function createBotGame(playerId: string, skillLevel: number, playerColor:
   };
   games.set(id, game);
 
-  engineManager.startInstance(id, skillLevel).then(() => {
-    logger.info('Bot engine ready for game', id);
-    if (botColor === 'white') {
-      triggerBotMove(id);
-    }
-  }).catch((err) => {
-    logger.error('Failed to start bot engine', err);
-  });
+  engineManager
+    .startInstance(id, skillLevel)
+    .then(() => {
+      logger.info('Bot engine ready for game', id);
+      if (botColor === 'white') {
+        triggerBotMove(id);
+      }
+    })
+    .catch((err) => {
+      logger.error('Failed to start bot engine', err);
+    });
 
-  logger.info('Bot game created: gameId=' + id + ' player=' + playerId + ' color=' + playerColor + ' skill=' + skillLevel);
+  logger.info(
+    'Bot game created: gameId=' + id + ' player=' + playerId + ' color=' + playerColor + ' skill=' + skillLevel,
+  );
   broadcastGameListUpdate();
   return enrichNames(game);
 }
@@ -507,10 +512,12 @@ async function triggerBotMove(gameId: string): Promise<void> {
 
   const from = bestMove.slice(0, 2);
   const to = bestMove.slice(2, 4);
-  const promotion = bestMove.length > 4 ? bestMove.slice(4) as PieceType : undefined;
+  const promotion = bestMove.length > 4 ? (bestMove.slice(4) as PieceType) : undefined;
 
   const legalMoves = chess.getLegalMoves(game.board, botColor, game.enPassantTarget, game.castlingRights);
-  const matchedMove = legalMoves.find((m) => m.from === from && m.to === to && (!promotion || m.promotion === promotion));
+  const matchedMove = legalMoves.find(
+    (m) => m.from === from && m.to === to && (!promotion || m.promotion === promotion),
+  );
   if (!matchedMove) {
     logger.warn('Bot generated illegal move', { gameId, bestMove });
     return;
@@ -520,7 +527,13 @@ async function triggerBotMove(gameId: string): Promise<void> {
   const notation = chess.moveToAlgebraic(matchedMove, matchedMove.captured, legalMoves);
   const newHalfMoveClock = chess.updateHalfMoveClock(matchedMove, game.halfMoveClock);
   const nextTurn: Color = game.turn === 'white' ? 'black' : 'white';
-  const { status: rawStatus } = chess.getGameStatus(newBoard, nextTurn, enPassantTarget, castlingRights, newHalfMoveClock);
+  const { status: rawStatus } = chess.getGameStatus(
+    newBoard,
+    nextTurn,
+    enPassantTarget,
+    castlingRights,
+    newHalfMoveClock,
+  );
 
   let newStatus: GameStatus;
   let winner: Color | null = null;
@@ -809,7 +822,9 @@ export function makeMove(
     broadcastGameListUpdate();
   } else if (isBotGame(game)) {
     /* Bot opponent moves after the human's move */
-    setTimeout(() => { triggerBotMove(gameId); }, 100);
+    setTimeout(() => {
+      triggerBotMove(gameId);
+    }, 100);
   }
 
   const moveLog = notation || from + '-' + to;
@@ -867,7 +882,7 @@ function calculateElo(ratingA: number, ratingB: number, scoreA: number): [number
   const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
   const expectedB = 1 - expectedA;
   const k = 32;
-  return [Math.round(ratingA + k * (scoreA - expectedA)), Math.round(ratingB + k * ((1 - scoreA) - expectedB))];
+  return [Math.round(ratingA + k * (scoreA - expectedA)), Math.round(ratingB + k * (1 - scoreA - expectedB))];
 }
 
 /**
@@ -891,7 +906,22 @@ function updateEloRatings(game: GameState, winner: Color | null): void {
   const [newWhite, newBlack] = calculateElo(whiteUser.rating, blackUser.rating, scoreWhite);
   db.updatePlayerRating(whiteId, newWhite);
   db.updatePlayerRating(blackId, newBlack);
-  logger.info('Elo updated: gameId=' + game.id + ' white=' + whiteId + ' ' + whiteUser.rating + '->' + newWhite + ' black=' + blackId + ' ' + blackUser.rating + '->' + newBlack);
+  logger.info(
+    'Elo updated: gameId=' +
+      game.id +
+      ' white=' +
+      whiteId +
+      ' ' +
+      whiteUser.rating +
+      '->' +
+      newWhite +
+      ' black=' +
+      blackId +
+      ' ' +
+      blackUser.rating +
+      '->' +
+      newBlack,
+  );
 }
 
 /**
@@ -921,8 +951,26 @@ function recordGameResult(game: GameState, winner: Color | null): void {
   updateEloRatings(game, winner);
   spectatorConnections.delete(game.id);
 
-  const result = game.status === 'checkmate' ? 'checkmate' : game.status === 'stalemate' ? 'stalemate' : game.status === 'resigned' ? 'resigned' : 'draw';
-  const reason = result === 'checkmate' ? (winner === 'white' ? 'White wins by checkmate' : 'Black wins by checkmate') : result === 'stalemate' ? 'Draw by stalemate' : result === 'resigned' ? (winner === 'white' ? 'Black resigned' : 'White resigned') : 'Draw by agreement';
+  const result =
+    game.status === 'checkmate'
+      ? 'checkmate'
+      : game.status === 'stalemate'
+        ? 'stalemate'
+        : game.status === 'resigned'
+          ? 'resigned'
+          : 'draw';
+  const reason =
+    result === 'checkmate'
+      ? winner === 'white'
+        ? 'White wins by checkmate'
+        : 'Black wins by checkmate'
+      : result === 'stalemate'
+        ? 'Draw by stalemate'
+        : result === 'resigned'
+          ? winner === 'white'
+            ? 'Black resigned'
+            : 'White resigned'
+          : 'Draw by agreement';
   const g = enrichNames(game);
   db.saveCompletedGame(
     game.id,

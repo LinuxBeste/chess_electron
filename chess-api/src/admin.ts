@@ -570,7 +570,10 @@ router.get('/admin/api/tournaments', adminAuthMiddleware, (_req: Request, res: R
 
 router.get('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, res: Response) => {
   const t = db.getTournament(req.params.id);
-  if (!t) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!t) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
   const participants = db.getTournamentParticipants(req.params.id);
   const matches = db.getTournamentMatches(req.params.id);
   res.json({ ...t, participants, matches, participantCount: participants.length });
@@ -578,7 +581,10 @@ router.get('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, res
 
 router.delete('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, res: Response) => {
   const t = db.getTournament(req.params.id);
-  if (!t) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!t) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
   /* Cascade delete via foreign keys */
   const d = (db as any).getDb();
   d.prepare('DELETE FROM tournament_matches WHERE tournament_id = ?').run(req.params.id);
