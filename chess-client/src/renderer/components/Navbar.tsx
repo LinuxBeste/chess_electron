@@ -87,6 +87,22 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
         {getLanguageNames()[getLanguage() === 'de' ? 'en' : 'de']}
       </button>
       <div className="navbar-actions">
+        <button className="navbar-btn" onClick={() => navigate('/lobby')}>
+          {t('navbar.play')}
+        </button>
+        <button className="navbar-btn" onClick={() => navigate('/leaderboard')}>
+          {t('navbar.leaderboard')}
+        </button>
+        <button className="navbar-btn" onClick={() => navigate('/archive')}>
+          {t('navbar.archive')}
+        </button>
+        <button className="navbar-btn" onClick={() => navigate('/tournaments')}>
+          {t('navbar.tournaments')}
+        </button>
+        <button className="navbar-btn" onClick={handleOpenStats}>
+          {t('navbar.stats')}
+        </button>
+
         {(isLoggedIn || isOffline) && (
           <>
             {isLoggedIn && (
@@ -139,31 +155,6 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
                 {username}
               </span>
             )}
-            {isLoggedIn && (
-              <button className="navbar-btn" onClick={() => navigate('/lobby')}>
-                {t('navbar.play')}
-              </button>
-            )}
-            {isLoggedIn && (
-              <button className="navbar-btn" onClick={() => navigate('/leaderboard')}>
-                {t('navbar.leaderboard')}
-              </button>
-            )}
-            {isLoggedIn && (
-              <button className="navbar-btn" onClick={() => navigate('/archive')}>
-                {t('navbar.archive')}
-              </button>
-            )}
-            {isLoggedIn && (
-              <button className="navbar-btn" onClick={() => navigate('/tournaments')}>
-                {t('navbar.tournaments')}
-              </button>
-            )}
-            {isLoggedIn && (
-              <button className="navbar-btn" onClick={handleOpenStats}>
-                {t('navbar.stats')}
-              </button>
-            )}
             {isLoggedIn && isRegistered && (
               <button className="navbar-btn" onClick={handleOpenFriends}>
                 {t('navbar.friends')}
@@ -179,6 +170,16 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
             )}
             <button className="navbar-btn" onClick={handleLogout}>
               {t('navbar.logout')}
+            </button>
+          </>
+        )}
+        {!isLoggedIn && !isOffline && (
+          <>
+            <button className="navbar-btn" onClick={handleOpenSettings}>
+              {t('navbar.settings')}
+            </button>
+            <button className="navbar-btn" onClick={() => navigate('/login')}>
+              {t('login.signIn')}
             </button>
           </>
         )}
