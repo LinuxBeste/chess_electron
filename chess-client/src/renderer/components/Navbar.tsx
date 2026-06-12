@@ -79,7 +79,9 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
 
   return (
     <nav className="navbar">
-      <span className="navbar-brand">{t('navbar.chess')}</span>
+      <span className="navbar-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/lobby')}>
+        {t('navbar.chess')}
+      </span>
       <div className="navbar-center" />
       <button className="navbar-btn" onClick={handleLanguageChange} style={{ fontSize: 11, padding: '4px 8px' }}>
         {getLanguageNames()[getLanguage() === 'de' ? 'en' : 'de']}
@@ -136,6 +138,11 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
                 <span className="navbar-dot offline" />
                 {username}
               </span>
+            )}
+            {isLoggedIn && (
+              <button className="navbar-btn" onClick={() => navigate('/lobby')}>
+                {t('navbar.play')}
+              </button>
             )}
             {isLoggedIn && (
               <button className="navbar-btn" onClick={() => navigate('/leaderboard')}>

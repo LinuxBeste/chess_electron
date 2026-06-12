@@ -36,6 +36,7 @@ export type TranslationKeys = {
     leaderboard: string;
     archive: string;
     tournaments: string;
+    play: string;
     logout: string;
   };
   friends: {
@@ -518,6 +519,7 @@ export const en: TranslationKeys = {
     leaderboard: 'Leaderboard',
     archive: 'Archive',
     tournaments: 'Tournaments',
+    play: 'Play',
     logout: 'Logout',
   },
   friends: {
@@ -1001,6 +1003,7 @@ export const de: TranslationKeys = {
     leaderboard: 'Rangliste',
     archive: 'Archiv',
     tournaments: 'Turniere',
+    play: 'Spielen',
     logout: 'Abmelden',
   },
   friends: {
