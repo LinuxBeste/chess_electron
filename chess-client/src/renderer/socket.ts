@@ -129,6 +129,18 @@ export interface GameListUpdateMessage {
   activeGames: import('../types').GameState[];
 }
 
+export interface RematchOfferMessage {
+  type: 'rematch_offered';
+  gameId: string;
+  byPlayerId: string;
+}
+
+export interface RematchAcceptedMessage {
+  type: 'rematch_accepted';
+  gameId: string;
+  newGameId: string;
+}
+
 type WsMessage =
   | MoveMessage
   | GameOverMessage
@@ -144,7 +156,9 @@ type WsMessage =
   | ChallengeMessage
   | ChallengeAcceptMessage
   | ChallengeDeclineMessage
-  | GameListUpdateMessage;
+  | GameListUpdateMessage
+  | RematchOfferMessage
+  | RematchAcceptedMessage;
 
 /** Handler type for move events */
 export type MoveHandler = (msg: MoveMessage) => void;
@@ -176,6 +190,8 @@ export type ChallengeHandler = (msg: ChallengeMessage) => void;
 export type ChallengeAcceptHandler = (msg: ChallengeAcceptMessage) => void;
 export type ChallengeDeclineHandler = (msg: ChallengeDeclineMessage) => void;
 export type GameListUpdateHandler = (msg: GameListUpdateMessage) => void;
+export type RematchOfferHandler = (msg: RematchOfferMessage) => void;
+export type RematchAcceptedHandler = (msg: RematchAcceptedMessage) => void;
 
 /** Maximum number of reconnect attempts before giving up */
 const MAX_RETRIES = 5;
@@ -205,6 +221,8 @@ class SocketManager {
   private challengeAcceptHandlers = new Set<ChallengeAcceptHandler>();
   private challengeDeclineHandlers = new Set<ChallengeDeclineHandler>();
   private gameListUpdateHandlers = new Set<GameListUpdateHandler>();
+  private rematchOfferHandlers = new Set<RematchOfferHandler>();
+  private rematchAcceptedHandlers = new Set<RematchAcceptedHandler>();
   private serverUrl = 'http://localhost:3000';
 
   /** Set a custom server URL for the WebSocket connection */
@@ -300,6 +318,12 @@ class SocketManager {
             break;
           case 'game_list_update':
             this.gameListUpdateHandlers.forEach((h) => h(msg as GameListUpdateMessage));
+            break;
+          case 'rematch_offered':
+            this.rematchOfferHandlers.forEach((h) => h(msg as RematchOfferMessage));
+            break;
+          case 'rematch_accepted':
+            this.rematchAcceptedHandlers.forEach((h) => h(msg as RematchAcceptedMessage));
             break;
         }
       } catch {
@@ -478,6 +502,32 @@ class SocketManager {
     return () => {
       this.gameListUpdateHandlers.delete(handler);
     };
+  }
+
+  onRematchOffer(handler: RematchOfferHandler): () => void {
+    logger.info('Socket: rematch_offer handler registered');
+    this.rematchOfferHandlers.add(handler);
+    return () => {
+      this.rematchOfferHandlers.delete(handler);
+    };
+  }
+
+  onRematchAccepted(handler: RematchAcceptedHandler): () => void {
+    logger.info('Socket: rematch_accepted handler registered');
+    this.rematchAcceptedHandlers.add(handler);
+    return () => {
+      this.rematchAcceptedHandlers.delete(handler);
+    };
+  }
+
+  sendRematchOffer(gameId: string): void {
+    logger.info('Socket: sending rematch_offer', { gameId });
+    this.send({ type: 'rematch_offer', gameId });
+  }
+
+  sendRematchAccept(gameId: string): void {
+    logger.info('Socket: sending rematch_accept', { gameId });
+    this.send({ type: 'rematch_accept', gameId });
   }
 }
 

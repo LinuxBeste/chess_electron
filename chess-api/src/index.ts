@@ -131,6 +131,10 @@ export function createServer(): http.Server {
           game.acceptDraw(msg.gameId as string, player.id);
         } else if (msg.type === 'decline_draw' && typeof msg.gameId === 'string') {
           game.declineDraw(msg.gameId as string, player.id);
+        } else if (msg.type === 'rematch_offer' && typeof msg.gameId === 'string') {
+          game.offerRematch(msg.gameId as string, player.id);
+        } else if (msg.type === 'rematch_accept' && typeof msg.gameId === 'string') {
+          game.acceptRematch(msg.gameId as string, player.id);
         } else if (msg.type === 'challenge' && typeof msg.toPlayerId === 'string' && typeof msg.gameId === 'string') {
           game.sendToPlayer(msg.toPlayerId as string, {
             type: 'challenge',

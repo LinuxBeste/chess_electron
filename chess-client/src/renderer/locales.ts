@@ -140,6 +140,7 @@ export type TranslationKeys = {
     failedResign: string;
     challengedYou: string;
     challengeTitle: string;
+    opponentRematch: string;
   };
   localGame: {
     blackToMove: string;
@@ -598,6 +599,7 @@ export const en: TranslationKeys = {
     failedResign: 'Failed to resign',
     challengedYou: 'challenged you to a game!',
     challengeTitle: 'Challenge!',
+    opponentRematch: 'Opponent wants a rematch',
   },
   localGame: {
     blackToMove: '◄ Black to move',
@@ -1057,6 +1059,7 @@ export const de: TranslationKeys = {
     failedResign: 'Aufgeben fehlgeschlagen',
     challengedYou: 'fordert dich zu einem Spiel heraus!',
     challengeTitle: 'Herausforderung!',
+    opponentRematch: 'Gegner möchte Revanche',
   },
   localGame: {
     blackToMove: '◄ Schwarz ist am Zug',

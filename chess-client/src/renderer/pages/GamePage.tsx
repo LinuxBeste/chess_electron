@@ -32,6 +32,8 @@ import type {
   GameAbortedMessage,
   DrawOfferedMessage,
   DrawDeclinedMessage,
+  RematchOfferMessage,
+  RematchAcceptedMessage,
 } from '../socket';
 import { t } from '../translate';
 
@@ -58,6 +60,7 @@ export default function GamePage() {
   const [timeout, setTimeout_] = useState<'white' | 'black' | null>(null);
   const [drawOfferedBy, setDrawOfferedBy] = useState<string | null>(null);
   const [drawPending, setDrawPending] = useState(false);
+  const [rematchOfferedBy, setRematchOfferedBy] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   /* Spectator mode = read-only; no move interaction.  The ?spectate=1
@@ -139,6 +142,12 @@ export default function GamePage() {
     const unsubDrawDeclined = socketManager.onDrawDeclined((msg) => {
       if (msg.gameId === gameId) handleDrawDeclined(msg);
     });
+    const unsubRematchOffer = socketManager.onRematchOffer((msg) => {
+      if (msg.gameId === gameId) handleRematchOffer(msg);
+    });
+    const unsubRematchAccepted = socketManager.onRematchAccepted((msg) => {
+      if (msg.gameId === gameId) handleRematchAccepted(msg);
+    });
 
     if (initialGame) {
       logger.info('Using cached game state', { gameId });
@@ -169,6 +178,8 @@ export default function GamePage() {
       unsubGameAborted();
       unsubDrawOffered();
       unsubDrawDeclined();
+      unsubRematchOffer();
+      unsubRematchAccepted();
       if (isSpectator) {
         socketManager.send({ type: 'unspectate' });
       }
@@ -227,6 +238,7 @@ export default function GamePage() {
     setReviewIndex(null);
     setDrawOfferedBy(null);
     setDrawPending(false);
+    setRematchOfferedBy(null);
     const ms = getSetting('timeControlMinutes') * 60 * 1000;
     setWhiteTime(ms);
     setBlackTime(ms);
@@ -324,6 +336,18 @@ export default function GamePage() {
     setDrawPending(false);
   }
 
+  function handleRematchOffer(msg: RematchOfferMessage) {
+    logger.info('Rematch offered', { gameId: msg.gameId, byPlayerId: msg.byPlayerId });
+    if (msg.byPlayerId === store.get('playerId')) return;
+    setRematchOfferedBy(msg.byPlayerId);
+  }
+
+  function handleRematchAccepted(msg: RematchAcceptedMessage) {
+    logger.info('Rematch accepted, navigating to new game', { oldGameId: msg.gameId, newGameId: msg.newGameId });
+    store.set('currentGame', null);
+    navigate(`/game/${msg.newGameId}`);
+  }
+
   function handleOfferDraw() {
     if (!gameId) return;
     logger.info('Offering draw', { gameId });
@@ -343,6 +367,19 @@ export default function GamePage() {
     logger.info('Declining draw', { gameId });
     setDrawOfferedBy(null);
     socketManager.send({ type: 'decline_draw', gameId });
+  }
+
+  function handleOfferRematch() {
+    if (!gameId) return;
+    logger.info('Offering rematch', { gameId });
+    socketManager.sendRematchOffer(gameId);
+  }
+
+  function handleAcceptRematch() {
+    if (!gameId) return;
+    logger.info('Accepting rematch', { gameId });
+    setRematchOfferedBy(null);
+    socketManager.sendRematchAccept(gameId);
   }
 
   const requestLegalMoves = useCallback(async (square: string) => {
@@ -654,6 +691,21 @@ export default function GamePage() {
               </div>
             </div>
           )}
+          {rematchOfferedBy && isFinished && (
+            <div className="waiting-overlay" style={{ background: 'rgba(0,0,0,0.75)' }}>
+              <div className="waiting-text" style={{ fontSize: 16, marginBottom: 16 }}>
+                {t('game.opponentRematch')}
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button className="btn btn-primary btn-sm" onClick={handleAcceptRematch}>
+                  {t('game.accept')}
+                </button>
+                <button className="btn btn-secondary btn-sm" onClick={() => setRematchOfferedBy(null)}>
+                  {t('game.decline')}
+                </button>
+              </div>
+            </div>
+          )}
         </Board>
         <div className="player-bar">
           <span className="player-name" style={{ gap: 8 }}>
@@ -760,7 +812,12 @@ export default function GamePage() {
                     {waiting && !isSpectator && <MenuItem label={t('game.abortGame')} onClick={handleAbort} />}
                   </>
                 )}
-                {isFinished && <MenuItem label={t('common.backToLobby')} onClick={() => navigate('/lobby')} />}
+                {isFinished && (
+                  <>
+                    {!isSpectator && <MenuItem label={t('result.rematch')} onClick={handleOfferRematch} />}
+                    <MenuItem label={t('common.backToLobby')} onClick={() => navigate('/lobby')} />
+                  </>
+                )}
                 <MenuItem label={t('common.copyGameId')} onClick={handleCopyId} />
               </div>
             )}

@@ -834,6 +834,110 @@ export function declineDraw(gameId: string, playerId: string): boolean {
 }
 
 /**
+ * In-memory map of gameId -> playerId who offered a rematch.
+ */
+const rematchOffers = new Map<string, string>();
+
+/**
+ * Offer a rematch after a finished game.  Notifies the other participant
+ * so their UI can show an accept button.
+ */
+export function offerRematch(gameId: string, playerId: string): boolean {
+  const game = games.get(gameId);
+  if (!game) {
+    logger.info('Rematch offer failed: gameId=' + gameId + ' not found');
+    return false;
+  }
+  const isFinished: ReadonlyArray<string> = ['checkmate', 'stalemate', 'resigned', 'draw'];
+  if (!isFinished.includes(game.status)) {
+    logger.info('Rematch offer failed: gameId=' + gameId + ' status=' + game.status);
+    return false;
+  }
+  const isPlayer = game.players.white === playerId || game.players.black === playerId;
+  if (!isPlayer) {
+    logger.info('Rematch offer failed: gameId=' + gameId + ' playerId=' + playerId + ' not a player');
+    return false;
+  }
+  if (rematchOffers.has(gameId)) {
+    logger.info('Rematch offer failed: gameId=' + gameId + ' already offered');
+    return false;
+  }
+
+  rematchOffers.set(gameId, playerId);
+  const otherPlayerId = game.players.white === playerId ? game.players.black : game.players.white;
+  if (otherPlayerId) {
+    sendToPlayer(otherPlayerId, { type: 'rematch_offered', gameId, byPlayerId: playerId });
+  }
+  logger.info('Rematch offered: gameId=' + gameId + ' by playerId=' + playerId);
+  return true;
+}
+
+/**
+ * Accept a pending rematch offer.  Creates a new game with the same
+ * visibility and clock settings but swapped colors, then notifies both
+ * players so their clients navigate to the new game.
+ */
+export function acceptRematch(
+  gameId: string,
+  playerId: string,
+): { success: boolean; error?: string; newGameId?: string } {
+  const offererId = rematchOffers.get(gameId);
+  if (!offererId) return { success: false, error: 'No pending rematch offer' };
+  if (offererId === playerId) return { success: false, error: 'Cannot accept your own rematch offer' };
+
+  const game = games.get(gameId);
+  if (!game) {
+    rematchOffers.delete(gameId);
+    return { success: false, error: 'Game not found' };
+  }
+
+  const isPlayer = game.players.white === playerId || game.players.black === playerId;
+  if (!isPlayer) return { success: false, error: 'You are not a player in this game' };
+
+  /* Swap colors for the rematch */
+  const newWhite = offererId === game.players.white ? game.players.black : game.players.white;
+  const newBlack = offererId === game.players.white ? game.players.white : game.players.black;
+
+  const newId = uuidv4();
+  const newGame: GameState = {
+    id: newId,
+    board: chess.createInitialBoard(),
+    turn: 'white',
+    status: 'active',
+    players: { white: newWhite!, black: newBlack! },
+    moveHistory: [],
+    boardHistory: [],
+    enPassantTarget: null,
+    castlingRights: {
+      white: { kingside: true, queenside: true },
+      black: { kingside: true, queenside: true },
+    },
+    lastMove: null,
+    winner: null,
+    createdAt: Date.now(),
+    visibility: game.visibility,
+    halfMoveClock: 0,
+  };
+  games.set(newId, newGame);
+  rematchOffers.delete(gameId);
+  broadcastGameListUpdate();
+
+  const enriched = enrichNames(newGame);
+  broadcastToGame(newId, { type: 'game_started', gameId: newId, game: enriched });
+
+  /* Tell both old-game participants to navigate to the new game */
+  const redirectMsg = { type: 'rematch_accepted', gameId, newGameId: newId };
+  const oldPlayers = game.players;
+  if (oldPlayers.white) sendToPlayer(oldPlayers.white, redirectMsg);
+  if (oldPlayers.black) sendToPlayer(oldPlayers.black, redirectMsg);
+
+  logger.info(
+    'Rematch accepted: oldGameId=' + gameId + ' newGameId=' + newId + ' white=' + newWhite + ' black=' + newBlack,
+  );
+  return { success: true, newGameId: newId };
+}
+
+/**
  * Cancel or clear a pending draw offer (e.g. when a move is made).
  */
 export function cancelDrawOffer(gameId: string): void {
