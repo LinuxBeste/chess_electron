@@ -1547,7 +1547,13 @@ function notifyFriendsOnline(playerId: string): void {
 }
 
 function notifyFriendsOffline(playerId: string): void {
-  sendToFriends(playerId, { type: 'friend_offline', playerId });
+  const player = players.get(playerId);
+  sendToFriends(playerId, {
+    type: 'friend_offline',
+    playerId,
+    username: player?.username ?? '?',
+    displayName: player?.displayName ?? '?',
+  });
   logger.info('Friend offline notified: playerId=' + playerId);
 }
 
@@ -1580,6 +1586,36 @@ export function broadcastFriendRequestAccepted(acceptorId: string, requesterId: 
     byDisplayName: acceptor.displayName,
   });
   logger.info('Friend request accepted broadcast: acceptor=' + acceptorId + ' requester=' + requesterId);
+}
+
+export function broadcastFriendRequestDeclined(declinerId: string, requesterId: string): void {
+  const decliner = players.get(declinerId);
+  if (!decliner) {
+    logger.info('broadcastFriendRequestDeclined: decliner not found declinerId=' + declinerId);
+    return;
+  }
+  sendToPlayer(requesterId, {
+    type: 'friend_request_declined',
+    byPlayerId: declinerId,
+    byUsername: decliner.username,
+    byDisplayName: decliner.displayName,
+  });
+  logger.info('Friend request declined broadcast: decliner=' + declinerId + ' requester=' + requesterId);
+}
+
+export function broadcastFriendRemoved(removerId: string, removedId: string): void {
+  const remover = players.get(removerId);
+  if (!remover) {
+    logger.info('broadcastFriendRemoved: remover not found removerId=' + removerId);
+    return;
+  }
+  sendToPlayer(removedId, {
+    type: 'friend_removed',
+    byPlayerId: removerId,
+    byUsername: remover.username,
+    byDisplayName: remover.displayName,
+  });
+  logger.info('Friend removed broadcast: remover=' + removerId + ' removed=' + removedId);
 }
 
 export function getFriendList(playerId: string): FriendInfo[] {

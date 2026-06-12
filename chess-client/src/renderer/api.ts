@@ -603,6 +603,19 @@ export async function declineFriendRequest(id: string): Promise<{ success: boole
   }
 }
 
+/* POST /friends/requests/:id/cancel — auth required. */
+export async function cancelFriendRequest(id: string): Promise<{ success: boolean }> {
+  logger.info('cancelFriendRequest called: id=' + id);
+  try {
+    const result = await request<{ success: boolean }>(`/friends/requests/${id}/cancel`, { method: 'POST' });
+    logger.info('cancelFriendRequest ok: id=' + id);
+    return result;
+  } catch (err) {
+    logger.error('cancelFriendRequest failed: id=' + id + ', ' + err);
+    throw err;
+  }
+}
+
 /* DELETE /friends/:friendId — auth required. */
 export async function removeFriend(friendId: string): Promise<{ success: boolean }> {
   logger.info('removeFriend called: friendId=' + friendId);

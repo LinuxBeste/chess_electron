@@ -58,6 +58,10 @@ export type TranslationKeys = {
     friendRequest: string;
     friendRequestFrom: string;
     friendRequestAccepted: string;
+    friendRequestDeclined: string;
+    removedBy: string;
+    cancel: string;
+    failedCancel: string;
     challengeAccepted: string;
     challengeDeclined: string;
     friendOnline: string;
@@ -521,6 +525,10 @@ export const en: TranslationKeys = {
     friendRequest: 'Friend Request',
     friendRequestFrom: '{name} sent you a friend request',
     friendRequestAccepted: '{name} accepted your friend request!',
+    friendRequestDeclined: '{name} declined your friend request',
+    removedBy: '{name} removed you as a friend',
+    cancel: 'Cancel',
+    failedCancel: 'Failed to cancel request',
     challengeAccepted: 'Challenge accepted!',
     challengeDeclined: 'Challenge declined',
     friendOnline: '{name} is now online',
@@ -985,6 +993,10 @@ export const de: TranslationKeys = {
     friendRequest: 'Freundschaftsanfrage',
     friendRequestFrom: '{name} hat dir eine Freundschaftsanfrage gesendet',
     friendRequestAccepted: '{name} hat deine Freundschaftsanfrage angenommen!',
+    friendRequestDeclined: '{name} hat deine Freundschaftsanfrage abgelehnt',
+    removedBy: '{name} hat dich als Freund entfernt',
+    cancel: 'Abbrechen',
+    failedCancel: 'Anfrage konnte nicht abgebrochen werden',
     challengeAccepted: 'Herausforderung angenommen!',
     challengeDeclined: 'Herausforderung abgelehnt',
     friendOnline: '{name} ist jetzt online',

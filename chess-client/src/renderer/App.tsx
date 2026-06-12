@@ -148,6 +148,7 @@ export default function App() {
     /* ─── Friend WS event handlers ─── */
     const unsubFriendOnline = socketManager.onFriendOnline((msg) => {
       logger.info('Friend online', { playerId: msg.playerId, currentGameId: msg.currentGameId });
+      store.toast(t('friends.friendOnline', { name: msg.displayName }), 'info');
       const cur = store.get('friends');
       store.set(
         'friends',
@@ -156,6 +157,7 @@ export default function App() {
     });
     const unsubFriendOffline = socketManager.onFriendOffline((msg) => {
       logger.info('Friend offline', { playerId: msg.playerId });
+      store.toast(t('friends.friendOffline', { name: msg.displayName || msg.playerId }), 'info');
       const cur = store.get('friends');
       store.set(
         'friends',
@@ -186,6 +188,23 @@ export default function App() {
         })
         .catch(() => {});
     });
+    const unsubFriendRequestDeclined = socketManager.onFriendRequestDeclined((msg) => {
+      logger.info('Friend request declined', { by: msg.byDisplayName });
+      store.toast(t('friends.friendRequestDeclined', { name: msg.byDisplayName }), 'info');
+      getFriendRequests()
+        .then((r) => {
+          store.set('incomingRequests', r.incoming);
+          store.set('outgoingRequests', r.outgoing);
+        })
+        .catch(() => {});
+    });
+    const unsubFriendRemoved = socketManager.onFriendRemoved((msg) => {
+      logger.info('Friend removed', { by: msg.byDisplayName });
+      store.toast(t('friends.removedBy', { name: msg.byDisplayName }), 'info');
+      getFriends()
+        .then((f) => store.set('friends', f))
+        .catch(() => {});
+    });
     const unsubChallenge = socketManager.onChallenge((msg) => {
       logger.info('Challenge received', {
         from: msg.fromDisplayName,
@@ -210,6 +229,8 @@ export default function App() {
       unsubFriendOffline();
       unsubFriendRequest();
       unsubFriendRequestAccepted();
+      unsubFriendRequestDeclined();
+      unsubFriendRemoved();
       unsubChallenge();
       unsubChallengeAccept();
       unsubChallengeDecline();

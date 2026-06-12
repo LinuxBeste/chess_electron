@@ -6,6 +6,7 @@ import {
   getFriendRequests,
   acceptFriendRequest,
   declineFriendRequest,
+  cancelFriendRequest,
   removeFriend,
   getFriends,
   createGame,
@@ -105,6 +106,17 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
     } catch (err: any) {
       logger.error('Failed to decline friend request', { requestId: id, error: err.message });
       store.toast(t('friends.failedDecline'), 'error');
+    }
+  }
+
+  async function handleCancel(id: string) {
+    try {
+      await cancelFriendRequest(id);
+      logger.info('Friend request cancelled', { requestId: id });
+      loadRequests();
+    } catch (err: any) {
+      logger.error('Failed to cancel friend request', { requestId: id, error: err.message });
+      store.toast(t('friends.failedCancel'), 'error');
     }
   }
 
@@ -270,7 +282,14 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
             </button>
           </div>
         )}
-        {!isIncoming && <span style={{ fontSize: 11, color: '#888', flexShrink: 0 }}>{t('friends.pending')}</span>}
+        {!isIncoming && (
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: '#888' }}>{t('friends.pending')}</span>
+            <button className="btn btn-xs btn-ghost" onClick={() => handleCancel(r.id)}>
+              {t('friends.cancel')}
+            </button>
+          </div>
+        )}
       </div>
     );
   }

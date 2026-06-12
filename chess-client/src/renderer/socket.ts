@@ -92,6 +92,8 @@ export interface FriendOnlineMessage {
 export interface FriendOfflineMessage {
   type: 'friend_offline';
   playerId: string;
+  username: string;
+  displayName: string;
 }
 
 export interface FriendRequestWsMessage {
@@ -104,6 +106,20 @@ export interface FriendRequestWsMessage {
 
 export interface FriendRequestAcceptedMessage {
   type: 'friend_request_accepted';
+  byPlayerId: string;
+  byUsername: string;
+  byDisplayName: string;
+}
+
+export interface FriendRequestDeclinedMessage {
+  type: 'friend_request_declined';
+  byPlayerId: string;
+  byUsername: string;
+  byDisplayName: string;
+}
+
+export interface FriendRemovedMessage {
+  type: 'friend_removed';
   byPlayerId: string;
   byUsername: string;
   byDisplayName: string;
@@ -165,6 +181,8 @@ type WsMessage =
   | FriendOfflineMessage
   | FriendRequestWsMessage
   | FriendRequestAcceptedMessage
+  | FriendRequestDeclinedMessage
+  | FriendRemovedMessage
   | ChallengeMessage
   | ChallengeAcceptMessage
   | ChallengeDeclineMessage
@@ -202,6 +220,8 @@ export type FriendOnlineHandler = (msg: FriendOnlineMessage) => void;
 export type FriendOfflineHandler = (msg: FriendOfflineMessage) => void;
 export type FriendRequestHandler = (msg: FriendRequestWsMessage) => void;
 export type FriendRequestAcceptedHandler = (msg: FriendRequestAcceptedMessage) => void;
+export type FriendRequestDeclinedHandler = (msg: FriendRequestDeclinedMessage) => void;
+export type FriendRemovedHandler = (msg: FriendRemovedMessage) => void;
 export type ChallengeHandler = (msg: ChallengeMessage) => void;
 export type ChallengeAcceptHandler = (msg: ChallengeAcceptMessage) => void;
 export type ChallengeDeclineHandler = (msg: ChallengeDeclineMessage) => void;
@@ -234,6 +254,8 @@ class SocketManager {
   private friendOfflineHandlers = new Set<FriendOfflineHandler>();
   private friendRequestHandlers = new Set<FriendRequestHandler>();
   private friendRequestAcceptedHandlers = new Set<FriendRequestAcceptedHandler>();
+  private friendRequestDeclinedHandlers = new Set<FriendRequestDeclinedHandler>();
+  private friendRemovedHandlers = new Set<FriendRemovedHandler>();
   private challengeHandlers = new Set<ChallengeHandler>();
   private challengeAcceptHandlers = new Set<ChallengeAcceptHandler>();
   private challengeDeclineHandlers = new Set<ChallengeDeclineHandler>();
@@ -327,6 +349,12 @@ class SocketManager {
             break;
           case 'friend_request_accepted':
             this.friendRequestAcceptedHandlers.forEach((h) => h(msg as FriendRequestAcceptedMessage));
+            break;
+          case 'friend_request_declined':
+            this.friendRequestDeclinedHandlers.forEach((h) => h(msg as FriendRequestDeclinedMessage));
+            break;
+          case 'friend_removed':
+            this.friendRemovedHandlers.forEach((h) => h(msg as FriendRemovedMessage));
             break;
           case 'challenge':
             this.challengeHandlers.forEach((h) => h(msg as ChallengeMessage));
@@ -493,6 +521,22 @@ class SocketManager {
     this.friendRequestAcceptedHandlers.add(handler);
     return () => {
       this.friendRequestAcceptedHandlers.delete(handler);
+    };
+  }
+
+  onFriendRequestDeclined(handler: FriendRequestDeclinedHandler): () => void {
+    logger.info('Socket: friend_request_declined handler registered');
+    this.friendRequestDeclinedHandlers.add(handler);
+    return () => {
+      this.friendRequestDeclinedHandlers.delete(handler);
+    };
+  }
+
+  onFriendRemoved(handler: FriendRemovedHandler): () => void {
+    logger.info('Socket: friend_removed handler registered');
+    this.friendRemovedHandlers.add(handler);
+    return () => {
+      this.friendRemovedHandlers.delete(handler);
     };
   }
 

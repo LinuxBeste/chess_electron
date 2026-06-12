@@ -649,7 +649,32 @@ router.post('/friends/requests/:id/decline', authMiddleware, banCheckMiddleware,
     return;
   }
   db.updateFriendRequestStatus(fr.id, 'declined');
+  game.broadcastFriendRequestDeclined(req.player.id, fr.from_user_id);
   logger.info('Friend request declined: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
+  res.json({ success: true });
+});
+
+/* Cancel outgoing friend request (by sender) */
+router.post('/friends/requests/:id/cancel', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  if (!req.player.isRegistered) {
+    res.status(403).json({ error: 'Only registered users can cancel friend requests' });
+    return;
+  }
+  const fr = db.getFriendRequest(req.params.id);
+  if (!fr) {
+    res.status(404).json({ error: 'Friend request not found' });
+    return;
+  }
+  if (fr.from_user_id !== req.player.id) {
+    res.status(403).json({ error: 'Not your friend request to cancel' });
+    return;
+  }
+  if (fr.status !== 'pending') {
+    res.status(400).json({ error: 'Friend request is no longer pending' });
+    return;
+  }
+  db.updateFriendRequestStatus(fr.id, 'cancelled');
+  logger.info('Friend request cancelled: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
   res.json({ success: true });
 });
 
@@ -664,6 +689,7 @@ router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, (req: Re
     return;
   }
   db.removeFriendRelationship(req.player.id, req.params.friendId);
+  game.broadcastFriendRemoved(req.player.id, req.params.friendId);
   logger.info('Friend removed: playerId=' + req.player.id + ' friendId=' + req.params.friendId);
   res.json({ success: true });
 });
