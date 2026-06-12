@@ -123,6 +123,12 @@ export interface ChallengeDeclineMessage {
   fromPlayerId: string;
 }
 
+export interface GameListUpdateMessage {
+  type: 'game_list_update';
+  openGames: import('../types').GameState[];
+  activeGames: import('../types').GameState[];
+}
+
 type WsMessage =
   | MoveMessage
   | GameOverMessage
@@ -137,7 +143,8 @@ type WsMessage =
   | FriendRequestAcceptedMessage
   | ChallengeMessage
   | ChallengeAcceptMessage
-  | ChallengeDeclineMessage;
+  | ChallengeDeclineMessage
+  | GameListUpdateMessage;
 
 /** Handler type for move events */
 export type MoveHandler = (msg: MoveMessage) => void;
@@ -168,6 +175,7 @@ export type FriendRequestAcceptedHandler = (msg: FriendRequestAcceptedMessage) =
 export type ChallengeHandler = (msg: ChallengeMessage) => void;
 export type ChallengeAcceptHandler = (msg: ChallengeAcceptMessage) => void;
 export type ChallengeDeclineHandler = (msg: ChallengeDeclineMessage) => void;
+export type GameListUpdateHandler = (msg: GameListUpdateMessage) => void;
 
 /** Maximum number of reconnect attempts before giving up */
 const MAX_RETRIES = 5;
@@ -196,6 +204,7 @@ class SocketManager {
   private challengeHandlers = new Set<ChallengeHandler>();
   private challengeAcceptHandlers = new Set<ChallengeAcceptHandler>();
   private challengeDeclineHandlers = new Set<ChallengeDeclineHandler>();
+  private gameListUpdateHandlers = new Set<GameListUpdateHandler>();
   private serverUrl = 'http://localhost:3000';
 
   /** Set a custom server URL for the WebSocket connection */
@@ -288,6 +297,9 @@ class SocketManager {
             break;
           case 'challenge_decline':
             this.challengeDeclineHandlers.forEach((h) => h(msg as ChallengeDeclineMessage));
+            break;
+          case 'game_list_update':
+            this.gameListUpdateHandlers.forEach((h) => h(msg as GameListUpdateMessage));
             break;
         }
       } catch {
@@ -457,6 +469,14 @@ class SocketManager {
     this.challengeDeclineHandlers.add(handler);
     return () => {
       this.challengeDeclineHandlers.delete(handler);
+    };
+  }
+
+  onGameListUpdate(handler: GameListUpdateHandler): () => void {
+    logger.info('Socket: game_list_update handler registered');
+    this.gameListUpdateHandlers.add(handler);
+    return () => {
+      this.gameListUpdateHandlers.delete(handler);
     };
   }
 }

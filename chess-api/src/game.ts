@@ -325,6 +325,24 @@ function sendToSpectators(gameId: string, message: Record<string, unknown>): voi
   }
 }
 
+function broadcastGameListUpdate(): void {
+  const openGames = Array.from(games.values())
+    .filter((g) => g.status === 'waiting' && g.visibility === 'public')
+    .map(enrichNames);
+  const activeGames = Array.from(games.values())
+    .filter((g) => g.status === 'active')
+    .map(enrichNames);
+  const message = { type: 'game_list_update', openGames, activeGames };
+  const data = JSON.stringify(message);
+  for (const conns of wsConnections.values()) {
+    for (const ws of conns) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(data);
+      }
+    }
+  }
+}
+
 /**
  * Send a message to both participants of a game.
  *
@@ -410,6 +428,7 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
   };
   games.set(id, game);
   logger.info('Game created: gameId=' + id + ' white=' + playerId + ' visibility=' + visibility);
+  broadcastGameListUpdate();
   return enrichNames(game);
 }
 
@@ -463,6 +482,7 @@ export function abortGame(gameId: string, playerId: string): { success: boolean;
   if (game.players.black) sendToPlayer(game.players.black, { type: 'game_aborted', gameId });
 
   games.delete(gameId);
+  broadcastGameListUpdate();
   logger.info('Game aborted: gameId=' + gameId + ' by playerId=' + playerId);
   return { success: true };
 }
@@ -500,6 +520,7 @@ export function joinGame(gameId: string, playerId: string): { success: boolean; 
     gameId,
     game: enriched,
   });
+  broadcastGameListUpdate();
 
   return { success: true, game: enriched };
 }
@@ -642,6 +663,7 @@ export function makeMove(
 
   if (isTerminal) {
     recordGameResult(game, winner);
+    broadcastGameListUpdate();
   }
 
   const moveLog = notation || from + '-' + to;
@@ -685,6 +707,7 @@ export function resignGame(gameId: string, playerId: string): { success: boolean
   });
 
   recordGameResult(game, winner === 'white' ? 'white' : winner === 'black' ? 'black' : null);
+  broadcastGameListUpdate();
 
   logger.info('Resign: gameId=' + gameId + ' player=' + playerId + ' winner=' + winner);
   return { success: true, state: enrichNames(game) };
@@ -770,6 +793,7 @@ export function acceptDraw(gameId: string, playerId: string): { success: boolean
     result: 'draw',
     reason: 'Draw by agreement',
   });
+  broadcastGameListUpdate();
 
   logger.info('Draw accepted: gameId=' + gameId + ' by playerId=' + playerId);
   return { success: true };
@@ -1212,6 +1236,7 @@ export function kickPlayer(playerId: string): { success: true } | { success: fal
       games.delete(gameId);
     }
   }
+  broadcastGameListUpdate();
 
   logger.info('Player kicked: playerId=' + playerId);
   return { success: true };
@@ -1234,6 +1259,7 @@ export function endGame(gameId: string): { success: true } | { success: false; e
   if (g.players.white) sendToPlayer(g.players.white, message);
   if (g.players.black) sendToPlayer(g.players.black, message);
   sendToSpectators(gameId, message);
+  broadcastGameListUpdate();
 
   logger.info('Game ended by admin: gameId=' + gameId);
   return { success: true };

@@ -7,7 +7,7 @@
  * and a right sidebar with local-play / create / join / history cards.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import logger from '../logger';
 import { store } from '../store';
 import * as api from '../api';
@@ -15,6 +15,8 @@ import { useNavigate } from 'react-router-dom';
 import type { GameState } from '../../types';
 import { t } from '../translate';
 import { avatarSrc } from '../api';
+import { socketManager } from '../socket';
+import type { GameListUpdateMessage } from '../socket';
 import PlayerProfileDialog from '../components/PlayerProfileDialog';
 
 export default function LobbyPage() {
@@ -29,34 +31,37 @@ export default function LobbyPage() {
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const [liveStatus, setLiveStatus] = useState('');
 
-  /* Poll the server for open and active games. Errors are surfaced as status
-      messages so the UI degrades gracefully when the server is unreachable. */
-  const poll = useCallback(async () => {
-    logger.debug('Polling open games...');
-    try {
-      const games = await api.getOpenGames();
-      setOpenGames(games);
-      setStatusMsg(games.length === 0 ? t('lobby.noOpenGames') : '');
-      const active = await api.getActiveGames();
-      setLiveGames(active);
-      setLiveStatus(active.length === 0 ? t('lobby.noActiveGames') : '');
-      logger.debug('Poll result', { openCount: games.length, activeCount: active.length });
-    } catch {
-      logger.warn('Polling failed: server unreachable');
-      setStatusMsg(t('lobby.cannotConnect'));
-    }
-  }, []);
-
   useEffect(() => {
     logger.info('LobbyPage mounted');
     if (store.get('offline')) return;
-    poll();
-    const interval = setInterval(poll, 3000);
+
+    async function initialFetch() {
+      try {
+        const games = await api.getOpenGames();
+        setOpenGames(games);
+        setStatusMsg(games.length === 0 ? t('lobby.noOpenGames') : '');
+        const active = await api.getActiveGames();
+        setLiveGames(active);
+        setLiveStatus(active.length === 0 ? t('lobby.noActiveGames') : '');
+      } catch {
+        logger.warn('Initial fetch failed: server unreachable');
+        setStatusMsg(t('lobby.cannotConnect'));
+      }
+    }
+    initialFetch();
+
+    const unsubscribe = socketManager.onGameListUpdate((msg: GameListUpdateMessage) => {
+      setOpenGames(msg.openGames);
+      setLiveGames(msg.activeGames);
+      setStatusMsg(msg.openGames.length === 0 ? t('lobby.noOpenGames') : '');
+      setLiveStatus(msg.activeGames.length === 0 ? t('lobby.noActiveGames') : '');
+    });
+
     return () => {
       logger.info('LobbyPage unmounting');
-      clearInterval(interval);
+      unsubscribe();
     };
-  }, [poll]);
+  }, []);
 
   /* If the player was in an active game (e.g. after a page refresh), resume it */
   useEffect(() => {
