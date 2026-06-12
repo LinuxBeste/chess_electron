@@ -217,6 +217,11 @@ export type TranslationKeys = {
     title: string;
     create: string;
     none: string;
+    private: string;
+    public: string;
+    joinByCode: string;
+    shareCode: string;
+    codeCopied: string;
   };
   stats: {
     title: string;
@@ -700,6 +705,11 @@ export const en: TranslationKeys = {
     title: 'Tournaments',
     create: 'Create Tournament',
     none: 'No tournaments yet',
+    private: 'Private',
+    public: 'Public',
+    joinByCode: 'Join by Code',
+    shareCode: 'Share Code: {code}',
+    codeCopied: 'Code copied!',
   },
   stats: {
     title: 'Stats',
@@ -1184,6 +1194,11 @@ export const de: TranslationKeys = {
     title: 'Turniere',
     create: 'Turnier erstellen',
     none: 'Noch keine Turniere',
+    private: 'Privat',
+    public: 'Öffentlich',
+    joinByCode: 'Per Code beitreten',
+    shareCode: 'Code teilen: {code}',
+    codeCopied: 'Code kopiert!',
   },
   stats: {
     title: 'Statistik',

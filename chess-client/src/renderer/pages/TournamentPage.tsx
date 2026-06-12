@@ -5,6 +5,234 @@ import { store } from '../store';
 import { t } from '../translate';
 import { useNavigate } from 'react-router-dom';
 
+function CreateTournamentMenu({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState('');
+  const [maxPlayers, setMaxPlayers] = useState(8);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  async function handleCreate() {
+    if (!name.trim()) return;
+    setCreating(true);
+    try {
+      const result = await api.createTournament(name.trim(), maxPlayers, isPrivate);
+      store.toast('Tournament created!', 'info');
+      if (result.join_code) {
+        await navigator.clipboard.writeText(result.join_code);
+        store.toast('Code copied: ' + result.join_code, 'info');
+      }
+      onClose();
+      window.location.hash = '#/tournaments';
+    } catch (err: any) {
+      store.toast(err.message || 'Failed to create', 'error');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div
+      className="card"
+      style={{
+        position: 'absolute',
+        top: '100%',
+        right: 0,
+        width: 340,
+        padding: 16,
+        marginTop: 6,
+        zIndex: 100,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      }}
+    >
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4, fontWeight: 600 }}>
+          Tournament Name
+        </label>
+        <input
+          className="input"
+          type="text"
+          placeholder="Enter name..."
+          style={{ width: '100%', fontSize: 13 }}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+          autoFocus
+        />
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4, fontWeight: 600 }}>
+          Max Players
+        </label>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[2, 4, 8, 16, 32, 64].map((n) => (
+            <button
+              key={n}
+              className={`btn btn-sm ${maxPlayers === n ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ flex: 1, fontSize: 11, padding: '4px 0' }}
+              onClick={() => setMaxPlayers(n)}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4, fontWeight: 600 }}>
+          Visibility
+        </label>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            className={`btn btn-sm ${!isPrivate ? 'btn-primary' : 'btn-ghost'}`}
+            style={{ flex: 1, fontSize: 11, padding: '4px 0' }}
+            onClick={() => setIsPrivate(false)}
+          >
+            {t('tournaments.public')}
+          </button>
+          <button
+            className={`btn btn-sm ${isPrivate ? 'btn-primary' : 'btn-ghost'}`}
+            style={{ flex: 1, fontSize: 11, padding: '4px 0' }}
+            onClick={() => setIsPrivate(true)}
+          >
+            {t('tournaments.private')}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button
+          className="btn btn-primary btn-sm"
+          style={{ flex: 1, fontSize: 12 }}
+          onClick={handleCreate}
+          disabled={creating || !name.trim()}
+        >
+          {creating ? 'Creating...' : t('tournaments.create')}
+        </button>
+        <button
+          className="btn btn-ghost btn-sm"
+          style={{ fontSize: 12 }}
+          onClick={onClose}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ManageTournamentDialog({ tournament, onClose, onSaved }: { tournament: any; onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState(tournament.name || '');
+  const [maxPlayers, setMaxPlayers] = useState(tournament.max_players || 8);
+  const [isPrivate, setIsPrivate] = useState(tournament.is_private === 1);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleSave() {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      await api.updateTournament(tournament.id, { name: name.trim(), maxPlayers, isPrivate });
+      store.toast('Tournament updated!', 'info');
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      store.toast(err.message || 'Failed to update', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm('Delete this tournament? This cannot be undone.')) return;
+    setDeleting(true);
+    try {
+      await api.deleteTournament(tournament.id);
+      store.toast('Tournament deleted', 'info');
+      onClose();
+      onSaved();
+    } catch (err: any) {
+      store.toast(err.message || 'Failed to delete', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function handleOverlayClick(e: React.MouseEvent) {
+    if (e.target === e.currentTarget) onClose();
+  }
+
+  return (
+    <div className="modal-overlay" onClick={handleOverlayClick}>
+      <div
+        className="modal-card"
+        style={{ width: 420, maxWidth: '95vw', padding: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 0' }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#e0e0e0', margin: 0 }}>Manage Tournament</h2>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', color: '#888', fontSize: 18, cursor: 'pointer', padding: '4px 8px', borderRadius: 4 }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div style={{ padding: '20px 24px' }}>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4, fontWeight: 600 }}>Tournament Name</label>
+            <input className="input" type="text" style={{ width: '100%', fontSize: 13 }} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4, fontWeight: 600 }}>Max Players</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[2, 4, 8, 16, 32, 64].map((n) => (
+                <button
+                  key={n}
+                  className={`btn btn-sm ${maxPlayers === n ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ flex: 1, fontSize: 11, padding: '4px 0' }}
+                  onClick={() => setMaxPlayers(n)}
+                >{n}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4, fontWeight: 600 }}>Visibility</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                className={`btn btn-sm ${!isPrivate ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ flex: 1, fontSize: 11, padding: '4px 0' }}
+                onClick={() => setIsPrivate(false)}
+              >{t('tournaments.public')}</button>
+              <button
+                className={`btn btn-sm ${isPrivate ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ flex: 1, fontSize: 11, padding: '4px 0' }}
+                onClick={() => setIsPrivate(true)}
+              >{t('tournaments.private')}</button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-primary btn-sm" style={{ flex: 1, fontSize: 12 }} onClick={handleSave} disabled={saving || !name.trim()}>
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }} onClick={onClose}>Cancel</button>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border)', marginTop: 16, paddingTop: 16 }}>
+            <button className="btn btn-sm" style={{ fontSize: 12, color: '#e74c3c', borderColor: '#e74c3c' }} onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Deleting...' : 'Delete Tournament'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TournamentPage() {
   const navigate = useNavigate();
   const myId = store.get('playerId');
@@ -12,12 +240,21 @@ export default function TournamentPage() {
   const [selected, setSelected] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [createName, setCreateName] = useState('');
-  const [createMax, setCreateMax] = useState(8);
+  const [showManage, setShowManage] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [joiningCode, setJoiningCode] = useState(false);
 
   useEffect(() => {
     load();
   }, []);
+
+  function handleToggleCreate() {
+    setShowCreate((v) => !v);
+  }
+
+  function handleCloseCreate() {
+    setShowCreate(false);
+  }
 
   async function load() {
     setLoading(true);
@@ -70,17 +307,34 @@ export default function TournamentPage() {
     }
   }
 
-  async function handleCreate() {
-    if (!createName.trim()) return;
+  async function handleJoinByCode() {
+    const code = joinCode.trim().toUpperCase();
+    if (!code) return;
+    setJoiningCode(true);
     try {
-      const t = await api.createTournament(createName.trim(), createMax);
-      store.toast('Tournament created!', 'info');
-      setShowCreate(false);
-      setCreateName('');
-      load();
+      const t = await api.joinTournamentByCode(code);
+      store.toast('Joined tournament!', 'info');
+      setJoinCode('');
       openDetails(t.id);
     } catch (err: any) {
-      store.toast(err.message || 'Failed to create', 'error');
+      store.toast(err.message || 'Invalid code', 'error');
+    } finally {
+      setJoiningCode(false);
+    }
+  }
+
+  function handleCopyCode() {
+    if (selected?.join_code) {
+      navigator.clipboard.writeText(selected.join_code);
+      store.toast(t('tournaments.codeCopied'), 'info');
+    }
+  }
+
+  function handleManageSaved() {
+    if (selected) {
+      openDetails(selected.id);
+    } else {
+      load();
     }
   }
 
@@ -122,17 +376,36 @@ export default function TournamentPage() {
   }
 
   if (selected) {
+    const isCreator = selected.created_by === myId;
     return (
       <div className="page-container" style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0 16px' }}>
           <button className="btn btn-ghost btn-sm" onClick={() => setSelected(null)}>← Back</button>
           <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{selected.name}</h2>
           <span className={`badge badge-${selected.status}`}>{selected.status}</span>
+          {selected.is_private === 1 && (
+            <span className="badge badge-private" style={{ fontSize: 10 }}>{t('tournaments.private')}</span>
+          )}
+          {isCreator && (
+            <span style={{ fontSize: 11, color: 'var(--primary)', marginLeft: 4 }}>Creator</span>
+          )}
         </div>
 
         <div style={{ fontSize: 13, color: '#888', marginBottom: 16 }}>
           Players: {selected.participantCount || selected.participants?.length || 0} / {selected.max_players}
         </div>
+
+        {selected.join_code && (
+          <div
+            className="card"
+            style={{ padding: '12px 16px', marginBottom: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+            onClick={handleCopyCode}
+          >
+            <span style={{ fontSize: 11, color: '#888' }}>Share Code:</span>
+            <code style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)', letterSpacing: 1 }}>{selected.join_code}</code>
+            <span style={{ fontSize: 11, color: '#555', marginLeft: 'auto' }}>Click to copy</span>
+          </div>
+        )}
 
         {selected.status === 'waiting' && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -146,11 +419,12 @@ export default function TournamentPage() {
                 <button className="btn btn-ghost btn-sm" onClick={() => handleLeave(selected.id)}>
                   {t('friends.remove')}
                 </button>
-                {selected.created_by === myId && (
-                  <button className="btn btn-primary btn-sm" onClick={() => handleStart(selected.id)}>
-                    Start
-                  </button>
-                )}
+              </>
+            )}
+            {isCreator && (
+              <>
+                <button className="btn btn-primary btn-sm" onClick={() => handleStart(selected.id)}>Start</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setShowManage(true)}>Manage</button>
               </>
             )}
           </div>
@@ -171,6 +445,14 @@ export default function TournamentPage() {
             {renderBracket(selected.matches)}
           </>
         )}
+
+        {showManage && (
+          <ManageTournamentDialog
+            tournament={selected}
+            onClose={() => setShowManage(false)}
+            onSaved={handleManageSaved}
+          />
+        )}
       </div>
     );
   }
@@ -179,35 +461,32 @@ export default function TournamentPage() {
     <div className="page-container" style={{ maxWidth: 800, margin: '0 auto', padding: '0 16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '24px 0 16px' }}>
         <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{t('tournaments.title')}</h2>
-        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(!showCreate)}>
-          {t('tournaments.create')}
-        </button>
-      </div>
-
-      {showCreate && (
-        <div className="card" style={{ padding: 16, marginBottom: 16 }}>
-          <input
-            className="input"
-            type="text"
-            placeholder="Tournament name"
-            style={{ width: '100%', marginBottom: 8, fontSize: 13 }}
-            value={createName}
-            onChange={(e) => setCreateName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-          />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 12, color: '#888' }}>Max players:</span>
-            <select className="input" style={{ width: 80, fontSize: 12 }} value={createMax} onChange={(e) => setCreateMax(parseInt(e.target.value))}>
-              {[2, 4, 8, 16, 32, 64].map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
-          </div>
-          <button className="btn btn-primary btn-sm" onClick={handleCreate}>
+        <div style={{ position: 'relative' }}>
+          <button className="btn btn-primary btn-sm" onClick={handleToggleCreate}>
             {t('tournaments.create')}
           </button>
+          {showCreate && <CreateTournamentMenu onClose={handleCloseCreate} />}
         </div>
-      )}
+      </div>
+
+      <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
+        <input
+          className="input"
+          type="text"
+          placeholder={t('tournaments.joinByCode') + '...'}
+          style={{ flex: 1, fontSize: 13 }}
+          value={joinCode}
+          onChange={(e) => setJoinCode(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleJoinByCode()}
+        />
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={handleJoinByCode}
+          disabled={joiningCode || !joinCode.trim()}
+        >
+          {joiningCode ? '...' : t('tournaments.joinByCode')}
+        </button>
+      </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>{t('common.loading')}</div>
@@ -223,7 +502,12 @@ export default function TournamentPage() {
               onClick={() => openDetails(t.id)}
             >
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 500, fontSize: 14 }}>{t.name}</div>
+                <div style={{ fontWeight: 500, fontSize: 14 }}>
+                  {t.name}
+                  {t.created_by === myId && (
+                    <span style={{ fontSize: 10, color: 'var(--primary)', marginLeft: 6, fontWeight: 400 }}>Created by you</span>
+                  )}
+                </div>
                 <div style={{ fontSize: 11, color: 'var(--muted)' }}>
                   {t.participantCount || 0} players — {t.status}
                 </div>

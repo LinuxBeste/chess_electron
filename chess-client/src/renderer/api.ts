@@ -251,10 +251,10 @@ export async function getArchivedGame(gameId: string): Promise<any> {
 
 /* ─── Tournaments ─── */
 
-export async function createTournament(name: string, maxPlayers: number): Promise<any> {
+export async function createTournament(name: string, maxPlayers: number, isPrivate?: boolean): Promise<any> {
   return request('/tournaments', {
     method: 'POST',
-    body: JSON.stringify({ name, maxPlayers }),
+    body: JSON.stringify({ name, maxPlayers, isPrivate }),
   });
 }
 
@@ -270,8 +270,26 @@ export async function joinTournament(id: string): Promise<any> {
   return request('/tournaments/' + id + '/join', { method: 'POST' });
 }
 
+export async function joinTournamentByCode(code: string): Promise<any> {
+  return request('/tournaments/join-by-code', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  });
+}
+
 export async function leaveTournament(id: string): Promise<any> {
   return request('/tournaments/' + id + '/leave', { method: 'POST' });
+}
+
+export async function updateTournament(id: string, data: { name?: string; maxPlayers?: number; isPrivate?: boolean }): Promise<any> {
+  return request('/tournaments/' + id, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteTournament(id: string): Promise<any> {
+  return request('/tournaments/' + id, { method: 'DELETE' });
 }
 
 export async function startTournament(id: string): Promise<any> {

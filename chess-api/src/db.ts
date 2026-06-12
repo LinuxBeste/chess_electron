@@ -105,6 +105,8 @@ function migrate(): void {
       status TEXT NOT NULL DEFAULT 'waiting',
       created_by TEXT NOT NULL REFERENCES users(id),
       max_players INTEGER NOT NULL DEFAULT 8,
+      is_private INTEGER NOT NULL DEFAULT 0,
+      join_code TEXT,
       created_at INTEGER NOT NULL,
       started_at INTEGER,
       completed_at INTEGER,
@@ -135,6 +137,18 @@ function migrate(): void {
     CREATE INDEX IF NOT EXISTS idx_tournament_participants_tournament ON tournament_participants(tournament_id);
     CREATE INDEX IF NOT EXISTS idx_tournament_matches_tournament ON tournament_matches(tournament_id);
   `);
+
+  try {
+    db.exec(`ALTER TABLE tournaments ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0`);
+  } catch {
+    /* column already exists */
+  }
+
+  try {
+    db.exec(`ALTER TABLE tournaments ADD COLUMN join_code TEXT`);
+  } catch {
+    /* column already exists */
+  }
 }
 
 export interface DbUser {
@@ -508,18 +522,32 @@ export function getPlayerWinLossDraw(playerId: string): { wins: number; losses: 
 
 /* ─── Tournaments ─── */
 
-export function createTournament(name: string, createdBy: string, maxPlayers: number): { id: string } {
+export function createTournament(name: string, createdBy: string, maxPlayers: number, isPrivate?: boolean): { id: string; joinCode?: string } {
   const d = getDb();
   const id = crypto.randomUUID();
+  const joinCode = isPrivate ? crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase() : undefined;
   d.prepare(
-    'INSERT INTO tournaments (id, name, status, created_by, max_players, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-  ).run(id, name, 'waiting', createdBy, maxPlayers, Date.now());
-  return { id };
+    'INSERT INTO tournaments (id, name, status, created_by, max_players, is_private, join_code, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, name, 'waiting', createdBy, maxPlayers, isPrivate ? 1 : 0, joinCode, Date.now());
+  return { id, joinCode };
 }
 
 export function getTournament(id: string): any | undefined {
   const d = getDb();
   return d.prepare('SELECT * FROM tournaments WHERE id = ?').get(id);
+}
+
+export function getTournamentByJoinCode(code: string): any | undefined {
+  const d = getDb();
+  return d.prepare('SELECT * FROM tournaments WHERE join_code = ?').get(code);
+}
+
+export function getPublicTournaments(status?: string): any[] {
+  const d = getDb();
+  if (status) {
+    return d.prepare('SELECT * FROM tournaments WHERE status = ? AND is_private = 0 ORDER BY created_at DESC').all(status);
+  }
+  return d.prepare('SELECT * FROM tournaments WHERE is_private = 0 ORDER BY created_at DESC').all();
 }
 
 export function getTournaments(status?: string): any[] {
@@ -569,6 +597,18 @@ export function updateTournamentStatus(id: string, status: string, startedAt?: n
   if (winnerId) { updates.push('winner_id = ?'); params.push(winnerId); }
   params.push(id);
   d.prepare(`UPDATE tournaments SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+}
+
+export function updateTournamentDetails(id: string, name: string, maxPlayers: number, isPrivate: number): void {
+  const d = getDb();
+  d.prepare('UPDATE tournaments SET name = ?, max_players = ?, is_private = ? WHERE id = ?').run(name, maxPlayers, isPrivate, id);
+}
+
+export function deleteTournament(id: string): void {
+  const d = getDb();
+  d.prepare('DELETE FROM tournament_participants WHERE tournament_id = ?').run(id);
+  d.prepare('DELETE FROM tournament_matches WHERE tournament_id = ?').run(id);
+  d.prepare('DELETE FROM tournaments WHERE id = ?').run(id);
 }
 
 export function getTournamentMatches(tournamentId: string): any[] {

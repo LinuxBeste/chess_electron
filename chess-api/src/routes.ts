@@ -764,13 +764,18 @@ router.post('/tournaments', authMiddleware, banCheckMiddleware, (req: Request, r
   const name = (req.body.name as string || '').trim();
   if (!name) { res.status(400).json({ error: 'Tournament name is required' }); return; }
   const maxPlayers = Math.max(2, Math.min(64, parseInt(req.body.maxPlayers as string) || 8));
-  const t = db.createTournament(name, req.player.id, maxPlayers);
+  const isPrivate = req.body.isPrivate === true;
+  const t = db.createTournament(name, req.player.id, maxPlayers, isPrivate);
   db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, 0);
-  res.status(201).json(db.getTournament(t.id));
+  const tournament = db.getTournament(t.id);
+  if (t.joinCode) {
+    tournament.join_code = t.joinCode;
+  }
+  res.status(201).json(tournament);
 });
 
 router.get('/tournaments', (_req: Request, res: Response) => {
-  const tournaments = db.getTournaments();
+  const tournaments = db.getPublicTournaments();
   const enriched = tournaments.map((t: any) => ({
     ...t,
     participantCount: db.getParticipantCount(t.id),
@@ -778,12 +783,36 @@ router.get('/tournaments', (_req: Request, res: Response) => {
   res.json(enriched);
 });
 
+router.post('/tournaments/join-by-code', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  if (!req.player.isRegistered) {
+    res.status(403).json({ error: 'Only registered users can join tournaments' });
+    return;
+  }
+  const code = (req.body.code as string || '').trim().toUpperCase();
+  if (!code) { res.status(400).json({ error: 'Join code is required' }); return; }
+  const t = db.getTournamentByJoinCode(code);
+  if (!t) { res.status(404).json({ error: 'Invalid join code' }); return; }
+  if (t.status !== 'waiting') { res.status(400).json({ error: 'Tournament is not open' }); return; }
+  if (db.isTournamentParticipant(t.id, req.player.id)) { res.status(409).json({ error: 'Already joined' }); return; }
+  const count = db.getParticipantCount(t.id);
+  if (count >= t.max_players) { res.status(400).json({ error: 'Tournament is full' }); return; }
+  db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, count);
+  logger.info('Tournament joined via code: tournamentId=' + t.id + ' playerId=' + req.player.id);
+  res.json(db.getTournament(t.id));
+});
+
 router.get('/tournaments/:id', (req: Request, res: Response) => {
   const t = db.getTournament(req.params.id);
   if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
   const participants = db.getTournamentParticipants(req.params.id);
   const matches = db.getTournamentMatches(req.params.id);
-  res.json({ ...t, participants, matches, participantCount: participants.length });
+  const result: any = { ...t, participants, matches, participantCount: participants.length };
+  /* Only show join_code to the creator */
+  const playerId = (req as any).player?.id;
+  if (playerId !== t.created_by) {
+    delete result.join_code;
+  }
+  res.json(result);
 });
 
 router.post('/tournaments/:id/join', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
@@ -811,6 +840,38 @@ router.post('/tournaments/:id/leave', authMiddleware, banCheckMiddleware, (req: 
   if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
   if (t.status !== 'waiting') { res.status(400).json({ error: 'Tournament already started' }); return; }
   db.removeTournamentParticipant(t.id, req.player.id);
+  res.json({ success: true });
+});
+
+router.put('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  if (!req.player.isRegistered) {
+    res.status(403).json({ error: 'Only registered users can edit tournaments' });
+    return;
+  }
+  const t = db.getTournament(req.params.id);
+  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
+  if (t.created_by !== req.player.id) { res.status(403).json({ error: 'Only the creator can edit' }); return; }
+  if (t.status !== 'waiting') { res.status(400).json({ error: 'Cannot edit a started tournament' }); return; }
+  const name = (req.body.name as string || '').trim();
+  if (!name) { res.status(400).json({ error: 'Tournament name is required' }); return; }
+  const maxPlayers = Math.max(2, Math.min(64, parseInt(req.body.maxPlayers as string) || t.max_players));
+  const isPrivate = req.body.isPrivate === true ? 1 : 0;
+  db.updateTournamentDetails(t.id, name, maxPlayers, isPrivate);
+  logger.info('Tournament updated: tournamentId=' + t.id);
+  res.json(db.getTournament(t.id));
+});
+
+router.delete('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+  if (!req.player.isRegistered) {
+    res.status(403).json({ error: 'Only registered users can delete tournaments' });
+    return;
+  }
+  const t = db.getTournament(req.params.id);
+  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
+  if (t.created_by !== req.player.id) { res.status(403).json({ error: 'Only the creator can delete' }); return; }
+  if (t.status !== 'waiting') { res.status(400).json({ error: 'Cannot delete a started tournament' }); return; }
+  db.deleteTournament(t.id);
+  logger.info('Tournament deleted: tournamentId=' + t.id);
   res.json({ success: true });
 });
 
