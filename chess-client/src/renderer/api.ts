@@ -224,6 +224,31 @@ export async function deleteAccount(): Promise<{ success: true }> {
   }
 }
 
+/* GET /games/archive */
+export async function getArchivedGames(params: {
+  page?: number;
+  limit?: number;
+  player?: string;
+  status?: string;
+  from?: number;
+  to?: number;
+}): Promise<{ games: any[]; total: number; page: number; limit: number }> {
+  logger.info('getArchivedGames called', params);
+  const q = new URLSearchParams();
+  if (params.page) q.set('page', String(params.page));
+  if (params.limit) q.set('limit', String(params.limit));
+  if (params.player) q.set('player', params.player);
+  if (params.status) q.set('status', params.status);
+  if (params.from) q.set('from', String(params.from));
+  if (params.to) q.set('to', String(params.to));
+  return request('/games/archive?' + q.toString());
+}
+
+export async function getArchivedGame(gameId: string): Promise<any> {
+  logger.info('getArchivedGame called', { gameId });
+  return request('/games/archive/' + gameId);
+}
+
 /* GET /health — no auth required.
  * Response shape confirmed in ../chess-api/src/routes.ts line 35-43
  * and ../chess-api/docs/api.md lines 44-54. */

@@ -698,4 +698,25 @@ router.get('/friends', authMiddleware, banCheckMiddleware, (req: Request, res: R
   res.json(friends);
 });
 
+/* Game archive */
+router.get('/games/archive', (req: Request, res: Response) => {
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+  const playerId = req.query.player as string | undefined;
+  const status = req.query.status as string | undefined;
+  const fromDate = req.query.from ? parseInt(req.query.from as string) : undefined;
+  const toDate = req.query.to ? parseInt(req.query.to as string) : undefined;
+  const result = db.getArchivedGames(page, limit, playerId, status, fromDate, toDate);
+  res.json({ games: result.rows, total: result.total, page, limit });
+});
+
+router.get('/games/archive/:gameId', (req: Request, res: Response) => {
+  const game = db.getArchivedGame(req.params.gameId);
+  if (!game) {
+    res.status(404).json({ error: 'Game not found' });
+    return;
+  }
+  res.json(game);
+});
+
 export default router;

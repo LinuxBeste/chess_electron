@@ -34,6 +34,7 @@ export type TranslationKeys = {
     settings: string;
     history: string;
     leaderboard: string;
+    archive: string;
     logout: string;
   };
   friends: {
@@ -211,6 +212,7 @@ export type TranslationKeys = {
     title: string;
     loading: string;
     noGames: string;
+    searchPlayer: string;
     won: string;
     lost: string;
     draw: string;
@@ -495,6 +497,7 @@ export const en: TranslationKeys = {
     settings: 'Settings',
     history: 'History',
     leaderboard: 'Leaderboard',
+    archive: 'Archive',
     logout: 'Logout',
   },
   friends: {
@@ -672,6 +675,7 @@ export const en: TranslationKeys = {
     title: 'Match History',
     loading: 'Loading...',
     noGames: 'No completed games yet',
+    searchPlayer: 'Search by player...',
     won: 'Won',
     lost: 'Lost',
     draw: 'Draw',
@@ -957,6 +961,7 @@ export const de: TranslationKeys = {
     settings: 'Einstellungen',
     history: 'Verlauf',
     leaderboard: 'Rangliste',
+    archive: 'Archiv',
     logout: 'Abmelden',
   },
   friends: {
@@ -1134,6 +1139,7 @@ export const de: TranslationKeys = {
     title: 'Spielverlauf',
     loading: 'Lade...',
     noGames: 'Noch keine abgeschlossenen Spiele',
+    searchPlayer: 'Spieler suchen...',
     won: 'Gewonnen',
     lost: 'Verloren',
     draw: 'Remis',

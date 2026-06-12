@@ -764,7 +764,7 @@ function updateEloRatings(game: GameState, winner: Color | null): void {
 
 /**
  * Persist game results to the database for registered players.
- * Does nothing for anonymous (in-memory only) players.
+ * Also saves a snapshot to the completed_games archive.
  */
 function recordGameResult(game: GameState, winner: Color | null): void {
   game.winner = winner;
@@ -788,6 +788,25 @@ function recordGameResult(game: GameState, winner: Color | null): void {
   }
   updateEloRatings(game, winner);
   spectatorConnections.delete(game.id);
+
+  const result = game.status === 'checkmate' ? 'checkmate' : game.status === 'stalemate' ? 'stalemate' : game.status === 'resigned' ? 'resigned' : 'draw';
+  const reason = result === 'checkmate' ? (winner === 'white' ? 'White wins by checkmate' : 'Black wins by checkmate') : result === 'stalemate' ? 'Draw by stalemate' : result === 'resigned' ? (winner === 'white' ? 'Black resigned' : 'White resigned') : 'Draw by agreement';
+  const g = enrichNames(game);
+  db.saveCompletedGame(
+    game.id,
+    game.players.white || null,
+    game.players.black || null,
+    g.whiteName || '',
+    g.blackName || '',
+    winner || null,
+    game.status,
+    result,
+    reason,
+    JSON.stringify(game.moveHistory),
+    JSON.stringify(game.boardHistory),
+    null,
+    '5+0',
+  );
   logger.info('Game result recorded: gameId=' + game.id + ' winner=' + winner);
 }
 

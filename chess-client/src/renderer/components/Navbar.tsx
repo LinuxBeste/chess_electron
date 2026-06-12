@@ -143,6 +143,11 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
               </button>
             )}
             {isLoggedIn && (
+              <button className="navbar-btn" onClick={() => navigate('/archive')}>
+                {t('navbar.archive')}
+              </button>
+            )}
+            {isLoggedIn && (
               <button className="navbar-btn" onClick={handleOpenStats}>
                 {t('navbar.stats')}
               </button>

@@ -74,6 +74,29 @@ function migrate(): void {
   } catch {
     /* column already exists */
   }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS completed_games (
+      id TEXT PRIMARY KEY,
+      white_player_id TEXT,
+      black_player_id TEXT,
+      white_display_name TEXT NOT NULL DEFAULT '',
+      black_display_name TEXT NOT NULL DEFAULT '',
+      winner TEXT,
+      status TEXT NOT NULL,
+      result TEXT NOT NULL,
+      reason TEXT,
+      move_history TEXT NOT NULL DEFAULT '[]',
+      board_history TEXT NOT NULL DEFAULT '[]',
+      pgn TEXT,
+      played_at INTEGER NOT NULL,
+      time_control TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_completed_games_played_at ON completed_games(played_at);
+    CREATE INDEX IF NOT EXISTS idx_completed_games_white ON completed_games(white_player_id);
+    CREATE INDEX IF NOT EXISTS idx_completed_games_black ON completed_games(black_player_id);
+  `);
 }
 
 export interface DbUser {
@@ -371,6 +394,78 @@ export function getPlayerRating(userId: string): number {
 export function updatePlayerRating(userId: string, rating: number): void {
   const d = getDb();
   d.prepare('UPDATE users SET rating = ? WHERE id = ?').run(rating, userId);
+}
+
+/* ─── Game Archive ─── */
+
+export function saveCompletedGame(
+  id: string,
+  whitePlayerId: string | null,
+  blackPlayerId: string | null,
+  whiteDisplayName: string,
+  blackDisplayName: string,
+  winner: string | null,
+  status: string,
+  result: string,
+  reason: string | null,
+  moveHistory: string,
+  boardHistory: string,
+  pgn: string | null,
+  timeControl: string,
+): void {
+  const d = getDb();
+  d.prepare(
+    `INSERT INTO completed_games (id, white_player_id, black_player_id, white_display_name, black_display_name, winner, status, result, reason, move_history, board_history, pgn, played_at, time_control)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, whitePlayerId, blackPlayerId, whiteDisplayName, blackDisplayName, winner, status, result, reason, moveHistory, boardHistory, pgn, Date.now(), timeControl);
+  logger.info('DB: completed game saved id=' + id);
+}
+
+export function getArchivedGames(
+  page: number,
+  limit: number,
+  playerId?: string,
+  status?: string,
+  fromDate?: number,
+  toDate?: number,
+): { rows: any[]; total: number } {
+  const d = getDb();
+  const conditions: string[] = [];
+  const params: any[] = [];
+  if (playerId) {
+    conditions.push('(white_player_id = ? OR black_player_id = ?)');
+    params.push(playerId, playerId);
+  }
+  if (status) {
+    conditions.push('status = ?');
+    params.push(status);
+  }
+  if (fromDate) {
+    conditions.push('played_at >= ?');
+    params.push(fromDate);
+  }
+  if (toDate) {
+    conditions.push('played_at <= ?');
+    params.push(toDate);
+  }
+  const where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+  const total = (d.prepare('SELECT COUNT(*) as c FROM completed_games' + where).get(...params) as { c: number }).c;
+  const offset = (page - 1) * limit;
+  const rows = d.prepare('SELECT * FROM completed_games' + where + ' ORDER BY played_at DESC LIMIT ? OFFSET ?').all(...params, limit, offset);
+  return { rows, total };
+}
+
+export function getArchivedGame(id: string): any | undefined {
+  const d = getDb();
+  return d.prepare('SELECT * FROM completed_games WHERE id = ?').get(id);
+}
+
+export function getPlayerWinLossDraw(playerId: string): { wins: number; losses: number; draws: number } {
+  const d = getDb();
+  const wins = (d.prepare('SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner = ?').get(playerId, playerId, playerId) as { c: number }).c;
+  const allCount = (d.prepare('SELECT COUNT(*) as c FROM completed_games WHERE white_player_id = ? OR black_player_id = ?').get(playerId, playerId) as { c: number }).c;
+  const draws = (d.prepare('SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner IS NULL').get(playerId, playerId) as { c: number }).c;
+  return { wins, losses: allCount - wins - draws, draws };
 }
 
 export function areFriends(userId: string, friendId: string): boolean {
