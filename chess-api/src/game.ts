@@ -1754,6 +1754,21 @@ export function broadcastFriendRemoved(removerId: string, removedId: string): vo
   logger.info('Friend removed broadcast: remover=' + removerId + ' removed=' + removedId);
 }
 
+export function broadcastToAll(message: Record<string, unknown>): number {
+  const data = JSON.stringify(message);
+  let count = 0;
+  for (const conns of wsConnections.values()) {
+    for (const ws of conns) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(data);
+        count++;
+      }
+    }
+  }
+  logger.info('Broadcast to all: message=' + (message.type as string) + ' recipients=' + count);
+  return count;
+}
+
 export function getFriendList(playerId: string): FriendInfo[] {
   const friendIds = db.getFriendIds(playerId);
   const result = friendIds.map((fid) => {

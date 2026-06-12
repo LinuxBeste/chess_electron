@@ -542,4 +542,97 @@ router.get('/admin/api/logs', adminAuthMiddleware, (req: Request, res: Response)
   res.json({ logs: result, files: logFiles });
 });
 
+/* ─── Admin: Leaderboard ─── */
+router.get('/admin/api/leaderboard', adminAuthMiddleware, (_req: Request, res: Response) => {
+  const page = Math.max(1, parseInt(_req.query.page as string) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string) || 50));
+  const offset = (page - 1) * limit;
+  const result = db.getLeaderboard(limit, offset);
+  res.json({ entries: result.rows, total: result.total, page, limit });
+});
+
+/* ─── Admin: Game Archive ─── */
+router.get('/admin/api/archive', adminAuthMiddleware, (req: Request, res: Response) => {
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+  const player = req.query.player as string | undefined;
+  const status = req.query.status as string | undefined;
+  const result = db.getArchivedGames(page, limit, player, status);
+  res.json({ games: result.rows, total: result.total, page, limit });
+});
+
+/* ─── Admin: Tournaments ─── */
+router.get('/admin/api/tournaments', adminAuthMiddleware, (_req: Request, res: Response) => {
+  const ts = db.getTournaments();
+  const enriched = ts.map((t: any) => ({ ...t, participantCount: db.getParticipantCount(t.id) }));
+  res.json(enriched);
+});
+
+router.get('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, res: Response) => {
+  const t = db.getTournament(req.params.id);
+  if (!t) { res.status(404).json({ error: 'Not found' }); return; }
+  const participants = db.getTournamentParticipants(req.params.id);
+  const matches = db.getTournamentMatches(req.params.id);
+  res.json({ ...t, participants, matches, participantCount: participants.length });
+});
+
+router.delete('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, res: Response) => {
+  const t = db.getTournament(req.params.id);
+  if (!t) { res.status(404).json({ error: 'Not found' }); return; }
+  /* Cascade delete via foreign keys */
+  const d = (db as any).getDb();
+  d.prepare('DELETE FROM tournament_matches WHERE tournament_id = ?').run(req.params.id);
+  d.prepare('DELETE FROM tournament_participants WHERE tournament_id = ?').run(req.params.id);
+  d.prepare('DELETE FROM tournaments WHERE id = ?').run(req.params.id);
+  logger.audit('admin_tournament_deleted', `tournament="${req.params.id}" by admin`);
+  res.json({ success: true });
+});
+
+/* ─── Admin: AI Games stats (count active AI games) ─── */
+router.get('/admin/api/ai-games', adminAuthMiddleware, (_req: Request, res: Response) => {
+  const allGames = game.getAllGames();
+  const aiGames = allGames.filter((g: any) => game.isAIGame(g));
+  res.json({
+    total: aiGames.length,
+    active: aiGames.filter((g: any) => g.status === 'active').length,
+    games: aiGames.map((g: any) => ({
+      id: g.id,
+      status: g.status,
+      players: g.players,
+      moves: g.moveHistory.length,
+      createdAt: g.createdAt,
+    })),
+  });
+});
+
+/* ─── Admin: Broadcast message to all connected players ─── */
+router.post('/admin/api/broadcast', adminAuthMiddleware, (req: Request, res: Response) => {
+  const { message } = req.body;
+  if (!message || typeof message !== 'string' || !message.trim()) {
+    res.status(400).json({ error: 'Message is required' });
+    return;
+  }
+  const count = game.broadcastToAll({
+    type: 'admin_broadcast',
+    message: message.trim(),
+    timestamp: Date.now(),
+  });
+  logger.audit('admin_broadcast', `message="${message.trim()}" sent to ${count} players by admin`);
+  res.json({ success: true, recipientCount: count });
+});
+
+/* ─── Admin: Server config ─── */
+router.get('/admin/api/config', adminAuthMiddleware, (_req: Request, res: Response) => {
+  res.json({
+    maxGamesPerPlayer: parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '20', 10),
+    rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10),
+    rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10),
+    waitingTtl: parseInt(process.env.WAITING_TTL_MINUTES ?? '10', 10),
+    adminUsername: ADMIN_USERNAME,
+    dbPath: process.env.DB_PATH || 'data/chess.db',
+    nodeVersion: process.version,
+    platform: process.platform,
+  });
+});
+
 export default router;
