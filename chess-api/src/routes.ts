@@ -668,6 +668,25 @@ router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, (req: Re
   res.json({ success: true });
 });
 
+/* Leaderboard */
+router.get('/leaderboard', (_req: Request, res: Response) => {
+  const page = Math.max(1, parseInt(_req.query.page as string) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string) || 50));
+  const offset = (page - 1) * limit;
+  const result = db.getLeaderboard(limit, offset);
+  const entries = result.rows.map((r) => ({
+    playerId: r.id,
+    username: r.username,
+    displayName: r.display_name,
+    avatarUrl: r.avatar_url,
+    rating: r.rating,
+    wins: r.wins,
+    losses: r.losses,
+    draws: r.draws,
+  }));
+  res.json({ entries, total: result.total, page, limit });
+});
+
 /* List friends with online status and current game */
 router.get('/friends', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   if (!req.player.isRegistered) {

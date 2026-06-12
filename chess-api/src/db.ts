@@ -68,6 +68,12 @@ function migrate(): void {
   } catch {
     /* column already exists */
   }
+
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN rating INTEGER NOT NULL DEFAULT 1200`);
+  } catch {
+    /* column already exists */
+  }
 }
 
 export interface DbUser {
@@ -80,6 +86,7 @@ export interface DbUser {
   losses: number;
   draws: number;
   avatar_url: string | null;
+  rating: number;
 }
 
 export function createUser(id: string, username: string, passwordHash: string | null, displayName: string): void {
@@ -339,6 +346,31 @@ export function getFriendIds(userId: string): string[] {
   const ids = rows.map((r) => r.friend_id);
   logger.info('DB: getFriendIds userId=' + userId + ' count=' + ids.length);
   return ids;
+}
+
+/* ─── Leaderboard ─── */
+
+export function getLeaderboard(limit: number, offset: number): {
+  rows: { id: string; username: string; display_name: string; avatar_url: string | null; rating: number; wins: number; losses: number; draws: number }[];
+  total: number;
+} {
+  const d = getDb();
+  const total = (d.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c;
+  const rows = d.prepare(
+    'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users ORDER BY rating DESC LIMIT ? OFFSET ?',
+  ).all(limit, offset) as any[];
+  return { rows, total };
+}
+
+export function getPlayerRating(userId: string): number {
+  const d = getDb();
+  const row = d.prepare('SELECT rating FROM users WHERE id = ?').get(userId) as { rating: number } | undefined;
+  return row?.rating ?? 1200;
+}
+
+export function updatePlayerRating(userId: string, rating: number): void {
+  const d = getDb();
+  d.prepare('UPDATE users SET rating = ? WHERE id = ?').run(rating, userId);
 }
 
 export function areFriends(userId: string, friendId: string): boolean {

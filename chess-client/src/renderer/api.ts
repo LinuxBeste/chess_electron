@@ -249,6 +249,23 @@ export async function healthCheck(): Promise<{
   }
 }
 
+/* GET /leaderboard */
+export async function getLeaderboard(page = 1, limit = 50): Promise<{
+  entries: { playerId: string; username: string; displayName: string; avatarUrl: string | null; rating: number; wins: number; losses: number; draws: number }[];
+  total: number;
+  page: number;
+  limit: number;
+}> {
+  logger.info('getLeaderboard called page=' + page + ' limit=' + limit);
+  const result = await request<{
+    entries: any[];
+    total: number;
+    page: number;
+    limit: number;
+  }>('/leaderboard?page=' + page + '&limit=' + limit);
+  return result;
+}
+
 /* POST /games — auth required.
  * Optional body field: visibility ('public' | 'private', defaults to 'public').
  * Response shape confirmed in ../chess-api/src/routes.ts line 62-65

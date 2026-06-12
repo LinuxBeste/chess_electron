@@ -33,6 +33,7 @@ export type TranslationKeys = {
     stats: string;
     settings: string;
     history: string;
+    leaderboard: string;
     logout: string;
   };
   friends: {
@@ -493,6 +494,7 @@ export const en: TranslationKeys = {
     stats: 'Stats',
     settings: 'Settings',
     history: 'History',
+    leaderboard: 'Leaderboard',
     logout: 'Logout',
   },
   friends: {
@@ -954,6 +956,7 @@ export const de: TranslationKeys = {
     stats: 'Statistik',
     settings: 'Einstellungen',
     history: 'Verlauf',
+    leaderboard: 'Rangliste',
     logout: 'Abmelden',
   },
   friends: {

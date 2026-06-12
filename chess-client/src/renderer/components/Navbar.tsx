@@ -138,6 +138,11 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
               </span>
             )}
             {isLoggedIn && (
+              <button className="navbar-btn" onClick={() => navigate('/leaderboard')}>
+                {t('navbar.leaderboard')}
+              </button>
+            )}
+            {isLoggedIn && (
               <button className="navbar-btn" onClick={handleOpenStats}>
                 {t('navbar.stats')}
               </button>

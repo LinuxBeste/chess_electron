@@ -729,6 +729,40 @@ export function resignGame(gameId: string, playerId: string): { success: boolean
 }
 
 /**
+ * Calculate Elo rating change.
+ */
+function calculateElo(ratingA: number, ratingB: number, scoreA: number): [number, number] {
+  const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+  const expectedB = 1 - expectedA;
+  const k = 32;
+  return [Math.round(ratingA + k * (scoreA - expectedA)), Math.round(ratingB + k * ((1 - scoreA) - expectedB))];
+}
+
+/**
+ * Update Elo ratings for both players after a finished game.
+ * Only affects registered (DB-persisted) players.
+ */
+function updateEloRatings(game: GameState, winner: Color | null): void {
+  const whiteId = game.players.white;
+  const blackId = game.players.black;
+  if (!whiteId || !blackId) return;
+
+  const whiteUser = db.getUserById(whiteId);
+  const blackUser = db.getUserById(blackId);
+  if (!whiteUser || !blackUser) return;
+
+  let scoreWhite: number;
+  if (winner === 'white') scoreWhite = 1;
+  else if (winner === 'black') scoreWhite = 0;
+  else scoreWhite = 0.5;
+
+  const [newWhite, newBlack] = calculateElo(whiteUser.rating, blackUser.rating, scoreWhite);
+  db.updatePlayerRating(whiteId, newWhite);
+  db.updatePlayerRating(blackId, newBlack);
+  logger.info('Elo updated: gameId=' + game.id + ' white=' + whiteId + ' ' + whiteUser.rating + '->' + newWhite + ' black=' + blackId + ' ' + blackUser.rating + '->' + newBlack);
+}
+
+/**
  * Persist game results to the database for registered players.
  * Does nothing for anonymous (in-memory only) players.
  */
@@ -736,23 +770,23 @@ function recordGameResult(game: GameState, winner: Color | null): void {
   game.winner = winner;
   const user = db.getUserById(winner || '');
   if (user) {
-    user.wins++;
+    db.addWin(user.id);
     const opponentId = game.players.white === winner ? game.players.black : game.players.white;
     if (opponentId) {
       const opponent = db.getUserById(opponentId);
-      if (opponent) opponent.losses++;
+      if (opponent) db.addLoss(opponent.id);
     }
   } else if (winner === null) {
     if (game.players.white) {
       const w = db.getUserById(game.players.white);
-      if (w) w.draws++;
+      if (w) db.addDraw(w.id);
     }
     if (game.players.black) {
       const b = db.getUserById(game.players.black);
-      if (b) b.draws++;
+      if (b) db.addDraw(b.id);
     }
   }
-  /* Clean up spectator connections when the game ends */
+  updateEloRatings(game, winner);
   spectatorConnections.delete(game.id);
   logger.info('Game result recorded: gameId=' + game.id + ' winner=' + winner);
 }
