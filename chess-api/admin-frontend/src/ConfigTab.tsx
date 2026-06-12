@@ -51,10 +51,7 @@ export default function ConfigTab() {
           <table className="w-full text-sm">
             <tbody>
               {rows.map(([label, value], i) => (
-                <tr
-                  key={label}
-                  className={i < rows.length - 1 ? 'border-b border-[#2a2a2a]' : ''}
-                >
+                <tr key={label} className={i < rows.length - 1 ? 'border-b border-[#2a2a2a]' : ''}>
                   <td className="px-4 py-3 text-xs text-[#888] whitespace-nowrap">{label}</td>
                   <td className="px-4 py-3 text-xs text-[#e0e0e0] font-mono">{value}</td>
                 </tr>

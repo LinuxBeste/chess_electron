@@ -103,7 +103,11 @@ export default function GamesTab() {
               Active Games
             </h2>
             <div className="w-64">
-              <SearchBar value={query} onChange={setQuery} placeholder="Search games by ID, player, status, winner..." />
+              <SearchBar
+                value={query}
+                onChange={setQuery}
+                placeholder="Search games by ID, player, status, winner..."
+              />
             </div>
           </div>
         </div>
@@ -139,7 +143,8 @@ export default function GamesTab() {
                     <tr className="text-[#888] uppercase text-xs tracking-wider border-b border-[#2a2a2a]">
                       <th className="text-center px-2 py-2.5 w-8">
                         <button onClick={toggleAll} className="text-[#888] hover:text-[#ccc]">
-                          {selected.size === paginated.filter((g) => g.status === 'active' || g.status === 'waiting').length &&
+                          {selected.size ===
+                            paginated.filter((g) => g.status === 'active' || g.status === 'waiting').length &&
                           paginated.some((g) => g.status === 'active' || g.status === 'waiting') ? (
                             <CheckSquare size={14} />
                           ) : (

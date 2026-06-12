@@ -67,15 +67,18 @@ class EngineManager {
       this.instances.set(gameId, inst);
 
       this.send(gameId, 'uci');
-      this.waitForCondition(gameId, () => inst.uciok).then(() => {
-        const level = Math.max(1, Math.min(20, skillLevel || 1));
-        this.send(gameId, `setoption name Skill Level value ${level}`);
-        this.send(gameId, 'isready');
-        return this.waitForCondition(gameId, () => inst.ready);
-      }).then(() => {
-        logger.info('Engine ready for game', gameId);
-        resolve();
-      }).catch(reject);
+      this.waitForCondition(gameId, () => inst.uciok)
+        .then(() => {
+          const level = Math.max(1, Math.min(20, skillLevel || 1));
+          this.send(gameId, `setoption name Skill Level value ${level}`);
+          this.send(gameId, 'isready');
+          return this.waitForCondition(gameId, () => inst.ready);
+        })
+        .then(() => {
+          logger.info('Engine ready for game', gameId);
+          resolve();
+        })
+        .catch(reject);
     });
   }
 

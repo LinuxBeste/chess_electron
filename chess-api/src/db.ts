@@ -425,15 +425,29 @@ export function getFriendIds(userId: string): string[] {
 
 /* ─── Leaderboard ─── */
 
-export function getLeaderboard(limit: number, offset: number): {
-  rows: { id: string; username: string; display_name: string; avatar_url: string | null; rating: number; wins: number; losses: number; draws: number }[];
+export function getLeaderboard(
+  limit: number,
+  offset: number,
+): {
+  rows: {
+    id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+    rating: number;
+    wins: number;
+    losses: number;
+    draws: number;
+  }[];
   total: number;
 } {
   const d = getDb();
   const total = (d.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c;
-  const rows = d.prepare(
-    'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users ORDER BY rating DESC LIMIT ? OFFSET ?',
-  ).all(limit, offset) as any[];
+  const rows = d
+    .prepare(
+      'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users ORDER BY rating DESC LIMIT ? OFFSET ?',
+    )
+    .all(limit, offset) as any[];
   return { rows, total };
 }
 
@@ -469,7 +483,22 @@ export function saveCompletedGame(
   d.prepare(
     `INSERT INTO completed_games (id, white_player_id, black_player_id, white_display_name, black_display_name, winner, status, result, reason, move_history, board_history, pgn, played_at, time_control)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(id, whitePlayerId, blackPlayerId, whiteDisplayName, blackDisplayName, winner, status, result, reason, moveHistory, boardHistory, pgn, Date.now(), timeControl);
+  ).run(
+    id,
+    whitePlayerId,
+    blackPlayerId,
+    whiteDisplayName,
+    blackDisplayName,
+    winner,
+    status,
+    result,
+    reason,
+    moveHistory,
+    boardHistory,
+    pgn,
+    Date.now(),
+    timeControl,
+  );
   logger.info('DB: completed game saved id=' + id);
 }
 
@@ -503,7 +532,9 @@ export function getArchivedGames(
   const where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
   const total = (d.prepare('SELECT COUNT(*) as c FROM completed_games' + where).get(...params) as { c: number }).c;
   const offset = (page - 1) * limit;
-  const rows = d.prepare('SELECT * FROM completed_games' + where + ' ORDER BY played_at DESC LIMIT ? OFFSET ?').all(...params, limit, offset);
+  const rows = d
+    .prepare('SELECT * FROM completed_games' + where + ' ORDER BY played_at DESC LIMIT ? OFFSET ?')
+    .all(...params, limit, offset);
   return { rows, total };
 }
 
@@ -514,15 +545,36 @@ export function getArchivedGame(id: string): any | undefined {
 
 export function getPlayerWinLossDraw(playerId: string): { wins: number; losses: number; draws: number } {
   const d = getDb();
-  const wins = (d.prepare('SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner = ?').get(playerId, playerId, playerId) as { c: number }).c;
-  const allCount = (d.prepare('SELECT COUNT(*) as c FROM completed_games WHERE white_player_id = ? OR black_player_id = ?').get(playerId, playerId) as { c: number }).c;
-  const draws = (d.prepare('SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner IS NULL').get(playerId, playerId) as { c: number }).c;
+  const wins = (
+    d
+      .prepare(
+        'SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner = ?',
+      )
+      .get(playerId, playerId, playerId) as { c: number }
+  ).c;
+  const allCount = (
+    d
+      .prepare('SELECT COUNT(*) as c FROM completed_games WHERE white_player_id = ? OR black_player_id = ?')
+      .get(playerId, playerId) as { c: number }
+  ).c;
+  const draws = (
+    d
+      .prepare(
+        'SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner IS NULL',
+      )
+      .get(playerId, playerId) as { c: number }
+  ).c;
   return { wins, losses: allCount - wins - draws, draws };
 }
 
 /* ─── Tournaments ─── */
 
-export function createTournament(name: string, createdBy: string, maxPlayers: number, isPrivate?: boolean): { id: string; joinCode?: string } {
+export function createTournament(
+  name: string,
+  createdBy: string,
+  maxPlayers: number,
+  isPrivate?: boolean,
+): { id: string; joinCode?: string } {
   const d = getDb();
   const id = crypto.randomUUID();
   const joinCode = isPrivate ? crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase() : undefined;
@@ -545,7 +597,9 @@ export function getTournamentByJoinCode(code: string): any | undefined {
 export function getPublicTournaments(status?: string): any[] {
   const d = getDb();
   if (status) {
-    return d.prepare('SELECT * FROM tournaments WHERE status = ? AND is_private = 0 ORDER BY created_at DESC').all(status);
+    return d
+      .prepare('SELECT * FROM tournaments WHERE status = ? AND is_private = 0 ORDER BY created_at DESC')
+      .all(status);
   }
   return d.prepare('SELECT * FROM tournaments WHERE is_private = 0 ORDER BY created_at DESC').all();
 }
@@ -563,7 +617,12 @@ export function getTournamentParticipants(tournamentId: string): any[] {
   return d.prepare('SELECT * FROM tournament_participants WHERE tournament_id = ? ORDER BY seed').all(tournamentId);
 }
 
-export function addTournamentParticipant(tournamentId: string, playerId: string, displayName: string, seed: number): void {
+export function addTournamentParticipant(
+  tournamentId: string,
+  playerId: string,
+  displayName: string,
+  seed: number,
+): void {
   const d = getDb();
   const id = crypto.randomUUID();
   d.prepare(
@@ -573,35 +632,62 @@ export function addTournamentParticipant(tournamentId: string, playerId: string,
 
 export function removeTournamentParticipant(tournamentId: string, playerId: string): void {
   const d = getDb();
-  d.prepare('DELETE FROM tournament_participants WHERE tournament_id = ? AND player_id = ?').run(tournamentId, playerId);
+  d.prepare('DELETE FROM tournament_participants WHERE tournament_id = ? AND player_id = ?').run(
+    tournamentId,
+    playerId,
+  );
 }
 
 export function isTournamentParticipant(tournamentId: string, playerId: string): boolean {
   const d = getDb();
-  const row = d.prepare('SELECT 1 FROM tournament_participants WHERE tournament_id = ? AND player_id = ?').get(tournamentId, playerId);
+  const row = d
+    .prepare('SELECT 1 FROM tournament_participants WHERE tournament_id = ? AND player_id = ?')
+    .get(tournamentId, playerId);
   return !!row;
 }
 
 export function getParticipantCount(tournamentId: string): number {
   const d = getDb();
-  const row = d.prepare('SELECT COUNT(*) as c FROM tournament_participants WHERE tournament_id = ?').get(tournamentId) as { c: number };
+  const row = d
+    .prepare('SELECT COUNT(*) as c FROM tournament_participants WHERE tournament_id = ?')
+    .get(tournamentId) as { c: number };
   return row.c;
 }
 
-export function updateTournamentStatus(id: string, status: string, startedAt?: number, completedAt?: number, winnerId?: string): void {
+export function updateTournamentStatus(
+  id: string,
+  status: string,
+  startedAt?: number,
+  completedAt?: number,
+  winnerId?: string,
+): void {
   const d = getDb();
   const updates: string[] = ['status = ?'];
   const params: any[] = [status];
-  if (startedAt) { updates.push('started_at = ?'); params.push(startedAt); }
-  if (completedAt) { updates.push('completed_at = ?'); params.push(completedAt); }
-  if (winnerId) { updates.push('winner_id = ?'); params.push(winnerId); }
+  if (startedAt) {
+    updates.push('started_at = ?');
+    params.push(startedAt);
+  }
+  if (completedAt) {
+    updates.push('completed_at = ?');
+    params.push(completedAt);
+  }
+  if (winnerId) {
+    updates.push('winner_id = ?');
+    params.push(winnerId);
+  }
   params.push(id);
   d.prepare(`UPDATE tournaments SET ${updates.join(', ')} WHERE id = ?`).run(...params);
 }
 
 export function updateTournamentDetails(id: string, name: string, maxPlayers: number, isPrivate: number): void {
   const d = getDb();
-  d.prepare('UPDATE tournaments SET name = ?, max_players = ?, is_private = ? WHERE id = ?').run(name, maxPlayers, isPrivate, id);
+  d.prepare('UPDATE tournaments SET name = ?, max_players = ?, is_private = ? WHERE id = ?').run(
+    name,
+    maxPlayers,
+    isPrivate,
+    id,
+  );
 }
 
 export function deleteTournament(id: string): void {
@@ -613,10 +699,18 @@ export function deleteTournament(id: string): void {
 
 export function getTournamentMatches(tournamentId: string): any[] {
   const d = getDb();
-  return d.prepare('SELECT * FROM tournament_matches WHERE tournament_id = ? ORDER BY round, position').all(tournamentId);
+  return d
+    .prepare('SELECT * FROM tournament_matches WHERE tournament_id = ? ORDER BY round, position')
+    .all(tournamentId);
 }
 
-export function createTournamentMatch(tournamentId: string, round: number, position: number, whitePlayerId: string | null, blackPlayerId: string | null): string {
+export function createTournamentMatch(
+  tournamentId: string,
+  round: number,
+  position: number,
+  whitePlayerId: string | null,
+  blackPlayerId: string | null,
+): string {
   const d = getDb();
   const id = crypto.randomUUID();
   d.prepare(
@@ -627,7 +721,12 @@ export function createTournamentMatch(tournamentId: string, round: number, posit
 
 export function updateTournamentMatch(id: string, gameId: string, winnerId: string | null, status: string): void {
   const d = getDb();
-  d.prepare('UPDATE tournament_matches SET game_id = ?, winner_id = ?, status = ? WHERE id = ?').run(gameId, winnerId, status, id);
+  d.prepare('UPDATE tournament_matches SET game_id = ?, winner_id = ?, status = ? WHERE id = ?').run(
+    gameId,
+    winnerId,
+    status,
+    id,
+  );
 }
 
 export function areFriends(userId: string, friendId: string): boolean {

@@ -55,15 +55,37 @@ export default function LeaderboardPage() {
         <>
           <div className="game-list" style={{ marginBottom: 16 }}>
             {entries.map((e, i) => (
-              <div key={e.playerId} className="game-card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px' }}>
-                <span style={{ width: 28, textAlign: 'right', fontWeight: 600, color: i < 3 ? '#f5a623' : 'var(--muted)' }}>
+              <div
+                key={e.playerId}
+                className="game-card"
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px' }}
+              >
+                <span
+                  style={{ width: 28, textAlign: 'right', fontWeight: 600, color: i < 3 ? '#f5a623' : 'var(--muted)' }}
+                >
                   {(page - 1) * limit + i + 1}.
                 </span>
                 <div
-                  style={{ width: 32, height: 32, borderRadius: '50%', background: '#2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#555', overflow: 'hidden', flexShrink: 0 }}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: '#2a2a2a',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 13,
+                    color: '#555',
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                  }}
                 >
                   {e.avatarUrl ? (
-                    <img src={api.avatarSrc(e.avatarUrl)} alt="" style={{ width: 32, height: 32, objectFit: 'cover' }} />
+                    <img
+                      src={api.avatarSrc(e.avatarUrl)}
+                      alt=""
+                      style={{ width: 32, height: 32, objectFit: 'cover' }}
+                    />
                   ) : (
                     (e.displayName || e.username || '?')[0].toUpperCase()
                   )}
@@ -90,7 +112,11 @@ export default function LeaderboardPage() {
               <span style={{ fontSize: 12, color: 'var(--muted)', alignSelf: 'center' }}>
                 {page} / {totalPages}
               </span>
-              <button className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              <button
+                className="btn btn-ghost btn-sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
                 {t('common.next')}
               </button>
             </div>

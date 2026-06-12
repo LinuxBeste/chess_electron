@@ -57,11 +57,7 @@ export default function BroadcastTab() {
               disabled={sending || !message.trim()}
               className="flex items-center gap-1.5 px-4 py-2 text-sm bg-[#4a9eff] text-white rounded-lg hover:bg-[#3a8eef] disabled:opacity-40"
             >
-              {sending ? (
-                <RotateCcw size={14} className="animate-spin" />
-              ) : (
-                <Send size={14} />
-              )}
+              {sending ? <RotateCcw size={14} className="animate-spin" /> : <Send size={14} />}
               {sending ? 'Sending...' : 'Send Broadcast'}
             </button>
 

@@ -39,9 +39,7 @@ export default function TournamentsTab() {
 
   const filtered = query
     ? tournaments.filter(
-        (t) =>
-          t.name.toLowerCase().includes(query.toLowerCase()) ||
-          t.id.toLowerCase().includes(query.toLowerCase()),
+        (t) => t.name.toLowerCase().includes(query.toLowerCase()) || t.id.toLowerCase().includes(query.toLowerCase()),
       )
     : tournaments;
 
@@ -112,7 +110,8 @@ export default function TournamentsTab() {
                       <div>
                         <div className="text-sm font-medium text-[#e0e0e0]">{t.name}</div>
                         <div className="text-xs text-[#666]">
-                          {new Date(t.created_at).toLocaleDateString()} &middot; {t.participantCount}/{t.max_players} players
+                          {new Date(t.created_at).toLocaleDateString()} &middot; {t.participantCount}/{t.max_players}{' '}
+                          players
                         </div>
                       </div>
                     </div>
@@ -166,11 +165,7 @@ export default function TournamentsTab() {
                                   <span>{m.white_player_id?.slice(0, 8) || 'BYE'}</span>
                                   <span className="text-[#555]">vs</span>
                                   <span>{m.black_player_id?.slice(0, 8) || 'BYE'}</span>
-                                  {m.winner && (
-                                    <span className="text-green-400">
-                                      ({m.winner.slice(0, 8)} won)
-                                    </span>
-                                  )}
+                                  {m.winner && <span className="text-green-400">({m.winner.slice(0, 8)} won)</span>}
                                 </div>
                               ))
                             )}

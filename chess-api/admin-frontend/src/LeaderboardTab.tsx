@@ -83,15 +83,19 @@ export default function LeaderboardTab() {
                       const totalGames = e.wins + e.losses + e.draws;
                       const winPct = totalGames > 0 ? ((e.wins / totalGames) * 100).toFixed(1) : '—';
                       const rankColor =
-                        e.rank === 1 ? 'text-yellow-400' : e.rank === 2 ? 'text-gray-300' : e.rank === 3 ? 'text-amber-600' : 'text-[#666]';
+                        e.rank === 1
+                          ? 'text-yellow-400'
+                          : e.rank === 2
+                            ? 'text-gray-300'
+                            : e.rank === 3
+                              ? 'text-amber-600'
+                              : 'text-[#666]';
                       return (
                         <tr key={e.id} className="border-b border-[#222] last:border-0 hover:bg-[#222]">
                           <td className={`px-3 py-2.5 text-center font-bold ${rankColor}`}>{e.rank}</td>
                           <td className="px-4 py-2.5">
                             <div className="font-medium text-[#e0e0e0]">{e.displayName || e.username}</div>
-                            {e.username && e.displayName && (
-                              <div className="text-xs text-[#666]">@{e.username}</div>
-                            )}
+                            {e.username && e.displayName && <div className="text-xs text-[#666]">@{e.username}</div>}
                           </td>
                           <td className="px-3 py-2.5 text-center font-semibold text-[#4a9eff]">{e.rating}</td>
                           <td className="px-3 py-2.5 text-center text-green-400">{e.wins}</td>

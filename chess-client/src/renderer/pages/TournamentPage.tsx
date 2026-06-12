@@ -109,11 +109,7 @@ function CreateTournamentMenu({ onClose }: { onClose: () => void }) {
         >
           {creating ? 'Creating...' : t('tournaments.create')}
         </button>
-        <button
-          className="btn btn-ghost btn-sm"
-          style={{ fontSize: 12 }}
-          onClick={onClose}
-        >
+        <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }} onClick={onClose}>
           Cancel
         </button>
       </div>
@@ -121,7 +117,15 @@ function CreateTournamentMenu({ onClose }: { onClose: () => void }) {
   );
 }
 
-function ManageTournamentDialog({ tournament, onClose, onSaved }: { tournament: any; onClose: () => void; onSaved: () => void }) {
+function ManageTournamentDialog({
+  tournament,
+  onClose,
+  onSaved,
+}: {
+  tournament: any;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const [name, setName] = useState(tournament.name || '');
   const [maxPlayers, setMaxPlayers] = useState(tournament.max_players || 8);
   const [isPrivate, setIsPrivate] = useState(tournament.is_private === 1);
@@ -173,7 +177,15 @@ function ManageTournamentDialog({ tournament, onClose, onSaved }: { tournament: 
           <h2 style={{ fontSize: 18, fontWeight: 700, color: '#e0e0e0', margin: 0 }}>Manage Tournament</h2>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#888', fontSize: 18, cursor: 'pointer', padding: '4px 8px', borderRadius: 4 }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#888',
+              fontSize: 18,
+              cursor: 'pointer',
+              padding: '4px 8px',
+              borderRadius: 4,
+            }}
           >
             ✕
           </button>
@@ -181,12 +193,23 @@ function ManageTournamentDialog({ tournament, onClose, onSaved }: { tournament: 
 
         <div style={{ padding: '20px 24px' }}>
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4, fontWeight: 600 }}>Tournament Name</label>
-            <input className="input" type="text" style={{ width: '100%', fontSize: 13 }} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4, fontWeight: 600 }}>
+              Tournament Name
+            </label>
+            <input
+              className="input"
+              type="text"
+              style={{ width: '100%', fontSize: 13 }}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+            />
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4, fontWeight: 600 }}>Max Players</label>
+            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4, fontWeight: 600 }}>
+              Max Players
+            </label>
             <div style={{ display: 'flex', gap: 6 }}>
               {[2, 4, 8, 16, 32, 64].map((n) => (
                 <button
@@ -194,36 +217,56 @@ function ManageTournamentDialog({ tournament, onClose, onSaved }: { tournament: 
                   className={`btn btn-sm ${maxPlayers === n ? 'btn-primary' : 'btn-ghost'}`}
                   style={{ flex: 1, fontSize: 11, padding: '4px 0' }}
                   onClick={() => setMaxPlayers(n)}
-                >{n}</button>
+                >
+                  {n}
+                </button>
               ))}
             </div>
           </div>
 
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4, fontWeight: 600 }}>Visibility</label>
+            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 4, fontWeight: 600 }}>
+              Visibility
+            </label>
             <div style={{ display: 'flex', gap: 6 }}>
               <button
                 className={`btn btn-sm ${!isPrivate ? 'btn-primary' : 'btn-ghost'}`}
                 style={{ flex: 1, fontSize: 11, padding: '4px 0' }}
                 onClick={() => setIsPrivate(false)}
-              >{t('tournaments.public')}</button>
+              >
+                {t('tournaments.public')}
+              </button>
               <button
                 className={`btn btn-sm ${isPrivate ? 'btn-primary' : 'btn-ghost'}`}
                 style={{ flex: 1, fontSize: 11, padding: '4px 0' }}
                 onClick={() => setIsPrivate(true)}
-              >{t('tournaments.private')}</button>
+              >
+                {t('tournaments.private')}
+              </button>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-primary btn-sm" style={{ flex: 1, fontSize: 12 }} onClick={handleSave} disabled={saving || !name.trim()}>
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ flex: 1, fontSize: 12 }}
+              onClick={handleSave}
+              disabled={saving || !name.trim()}
+            >
               {saving ? 'Saving...' : 'Save'}
             </button>
-            <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }} onClick={onClose}>Cancel</button>
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }} onClick={onClose}>
+              Cancel
+            </button>
           </div>
 
           <div style={{ borderTop: '1px solid var(--border)', marginTop: 16, paddingTop: 16 }}>
-            <button className="btn btn-sm" style={{ fontSize: 12, color: '#e74c3c', borderColor: '#e74c3c' }} onClick={handleDelete} disabled={deleting}>
+            <button
+              className="btn btn-sm"
+              style={{ fontSize: 12, color: '#e74c3c', borderColor: '#e74c3c' }}
+              onClick={handleDelete}
+              disabled={deleting}
+            >
               {deleting ? 'Deleting...' : 'Delete Tournament'}
             </button>
           </div>
@@ -339,7 +382,8 @@ export default function TournamentPage() {
   }
 
   function renderBracket(matches: any[]) {
-    if (!matches || matches.length === 0) return <p style={{ fontSize: 13, color: '#888', textAlign: 'center', padding: 24 }}>No matches yet</p>;
+    if (!matches || matches.length === 0)
+      return <p style={{ fontSize: 13, color: '#888', textAlign: 'center', padding: 24 }}>No matches yet</p>;
     const rounds = [...new Set(matches.map((m: any) => m.round))].sort();
     return (
       <div style={{ display: 'flex', gap: 24, overflowX: 'auto', padding: '8px 0' }}>
@@ -347,7 +391,9 @@ export default function TournamentPage() {
           const roundMatches = matches.filter((m: any) => m.round === round);
           return (
             <div key={round} style={{ minWidth: 200 }}>
-              <h4 style={{ fontSize: 12, color: '#888', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+              <h4
+                style={{ fontSize: 12, color: '#888', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}
+              >
                 Round {round}
               </h4>
               {roundMatches.map((m: any) => (
@@ -358,13 +404,27 @@ export default function TournamentPage() {
                   onClick={() => m.game_id && navigate('/result/' + m.game_id)}
                 >
                   <div style={{ color: m.winner_id === m.white_player_id ? '#4f8ef7' : '#888' }}>
-                    {m.white_player_id ? (m.white_player_id === myId ? t('common.you') : m.white_player_id?.slice(0, 8)) : 'BYE'}
+                    {m.white_player_id
+                      ? m.white_player_id === myId
+                        ? t('common.you')
+                        : m.white_player_id?.slice(0, 8)
+                      : 'BYE'}
                   </div>
                   <div style={{ color: m.winner_id === m.black_player_id ? '#4f8ef7' : '#888' }}>
-                    {m.black_player_id ? (m.black_player_id === myId ? t('common.you') : m.black_player_id?.slice(0, 8)) : 'BYE'}
+                    {m.black_player_id
+                      ? m.black_player_id === myId
+                        ? t('common.you')
+                        : m.black_player_id?.slice(0, 8)
+                      : 'BYE'}
                   </div>
                   <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>
-                    {m.status === 'completed' ? (m.winner_id ? 'Completed' : 'Draw') : m.game_id ? 'Playing' : 'Pending'}
+                    {m.status === 'completed'
+                      ? m.winner_id
+                        ? 'Completed'
+                        : 'Draw'
+                      : m.game_id
+                        ? 'Playing'
+                        : 'Pending'}
                   </div>
                 </div>
               ))}
@@ -380,15 +440,17 @@ export default function TournamentPage() {
     return (
       <div className="page-container" style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0 16px' }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => setSelected(null)}>← Back</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setSelected(null)}>
+            ← Back
+          </button>
           <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{selected.name}</h2>
           <span className={`badge badge-${selected.status}`}>{selected.status}</span>
           {selected.is_private === 1 && (
-            <span className="badge badge-private" style={{ fontSize: 10 }}>{t('tournaments.private')}</span>
+            <span className="badge badge-private" style={{ fontSize: 10 }}>
+              {t('tournaments.private')}
+            </span>
           )}
-          {isCreator && (
-            <span style={{ fontSize: 11, color: 'var(--primary)', marginLeft: 4 }}>Creator</span>
-          )}
+          {isCreator && <span style={{ fontSize: 11, color: 'var(--primary)', marginLeft: 4 }}>Creator</span>}
         </div>
 
         <div style={{ fontSize: 13, color: '#888', marginBottom: 16 }}>
@@ -398,11 +460,20 @@ export default function TournamentPage() {
         {selected.join_code && (
           <div
             className="card"
-            style={{ padding: '12px 16px', marginBottom: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+            style={{
+              padding: '12px 16px',
+              marginBottom: 16,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
             onClick={handleCopyCode}
           >
             <span style={{ fontSize: 11, color: '#888' }}>Share Code:</span>
-            <code style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)', letterSpacing: 1 }}>{selected.join_code}</code>
+            <code style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)', letterSpacing: 1 }}>
+              {selected.join_code}
+            </code>
             <span style={{ fontSize: 11, color: '#555', marginLeft: 'auto' }}>Click to copy</span>
           </div>
         )}
@@ -423,8 +494,12 @@ export default function TournamentPage() {
             )}
             {isCreator && (
               <>
-                <button className="btn btn-primary btn-sm" onClick={() => handleStart(selected.id)}>Start</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => setShowManage(true)}>Manage</button>
+                <button className="btn btn-primary btn-sm" onClick={() => handleStart(selected.id)}>
+                  Start
+                </button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setShowManage(true)}>
+                  Manage
+                </button>
               </>
             )}
           </div>
@@ -505,14 +580,18 @@ export default function TournamentPage() {
                 <div style={{ fontWeight: 500, fontSize: 14 }}>
                   {t.name}
                   {t.created_by === myId && (
-                    <span style={{ fontSize: 10, color: 'var(--primary)', marginLeft: 6, fontWeight: 400 }}>Created by you</span>
+                    <span style={{ fontSize: 10, color: 'var(--primary)', marginLeft: 6, fontWeight: 400 }}>
+                      Created by you
+                    </span>
                   )}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--muted)' }}>
                   {t.participantCount || 0} players — {t.status}
                 </div>
               </div>
-              <span className={`badge badge-${t.status}`} style={{ fontSize: 11 }}>{t.status}</span>
+              <span className={`badge badge-${t.status}`} style={{ fontSize: 11 }}>
+                {t.status}
+              </span>
             </div>
           ))}
         </div>

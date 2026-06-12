@@ -220,7 +220,11 @@ export default function PlayersTab() {
                             disabled={actionId === p.id || !p.online}
                             className="flex items-center gap-1 px-2.5 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-40"
                           >
-                            {actionId === p.id ? <RotateCcw size={12} className="animate-spin" /> : <LogOut size={12} />}
+                            {actionId === p.id ? (
+                              <RotateCcw size={12} className="animate-spin" />
+                            ) : (
+                              <LogOut size={12} />
+                            )}
                             Kick
                           </button>
                           <button

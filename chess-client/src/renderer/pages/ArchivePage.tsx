@@ -43,7 +43,10 @@ export default function ArchivePage() {
           placeholder={t('matchHistory.searchPlayer')}
           style={{ flex: 1, fontSize: 13 }}
           value={filterPlayer}
-          onChange={(e) => { setFilterPlayer(e.target.value); setPage(1); }}
+          onChange={(e) => {
+            setFilterPlayer(e.target.value);
+            setPage(1);
+          }}
         />
       </div>
 
@@ -70,7 +73,9 @@ export default function ArchivePage() {
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', fontSize: 12, color: g.winner ? '#4f8ef7' : 'var(--muted)' }}>
-                  {g.winner ? (g.winner === g.white_player_id ? g.white_display_name : g.black_display_name) + ' won' : 'Draw'}
+                  {g.winner
+                    ? (g.winner === g.white_player_id ? g.white_display_name : g.black_display_name) + ' won'
+                    : 'Draw'}
                 </div>
               </div>
             ))}
@@ -84,7 +89,11 @@ export default function ArchivePage() {
               <span style={{ fontSize: 12, color: 'var(--muted)', alignSelf: 'center' }}>
                 {page} / {totalPages}
               </span>
-              <button className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              <button
+                className="btn btn-ghost btn-sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
                 {t('common.next')}
               </button>
             </div>
