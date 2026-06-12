@@ -28,6 +28,7 @@ const ResultPage = lazy(() => import('./pages/ResultPage'));
 const LocalGamePage = lazy(() => import('./pages/LocalGamePage'));
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
 const ArchivePage = lazy(() => import('./pages/ArchivePage'));
+const TournamentPage = lazy(() => import('./pages/TournamentPage'));
 
 function Loading() {
   return (
@@ -342,6 +343,7 @@ export default function App() {
             <Route path="/local" element={<LocalGamePage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/archive" element={<ArchivePage />} />
+            <Route path="/tournaments" element={<TournamentPage />} />
           </Routes>
         </Suspense>
       </div>

@@ -97,6 +97,44 @@ function migrate(): void {
     CREATE INDEX IF NOT EXISTS idx_completed_games_white ON completed_games(white_player_id);
     CREATE INDEX IF NOT EXISTS idx_completed_games_black ON completed_games(black_player_id);
   `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tournaments (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'waiting',
+      created_by TEXT NOT NULL REFERENCES users(id),
+      max_players INTEGER NOT NULL DEFAULT 8,
+      created_at INTEGER NOT NULL,
+      started_at INTEGER,
+      completed_at INTEGER,
+      winner_id TEXT REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS tournament_participants (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL REFERENCES tournaments(id),
+      player_id TEXT NOT NULL REFERENCES users(id),
+      display_name TEXT NOT NULL DEFAULT '',
+      seed INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS tournament_matches (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL REFERENCES tournaments(id),
+      round INTEGER NOT NULL,
+      position INTEGER NOT NULL,
+      white_player_id TEXT,
+      black_player_id TEXT,
+      game_id TEXT,
+      winner_id TEXT,
+      status TEXT NOT NULL DEFAULT 'pending'
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_tournament_participants_tournament ON tournament_participants(tournament_id);
+    CREATE INDEX IF NOT EXISTS idx_tournament_matches_tournament ON tournament_matches(tournament_id);
+  `);
 }
 
 export interface DbUser {
@@ -466,6 +504,90 @@ export function getPlayerWinLossDraw(playerId: string): { wins: number; losses: 
   const allCount = (d.prepare('SELECT COUNT(*) as c FROM completed_games WHERE white_player_id = ? OR black_player_id = ?').get(playerId, playerId) as { c: number }).c;
   const draws = (d.prepare('SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner IS NULL').get(playerId, playerId) as { c: number }).c;
   return { wins, losses: allCount - wins - draws, draws };
+}
+
+/* ─── Tournaments ─── */
+
+export function createTournament(name: string, createdBy: string, maxPlayers: number): { id: string } {
+  const d = getDb();
+  const id = crypto.randomUUID();
+  d.prepare(
+    'INSERT INTO tournaments (id, name, status, created_by, max_players, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+  ).run(id, name, 'waiting', createdBy, maxPlayers, Date.now());
+  return { id };
+}
+
+export function getTournament(id: string): any | undefined {
+  const d = getDb();
+  return d.prepare('SELECT * FROM tournaments WHERE id = ?').get(id);
+}
+
+export function getTournaments(status?: string): any[] {
+  const d = getDb();
+  if (status) {
+    return d.prepare('SELECT * FROM tournaments WHERE status = ? ORDER BY created_at DESC').all(status);
+  }
+  return d.prepare('SELECT * FROM tournaments ORDER BY created_at DESC').all();
+}
+
+export function getTournamentParticipants(tournamentId: string): any[] {
+  const d = getDb();
+  return d.prepare('SELECT * FROM tournament_participants WHERE tournament_id = ? ORDER BY seed').all(tournamentId);
+}
+
+export function addTournamentParticipant(tournamentId: string, playerId: string, displayName: string, seed: number): void {
+  const d = getDb();
+  const id = crypto.randomUUID();
+  d.prepare(
+    'INSERT INTO tournament_participants (id, tournament_id, player_id, display_name, seed, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+  ).run(id, tournamentId, playerId, displayName, seed, Date.now());
+}
+
+export function removeTournamentParticipant(tournamentId: string, playerId: string): void {
+  const d = getDb();
+  d.prepare('DELETE FROM tournament_participants WHERE tournament_id = ? AND player_id = ?').run(tournamentId, playerId);
+}
+
+export function isTournamentParticipant(tournamentId: string, playerId: string): boolean {
+  const d = getDb();
+  const row = d.prepare('SELECT 1 FROM tournament_participants WHERE tournament_id = ? AND player_id = ?').get(tournamentId, playerId);
+  return !!row;
+}
+
+export function getParticipantCount(tournamentId: string): number {
+  const d = getDb();
+  const row = d.prepare('SELECT COUNT(*) as c FROM tournament_participants WHERE tournament_id = ?').get(tournamentId) as { c: number };
+  return row.c;
+}
+
+export function updateTournamentStatus(id: string, status: string, startedAt?: number, completedAt?: number, winnerId?: string): void {
+  const d = getDb();
+  const updates: string[] = ['status = ?'];
+  const params: any[] = [status];
+  if (startedAt) { updates.push('started_at = ?'); params.push(startedAt); }
+  if (completedAt) { updates.push('completed_at = ?'); params.push(completedAt); }
+  if (winnerId) { updates.push('winner_id = ?'); params.push(winnerId); }
+  params.push(id);
+  d.prepare(`UPDATE tournaments SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+}
+
+export function getTournamentMatches(tournamentId: string): any[] {
+  const d = getDb();
+  return d.prepare('SELECT * FROM tournament_matches WHERE tournament_id = ? ORDER BY round, position').all(tournamentId);
+}
+
+export function createTournamentMatch(tournamentId: string, round: number, position: number, whitePlayerId: string | null, blackPlayerId: string | null): string {
+  const d = getDb();
+  const id = crypto.randomUUID();
+  d.prepare(
+    'INSERT INTO tournament_matches (id, tournament_id, round, position, white_player_id, black_player_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, tournamentId, round, position, whitePlayerId, blackPlayerId, 'pending');
+  return id;
+}
+
+export function updateTournamentMatch(id: string, gameId: string, winnerId: string | null, status: string): void {
+  const d = getDb();
+  d.prepare('UPDATE tournament_matches SET game_id = ?, winner_id = ?, status = ? WHERE id = ?').run(gameId, winnerId, status, id);
 }
 
 export function areFriends(userId: string, friendId: string): boolean {

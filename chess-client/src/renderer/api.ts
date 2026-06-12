@@ -249,6 +249,35 @@ export async function getArchivedGame(gameId: string): Promise<any> {
   return request('/games/archive/' + gameId);
 }
 
+/* ─── Tournaments ─── */
+
+export async function createTournament(name: string, maxPlayers: number): Promise<any> {
+  return request('/tournaments', {
+    method: 'POST',
+    body: JSON.stringify({ name, maxPlayers }),
+  });
+}
+
+export async function getTournaments(): Promise<any[]> {
+  return request('/tournaments');
+}
+
+export async function getTournament(id: string): Promise<any> {
+  return request('/tournaments/' + id);
+}
+
+export async function joinTournament(id: string): Promise<any> {
+  return request('/tournaments/' + id + '/join', { method: 'POST' });
+}
+
+export async function leaveTournament(id: string): Promise<any> {
+  return request('/tournaments/' + id + '/leave', { method: 'POST' });
+}
+
+export async function startTournament(id: string): Promise<any> {
+  return request('/tournaments/' + id + '/start', { method: 'POST' });
+}
+
 /* GET /health — no auth required.
  * Response shape confirmed in ../chess-api/src/routes.ts line 35-43
  * and ../chess-api/docs/api.md lines 44-54. */

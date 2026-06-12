@@ -35,6 +35,7 @@ export type TranslationKeys = {
     history: string;
     leaderboard: string;
     archive: string;
+    tournaments: string;
     logout: string;
   };
   friends: {
@@ -210,6 +211,11 @@ export type TranslationKeys = {
     message: string;
     tryAgain: string;
     reload: string;
+  };
+  tournaments: {
+    title: string;
+    create: string;
+    none: string;
   };
   stats: {
     title: string;
@@ -511,6 +517,7 @@ export const en: TranslationKeys = {
     history: 'History',
     leaderboard: 'Leaderboard',
     archive: 'Archive',
+    tournaments: 'Tournaments',
     logout: 'Logout',
   },
   friends: {
@@ -686,6 +693,11 @@ export const en: TranslationKeys = {
     message: 'An unexpected error occurred',
     tryAgain: 'Try Again',
     reload: 'Reload App',
+  },
+  tournaments: {
+    title: 'Tournaments',
+    create: 'Create Tournament',
+    none: 'No tournaments yet',
   },
   stats: {
     title: 'Stats',
@@ -988,6 +1000,7 @@ export const de: TranslationKeys = {
     history: 'Verlauf',
     leaderboard: 'Rangliste',
     archive: 'Archiv',
+    tournaments: 'Turniere',
     logout: 'Abmelden',
   },
   friends: {
@@ -1163,6 +1176,11 @@ export const de: TranslationKeys = {
     message: 'Ein unerwarteter Fehler ist aufgetreten',
     tryAgain: 'Erneut versuchen',
     reload: 'App neuladen',
+  },
+  tournaments: {
+    title: 'Turniere',
+    create: 'Turnier erstellen',
+    none: 'Noch keine Turniere',
   },
   stats: {
     title: 'Statistik',
