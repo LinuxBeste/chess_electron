@@ -119,6 +119,14 @@ export type TranslationKeys = {
     localDescription: string;
     startLocal: string;
     privateGame: string;
+    playAI: string;
+    aiDifficulty: string;
+    aiBeginner: string;
+    aiIntermediate: string;
+    aiAdvanced: string;
+    aiExpert: string;
+    aiMaster: string;
+    startAI: string;
     newGame: string;
     newWindow: string;
     pasteGameId: string;
@@ -148,6 +156,7 @@ export type TranslationKeys = {
     challengeTitle: string;
     opponentRematch: string;
     spectators: string;
+    playAs: string;
   };
   localGame: {
     blackToMove: string;
@@ -586,6 +595,14 @@ export const en: TranslationKeys = {
     localDescription: 'Play against a friend on the same screen. No server needed.',
     startLocal: 'Start Local Game',
     privateGame: 'Private game',
+    playAI: 'Play vs AI',
+    aiDifficulty: 'Difficulty',
+    aiBeginner: 'Beginner',
+    aiIntermediate: 'Intermediate',
+    aiAdvanced: 'Advanced',
+    aiExpert: 'Expert',
+    aiMaster: 'Master',
+    startAI: 'Start AI Game',
     newGame: 'New Game',
     newWindow: 'New Window',
     pasteGameId: 'Paste game ID...',
@@ -615,6 +632,7 @@ export const en: TranslationKeys = {
     challengeTitle: 'Challenge!',
     opponentRematch: 'Opponent wants a rematch',
     spectators: 'Spectators',
+    playAs: 'Play as',
   },
   localGame: {
     blackToMove: '◄ Black to move',
@@ -1054,6 +1072,14 @@ export const de: TranslationKeys = {
     localDescription: 'Spiele gegen einen Freund auf demselben Bildschirm. Kein Server nötig.',
     startLocal: 'Lokales Spiel starten',
     privateGame: 'Privates Spiel',
+    playAI: 'Gegen KI spielen',
+    aiDifficulty: 'Schwierigkeit',
+    aiBeginner: 'Anfänger',
+    aiIntermediate: 'Mittel',
+    aiAdvanced: 'Fortgeschritten',
+    aiExpert: 'Experte',
+    aiMaster: 'Meister',
+    startAI: 'KI-Spiel starten',
     newGame: 'Neues Spiel',
     newWindow: 'Neues Fenster',
     pasteGameId: 'Spiel-ID einfügen...',
@@ -1083,6 +1109,7 @@ export const de: TranslationKeys = {
     challengeTitle: 'Herausforderung!',
     opponentRematch: 'Gegner möchte Revanche',
     spectators: 'Zuschauer',
+    playAs: 'Spielen als',
   },
   localGame: {
     blackToMove: '◄ Schwarz ist am Zug',

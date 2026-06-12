@@ -5,6 +5,7 @@ import { Player, GameState, Color, PieceType } from './types';
 import type { GameStatus } from './types';
 import * as chess from './chess';
 import * as db from './db';
+import { engineManager } from './engine';
 import logger from './logger';
 
 /* In-memory data stores.  Everything resets on process restart — there is
@@ -16,6 +17,9 @@ import logger from './logger';
  *   wsConnections: playerId → Set<WebSocket> (multi-tab support) */
 const games = new Map<string, GameState>();
 const players = new Map<string, Player>();
+
+/* UCI move history for engine use (string[] per game) */
+const uciHistory = new Map<string, string[]>();
 
 /* Bearer-token reverse index: maps each token directly to its owner.
  * Without this we'd have to iterate every player's token array on every
@@ -51,6 +55,8 @@ function enrichNames(g: GameState): GameState {
     blackAvatarUrl,
   };
 }
+
+export const AI_PLAYER_ID = '_ai_';
 
 /* Env-driven limits with defaults */
 const MAX_GAMES_PER_PLAYER = parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '20', 10);
@@ -447,6 +453,124 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
   return enrichNames(game);
 }
 
+export function createAIGame(playerId: string, skillLevel: number, playerColor: Color = 'white'): GameState {
+  const id = uuidv4();
+  const aiColor: Color = playerColor === 'white' ? 'black' : 'white';
+  const game: GameState = {
+    id,
+    board: chess.createInitialBoard(),
+    turn: 'white',
+    status: 'active',
+    players: { [playerColor]: playerId, [aiColor]: AI_PLAYER_ID },
+    whiteName: playerColor === 'white' ? undefined : 'AI',
+    blackName: playerColor === 'black' ? undefined : 'AI',
+    moveHistory: [],
+    boardHistory: [],
+    enPassantTarget: null,
+    castlingRights: {
+      white: { kingside: true, queenside: true },
+      black: { kingside: true, queenside: true },
+    },
+    lastMove: null,
+    winner: null,
+    createdAt: Date.now(),
+    visibility: 'private',
+    halfMoveClock: 0,
+  };
+  games.set(id, game);
+
+  engineManager.startInstance(id, skillLevel).then(() => {
+    logger.info('AI engine ready for game', id);
+    if (aiColor === 'white') {
+      triggerAIMove(id);
+    }
+  }).catch((err) => {
+    logger.error('Failed to start AI engine', err);
+  });
+
+  logger.info('AI game created: gameId=' + id + ' player=' + playerId + ' color=' + playerColor + ' skill=' + skillLevel);
+  broadcastGameListUpdate();
+  return enrichNames(game);
+}
+
+async function triggerAIMove(gameId: string): Promise<void> {
+  const game = games.get(gameId);
+  if (!game || game.status !== 'active') return;
+
+  const isAiWhite = game.players.white === AI_PLAYER_ID;
+  const aiColor: Color = isAiWhite ? 'white' : 'black';
+  if (game.turn !== aiColor) return;
+
+  await engineManager.setPosition(gameId, uciHistory.get(gameId) || []);
+  const bestMove = await engineManager.getBestMove(gameId, 500);
+  if (!bestMove || bestMove === '(none)') return;
+
+  const from = bestMove.slice(0, 2);
+  const to = bestMove.slice(2, 4);
+  const promotion = bestMove.length > 4 ? bestMove.slice(4) as PieceType : undefined;
+
+  const legalMoves = chess.getLegalMoves(game.board, aiColor, game.enPassantTarget, game.castlingRights);
+  const matchedMove = legalMoves.find((m) => m.from === from && m.to === to && (!promotion || m.promotion === promotion));
+  if (!matchedMove) {
+    logger.warn('AI generated illegal move', { gameId, bestMove });
+    return;
+  }
+
+  const { newBoard, enPassantTarget, castlingRights } = chess.applyMove(game.board, matchedMove, game.castlingRights);
+  const notation = chess.moveToAlgebraic(matchedMove, matchedMove.captured, legalMoves);
+  const newHalfMoveClock = chess.updateHalfMoveClock(matchedMove, game.halfMoveClock);
+  const nextTurn: Color = game.turn === 'white' ? 'black' : 'white';
+  const { status: rawStatus } = chess.getGameStatus(newBoard, nextTurn, enPassantTarget, castlingRights, newHalfMoveClock);
+
+  let newStatus: GameStatus;
+  let winner: Color | null = null;
+  if (rawStatus === 'checkmate') {
+    newStatus = 'checkmate';
+    winner = game.turn;
+  } else if (rawStatus === 'stalemate' || rawStatus === 'draw') {
+    newStatus = rawStatus;
+  } else {
+    newStatus = 'active';
+  }
+
+  game.board = newBoard;
+  game.turn = nextTurn;
+  game.status = newStatus;
+  game.moveHistory.push(notation);
+  game.boardHistory.push({ board: chess.serializeBoard(newBoard), move: notation });
+  if (!uciHistory.has(gameId)) uciHistory.set(gameId, []);
+  uciHistory.get(gameId)!.push(from + to + (matchedMove.promotion ? matchedMove.promotion[0] : ''));
+  game.enPassantTarget = enPassantTarget;
+  game.castlingRights = castlingRights;
+  game.lastMove = { from, to };
+  game.halfMoveClock = newHalfMoveClock;
+  if (winner) game.winner = winner;
+
+  const isTerminal = newStatus === 'checkmate' || newStatus === 'stalemate' || newStatus === 'draw';
+  broadcastToGame(gameId, {
+    type: isTerminal ? 'game_over' : 'move',
+    gameId,
+    board: chess.serializeBoard(newBoard),
+    turn: nextTurn,
+    lastMove: { from, to },
+    status: newStatus,
+    ...(newStatus === 'checkmate' ? { result: 'checkmate', reason: `${winner} wins by checkmate`, winner } : {}),
+    ...(newStatus === 'stalemate' ? { result: 'stalemate', reason: 'Draw by stalemate' } : {}),
+    ...(newStatus === 'draw' ? { result: 'draw', reason: 'Draw by 50-move rule' } : {}),
+  });
+
+  if (isTerminal) {
+    recordGameResult(game, winner);
+    broadcastGameListUpdate();
+  }
+
+  logger.info('AI move: gameId=' + gameId + ' move=' + notation + ' status=' + newStatus);
+}
+
+export function isAIGame(game: GameState): boolean {
+  return game.players.white === AI_PLAYER_ID || game.players.black === AI_PLAYER_ID;
+}
+
 /**
  * List all games that are waiting for a second player and public.
  * Private games are excluded — they must be joined by direct ID.
@@ -648,6 +772,10 @@ export function makeMove(
   game.halfMoveClock = newHalfMoveClock;
   if (winner) game.winner = winner;
 
+  /* Track UCI notation for engine */
+  if (!uciHistory.has(gameId)) uciHistory.set(gameId, []);
+  uciHistory.get(gameId)!.push(from + to + (matchedMove.promotion ? matchedMove.promotion[0] : ''));
+
   /* Cancel any pending draw offer — a move was made */
   cancelDrawOffer(gameId);
 
@@ -679,6 +807,9 @@ export function makeMove(
   if (isTerminal) {
     recordGameResult(game, winner);
     broadcastGameListUpdate();
+  } else if (isAIGame(game)) {
+    /* AI opponent moves after the human's move */
+    setTimeout(() => { triggerAIMove(gameId); }, 100);
   }
 
   const moveLog = notation || from + '-' + to;
@@ -722,6 +853,7 @@ export function resignGame(gameId: string, playerId: string): { success: boolean
   });
 
   recordGameResult(game, winner === 'white' ? 'white' : winner === 'black' ? 'black' : null);
+  if (isAIGame(game)) engineManager.destroyInstance(gameId);
   broadcastGameListUpdate();
 
   logger.info('Resign: gameId=' + gameId + ' player=' + playerId + ' winner=' + winner);
@@ -807,6 +939,10 @@ function recordGameResult(game: GameState, winner: Color | null): void {
     null,
     '5+0',
   );
+  if (isAIGame(game)) {
+    engineManager.destroyInstance(game.id);
+    uciHistory.delete(game.id);
+  }
   logger.info('Game result recorded: gameId=' + game.id + ' winner=' + winner);
 }
 

@@ -30,6 +30,8 @@ export default function LobbyPage() {
   const [statusMsg, setStatusMsg] = useState('');
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const [liveStatus, setLiveStatus] = useState('');
+  const [aiSkill, setAiSkill] = useState(5);
+  const [aiColor, setAiColor] = useState<'white' | 'black'>('white');
 
   useEffect(() => {
     logger.info('LobbyPage mounted');
@@ -93,6 +95,19 @@ export default function LobbyPage() {
       navigate(`/game/${game.id}`);
     } catch (err: any) {
       logger.error('Failed to create game', { error: err.message });
+      store.toast(err.message || t('lobby.failedCreate'));
+    }
+  }
+
+  async function startAIGame() {
+    logger.info('Starting AI game', { skill: aiSkill, color: aiColor });
+    try {
+      const game = await api.createAIGame(aiSkill, aiColor);
+      logger.info('AI game created', { gameId: game.id });
+      store.set('currentGame', game);
+      navigate(`/game/${game.id}`);
+    } catch (err: any) {
+      logger.error('Failed to create AI game', { error: err.message });
       store.toast(err.message || t('lobby.failedCreate'));
     }
   }
@@ -440,6 +455,50 @@ export default function LobbyPage() {
                 {t('lobby.newWindow')}
               </button>
             )}
+          </div>
+        )}
+
+        {!offline && (
+          <div className="card" style={{ padding: 24 }}>
+            <h2 className="card-title">{t('lobby.playAI')}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)', letterSpacing: '0.2px' }}>
+                {t('lobby.aiDifficulty')}
+              </span>
+              <select
+                className="input"
+                style={{ width: 100, fontSize: 13 }}
+                value={aiSkill}
+                onChange={(e) => setAiSkill(parseInt(e.target.value))}
+              >
+                <option value={1}>{t('lobby.aiBeginner')}</option>
+                <option value={5}>{t('lobby.aiIntermediate')}</option>
+                <option value={10}>{t('lobby.aiAdvanced')}</option>
+                <option value={15}>{t('lobby.aiExpert')}</option>
+                <option value={20}>{t('lobby.aiMaster')}</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)', letterSpacing: '0.2px' }}>
+                {t('game.playAs')}
+              </span>
+              <select
+                className="input"
+                style={{ width: 80, fontSize: 13 }}
+                value={aiColor}
+                onChange={(e) => setAiColor(e.target.value as 'white' | 'black')}
+              >
+                <option value="white">{t('common.white')}</option>
+                <option value="black">{t('common.black')}</option>
+              </select>
+            </div>
+            <button
+              className="btn btn-primary"
+              style={{ width: '100%', padding: 14, fontSize: 16 }}
+              onClick={startAIGame}
+            >
+              {t('lobby.startAI')}
+            </button>
           </div>
         )}
 

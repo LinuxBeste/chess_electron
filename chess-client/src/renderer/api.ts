@@ -310,6 +310,22 @@ export async function createGame(visibility?: 'public' | 'private'): Promise<Gam
   }
 }
 
+/* POST /games/ai */
+export async function createAIGame(skillLevel: number, playerColor?: 'white' | 'black'): Promise<GameState> {
+  logger.info('createAIGame called', { skillLevel, playerColor });
+  try {
+    const result = await request<GameState>('/games/ai', {
+      method: 'POST',
+      body: JSON.stringify({ skillLevel, playerColor }),
+    });
+    logger.info('createAIGame ok: gameId=' + result.id);
+    return result;
+  } catch (err) {
+    logger.error('createAIGame failed: ' + err);
+    throw err;
+  }
+}
+
 /* GET /games — no auth required.
  * Returns an array of GameState objects.
  * Confirmed in ../chess-api/src/routes.ts line 68-70
