@@ -29,8 +29,8 @@ describe('Navbar', () => {
   test('shows no user section when logged out', () => {
     renderNavbar();
     expect(screen.queryByText('Logout')).toBeNull();
-    expect(screen.queryByText('Stats')).toBeNull();
-    expect(screen.queryByText('Settings')).toBeNull();
+    expect(screen.getByText('Stats')).toBeTruthy();
+    expect(screen.getByText('Settings')).toBeTruthy();
     expect(screen.queryByText('History')).toBeNull();
   });
 
@@ -55,14 +55,14 @@ describe('Navbar', () => {
     expect(dot!.className).toContain('navbar-dot');
   });
 
-  test('shows username and settings/logout but no stats/history when offline', () => {
+  test('shows username and settings/logout but no history when offline', () => {
     store.set('offline', true);
     store.set('username', 'OfflinePlayer');
     renderNavbar();
     expect(screen.getByText('OfflinePlayer')).toBeTruthy();
     expect(screen.getByText('Settings')).toBeTruthy();
     expect(screen.getByText('Logout')).toBeTruthy();
-    expect(screen.queryByText('Stats')).toBeNull();
+    expect(screen.getByText('Stats')).toBeTruthy();
     expect(screen.queryByText('History')).toBeNull();
   });
 
@@ -76,7 +76,7 @@ describe('Navbar', () => {
     expect(dot!.className).toContain('offline');
   });
 
-  test('switching from offline to online shows stats and history', () => {
+  test('switching from offline to online shows history', () => {
     store.set('offline', true);
     store.set('username', 'Player');
     const { rerender } = render(
@@ -84,7 +84,8 @@ describe('Navbar', () => {
         <Navbar onLanguageChange={jest.fn()} />
       </MemoryRouter>,
     );
-    expect(screen.queryByText('Stats')).toBeNull();
+    expect(screen.getByText('Stats')).toBeTruthy();
+    expect(screen.queryByText('History')).toBeNull();
 
     act(() => {
       store.set('offline', false);
