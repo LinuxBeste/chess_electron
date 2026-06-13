@@ -10,7 +10,7 @@
     "build:renderer": "webpack --config webpack.renderer.config.js",
     "build:web": "NODE_ENV=production webpack --config webpack.renderer.config.js",
     "build": "pnpm run build:main && pnpm run build:renderer",
-    "dev:web": "NODE_ENV=development webpack serve --config webpack.renderer.config.js",
+    "dev:web": "cd ../chess-api && PORT=25565 ts-node src/index.ts & cd ../chess-client && wait-on tcp:localhost:25565 && NODE_ENV=development webpack serve --config webpack.renderer.config.js; kill %1 2>/dev/null",
     "start": "electron .",
     "dev": "pnpm run build && electron .",
     "typecheck": "tsc --noEmit",

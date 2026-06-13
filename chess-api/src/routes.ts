@@ -499,6 +499,17 @@ router.post(
   },
 );
 
+/* Get the active game for the authenticated player (if any) */
+router.get('/players/me/active-game', authMiddleware, (req: Request, res: Response) => {
+  const gameId = game.getPlayerCurrentGameId(req.player.id);
+  if (!gameId) {
+    res.json({ game: null });
+    return;
+  }
+  const g = game.getGame(gameId);
+  res.json({ game: g ?? null });
+});
+
 /* Get match history for the authenticated player */
 router.get('/players/:playerId/games', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   if (req.player.id !== req.params.playerId) {

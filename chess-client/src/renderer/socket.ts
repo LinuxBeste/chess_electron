@@ -157,6 +157,16 @@ export interface SpectatorCountMessage {
   count: number;
 }
 
+export interface OpponentDisconnectedMessage {
+  type: 'opponent_disconnected';
+  gameId: string;
+}
+
+export interface OpponentReconnectedMessage {
+  type: 'opponent_reconnected';
+  gameId: string;
+}
+
 export interface RematchOfferMessage {
   type: 'rematch_offered';
   gameId: string;
@@ -190,7 +200,9 @@ type WsMessage =
   | ChatHistoryMessage
   | SpectatorCountMessage
   | RematchOfferMessage
-  | RematchAcceptedMessage;
+  | RematchAcceptedMessage
+  | OpponentDisconnectedMessage
+  | OpponentReconnectedMessage;
 
 /** Handler type for move events */
 export type MoveHandler = (msg: MoveMessage) => void;
@@ -228,6 +240,8 @@ export type ChallengeDeclineHandler = (msg: ChallengeDeclineMessage) => void;
 export type GameListUpdateHandler = (msg: GameListUpdateMessage) => void;
 export type RematchOfferHandler = (msg: RematchOfferMessage) => void;
 export type RematchAcceptedHandler = (msg: RematchAcceptedMessage) => void;
+export type OpponentDisconnectedHandler = (msg: OpponentDisconnectedMessage) => void;
+export type OpponentReconnectedHandler = (msg: OpponentReconnectedMessage) => void;
 
 /** Maximum number of reconnect attempts before giving up */
 const MAX_RETRIES = 5;
@@ -263,6 +277,8 @@ class SocketManager {
   private rematchOfferHandlers = new Set<RematchOfferHandler>();
   private spectatorCountHandlers = new Set<SpectatorCountHandler>();
   private rematchAcceptedHandlers = new Set<RematchAcceptedHandler>();
+  private opponentDisconnectedHandlers = new Set<OpponentDisconnectedHandler>();
+  private opponentReconnectedHandlers = new Set<OpponentReconnectedHandler>();
   private serverUrl = 'http://localhost:3000';
 
   /** Set a custom server URL for the WebSocket connection */
@@ -295,7 +311,7 @@ class SocketManager {
     this.shouldReconnect = true;
     store.set('wsStatus', 'connecting');
 
-    const wsBase = this.serverUrl.replace(/^http/, 'ws');
+    const wsBase = this.serverUrl.replace(/^http/, 'ws') + '/chess-ws';
     this.ws = new WebSocket(wsBase, [token]);
 
     this.ws.onopen = () => {
@@ -376,6 +392,12 @@ class SocketManager {
             break;
           case 'rematch_accepted':
             this.rematchAcceptedHandlers.forEach((h) => h(msg as RematchAcceptedMessage));
+            break;
+          case 'opponent_disconnected':
+            this.opponentDisconnectedHandlers.forEach((h) => h(msg as OpponentDisconnectedMessage));
+            break;
+          case 'opponent_reconnected':
+            this.opponentReconnectedHandlers.forEach((h) => h(msg as OpponentReconnectedMessage));
             break;
         }
       } catch {
@@ -593,6 +615,22 @@ class SocketManager {
     this.spectatorCountHandlers.add(handler);
     return () => {
       this.spectatorCountHandlers.delete(handler);
+    };
+  }
+
+  onOpponentDisconnected(handler: OpponentDisconnectedHandler): () => void {
+    logger.info('Socket: opponent_disconnected handler registered');
+    this.opponentDisconnectedHandlers.add(handler);
+    return () => {
+      this.opponentDisconnectedHandlers.delete(handler);
+    };
+  }
+
+  onOpponentReconnected(handler: OpponentReconnectedHandler): () => void {
+    logger.info('Socket: opponent_reconnected handler registered');
+    this.opponentReconnectedHandlers.add(handler);
+    return () => {
+      this.opponentReconnectedHandlers.delete(handler);
     };
   }
 

@@ -1,4 +1,4 @@
-import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+import { describe, test, expect, beforeEach } from '@jest/globals';
 import { render, screen, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Navbar from '../src/renderer/components/Navbar';
@@ -15,15 +15,14 @@ describe('Navbar', () => {
   function renderNavbar() {
     return render(
       <MemoryRouter>
-        <Navbar onLanguageChange={jest.fn()} />
+        <Navbar />
       </MemoryRouter>,
     );
   }
 
-  test('shows brand and language toggle when logged out', () => {
+  test('shows brand and nav buttons when logged out', () => {
     renderNavbar();
     expect(screen.getByText(/chess/i)).toBeTruthy();
-    expect(screen.getByText('Deutsch')).toBeTruthy();
   });
 
   test('shows no user section when logged out', () => {
@@ -81,7 +80,7 @@ describe('Navbar', () => {
     store.set('username', 'Player');
     const { rerender } = render(
       <MemoryRouter>
-        <Navbar onLanguageChange={jest.fn()} />
+        <Navbar />
       </MemoryRouter>,
     );
     expect(screen.getByText('Stats')).toBeTruthy();
@@ -93,7 +92,7 @@ describe('Navbar', () => {
     });
     rerender(
       <MemoryRouter>
-        <Navbar onLanguageChange={jest.fn()} />
+        <Navbar />
       </MemoryRouter>,
     );
     expect(screen.getByText('Stats')).toBeTruthy();

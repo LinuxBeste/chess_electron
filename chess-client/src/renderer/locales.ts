@@ -157,6 +157,7 @@ export type TranslationKeys = {
     challengedYou: string;
     challengeTitle: string;
     opponentRematch: string;
+    opponentDisconnected: string;
     spectators: string;
     playAs: string;
   };
@@ -645,6 +646,7 @@ export const en: TranslationKeys = {
     challengedYou: 'challenged you to a game!',
     challengeTitle: 'Challenge!',
     opponentRematch: 'Opponent wants a rematch',
+    opponentDisconnected: 'Opponent disconnected',
     spectators: 'Spectators',
     playAs: 'Play as',
   },
@@ -1134,6 +1136,7 @@ export const de: TranslationKeys = {
     challengedYou: 'fordert dich zu einem Spiel heraus!',
     challengeTitle: 'Herausforderung!',
     opponentRematch: 'Gegner möchte Revanche',
+    opponentDisconnected: 'Gegner getrennt',
     spectators: 'Zuschauer',
     playAs: 'Spielen als',
   },

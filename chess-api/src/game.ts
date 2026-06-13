@@ -234,6 +234,7 @@ export function registerWSConnection(playerId: string, ws: WebSocket): void {
   wsConnections.get(playerId)!.add(ws);
   if (wasOffline) {
     notifyFriendsOnline(playerId);
+    notifyOpponentReconnected(playerId);
   }
   logger.info('WS connected: playerId=' + playerId);
 }
@@ -249,6 +250,7 @@ export function removeWSConnection(playerId: string, ws: WebSocket): void {
   const isNowOffline = !wsConnections.has(playerId) || wsConnections.get(playerId)!.size === 0;
   if (isNowOffline && players.has(playerId)) {
     notifyFriendsOffline(playerId);
+    notifyOpponentDisconnected(playerId);
   }
   logger.info('WS disconnected: playerId=' + playerId);
 }
@@ -1697,7 +1699,7 @@ export interface FriendInfo {
   currentGameId: string | null;
 }
 
-function getPlayerCurrentGameId(playerId: string): string | null {
+export function getPlayerCurrentGameId(playerId: string): string | null {
   for (const [id, g] of games) {
     if (g.status === 'active' && (g.players.white === playerId || g.players.black === playerId)) {
       return id;
@@ -1739,6 +1741,30 @@ function notifyFriendsOffline(playerId: string): void {
     displayName: player?.displayName ?? '?',
   });
   logger.info('Friend offline notified: playerId=' + playerId);
+}
+
+function notifyOpponentDisconnected(playerId: string): void {
+  const gameId = getPlayerCurrentGameId(playerId);
+  if (!gameId) return;
+  const g = games.get(gameId);
+  if (!g) return;
+  const opponentId = g.players.white === playerId ? g.players.black : g.players.white;
+  if (opponentId) {
+    sendToPlayer(opponentId, { type: 'opponent_disconnected', gameId });
+    logger.info('Opponent disconnected notified: gameId=' + gameId + ' opponentId=' + opponentId);
+  }
+}
+
+function notifyOpponentReconnected(playerId: string): void {
+  const gameId = getPlayerCurrentGameId(playerId);
+  if (!gameId) return;
+  const g = games.get(gameId);
+  if (!g) return;
+  const opponentId = g.players.white === playerId ? g.players.black : g.players.white;
+  if (opponentId) {
+    sendToPlayer(opponentId, { type: 'opponent_reconnected', gameId });
+    logger.info('Opponent reconnected notified: gameId=' + gameId + ' opponentId=' + opponentId);
+  }
 }
 
 export function broadcastFriendRequest(fromPlayerId: string, toPlayerId: string, requestId: string): void {

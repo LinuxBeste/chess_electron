@@ -20,6 +20,7 @@ interface StateMap {
   avatarUrl: string | null;
   isRegistered: boolean;
   currentGame: GameState | null;
+  currentGameId: string | null;
   wsStatus: WsStatus;
   toasts: ToastMessage[];
   currentView: ViewName;
@@ -38,6 +39,7 @@ class Store {
     avatarUrl: null,
     isRegistered: false,
     currentGame: null,
+    currentGameId: null,
     wsStatus: 'disconnected',
     toasts: [],
     currentView: 'login',
@@ -76,7 +78,11 @@ class Store {
         (h as (value: StateMap[K]) => void)(value);
       }
     }
-    if (key === 'token' || key === 'playerId' || key === 'username' || key === 'avatarUrl' || key === 'isRegistered') {
+    if (key === 'currentGame') {
+      const game = value as GameState | null;
+      this.state.currentGameId = game?.id ?? null;
+    }
+    if (key === 'token' || key === 'playerId' || key === 'username' || key === 'avatarUrl' || key === 'isRegistered' || key === 'currentGame') {
       this.persistSession();
     }
   }
@@ -105,8 +111,13 @@ class Store {
     const username = this.get('username');
     const avatarUrl = this.get('avatarUrl');
     const isRegistered = this.get('isRegistered');
+    const currentGame = this.get('currentGame');
+    const currentGameId = currentGame?.id ?? null;
     if (token && playerId && username) {
-      localStorage.setItem('chess_session', JSON.stringify({ token, playerId, username, avatarUrl, isRegistered }));
+      localStorage.setItem(
+        'chess_session',
+        JSON.stringify({ token, playerId, username, avatarUrl, isRegistered, currentGameId }),
+      );
     }
   }
 
@@ -117,6 +128,7 @@ class Store {
     username: string;
     avatarUrl: string | null;
     isRegistered: boolean;
+    currentGameId: string | null;
   } | null {
     const raw = localStorage.getItem('chess_session');
     if (!raw) {
@@ -125,7 +137,8 @@ class Store {
     }
     try {
       logger.info('session restored');
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      return { ...parsed, currentGameId: parsed.currentGameId ?? null };
     } catch {
       localStorage.removeItem('chess_session');
       return null;

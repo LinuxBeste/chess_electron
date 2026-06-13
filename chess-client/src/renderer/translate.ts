@@ -4,6 +4,15 @@ import { loadSettings } from './settings';
 
 let current: TranslationKeys = en;
 let currentLang: string = 'en';
+let changeListeners: Array<() => void> = [];
+
+/** Subscribe to language changes. Returns an unsubscribe function. */
+export function onLanguageChange(listener: () => void): () => void {
+  changeListeners.push(listener);
+  return () => {
+    changeListeners = changeListeners.filter((l) => l !== listener);
+  };
+}
 
 export function setLanguage(lang: string): void {
   currentLang = lang;
@@ -11,6 +20,7 @@ export function setLanguage(lang: string): void {
   try {
     localStorage.setItem('chess_locale', lang);
   } catch {}
+  changeListeners.forEach((l) => l());
   logger.info('Language changed', lang);
 }
 

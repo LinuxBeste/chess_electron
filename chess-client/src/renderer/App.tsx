@@ -18,7 +18,7 @@ import { socketManager } from './socket';
 import { ApiError, setBaseUrl, getMe, getFriends, getFriendRequests, joinGame } from './api';
 import { type AppSettings, loadSettings, saveSettings, applyTheme, getSetting } from './settings';
 import { setSoundVolume } from './sound';
-import { t, setLanguage, getLanguage } from './translate';
+import { t, onLanguageChange } from './translate';
 
 /* Code-split page bundles — each page is loaded only when first navigated to */
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -49,14 +49,6 @@ export default function App() {
     fromDisplayName: string;
   } | null>(null);
 
-  function handleLanguageChange() {
-    const next = getLanguage() === 'de' ? 'en' : 'de';
-    setLanguage(next);
-    const current = loadSettings();
-    saveSettings({ ...current, language: next });
-    setLangKey((k) => k + 1);
-  }
-
   /* One-shot initialisation on app mount:
       - Resolve server URL from Electron preload, localStorage, or default
       - Load persisted settings and override with Electron env vars if present
@@ -74,6 +66,9 @@ export default function App() {
     const wsUrl = window.electronAPI?.wsUrl || serverUrl;
     socketManager.setServerUrl(wsUrl);
     logger.info('Server URL set', { serverUrl, hasElectron: !!window.electronAPI });
+
+    /* Subscribe to language changes so the Navbar and Routes re-render */
+    const unsubLang = onLanguageChange(() => setLangKey((k) => k + 1));
 
     /* Merge Electron-provided defaults (if any) into persisted settings.
        This lets the Electron wrapper force specific themes for the standalone app
@@ -125,12 +120,18 @@ export default function App() {
       store.set('username', session.username);
       store.set('avatarUrl', session.avatarUrl);
       store.set('isRegistered', session.isRegistered);
+      if (session.currentGameId) store.set('currentGameId', session.currentGameId);
       getMe()
         .then((me) => {
-          logger.info('Session validated, navigating to lobby');
+          logger.info('Session validated');
           store.set('avatarUrl', me.avatarUrl);
           store.set('isRegistered', me.isRegistered);
-          navigate('/lobby', { replace: true });
+          const path = window.location.hash.replace(/^#/, '') || '/';
+          if (path.startsWith('/game/') || path.startsWith('/result/')) {
+            logger.info('Already on game/result page, skipping redirect', { path });
+          } else {
+            navigate('/lobby', { replace: true });
+          }
         })
         .catch((err) => {
           if (err instanceof ApiError && err.status === 401) {
@@ -225,6 +226,7 @@ export default function App() {
     });
 
     return () => {
+      unsubLang();
       unsubToken();
       unsubFriendOnline();
       unsubFriendOffline();
@@ -307,7 +309,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <Navbar key={langKey} onLanguageChange={handleLanguageChange} />
+      <Navbar key={langKey} />
       <ToastContainer />
 
       {/* Challenge dialog */}

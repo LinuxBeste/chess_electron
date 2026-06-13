@@ -14,16 +14,11 @@ import SettingsDialog from './SettingsDialog';
 import MatchHistoryDialog from './MatchHistoryDialog';
 import StatsDialog from './StatsDialog';
 import FriendsTab from './FriendsTab';
-import { t, getLanguage } from '../translate';
-import { getLanguageNames } from '../locales';
+import { t } from '../translate';
 import { avatarSrc } from '../api';
 import logger from '../logger';
 
-interface NavbarProps {
-  onLanguageChange: () => void;
-}
-
-export default function Navbar({ onLanguageChange }: NavbarProps) {
+export default function Navbar() {
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -49,12 +44,6 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
     store.clearSession();
     store.set('currentGame', null);
     navigate('/login');
-  }
-
-  function handleLanguageChange() {
-    const lang = getLanguage() === 'de' ? 'en' : 'de';
-    logger.info('Language changed', { language: lang });
-    onLanguageChange();
   }
 
   function handleOpenSettings() {
@@ -83,9 +72,6 @@ export default function Navbar({ onLanguageChange }: NavbarProps) {
         {t('navbar.chess')}
       </span>
       <div className="navbar-center" />
-      <button className="navbar-btn" onClick={handleLanguageChange} style={{ fontSize: 11, padding: '4px 8px' }}>
-        {getLanguageNames()[getLanguage() === 'de' ? 'en' : 'de']}
-      </button>
       <div className="navbar-actions">
         <button className="navbar-btn" onClick={() => navigate('/lobby')}>
           {t('navbar.play')}

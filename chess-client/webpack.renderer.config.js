@@ -29,11 +29,31 @@ module.exports = {
   devServer: {
     port: 3000,
     hot: true,
+    /* Force HMR WebSocket to connect via localhost even when the page is
+       accessed via the network IP (prevents HMR WebSocket errors) */
+    client: {
+      webSocketURL: {
+        hostname: 'localhost',
+        port: 3000,
+        pathname: '/ws',
+        protocol: 'ws',
+      },
+    },
     /* Redirect all 404s to index.html so the React router can handle them */
     historyApiFallback: true,
     static: {
       directory: path.resolve(__dirname, 'dist/renderer'),
     },
+    /* Proxy API and WebSocket requests to the chess API server.
+       Start the API on port 25565: PORT=25565 ts-node src/index.ts */
+    proxy: [
+      {
+        context: ['/auth', '/players', '/games', '/tournaments', '/admin', '/avatars', '/health', '/chess-ws'],
+        target: 'http://localhost:25565',
+        ws: true,
+        changeOrigin: true,
+      },
+    ],
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js'],

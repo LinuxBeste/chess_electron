@@ -34,6 +34,8 @@ import type {
   DrawDeclinedMessage,
   RematchOfferMessage,
   RematchAcceptedMessage,
+  OpponentDisconnectedMessage,
+  OpponentReconnectedMessage,
 } from '../socket';
 import { t } from '../translate';
 
@@ -62,6 +64,7 @@ export default function GamePage() {
   const [drawPending, setDrawPending] = useState(false);
   const [rematchOfferedBy, setRematchOfferedBy] = useState<string | null>(null);
   const [spectatorCount, setSpectatorCount] = useState(0);
+  const [opponentConnected, setOpponentConnected] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
 
   /* Spectator mode = read-only; no move interaction.  The ?spectate=1
@@ -152,6 +155,12 @@ export default function GamePage() {
     const unsubSpectatorCount = socketManager.onSpectatorCount((msg) => {
       if (msg.gameId === gameId) setSpectatorCount(msg.count);
     });
+    const unsubOpponentDisconnected = socketManager.onOpponentDisconnected((msg: OpponentDisconnectedMessage) => {
+      if (msg.gameId === gameId) setOpponentConnected(false);
+    });
+    const unsubOpponentReconnected = socketManager.onOpponentReconnected((msg: OpponentReconnectedMessage) => {
+      if (msg.gameId === gameId) setOpponentConnected(true);
+    });
 
     if (initialGame) {
       logger.info('Using cached game state', { gameId });
@@ -185,6 +194,8 @@ export default function GamePage() {
       unsubRematchOffer();
       unsubRematchAccepted();
       unsubSpectatorCount();
+      unsubOpponentDisconnected();
+      unsubOpponentReconnected();
       if (isSpectator) {
         socketManager.send({ type: 'unspectate' });
       }
@@ -708,6 +719,13 @@ export default function GamePage() {
                 <button className="btn btn-secondary btn-sm" onClick={() => setRematchOfferedBy(null)}>
                   {t('game.decline')}
                 </button>
+              </div>
+            </div>
+          )}
+          {!opponentConnected && !isFinished && (
+            <div className="waiting-overlay" style={{ background: 'rgba(0,0,0,0.75)' }}>
+              <div className="waiting-text" style={{ fontSize: 14 }}>
+                {t('game.opponentDisconnected')}
               </div>
             </div>
           )}

@@ -74,10 +74,21 @@ export default function LobbyPage() {
     try {
       const game = store.get('currentGame');
       if (game && game.status === 'active') {
-        logger.info('Checking active game', { gameId: game.id });
+        logger.info('Checking active game (in-memory)', { gameId: game.id });
         const fresh = await api.getGame(game.id);
         if (fresh.status === 'active') {
           logger.info('Resuming active game', { gameId: fresh.id });
+          store.set('currentGame', fresh);
+          navigate(`/game/${fresh.id}`);
+        }
+        return;
+      }
+      const gameId = store.get('currentGameId');
+      if (gameId) {
+        logger.info('Checking persisted active game', { gameId });
+        const fresh = await api.getGame(gameId);
+        if (fresh.status === 'active') {
+          logger.info('Resuming active game from persisted ID', { gameId: fresh.id });
           store.set('currentGame', fresh);
           navigate(`/game/${fresh.id}`);
         }
