@@ -382,11 +382,17 @@ router.delete('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res
 });
 
 /* Create a new game (player becomes white).
- * Optional body field: visibility ('public' | 'private', defaults to 'public'). */
+ * Optional body fields:
+ *   visibility  — 'public' | 'private' (default 'public')
+ *   spectateMode — 'public' | 'code'   (default 'public')
+ *     'code' generates a unique spectate code; spectators must provide it. */
 router.post('/games', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const visibility: 'public' | 'private' = req.body.visibility === 'private' ? 'private' : 'public';
-  const g = game.createGame(req.player.id, visibility);
-  logger.info('Game created: gameId=' + g.id + ' by playerId=' + req.player.id + ' visibility=' + visibility);
+  const spectateMode: 'public' | 'code' = req.body.spectateMode === 'code' ? 'code' : 'public';
+  const g = game.createGame(req.player.id, visibility, spectateMode);
+  logger.info(
+    'Game created: gameId=' + g.id + ' by playerId=' + req.player.id + ' visibility=' + visibility + ' spectateMode=' + spectateMode,
+  );
   res.status(201).json(g);
 });
 

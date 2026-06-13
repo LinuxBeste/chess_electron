@@ -44,6 +44,8 @@ export interface GameState {
   winner: Color | null;
   createdAt: number;
   visibility: 'public' | 'private';
+  spectateMode: 'public' | 'code';
+  spectateCode?: string;
   halfMoveClock: number;
 }
 

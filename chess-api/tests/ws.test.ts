@@ -10,6 +10,7 @@ import http from 'http';
 import { WebSocket } from 'ws';
 import supertest from 'supertest';
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
+import * as game from '../src/game';
 
 const request = supertest(app);
 
@@ -143,6 +144,98 @@ describe('WebSocket spectate', () => {
     const msg = await waitForMessage(ws, 'spectate_error');
     expect(msg.error).toBeDefined();
     ws.close();
+  });
+
+  test('spectate_code mode: code returned on creation', async () => {
+    const host = await registerPlayer('ws_code_host');
+    const res = await request
+      .post('/games')
+      .set('Authorization', host.authHeader)
+      .send({ spectateMode: 'code' })
+      .expect(201);
+    expect(res.body.spectateMode).toBe('code');
+    expect(res.body.spectateCode).toBeDefined();
+    expect(typeof res.body.spectateCode).toBe('string');
+  });
+
+  test('spectate_code mode: rejected without code', async () => {
+    const host = await registerPlayer('ws_code_nocode');
+    const spec = await registerPlayer('ws_code_nocode_v');
+    const res = await request
+      .post('/games')
+      .set('Authorization', host.authHeader)
+      .send({ spectateMode: 'code' })
+      .expect(201);
+    const gameId = res.body.id;
+    const joiner = await registerPlayer('ws_code_nocode_j');
+    await request.post(`/games/${gameId}/join`).set('Authorization', joiner.authHeader).expect(200);
+
+    const ws = await wsConnect(spec.token);
+    wsSend(ws, { type: 'spectate', gameId });
+    const msg = await waitForMessage(ws, 'spectate_error');
+    expect(msg.error).toMatch(/spectate code/i);
+    ws.close();
+  });
+
+  test('spectate_code mode: accepted with correct code', async () => {
+    const host = await registerPlayer('ws_code_ok');
+    const spec = await registerPlayer('ws_code_ok_v');
+    const res = await request
+      .post('/games')
+      .set('Authorization', host.authHeader)
+      .send({ spectateMode: 'code' })
+      .expect(201);
+    const gameId = res.body.id;
+    const spectateCode: string = res.body.spectateCode;
+    const joiner = await registerPlayer('ws_code_ok_j');
+    await request.post(`/games/${gameId}/join`).set('Authorization', joiner.authHeader).expect(200);
+
+    const ws = await wsConnect(spec.token);
+    wsSend(ws, { type: 'spectate', gameId, code: spectateCode });
+    const msg = await waitForMessage(ws, 'spectate_ok');
+    expect(msg.gameId).toBe(gameId);
+    ws.close();
+  });
+
+  test('spectate_code mode: rejected with wrong code', async () => {
+    const host = await registerPlayer('ws_code_bad');
+    const spec = await registerPlayer('ws_code_bad_v');
+    const res = await request
+      .post('/games')
+      .set('Authorization', host.authHeader)
+      .send({ spectateMode: 'code' })
+      .expect(201);
+    const gameId = res.body.id;
+    const joiner = await registerPlayer('ws_code_bad_j');
+    await request.post(`/games/${gameId}/join`).set('Authorization', joiner.authHeader).expect(200);
+
+    const ws = await wsConnect(spec.token);
+    wsSend(ws, { type: 'spectate', gameId, code: 'wrong-code' });
+    const msg = await waitForMessage(ws, 'spectate_error');
+    expect(msg.error).toMatch(/spectate code/i);
+    ws.close();
+  });
+
+  test('spectate_code mode: spectateCode not leaked in game listings', async () => {
+    const host = await registerPlayer('ws_code_leak');
+    const res = await request
+      .post('/games')
+      .set('Authorization', host.authHeader)
+      .send({ spectateMode: 'code' })
+      .expect(201);
+
+    /* The creation response includes the code */
+    expect(res.body.spectateCode).toBeDefined();
+
+    /* getGame should strip it */
+    const getRes = await request.get('/games/' + res.body.id).expect(200);
+    expect(getRes.body.spectateCode).toBeUndefined();
+
+    /* active games should strip it */
+    const activeRes = await request.get('/games/active').expect(200);
+    for (const g of activeRes.body) {
+      expect(g.spectateCode).toBeUndefined();
+    }
   });
 });
 

@@ -76,6 +76,31 @@ describe('Game creation and joining', () => {
     expect(res.body.players.white).toBeDefined();
   });
 
+  test('POST /games supports spectateMode code', async () => {
+    const { authHeader } = await registerPlayer('spec_mode');
+    const res = await request
+      .post('/games')
+      .set('Authorization', authHeader)
+      .send({ spectateMode: 'code' })
+      .expect(201);
+    expect(res.body.spectateMode).toBe('code');
+    expect(res.body.spectateCode).toBeDefined();
+    expect(typeof res.body.spectateCode).toBe('string');
+  });
+
+  test('POST /games spectateCode not leaked via GET /games/:id', async () => {
+    const { authHeader } = await registerPlayer('spec_leak');
+    const createRes = await request
+      .post('/games')
+      .set('Authorization', authHeader)
+      .send({ spectateMode: 'code' })
+      .expect(201);
+    expect(createRes.body.spectateCode).toBeDefined();
+
+    const getRes = await request.get('/games/' + createRes.body.id).expect(200);
+    expect(getRes.body.spectateCode).toBeUndefined();
+  });
+
   test('GET /games lists waiting games', async () => {
     /* Create one game and verify it shows up in the open games list */
     await registerPlayer('p2');
@@ -1620,6 +1645,17 @@ describe('Bot games', () => {
       .expect(201);
     expect(res.body.players.white).toBe('_bot_');
     expect(res.body.players.black).not.toBe('_bot_');
+  });
+
+  test('POST /games/bot returns spectateCode', async () => {
+    const res = await request
+      .post('/games/bot')
+      .set('Authorization', playerAuth)
+      .send({ skillLevel: 1 })
+      .expect(201);
+    expect(res.body.spectateMode).toBe('code');
+    expect(res.body.spectateCode).toBeDefined();
+    expect(typeof res.body.spectateCode).toBe('string');
   });
 });
 

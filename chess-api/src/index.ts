@@ -186,12 +186,13 @@ export function createServer(): http.Server {
       try {
         const msg = JSON.parse(raw.toString());
         if (msg.type === 'spectate' && typeof msg.gameId === 'string') {
-          if (game.registerSpectator(msg.gameId, ws)) {
+          const code: string | undefined = typeof msg.code === 'string' ? msg.code : undefined;
+          if (game.registerSpectator(msg.gameId, ws, code)) {
             spectatingGameId = msg.gameId;
             ws.send(JSON.stringify({ type: 'spectate_ok', gameId: msg.gameId }));
             logger.info('WS spectate: playerId=' + player.id + ' gameId=' + msg.gameId);
           } else {
-            ws.send(JSON.stringify({ type: 'spectate_error', error: 'Game not found or not active' }));
+            ws.send(JSON.stringify({ type: 'spectate_error', error: 'Game not found, not active, or invalid spectate code' }));
           }
         } else if (msg.type === 'unspectate' && spectatingGameId) {
           game.removeSpectator(spectatingGameId, ws);

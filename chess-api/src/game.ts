@@ -89,6 +89,13 @@ function enrichNames(g: GameState): GameState {
   };
 }
 
+/** Strip sensitive fields before returning a game to non-creator clients. */
+function sanitizeForClient(g: GameState): GameState {
+  const sanitized = { ...g };
+  delete sanitized.spectateCode;
+  return sanitized;
+}
+
 export const BOT_PLAYER_ID = '_bot_';
 
 /* Env-driven limits with defaults */
@@ -346,10 +353,14 @@ export function sendToPlayer(playerId: string, message: Record<string, unknown>)
 /**
  * Register a WebSocket as a spectator of a game.
  */
-export function registerSpectator(gameId: string, ws: WebSocket): boolean {
+export function registerSpectator(gameId: string, ws: WebSocket, code?: string): boolean {
   const game = games.get(gameId);
   if (!game || game.status !== 'active') {
     logger.info('Spectator register failed: gameId=' + gameId + ' reason=not active or not found');
+    return false;
+  }
+  if (game.spectateMode === 'code' && (!code || code !== game.spectateCode)) {
+    logger.info('Spectator register failed: gameId=' + gameId + ' reason=invalid spectate code');
     return false;
   }
   if (!spectatorConnections.has(gameId)) {
@@ -358,7 +369,7 @@ export function registerSpectator(gameId: string, ws: WebSocket): boolean {
   spectatorConnections.get(gameId)!.add(ws);
   sendChatHistory(gameId, ws);
   broadcastSpectatorCount(gameId);
-  logger.info('Spectator registered: gameId=' + gameId);
+  logger.info('Spectator registered: gameId=' + gameId + ' spectateMode=' + game.spectateMode);
   return true;
 }
 
@@ -397,10 +408,12 @@ function broadcastSpectatorCount(gameId: string): void {
 function broadcastGameListUpdate(): void {
   const openGames = Array.from(games.values())
     .filter((g) => g.status === 'waiting' && g.visibility === 'public')
-    .map(enrichNames);
+    .map(enrichNames)
+    .map(sanitizeForClient);
   const activeGames = Array.from(games.values())
     .filter((g) => g.status === 'active')
-    .map(enrichNames);
+    .map(enrichNames)
+    .map(sanitizeForClient);
   const message = { type: 'game_list_update', openGames, activeGames };
   const data = JSON.stringify(message);
   for (const conns of wsConnections.values()) {
@@ -471,20 +484,22 @@ export function checkRateLimit(playerId: string): boolean {
  * @param visibility - Whether the game appears in the open games list.
  *   Defaults to 'public'.  Private games can only be joined by direct ID.
  */
-export function createGame(playerId: string, visibility: 'public' | 'private' = 'public'): GameState {
+export function createGame(
+  playerId: string,
+  visibility: 'public' | 'private' = 'public',
+  spectateMode: 'public' | 'code' = 'public',
+): GameState {
   const id = uuidv4();
+  const spectateCode = spectateMode === 'code' ? uuidv4() : undefined;
   const game: GameState = {
     id,
     board: chess.createInitialBoard(),
-    /* White always moves first in chess */
     turn: 'white',
-    /* Waiting for black to join */
     status: 'waiting',
     players: { white: playerId },
     moveHistory: [],
     boardHistory: [],
     enPassantTarget: null,
-    /* Both sides start with full castling rights */
     castlingRights: {
       white: { kingside: true, queenside: true },
       black: { kingside: true, queenside: true },
@@ -493,10 +508,14 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
     winner: null,
     createdAt: Date.now(),
     visibility,
+    spectateMode,
+    spectateCode,
     halfMoveClock: 0,
   };
   games.set(id, game);
-  logger.info('Game created: gameId=' + id + ' white=' + playerId + ' visibility=' + visibility);
+  logger.info(
+    'Game created: gameId=' + id + ' white=' + playerId + ' visibility=' + visibility + ' spectateMode=' + spectateMode,
+  );
   broadcastGameListUpdate();
   return enrichNames(game);
 }
@@ -538,6 +557,8 @@ export function createBotGame(
     winner: null,
     createdAt: Date.now(),
     visibility: 'private',
+    spectateMode: 'code',
+    spectateCode: uuidv4(),
     halfMoveClock: 0,
   };
   games.set(id, game);
@@ -667,7 +688,8 @@ export function isBotGame(game: GameState): boolean {
 export function getActiveGames(): GameState[] {
   const result = Array.from(games.values())
     .filter((g) => g.status === 'active')
-    .map(enrichNames);
+    .map(enrichNames)
+    .map(sanitizeForClient);
   logger.info('getActiveGames: count=' + result.length);
   return result;
 }
@@ -675,7 +697,8 @@ export function getActiveGames(): GameState[] {
 export function getOpenGames(): GameState[] {
   const result = Array.from(games.values())
     .filter((g) => g.status === 'waiting' && g.visibility === 'public')
-    .map(enrichNames);
+    .map(enrichNames)
+    .map(sanitizeForClient);
   logger.info('getOpenGames: count=' + result.length);
   return result;
 }
@@ -690,7 +713,7 @@ export function getGame(gameId: string): GameState | null {
   } else {
     logger.info('getGame: gameId=' + gameId + ' not found');
   }
-  return g ? enrichNames(g) : null;
+  return g ? sanitizeForClient(enrichNames(g)) : null;
 }
 
 /**
@@ -1250,6 +1273,8 @@ export function acceptRematch(
     winner: null,
     createdAt: Date.now(),
     visibility: game.visibility,
+    spectateMode: game.spectateMode,
+    spectateCode: game.spectateMode === 'code' ? uuidv4() : undefined,
     halfMoveClock: 0,
   };
   games.set(newId, newGame);
