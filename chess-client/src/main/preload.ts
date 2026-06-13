@@ -10,7 +10,7 @@
  * accessing the file system or spawning child processes.
  */
 
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, clipboard } from 'electron';
 import * as path from 'path';
 import dotenv from 'dotenv';
 
@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   /** Open a second window for testing multi-player */
   openNewWindow: () => ipcRenderer.send('open-new-window'),
+
+  /** Copy text to system clipboard */
+  clipboardWrite: (text: string) => clipboard.writeText(text),
 
   /** Server URL for the chess API — from .env CHESS_SERVER_URL or default */
   serverUrl,

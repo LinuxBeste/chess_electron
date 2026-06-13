@@ -4,6 +4,7 @@ import logger from '../logger';
 import { store } from '../store';
 import * as api from '../api';
 import { t } from '../translate';
+import { copyToClipboard } from '../clipboard';
 
 export default function ResultPage() {
   const { gameId } = useParams();
@@ -135,16 +136,12 @@ export default function ResultPage() {
             onClick={() => {
               const id = game?.id || gameId;
               if (id) {
-                navigator.clipboard
-                  .writeText(id)
-                  .then(() => {
-                    const btn = document.activeElement as HTMLElement;
-                    btn.textContent = t('common.copied');
-                    setTimeout(() => {
-                      btn.textContent = t('common.copyGameId');
-                    }, 2000);
-                  })
-                  .catch(() => store.toast(t('result.failedCopy')));
+                copyToClipboard(id);
+                const btn = document.activeElement as HTMLElement;
+                btn.textContent = t('common.copied');
+                setTimeout(() => {
+                  btn.textContent = t('common.copyGameId');
+                }, 2000);
               }
             }}
           >

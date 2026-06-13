@@ -96,6 +96,7 @@ declare global {
     electronAPI?: {
       platform: string;
       openNewWindow: () => void;
+      clipboardWrite: (text: string) => void;
       serverUrl: string;
       wsUrl: string;
       defaultUsername: string;

@@ -4,6 +4,7 @@ import * as api from '../api';
 import { store } from '../store';
 import { t } from '../translate';
 import { useNavigate } from 'react-router-dom';
+import { copyToClipboard } from '../clipboard';
 
 function CreateTournamentMenu({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
@@ -18,7 +19,7 @@ function CreateTournamentMenu({ onClose }: { onClose: () => void }) {
       const result = await api.createTournament(name.trim(), maxPlayers, isPrivate);
       store.toast('Tournament created!', 'info');
       if (result.join_code) {
-        await navigator.clipboard.writeText(result.join_code);
+        await copyToClipboard(result.join_code);
         store.toast('Code copied: ' + result.join_code, 'info');
       }
       onClose();
@@ -368,7 +369,7 @@ export default function TournamentPage() {
 
   function handleCopyCode() {
     if (selected?.join_code) {
-      navigator.clipboard.writeText(selected.join_code);
+      copyToClipboard(selected.join_code);
       store.toast(t('tournaments.codeCopied'), 'info');
     }
   }

@@ -38,6 +38,7 @@ import type {
   OpponentReconnectedMessage,
 } from '../socket';
 import { t } from '../translate';
+import { copyToClipboard } from '../clipboard';
 
 export default function GamePage() {
   const { gameId } = useParams<{ gameId: string }>();
@@ -536,7 +537,7 @@ export default function GamePage() {
   function handleCopyId() {
     const id = gameRef.current?.id || gameId;
     if (id) {
-      navigator.clipboard.writeText(id).catch(() => {});
+      copyToClipboard(id);
     }
     setMenuOpen(false);
   }
@@ -678,14 +679,7 @@ export default function GamePage() {
                 <span className="waiting-id-value">{game.id}</span>
                 <button
                   className="btn btn-secondary btn-xs"
-                  onClick={() => {
-                    navigator.clipboard
-                      .writeText(game.id)
-                      .then(() => {
-                        /* copied */
-                      })
-                      .catch(() => {});
-                  }}
+                  onClick={() => copyToClipboard(game.id)}
                 >
                   {t('common.copy')}
                 </button>
