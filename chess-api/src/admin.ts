@@ -9,6 +9,7 @@ import * as game from './game';
 import * as db from './db';
 import logger from './logger';
 import { ipRateLimitMiddleware } from './routes';
+import { hashPassword, verifyPassword } from './game';
 
 const router: ReturnType<typeof Router> = Router();
 
@@ -19,15 +20,15 @@ const ADMIN_TOKEN_TTL = parseInt(process.env.ADMIN_TOKEN_TTL ?? String(24 * 60 *
 
 function initAdminCreds(): void {
   ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-  let password: string;
   if (process.env.ADMIN_PASSWORD) {
-    password = process.env.ADMIN_PASSWORD;
+    ADMIN_PASSWORD_HASH = hashPassword(process.env.ADMIN_PASSWORD);
   } else {
-    password = crypto.randomBytes(24).toString('hex');
-    logger.warn('No ADMIN_PASSWORD set. Generated random password: ' + password.slice(0, 4) + '...' + password.slice(-4));
+    const password = crypto.randomBytes(24).toString('hex');
+    logger.warn('No ADMIN_PASSWORD set. A random password was generated for this session and will be logged.');
+    logger.warn('ADMIN_PASSWORD for this session: ' + password);
     logger.warn('Set ADMIN_PASSWORD env var to use a custom password.');
+    ADMIN_PASSWORD_HASH = hashPassword(password);
   }
-  ADMIN_PASSWORD_HASH = crypto.createHash('sha256').update(password).digest('hex');
 }
 
 initAdminCreds();
@@ -67,8 +68,7 @@ router.post('/admin/api/login', ipRateLimitMiddleware, (req: Request, res: Respo
     res.status(400).json({ error: 'Username and password are required' });
     return;
   }
-  const pwHash = crypto.createHash('sha256').update(password).digest('hex');
-  if (username !== ADMIN_USERNAME || pwHash !== ADMIN_PASSWORD_HASH) {
+  if (username !== ADMIN_USERNAME || !verifyPassword(password, ADMIN_PASSWORD_HASH)) {
     logger.audit('admin_login_failed', `username="${username}" ip="${req.ip || ''}"`);
     res.status(401).json({ error: 'Invalid admin credentials' });
     return;

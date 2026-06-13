@@ -197,6 +197,15 @@ router.post('/auth/register', ipRateLimitMiddleware, (req: Request, res: Respons
   }
 });
 
+/* Log out — invalidate the current bearer token */
+router.post('/auth/logout', authMiddleware, (req: Request, res: Response) => {
+  const header = req.headers.authorization;
+  const token = header!.slice(7);
+  game.logoutPlayer(token);
+  logger.info('Logout: playerId=' + req.player.id);
+  res.json({ success: true });
+});
+
 /* Log in as an existing registered user */
 router.post('/auth/login', ipRateLimitMiddleware, (req: Request, res: Response) => {
   const ip = req.ip || req.socket.remoteAddress || '';
@@ -516,7 +525,7 @@ router.post(
 );
 
 /* Get the active game for the authenticated player (if any) */
-router.get('/players/me/active-game', authMiddleware, (req: Request, res: Response) => {
+router.get('/players/me/active-game', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const gameId = game.getPlayerCurrentGameId(req.player.id);
   if (!gameId) {
     res.json({ game: null });

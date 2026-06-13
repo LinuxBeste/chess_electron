@@ -75,7 +75,8 @@ app.use(adminRouter);
 /* ─── Global Express error handler ─── */
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const msg = err instanceof Error ? err.message : String(err);
-  logger.error('Unhandled error:', msg);
+  const stack = err instanceof Error ? err.stack : undefined;
+  logger.error('Unhandled error:', msg, stack ? '\n' + stack : '');
   res.status(500).json({ error: 'Internal server error' });
 });
 
@@ -274,6 +275,8 @@ if (!isTestEnv) {
   const server = createServer();
   /* Periodic cleanup of IP rate-limit buckets */
   setInterval(cleanupIpRateBuckets, 60000);
+  /* Periodic cleanup of player rate-limit buckets and login attempts */
+  setInterval(() => { game.cleanupRateLimitBuckets(); game.cleanupLoginAttempts(); }, 60000);
   /* Clean up old log files daily */
   logger.cleanupOldLogs();
   setInterval(logger.cleanupOldLogs, 86400000);
@@ -296,6 +299,11 @@ if (!isTestEnv) {
   /* Graceful shutdown on SIGTERM/SIGINT */
   function shutdown(signal: string): void {
     logger.info('Received ' + signal + ' — shutting down gracefully...');
+
+    /* Kill all engine processes */
+    game.killAllEngines();
+
+    /* Stop accepting new connections */
     server.close(() => {
       logger.info('HTTP server closed');
       const wss: WebSocketServer | undefined = (server as any).__wss;

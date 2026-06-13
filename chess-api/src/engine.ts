@@ -69,12 +69,16 @@ class EngineManager {
       });
 
       proc.on('error', (err) => {
-        logger.error('Engine process error', err);
-        if (inst.bestMovePromise) {
-          inst.bestMovePromise.reject(err);
-          inst.bestMovePromise = null;
-        }
+        logger.error('Engine process error for game ' + gameId, err);
+        rejectAndCleanup(inst, err);
         reject(err);
+      });
+
+      proc.on('exit', (code, signal) => {
+        logger.warn('Engine process exited for game ' + gameId + ' code=' + code + ' signal=' + signal);
+        const err = new Error('Engine process exited (code=' + code + ' signal=' + signal + ')');
+        rejectAndCleanup(inst, err);
+        this.instances.delete(gameId);
       });
 
       this.instances.set(gameId, inst);
@@ -128,6 +132,27 @@ class EngineManager {
     return new Promise((resolve, reject) => {
       inst.bestMovePromise = { resolve, reject };
       this.send(gameId, `go movetime ${movetime}`);
+
+      /* Timeout: if Stockfish doesn't respond within movetime + 10s, reject */
+      const timeoutMs = movetime + 10000;
+      const timer = setTimeout(() => {
+        if (inst.bestMovePromise) {
+          inst.bestMovePromise = null;
+          reject(new Error('Engine best-move timeout'));
+        }
+      }, timeoutMs).unref();
+
+      /* Wrap original resolve/reject to clear the timeout */
+      const origResolve = inst.bestMovePromise.resolve;
+      const origReject = inst.bestMovePromise.reject;
+      inst.bestMovePromise.resolve = (move: string) => {
+        clearTimeout(timer);
+        origResolve(move);
+      };
+      inst.bestMovePromise.reject = (err: Error) => {
+        clearTimeout(timer);
+        origReject(err);
+      };
     });
   }
 
@@ -150,6 +175,21 @@ class EngineManager {
 
   hasInstance(gameId: string): boolean {
     return this.instances.has(gameId);
+  }
+
+  killAll(): void {
+    for (const [gameId, inst] of this.instances) {
+      inst.process.kill();
+      logger.info('Engine killed on shutdown: game=' + gameId);
+    }
+    this.instances.clear();
+  }
+}
+
+function rejectAndCleanup(inst: EngineInstance, err: Error): void {
+  if (inst.bestMovePromise) {
+    inst.bestMovePromise.reject(err);
+    inst.bestMovePromise = null;
   }
 }
 

@@ -195,13 +195,13 @@ export function loginPlayer(
   return { success: true, playerId: user.id, token, displayName: user.display_name };
 }
 
-function hashPassword(password: string): string {
+export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');
   const key = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
   return `${salt}:${key}`;
 }
 
-function verifyPassword(password: string, stored: string): boolean {
+export function verifyPassword(password: string, stored: string): boolean {
   const [salt, key] = stored.split(':');
   const check = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
   return key === check;
@@ -247,6 +247,19 @@ export function addToken(playerId: string): string | null {
   tokenIndex.set(token, playerId);
   logger.info('Token added: playerId=' + playerId);
   return token;
+}
+
+export function logoutPlayer(token: string): boolean {
+  const playerId = tokenIndex.get(token);
+  if (!playerId) return false;
+  tokenIndex.delete(token);
+  const player = players.get(playerId);
+  if (player) {
+    player.tokens = player.tokens.filter((t) => t !== token);
+  }
+  db.deleteToken(token);
+  logger.info('Player logged out: playerId=' + playerId);
+  return true;
 }
 
 /**
@@ -543,6 +556,8 @@ export function createBotGame(
         result: 'draw',
         reason: 'Engine error — game cancelled',
       });
+      spectatorConnections.delete(id);
+      broadcastGameListUpdate();
     });
 
   logger.info(
@@ -686,6 +701,8 @@ export function abortGame(gameId: string, playerId: string): { success: boolean;
   /* Notify any connected player(s) before removing */
   if (game.players.white) sendToPlayer(game.players.white, { type: 'game_aborted', gameId });
   if (game.players.black) sendToPlayer(game.players.black, { type: 'game_aborted', gameId });
+  sendToSpectators(gameId, { type: 'game_aborted', gameId });
+  spectatorConnections.delete(gameId);
 
   games.delete(gameId);
   broadcastGameListUpdate();
@@ -1041,9 +1058,9 @@ function recordGameResult(game: GameState, winner: Color | null): void {
     null,
     '5+0',
   );
+  uciHistory.delete(game.id);
   if (isBotGame(game)) {
     engineManager.destroyInstance(game.id);
-    uciHistory.delete(game.id);
   }
   logger.info('Game result recorded: gameId=' + game.id + ' winner=' + winner);
 }
@@ -1452,9 +1469,9 @@ export function changePassword(
     logger.info('changePassword: missing fields playerId=' + playerId);
     return { success: false, error: 'Current and new password are required' };
   }
-  if (newPassword.length < 4) {
+  if (newPassword.length < 8) {
     logger.info('changePassword: too short playerId=' + playerId);
-    return { success: false, error: 'New password must be at least 4 characters' };
+    return { success: false, error: 'New password must be at least 8 characters' };
   }
 
   const user = db.getUserById(playerId);
@@ -1682,6 +1699,13 @@ export function endGame(gameId: string): { success: true } | { success: false; e
 
   g.status = 'draw';
   g.winner = null;
+
+  if (isBotGame(g)) {
+    engineManager.destroyInstance(g.id);
+    uciHistory.delete(g.id);
+  }
+
+  spectatorConnections.delete(g.id);
 
   const message = { type: 'game_over', reason: 'admin_ended', gameId };
   if (g.players.white) sendToPlayer(g.players.white, message);
@@ -1966,6 +1990,30 @@ export function stopWaitingGameSweep(): void {
   }
 }
 
+/**
+ * Clean up expired login lockout entries (older than lockout duration).
+ */
+export function cleanupLoginAttempts(): void {
+  const now = Date.now();
+  for (const [username, entry] of loginAttempts) {
+    if (now >= entry.lockedUntil) {
+      loginAttempts.delete(username);
+    }
+  }
+}
+
+/**
+ * Clean up stale rate-limit buckets (inactive for at least one window).
+ */
+export function cleanupRateLimitBuckets(): void {
+  const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS;
+  for (const [playerId, timestamps] of rateLimitBuckets) {
+    const active = timestamps.filter((t) => t > cutoff);
+    if (active.length === 0) rateLimitBuckets.delete(playerId);
+    else rateLimitBuckets.set(playerId, active);
+  }
+}
+
 /* Register all users and in-memory — called once at server startup. */
 export function loadPersistedUsers(): void {
   const allUsers = db.loadAllUsers();
@@ -1988,6 +2036,10 @@ export function loadPersistedUsers(): void {
     }
   }
   logger.info('Persisted users loaded: users=' + allUsers.length + ' tokens=' + allTokens.length);
+}
+
+export function killAllEngines(): void {
+  engineManager.killAll();
 }
 
 /* Auto-start on module load unless we're in a test environment */
