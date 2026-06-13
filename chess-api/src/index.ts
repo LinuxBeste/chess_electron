@@ -48,6 +48,17 @@ if (CORS_ORIGIN === '*') {
 app.use(cors({ origin: CORS_ORIGIN, credentials: CORS_ORIGIN !== '*' }));
 /* Parse incoming JSON request bodies — 10kb is plenty for chess data */
 app.use(express.json({ limit: '10kb' }));
+/* Request timeout: abort requests that take longer than 30s */
+app.use((req, res, next) => {
+  res.setTimeout(30000, () => {
+    logger.warn('Request timeout: ' + req.method + ' ' + req.path);
+    if (!res.headersSent) {
+      res.status(503).json({ error: 'Request timeout' });
+    }
+    req.destroy();
+  });
+  next();
+});
 /* Attach all API routes */
 app.use(routes);
 
@@ -266,6 +277,15 @@ if (!isTestEnv) {
   /* Clean up old log files daily */
   logger.cleanupOldLogs();
   setInterval(logger.cleanupOldLogs, 86400000);
+  /* Periodic cleanup of expired user tokens (hourly) */
+  const db = require('./db') as typeof import('./db');
+  setInterval(() => db.cleanupExpiredTokens(), 3600000);
+  /* Periodic DB backup (every 6 hours) */
+  const DB_BACKUP_INTERVAL_MS = parseInt(process.env.DB_BACKUP_INTERVAL_MS ?? String(6 * 3600000), 10);
+  if (DB_BACKUP_INTERVAL_MS > 0) {
+    db.createBackup();
+    setInterval(() => db.createBackup(), DB_BACKUP_INTERVAL_MS);
+  }
 
   server.listen(PORT, () => {
     logger.info('Chess API server listening on port ' + PORT);

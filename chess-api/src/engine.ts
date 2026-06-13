@@ -12,12 +12,25 @@ interface EngineInstance {
 
 class EngineManager {
   private instances = new Map<string, EngineInstance>();
+  private maxConcurrent = Math.max(1, parseInt(process.env.MAX_CONCURRENT_ENGINES ?? '4', 10));
+
+  get activeCount(): number {
+    return this.instances.size;
+  }
+
+  get maxConcurrentEngines(): number {
+    return this.maxConcurrent;
+  }
 
   private getEnginePath(): string {
     return path.join(__dirname, '..', 'node_modules', 'stockfish', 'bin', 'stockfish-18-lite-single.js');
   }
 
   startInstance(gameId: string, skillLevel: number): Promise<void> {
+    if (this.instances.size >= this.maxConcurrent) {
+      logger.warn('Engine limit reached: ' + this.instances.size + '/' + this.maxConcurrent + ' active');
+      return Promise.reject(new Error('Too many concurrent bot games. Try again later.'));
+    }
     return new Promise((resolve, reject) => {
       const enginePath = this.getEnginePath();
       const proc = spawn(process.execPath, [enginePath], {

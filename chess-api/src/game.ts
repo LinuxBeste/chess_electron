@@ -485,7 +485,18 @@ export function createGame(playerId: string, visibility: 'public' | 'private' = 
   return enrichNames(game);
 }
 
-export function createBotGame(playerId: string, skillLevel: number, playerColor: Color = 'white'): GameState {
+export function createBotGame(
+  playerId: string,
+  skillLevel: number,
+  playerColor: Color = 'white',
+): { success: true; game: GameState } | { success: false; error: string } {
+  if (engineManager.activeCount >= engineManager.maxConcurrentEngines) {
+    logger.warn(
+      'Bot game rejected: engine limit reached (' + engineManager.activeCount + '/' + engineManager.maxConcurrentEngines + ')',
+    );
+    return { success: false, error: 'Too many concurrent bot games. Try again later.' };
+  }
+
   const id = uuidv4();
   const botColor: Color = playerColor === 'white' ? 'black' : 'white';
   const game: GameState = {
@@ -520,14 +531,25 @@ export function createBotGame(playerId: string, skillLevel: number, playerColor:
       }
     })
     .catch((err) => {
-      logger.error('Failed to start bot engine', err);
+      logger.error('Failed to start bot engine for game ' + id, err);
+      game.status = 'draw';
+      broadcastToGame(id, {
+        type: 'game_over',
+        gameId: id,
+        board: chess.serializeBoard(game.board),
+        turn: game.turn,
+        lastMove: game.lastMove,
+        status: 'draw',
+        result: 'draw',
+        reason: 'Engine error — game cancelled',
+      });
     });
 
   logger.info(
     'Bot game created: gameId=' + id + ' player=' + playerId + ' color=' + playerColor + ' skill=' + skillLevel,
   );
   broadcastGameListUpdate();
-  return enrichNames(game);
+  return { success: true, game: enrichNames(game) };
 }
 
 async function triggerBotMove(gameId: string): Promise<void> {

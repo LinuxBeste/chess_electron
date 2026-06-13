@@ -385,9 +385,13 @@ router.post('/games', authMiddleware, banCheckMiddleware, (req: Request, res: Re
 router.post('/games/bot', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const skillLevel = Math.max(1, Math.min(20, parseInt(req.body.skillLevel as string) || 1));
   const playerColor: 'white' | 'black' = req.body.playerColor === 'black' ? 'black' : 'white';
-  const g = game.createBotGame(req.player.id, skillLevel, playerColor);
-  logger.info('Bot game created: gameId=' + g.id + ' by playerId=' + req.player.id + ' skill=' + skillLevel);
-  res.status(201).json(g);
+  const result = game.createBotGame(req.player.id, skillLevel, playerColor);
+  if (!result.success) {
+    res.status(503).json({ error: result.error });
+    return;
+  }
+  logger.info('Bot game created: gameId=' + result.game.id + ' by playerId=' + req.player.id + ' skill=' + skillLevel);
+  res.status(201).json(result.game);
 });
 
 /* List all open (waiting) games */

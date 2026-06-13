@@ -208,6 +208,47 @@ export function deleteToken(token: string): void {
   logger.info('DB: token deleted');
 }
 
+export function cleanupExpiredTokens(maxAgeMs = 30 * 86400000): number {
+  const d = getDb();
+  const cutoff = Date.now() - maxAgeMs;
+  const result = d.prepare('DELETE FROM user_tokens WHERE created_at < ?').run(cutoff);
+  if (result.changes > 0) {
+    logger.info('DB: cleaned up ' + result.changes + ' expired tokens');
+  }
+  return result.changes;
+}
+
+export async function createBackup(): Promise<string | null> {
+  try {
+    const dir = path.join(path.dirname(DB_PATH), 'backups');
+    fs.mkdirSync(dir, { recursive: true });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(dir, `chess-${timestamp}.db`);
+
+    await getDb().backup(backupPath);
+
+    logger.info('DB backup created: ' + backupPath);
+
+    /* Prune backups older than 7 days */
+    const cutoff = Date.now() - 7 * 86400000;
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      if (!file.startsWith('chess-') || !file.endsWith('.db')) continue;
+      const filePath = path.join(dir, file);
+      const stat = fs.statSync(filePath);
+      if (stat.isFile() && stat.mtimeMs < cutoff) {
+        fs.unlinkSync(filePath);
+        logger.info('DB backup pruned: ' + file);
+      }
+    }
+
+    return backupPath;
+  } catch (err) {
+    logger.error('DB backup failed:', err);
+    return null;
+  }
+}
+
 export function addWin(userId: string): void {
   const d = getDb();
   d.prepare('UPDATE users SET wins = wins + 1 WHERE id = ?').run(userId);

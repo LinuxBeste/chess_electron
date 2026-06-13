@@ -96,6 +96,8 @@ No open firewall ports required. TLS is handled automatically by Cloudflare.
 | `WS_MAX_CONNECTIONS_PER_IP`  | `5`       | Max WebSocket connections per IP                                  |
 | `LOGIN_MAX_ATTEMPTS`         | `5`       | Failed logins before account lockout                              |
 | `LOGIN_LOCKOUT_MINUTES`      | `15`      | Account lockout duration in minutes                               |
+| `DB_BACKUP_INTERVAL_MS`      | `21600000`| DB backup interval in ms (default 6h, 0 to disable)              |
+| `MAX_CONCURRENT_ENGINES`     | `4`       | Max concurrent Stockfish engine instances for bot games           |
 
 ## start.sh
 
