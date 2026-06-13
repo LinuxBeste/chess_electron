@@ -7,3 +7,5 @@ tests
 jest.config.ts
 docker-compose.yml
 start.sh
+data
+logs

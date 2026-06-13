@@ -140,8 +140,11 @@ function banCheckMiddleware(req: Request, res: Response, next: () => void): void
   next();
 }
 
+/* General-purpose rate limiter for unauthenticated GET endpoints */
+const globalGetLimiter = ipRateLimitMiddleware;
+
 /* Health check — no auth required */
-router.get('/health', (_req: Request, res: Response) => {
+router.get('/health', globalGetLimiter, (_req: Request, res: Response) => {
   const { gamesActive, playersOnline } = game.getStats();
   logger.info('GET /health: gamesActive=' + gamesActive + ' playersOnline=' + playersOnline);
   res.json({
@@ -388,21 +391,21 @@ router.post('/games/bot', authMiddleware, banCheckMiddleware, (req: Request, res
 });
 
 /* List all open (waiting) games */
-router.get('/games', (_req: Request, res: Response) => {
+router.get('/games', globalGetLimiter, (_req: Request, res: Response) => {
   const openGames = game.getOpenGames();
   logger.info('GET /games: count=' + openGames.length);
   res.json(openGames);
 });
 
 /* List all active games (for spectating) */
-router.get('/games/active', (_req: Request, res: Response) => {
+router.get('/games/active', globalGetLimiter, (_req: Request, res: Response) => {
   const activeGames = game.getActiveGames();
   logger.info('GET /games/active: count=' + activeGames.length);
   res.json(activeGames);
 });
 
 /* Get a specific game by ID */
-router.get('/games/:gameId', (req: Request, res: Response) => {
+router.get('/games/:gameId', globalGetLimiter, (req: Request, res: Response) => {
   const g = game.getGame(req.params.gameId);
   if (!g) {
     logger.info('GET /games/' + req.params.gameId + ': not found');
@@ -724,7 +727,7 @@ router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, (req: Re
 });
 
 /* Leaderboard */
-router.get('/leaderboard', (_req: Request, res: Response) => {
+router.get('/leaderboard', globalGetLimiter, (_req: Request, res: Response) => {
   const page = Math.max(1, parseInt(_req.query.page as string) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string) || 50));
   const offset = (page - 1) * limit;
@@ -754,7 +757,7 @@ router.get('/friends', authMiddleware, banCheckMiddleware, (req: Request, res: R
 });
 
 /* Game archive */
-router.get('/games/archive', (req: Request, res: Response) => {
+router.get('/games/archive', globalGetLimiter, (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
   const playerId = req.query.player as string | undefined;
@@ -765,7 +768,7 @@ router.get('/games/archive', (req: Request, res: Response) => {
   res.json({ games: result.rows, total: result.total, page, limit });
 });
 
-router.get('/games/archive/:gameId', (req: Request, res: Response) => {
+router.get('/games/archive/:gameId', globalGetLimiter, (req: Request, res: Response) => {
   const game = db.getArchivedGame(req.params.gameId);
   if (!game) {
     res.status(404).json({ error: 'Game not found' });
@@ -797,7 +800,7 @@ router.post('/tournaments', authMiddleware, banCheckMiddleware, (req: Request, r
   res.status(201).json(tournament);
 });
 
-router.get('/tournaments', (_req: Request, res: Response) => {
+router.get('/tournaments', globalGetLimiter, (_req: Request, res: Response) => {
   const tournaments = db.getPublicTournaments();
   const enriched = tournaments.map((t: any) => ({
     ...t,
@@ -839,7 +842,7 @@ router.post('/tournaments/join-by-code', authMiddleware, banCheckMiddleware, (re
   res.json(db.getTournament(t.id));
 });
 
-router.get('/tournaments/:id', (req: Request, res: Response) => {
+router.get('/tournaments/:id', globalGetLimiter, (req: Request, res: Response) => {
   const t = db.getTournament(req.params.id);
   if (!t) {
     res.status(404).json({ error: 'Tournament not found' });

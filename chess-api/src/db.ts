@@ -736,3 +736,14 @@ export function areFriends(userId: string, friendId: string): boolean {
   logger.info('DB: areFriends user1=' + userId + ' user2=' + friendId + ' =' + result);
   return result;
 }
+
+export function closeDb(): void {
+  if (db) {
+    try {
+      db.close();
+      logger.info('DB connection closed');
+    } catch (err) {
+      logger.error('Error closing DB:', err);
+    }
+  }
+}

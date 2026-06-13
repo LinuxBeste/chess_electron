@@ -19,11 +19,16 @@ import { cleanupIpRateBuckets } from './routes';
 
 export const app: Express = express();
 
+/* Trust the first proxy (cloudflared) for correct IP detection */
+app.set('trust proxy', 1);
+
 /* ─── Environment defaults ─── */
 
 const PORT = parseInt(process.env.PORT ?? '25565', 10);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 const WS_HEARTBEAT_INTERVAL = parseInt(process.env.WS_HEARTBEAT_INTERVAL ?? '30000', 10);
+const WS_PONG_TIMEOUT = parseInt(process.env.WS_PONG_TIMEOUT ?? '10000', 10);
+const WS_MAX_CONNECTIONS_PER_IP = parseInt(process.env.WS_MAX_CONNECTIONS_PER_IP ?? '5', 10);
 
 /* Validate critical env vars */
 if (!process.env.ADMIN_PASSWORD && !process.env.JEST_WORKER_ID) {
@@ -41,8 +46,8 @@ if (CORS_ORIGIN === '*') {
   logger.warn('CORS origin is set to * — restrict this in production');
 }
 app.use(cors({ origin: CORS_ORIGIN, credentials: CORS_ORIGIN !== '*' }));
-/* Parse incoming JSON request bodies for all routes */
-app.use(express.json());
+/* Parse incoming JSON request bodies — 10kb is plenty for chess data */
+app.use(express.json({ limit: '10kb' }));
 /* Attach all API routes */
 app.use(routes);
 
@@ -56,6 +61,13 @@ app.use('/admin', express.static(adminDir));
 /* Attach admin API routes (login, stats, accounts CRUD) */
 app.use(adminRouter);
 
+/* ─── Global Express error handler ─── */
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const msg = err instanceof Error ? err.message : String(err);
+  logger.error('Unhandled error:', msg);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
 /**
  * Create an HTTP server with WebSocket upgrade support.
  *
@@ -63,6 +75,9 @@ app.use(adminRouter);
  * header (subprotocol). The client sends the bearer token as the sole
  * subprotocol, and the server extracts it on upgrade.
  */
+/* Track WS connections per IP to limit abuse */
+const wsIpCount = new Map<string, number>();
+
 export function createServer(): http.Server {
   const server = http.createServer(app);
 
@@ -73,23 +88,49 @@ export function createServer(): http.Server {
     },
   });
 
+  /* Expose for graceful shutdown */
+  (server as any).__wss = wss;
+
   /* Periodic heartbeat to detect stale connections */
   const heartbeatInterval = setInterval(() => {
     wss.clients.forEach((ws) => {
       if (ws.readyState === WebSocket.OPEN) {
+        (ws as any).__pongReceived = false;
         ws.ping();
+        /* If no pong within timeout, terminate */
+        setTimeout(() => {
+          if ((ws as any).__pongReceived === false && ws.readyState === WebSocket.OPEN) {
+            logger.warn('WS pong timeout — terminating stale connection');
+            ws.terminate();
+          }
+        }, WS_PONG_TIMEOUT);
       }
     });
   }, WS_HEARTBEAT_INTERVAL);
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-    /* Extract the bearer token from the Sec-WebSocket-Protocol header.
-     * The client sends the token as a subprotocol, which `handleProtocols`
-     * above accepted and stored in ws.protocol. */
+    /* Track IP for connection limit */
+    const clientIp = req.socket.remoteAddress || 'unknown';
+    const current = wsIpCount.get(clientIp) ?? 0;
+    if (current >= WS_MAX_CONNECTIONS_PER_IP) {
+      logger.warn('WS connection limit exceeded for IP: ' + clientIp);
+      ws.close(4003, 'Too many connections from this IP');
+      return;
+    }
+    wsIpCount.set(clientIp, current + 1);
+
+    /* Mark pong received on pong frames */
+    (ws as any).__pongReceived = true;
+    ws.on('pong', () => {
+      (ws as any).__pongReceived = true;
+    });
+
+    /* Extract the bearer token from the Sec-WebSocket-Protocol header. */
     const token = ws.protocol || (req.headers['sec-websocket-protocol'] as string | undefined);
 
     /* Reject connections without a token */
     if (!token) {
+      decrementWsIp(clientIp);
       ws.close(4001, 'Token required');
       return;
     }
@@ -97,6 +138,7 @@ export function createServer(): http.Server {
     /* Reject connections with an invalid/unknown token */
     const player = game.authenticatePlayer(token);
     if (!player) {
+      decrementWsIp(clientIp);
       ws.close(4001, 'Invalid token');
       return;
     }
@@ -182,6 +224,7 @@ export function createServer(): http.Server {
 
     /* Clean up when the connection drops */
     ws.on('close', () => {
+      decrementWsIp(clientIp);
       game.removeWSConnection(player.id, ws);
       game.cleanupPlayerWaitingGames(player.id);
       if (spectatingGameId) {
@@ -195,6 +238,23 @@ export function createServer(): http.Server {
 
   return server;
 }
+
+function decrementWsIp(ip: string): void {
+  const count = wsIpCount.get(ip) ?? 1;
+  if (count <= 1) wsIpCount.delete(ip);
+  else wsIpCount.set(ip, count - 1);
+}
+
+/* ─── Crash safety: prevent process exit on unhandled rejections/errors ─── */
+process.on('unhandledRejection', (reason: unknown) => {
+  logger.error('Unhandled rejection:', reason instanceof Error ? reason.message : String(reason));
+});
+
+process.on('uncaughtException', (err: Error) => {
+  logger.error('Uncaught exception:', err.message);
+  /* Still exit after logging — process may be in an unknown state */
+  process.exitCode = 1;
+});
 
 /* Conditional server start: skip when imported by Jest (test environment).
  * This lets supertest bind to the app without port conflicts. */
@@ -212,4 +272,31 @@ if (!isTestEnv) {
     logger.info('CORS origin: ' + CORS_ORIGIN);
     logger.info('WS heartbeat interval: ' + WS_HEARTBEAT_INTERVAL + 'ms');
   });
+
+  /* Graceful shutdown on SIGTERM/SIGINT */
+  function shutdown(signal: string): void {
+    logger.info('Received ' + signal + ' — shutting down gracefully...');
+    server.close(() => {
+      logger.info('HTTP server closed');
+      const wss: WebSocketServer | undefined = (server as any).__wss;
+      if (wss) {
+        wss.clients.forEach((client) => {
+          client.close(1001, 'Server shutting down');
+        });
+      }
+      /* Close DB connection if applicable */
+      const db = require('./db') as typeof import('./db');
+      if (typeof db.closeDb === 'function') db.closeDb();
+      logger.info('Shutdown complete');
+      process.exit(0);
+    });
+    /* Force exit after 10 seconds regardless */
+    setTimeout(() => {
+      logger.warn('Forced shutdown after timeout');
+      process.exit(1);
+    }, 10000).unref();
+  }
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
