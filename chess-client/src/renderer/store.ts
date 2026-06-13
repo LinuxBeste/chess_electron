@@ -82,7 +82,14 @@ class Store {
       const game = value as GameState | null;
       this.state.currentGameId = game?.id ?? null;
     }
-    if (key === 'token' || key === 'playerId' || key === 'username' || key === 'avatarUrl' || key === 'isRegistered' || key === 'currentGame') {
+    if (
+      key === 'token' ||
+      key === 'playerId' ||
+      key === 'username' ||
+      key === 'avatarUrl' ||
+      key === 'isRegistered' ||
+      key === 'currentGame'
+    ) {
       this.persistSession();
     }
   }
