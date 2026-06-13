@@ -14,6 +14,7 @@ import { IncomingMessage } from 'http';
 import routes from './routes';
 import adminRouter from './admin';
 import * as game from './game';
+import * as db from './db';
 import logger from './logger';
 import { cleanupIpRateBuckets } from './routes';
 
@@ -276,12 +277,14 @@ if (!isTestEnv) {
   /* Periodic cleanup of IP rate-limit buckets */
   setInterval(cleanupIpRateBuckets, 60000);
   /* Periodic cleanup of player rate-limit buckets and login attempts */
-  setInterval(() => { game.cleanupRateLimitBuckets(); game.cleanupLoginAttempts(); }, 60000);
+  setInterval(() => {
+    game.cleanupRateLimitBuckets();
+    game.cleanupLoginAttempts();
+  }, 60000);
   /* Clean up old log files daily */
   logger.cleanupOldLogs();
   setInterval(logger.cleanupOldLogs, 86400000);
   /* Periodic cleanup of expired user tokens (hourly) */
-  const db = require('./db') as typeof import('./db');
   setInterval(() => db.cleanupExpiredTokens(), 3600000);
   /* Periodic DB backup (every 6 hours) */
   const DB_BACKUP_INTERVAL_MS = parseInt(process.env.DB_BACKUP_INTERVAL_MS ?? String(6 * 3600000), 10);
@@ -313,7 +316,6 @@ if (!isTestEnv) {
         });
       }
       /* Close DB connection if applicable */
-      const db = require('./db') as typeof import('./db');
       if (typeof db.closeDb === 'function') db.closeDb();
       logger.info('Shutdown complete');
       process.exit(0);

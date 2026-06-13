@@ -7,6 +7,7 @@
 
 import supertest from 'supertest';
 import { app } from '../src/index';
+import * as game from '../src/game';
 import { describe, test, expect } from '@jest/globals';
 
 const request = supertest(app);
@@ -1323,5 +1324,354 @@ describe('Friends', () => {
       isOnline: false,
       currentGameId: null,
     });
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Logout                                                              */
+/* ------------------------------------------------------------------ */
+
+describe('POST /auth/logout', () => {
+  test('invalidates bearer token', async () => {
+    const { token, authHeader } = await registerPlayer('logout_test');
+    await request.post('/auth/logout').set('Authorization', authHeader).expect(200);
+    await request.get('/auth/me').set('Authorization', authHeader).expect(401);
+  });
+
+  test('rejects missing auth header', async () => {
+    await request.post('/auth/logout').expect(401);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Account lockout via HTTP                                             */
+/* ------------------------------------------------------------------ */
+
+describe('Account lockout', () => {
+  test('locks account after 5 failed login attempts', async () => {
+    const username = 'lockout_http_' + Date.now();
+    await request.post('/auth/register').send({ username, password: 'secret1234' }).expect(201);
+
+    for (let i = 0; i < 5; i++) {
+      await request.post('/auth/login').send({ username, password: 'wrongpass' }).expect(401);
+    }
+    const res = await request.post('/auth/login').send({ username, password: 'secret1234' }).expect(429);
+    expect(res.body.error).toMatch(/locked/i);
+  });
+
+  test('does not lock before 5 failed attempts', async () => {
+    const username = 'lockout_ok_' + Date.now();
+    await request.post('/auth/register').send({ username, password: 'secret1234' }).expect(201);
+
+    for (let i = 0; i < 4; i++) {
+      await request.post('/auth/login').send({ username, password: 'wrongpass' }).expect(401);
+    }
+    const res = await request.post('/auth/login').send({ username, password: 'secret1234' }).expect(200);
+    expect(res.body.success).toBe(true);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Tournaments                                                         */
+/* ------------------------------------------------------------------ */
+
+describe('Tournaments', () => {
+  let creatorAuth: string;
+  let creatorId: string;
+  let joinerAuth: string;
+
+  beforeAll(async () => {
+    /* Tournament creator and joiner must be registered users (with password) */
+    const cRes = await request.post('/auth/register').send({ username: 'tourney_c', password: 'test1234' }).expect(201);
+    creatorAuth = `Bearer ${cRes.body.token}`;
+    creatorId = cRes.body.playerId;
+    const jRes = await request.post('/auth/register').send({ username: 'tourney_j', password: 'test1234' }).expect(201);
+    joinerAuth = `Bearer ${jRes.body.token}`;
+  });
+
+  test('POST /tournaments creates a tournament', async () => {
+    const res = await request
+      .post('/tournaments')
+      .set('Authorization', creatorAuth)
+      .send({ name: 'Test Tournament', maxPlayers: 4 })
+      .expect(201);
+    expect(res.body).toHaveProperty('id');
+    expect(res.body.name).toBe('Test Tournament');
+    expect(res.body.status).toBe('waiting');
+    expect(res.body.created_by).toBe(creatorId);
+  });
+
+  test('POST /tournaments rejects anonymous users', async () => {
+    await request.post('/tournaments').set('Authorization', 'Bearer no-such-token').send({ name: 'X' }).expect(401);
+  });
+
+  test('POST /tournaments requires name', async () => {
+    await request.post('/tournaments').set('Authorization', creatorAuth).send({}).expect(400);
+    await request.post('/tournaments').set('Authorization', creatorAuth).send({ name: '' }).expect(400);
+    await request.post('/tournaments').set('Authorization', creatorAuth).send({ name: '   ' }).expect(400);
+  });
+
+  test('GET /tournaments lists public tournaments', async () => {
+    const res = await request.get('/tournaments').expect(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(1);
+    const t = res.body.find((t: any) => t.name === 'Test Tournament');
+    expect(t).toBeDefined();
+    expect(t).toHaveProperty('participantCount');
+  });
+
+  test('POST /tournaments/:id/join allows joining', async () => {
+    const list = await request.get('/tournaments').expect(200);
+    const t = list.body.find((t: any) => t.name === 'Test Tournament');
+    const res = await request.post(`/tournaments/${t.id}/join`).set('Authorization', joinerAuth).expect(200);
+    expect(res.body.id).toBe(t.id);
+  });
+
+  test('POST /tournaments/:id/join rejects duplicate', async () => {
+    const list = await request.get('/tournaments').expect(200);
+    const t = list.body.find((t: any) => t.name === 'Test Tournament');
+    await request.post(`/tournaments/${t.id}/join`).set('Authorization', joinerAuth).expect(409);
+  });
+
+  test('POST /tournaments/:id/join rejects non-existent', async () => {
+    await request.post('/tournaments/non-existent/join').set('Authorization', joinerAuth).expect(404);
+  });
+
+  test('POST /tournaments/:id/leave allows leaving', async () => {
+    const list = await request.get('/tournaments').expect(200);
+    const t = list.body.find((t: any) => t.name === 'Test Tournament');
+    await request.post(`/tournaments/${t.id}/leave`).set('Authorization', joinerAuth).expect(200);
+
+    /* can re-join after leaving */
+    await request.post(`/tournaments/${t.id}/join`).set('Authorization', joinerAuth).expect(200);
+  });
+
+  test('POST /tournaments/:id/start with 2+ players', async () => {
+    const list = await request.get('/tournaments').expect(200);
+    const t = list.body.find((t: any) => t.name === 'Test Tournament');
+    const res = await request.post(`/tournaments/${t.id}/start`).set('Authorization', creatorAuth).expect(200);
+    expect(res.body.status).toBe('active');
+  });
+
+  test('POST /tournaments/:id/start rejects already started', async () => {
+    const list = await request.get('/tournaments').expect(200);
+    const t = list.body.find((t: any) => t.name === 'Test Tournament');
+    await request.post(`/tournaments/${t.id}/start`).set('Authorization', creatorAuth).expect(400);
+  });
+
+  test('POST /tournaments/:id/leave rejected after start', async () => {
+    const list = await request.get('/tournaments').expect(200);
+    const t = list.body.find((t: any) => t.name === 'Test Tournament');
+    await request.post(`/tournaments/${t.id}/leave`).set('Authorization', joinerAuth).expect(400);
+  });
+
+  test('POST /tournaments requires at least 2 players to start', async () => {
+    const res = await request
+      .post('/tournaments')
+      .set('Authorization', creatorAuth)
+      .send({ name: 'Solo Tourney', maxPlayers: 4 })
+      .expect(201);
+    const soloId = res.body.id;
+
+    await request.post(`/tournaments/${soloId}/start`).set('Authorization', creatorAuth).expect(400);
+  });
+
+  test('POST /tournaments/:id/start rejects non-creator', async () => {
+    const res = await request
+      .post('/tournaments')
+      .set('Authorization', creatorAuth)
+      .send({ name: 'Start Test', maxPlayers: 4 })
+      .expect(201);
+    const id = res.body.id;
+    await request.post(`/tournaments/${id}/join`).set('Authorization', joinerAuth).expect(200);
+    await request.post(`/tournaments/${id}/start`).set('Authorization', joinerAuth).expect(403);
+  });
+
+  test('PUT /tournaments/:id edits tournament', async () => {
+    const res = await request
+      .post('/tournaments')
+      .set('Authorization', creatorAuth)
+      .send({ name: 'Editable Tourney', maxPlayers: 8 })
+      .expect(201);
+    const id = res.body.id;
+
+    const edited = await request
+      .put(`/tournaments/${id}`)
+      .set('Authorization', creatorAuth)
+      .send({ name: 'Edited Name', maxPlayers: 16 })
+      .expect(200);
+    expect(edited.body.name).toBe('Edited Name');
+    expect(edited.body.max_players).toBe(16);
+  });
+
+  test('PUT /tournaments/:id rejects non-creator', async () => {
+    const res = await request
+      .post('/tournaments')
+      .set('Authorization', creatorAuth)
+      .send({ name: 'No Edit', maxPlayers: 4 })
+      .expect(201);
+    const id = res.body.id;
+
+    await request.put(`/tournaments/${id}`).set('Authorization', joinerAuth).send({ name: 'Hacked' }).expect(403);
+  });
+
+  test('DELETE /tournaments/:id deletes tournament', async () => {
+    const res = await request
+      .post('/tournaments')
+      .set('Authorization', creatorAuth)
+      .send({ name: 'Delete Me', maxPlayers: 4 })
+      .expect(201);
+    const id = res.body.id;
+
+    await request.delete(`/tournaments/${id}`).set('Authorization', creatorAuth).expect(200);
+    await request.get(`/tournaments/${id}`).expect(404);
+  });
+
+  test('DELETE /tournaments/:id rejects non-creator', async () => {
+    const res = await request
+      .post('/tournaments')
+      .set('Authorization', creatorAuth)
+      .send({ name: 'No Delete', maxPlayers: 4 })
+      .expect(201);
+    const id = res.body.id;
+
+    await request.delete(`/tournaments/${id}`).set('Authorization', joinerAuth).expect(403);
+  });
+
+  test('private tournament excluded from public list, joinable by code', async () => {
+    const res = await request
+      .post('/tournaments')
+      .set('Authorization', creatorAuth)
+      .send({ name: 'Secret Tourney', maxPlayers: 4, isPrivate: true })
+      .expect(201);
+    expect(res.body).toHaveProperty('join_code');
+    const joinCode = res.body.join_code;
+
+    const list = await request.get('/tournaments').expect(200);
+    expect(list.body.some((t: any) => t.name === 'Secret Tourney')).toBe(false);
+
+    const joinByCode = await request
+      .post('/tournaments/join-by-code')
+      .set('Authorization', joinerAuth)
+      .send({ code: joinCode })
+      .expect(200);
+    expect(joinByCode.body.id).toBe(res.body.id);
+  });
+
+  test('POST /tournaments/join-by-code with invalid code', async () => {
+    await request
+      .post('/tournaments/join-by-code')
+      .set('Authorization', joinerAuth)
+      .send({ code: 'INVALID' })
+      .expect(404);
+  });
+
+  test('POST /tournaments/join-by-code requires code', async () => {
+    await request.post('/tournaments/join-by-code').set('Authorization', joinerAuth).send({}).expect(400);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Bot games                                                           */
+/* ------------------------------------------------------------------ */
+
+describe('Bot games', () => {
+  let playerAuth: string;
+
+  beforeAll(async () => {
+    const p = await registerPlayer('bot_player');
+    playerAuth = p.authHeader;
+  });
+
+  afterAll(() => {
+    game.killAllEngines();
+  });
+
+  test('POST /games/bot creates a bot game', async () => {
+    const res = await request.post('/games/bot').set('Authorization', playerAuth).send({ skillLevel: 1 }).expect(201);
+    expect(res.body).toHaveProperty('id');
+    expect(res.body.status).toBe('active');
+    expect(res.body.players).toHaveProperty('black', '_bot_');
+  });
+
+  test('POST /games/bot rejects missing auth', async () => {
+    await request.post('/games/bot').send({ skillLevel: 1 }).expect(401);
+  });
+
+  test('POST /games/bot allows making a move', async () => {
+    const res = await request.post('/games/bot').set('Authorization', playerAuth).send({ skillLevel: 1 }).expect(201);
+    const gameId = res.body.id;
+
+    const moveRes = await request
+      .post(`/games/${gameId}/move`)
+      .set('Authorization', playerAuth)
+      .send({ from: 'e2', to: 'e4' });
+    expect(moveRes.status).toBe(200);
+    expect(moveRes.body.status).toBe('active');
+    const apiRes = await request.get(`/games/${gameId}`).set('Authorization', playerAuth);
+    expect(apiRes.body.moveHistory.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test('POST /games/bot as black (bot is white)', async () => {
+    const res = await request
+      .post('/games/bot')
+      .set('Authorization', playerAuth)
+      .send({ skillLevel: 1, playerColor: 'black' })
+      .expect(201);
+    expect(res.body.players.white).toBe('_bot_');
+    expect(res.body.players.black).not.toBe('_bot_');
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Admin extra endpoints (bot-games, tournaments)                       */
+/* ------------------------------------------------------------------ */
+
+describe('Admin API — bot games & tournaments', () => {
+  let adminAuth: string;
+  let playerAuth: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
+    adminAuth = `Bearer ${res.body.token}`;
+    const pRes = await request
+      .post('/auth/register')
+      .send({ username: 'admin_bot_t', password: 'test1234' })
+      .expect(201);
+    playerAuth = `Bearer ${pRes.body.token}`;
+  });
+
+  test('GET /admin/api/bot-games returns stats', async () => {
+    const res = await request.get('/admin/api/bot-games').set('Authorization', adminAuth).expect(200);
+    expect(res.body).toHaveProperty('total');
+    expect(res.body).toHaveProperty('active');
+    expect(res.body).toHaveProperty('games');
+    expect(typeof res.body.total).toBe('number');
+    expect(Array.isArray(res.body.games)).toBe(true);
+  });
+
+  test('GET /admin/api/tournaments lists all tournaments', async () => {
+    const res = await request.get('/admin/api/tournaments').set('Authorization', adminAuth).expect(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(0);
+    if (res.body.length > 0) {
+      expect(res.body[0]).toHaveProperty('participantCount');
+    }
+  });
+
+  test('DELETE /admin/api/tournaments/:id deletes tournament', async () => {
+    const tRes = await request
+      .post('/tournaments')
+      .set('Authorization', playerAuth)
+      .send({ name: 'Admin Delete Me', maxPlayers: 4 })
+      .expect(201);
+    const id = tRes.body.id;
+
+    await request.delete(`/admin/api/tournaments/${id}`).set('Authorization', adminAuth).expect(200);
+    await request.get(`/admin/api/tournaments/${id}`).set('Authorization', adminAuth).expect(404);
+  });
+
+  test('DELETE /admin/api/tournaments/:id returns 404 for non-existent', async () => {
+    await request.delete('/admin/api/tournaments/non-existent').set('Authorization', adminAuth).expect(404);
   });
 });

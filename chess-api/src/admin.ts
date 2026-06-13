@@ -38,12 +38,15 @@ const adminTokens = new Map<string, number>();
 
 /* Periodic cleanup of expired admin tokens (skip in test) */
 if (process.env.NODE_ENV !== 'test') {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [token, expiry] of adminTokens) {
-      if (expiry <= now) adminTokens.delete(token);
-    }
-  }, Math.min(ADMIN_TOKEN_TTL, 300000));
+  setInterval(
+    () => {
+      const now = Date.now();
+      for (const [token, expiry] of adminTokens) {
+        if (expiry <= now) adminTokens.delete(token);
+      }
+    },
+    Math.min(ADMIN_TOKEN_TTL, 300000),
+  );
 }
 
 function adminAuthMiddleware(req: Request, res: Response, next: () => void): void {

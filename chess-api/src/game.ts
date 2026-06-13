@@ -27,11 +27,14 @@ const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
 export function checkLoginLockout(username: string): { locked: boolean; remainingMs?: number } {
   const entry = loginAttempts.get(username);
   if (!entry) return { locked: false };
-  if (Date.now() >= entry.lockedUntil) {
+  if (entry.lockedUntil > 0 && Date.now() >= entry.lockedUntil) {
     loginAttempts.delete(username);
     return { locked: false };
   }
-  return { locked: true, remainingMs: entry.lockedUntil - Date.now() };
+  if (entry.lockedUntil > 0) {
+    return { locked: true, remainingMs: entry.lockedUntil - Date.now() };
+  }
+  return { locked: false };
 }
 
 export function recordFailedAttempt(username: string): void {
@@ -505,7 +508,11 @@ export function createBotGame(
 ): { success: true; game: GameState } | { success: false; error: string } {
   if (engineManager.activeCount >= engineManager.maxConcurrentEngines) {
     logger.warn(
-      'Bot game rejected: engine limit reached (' + engineManager.activeCount + '/' + engineManager.maxConcurrentEngines + ')',
+      'Bot game rejected: engine limit reached (' +
+        engineManager.activeCount +
+        '/' +
+        engineManager.maxConcurrentEngines +
+        ')',
     );
     return { success: false, error: 'Too many concurrent bot games. Try again later.' };
   }

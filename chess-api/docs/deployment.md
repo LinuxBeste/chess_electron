@@ -77,27 +77,27 @@ No open firewall ports required. TLS is handled automatically by Cloudflare.
 
 ## Environment Variables
 
-| Variable                     | Default   | Description                                                       |
-| ---------------------------- | --------- | ----------------------------------------------------------------- |
-| `PORT`                       | `25565`   | HTTP/WS server port                                               |
-| `NODE_ENV`                   | —         | Set to `test` to skip server startup (used by test runner)        |
-| `ADMIN_USERNAME`             | `admin`   | Admin dashboard login username                                    |
-| `ADMIN_PASSWORD`             | (random)  | Admin dashboard login password (auto-generated if not set)        |
-| `ADMIN_TOKEN_TTL`            | `86400000`| Admin session token TTL in ms (default 24h)                       |
-| `CORS_ORIGIN`                | `*`       | Allowed CORS origin                                               |
-| `DB_PATH`                    | `data/chess.db` | SQLite database file path                                   |
-| `MAX_GAMES_PER_PLAYER`       | `20`      | Maximum concurrent active games per player                        |
-| `RATE_LIMIT_WINDOW_MS`       | `60000`   | Rate limit sliding window in ms                                   |
-| `RATE_LIMIT_MAX_REQUESTS`    | `100`     | Max requests per player per window                                |
-| `LOG_LEVEL`                  | `info`    | Log level: error, warn, info, debug                               |
-| `WAITING_TTL_MS`             | `600000`  | Orphaned waiting game TTL (default 10 min, 0 to disable)          |
-| `WS_HEARTBEAT_INTERVAL`      | `30000`   | WebSocket ping interval in ms                                     |
-| `WS_PONG_TIMEOUT`            | `10000`   | WebSocket pong timeout before termination in ms                   |
-| `WS_MAX_CONNECTIONS_PER_IP`  | `5`       | Max WebSocket connections per IP                                  |
-| `LOGIN_MAX_ATTEMPTS`         | `5`       | Failed logins before account lockout                              |
-| `LOGIN_LOCKOUT_MINUTES`      | `15`      | Account lockout duration in minutes                               |
-| `DB_BACKUP_INTERVAL_MS`      | `21600000`| DB backup interval in ms (default 6h, 0 to disable)              |
-| `MAX_CONCURRENT_ENGINES`     | `4`       | Max concurrent Stockfish engine instances for bot games           |
+| Variable                    | Default         | Description                                                |
+| --------------------------- | --------------- | ---------------------------------------------------------- |
+| `PORT`                      | `25565`         | HTTP/WS server port                                        |
+| `NODE_ENV`                  | —               | Set to `test` to skip server startup (used by test runner) |
+| `ADMIN_USERNAME`            | `admin`         | Admin dashboard login username                             |
+| `ADMIN_PASSWORD`            | (random)        | Admin dashboard login password (auto-generated if not set) |
+| `ADMIN_TOKEN_TTL`           | `86400000`      | Admin session token TTL in ms (default 24h)                |
+| `CORS_ORIGIN`               | `*`             | Allowed CORS origin                                        |
+| `DB_PATH`                   | `data/chess.db` | SQLite database file path                                  |
+| `MAX_GAMES_PER_PLAYER`      | `20`            | Maximum concurrent active games per player                 |
+| `RATE_LIMIT_WINDOW_MS`      | `60000`         | Rate limit sliding window in ms                            |
+| `RATE_LIMIT_MAX_REQUESTS`   | `100`           | Max requests per player per window                         |
+| `LOG_LEVEL`                 | `info`          | Log level: error, warn, info, debug                        |
+| `WAITING_TTL_MS`            | `600000`        | Orphaned waiting game TTL (default 10 min, 0 to disable)   |
+| `WS_HEARTBEAT_INTERVAL`     | `30000`         | WebSocket ping interval in ms                              |
+| `WS_PONG_TIMEOUT`           | `10000`         | WebSocket pong timeout before termination in ms            |
+| `WS_MAX_CONNECTIONS_PER_IP` | `5`             | Max WebSocket connections per IP                           |
+| `LOGIN_MAX_ATTEMPTS`        | `5`             | Failed logins before account lockout                       |
+| `LOGIN_LOCKOUT_MINUTES`     | `15`            | Account lockout duration in minutes                        |
+| `DB_BACKUP_INTERVAL_MS`     | `21600000`      | DB backup interval in ms (default 6h, 0 to disable)        |
+| `MAX_CONCURRENT_ENGINES`    | `4`             | Max concurrent Stockfish engine instances for bot games    |
 
 ## start.sh
 

@@ -705,3 +705,91 @@ describe('chat messages', () => {
     expect(() => game.handleChatMessage('fake-game', pid, 'hello', ws)).not.toThrow();
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  Logout                                                              */
+/* ------------------------------------------------------------------ */
+
+describe('logoutPlayer', () => {
+  test('returns true for a valid token and invalidates it', () => {
+    const { playerId, token } = game.registerPlayer('logout_user');
+    expect(game.authenticatePlayer(token)).not.toBeNull();
+    expect(game.logoutPlayer(token)).toBe(true);
+    expect(game.authenticatePlayer(token)).toBeNull();
+  });
+
+  test('returns false for an invalid token', () => {
+    expect(game.logoutPlayer('no-such-token')).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Login lockout                                                       */
+/* ------------------------------------------------------------------ */
+
+describe('login lockout', () => {
+  test('checkLoginLockout returns not locked for unknown user', () => {
+    const result = game.checkLoginLockout('unknown_user_xyz');
+    expect(result.locked).toBe(false);
+  });
+
+  test('recordFailedAttempt locks after 5 attempts', () => {
+    const username = 'lockout_test_' + Date.now();
+    for (let i = 0; i < 5; i++) {
+      game.recordFailedAttempt(username);
+    }
+    const result = game.checkLoginLockout(username);
+    expect(result.locked).toBe(true);
+    expect(result.remainingMs).toBeGreaterThan(0);
+  });
+
+  test('clearLoginAttempts resets lockout', () => {
+    const username = 'lockout_clear_' + Date.now();
+    for (let i = 0; i < 5; i++) {
+      game.recordFailedAttempt(username);
+    }
+    expect(game.checkLoginLockout(username).locked).toBe(true);
+    game.clearLoginAttempts(username);
+    expect(game.checkLoginLockout(username).locked).toBe(false);
+  });
+
+  test('loginPlayer with correct password succeeds after clearLoginAttempts', () => {
+    const username = 'login_ok_' + Date.now();
+    const password = 'testpass123';
+    const { playerId } = game.registerPlayer(username, password);
+
+    for (let i = 0; i < 5; i++) {
+      game.recordFailedAttempt(username);
+    }
+    expect(game.checkLoginLockout(username).locked).toBe(true);
+
+    game.clearLoginAttempts(username);
+    const result = game.loginPlayer(username, password);
+    expect(result.success).toBe(true);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Bot game detection                                                  */
+/* ------------------------------------------------------------------ */
+
+describe('isBotGame', () => {
+  afterAll(() => {
+    game.killAllEngines();
+  });
+
+  test('returns false for a normal game', () => {
+    const pid = registerPlayer('bot_detect_normal');
+    const g = game.createGame(pid);
+    expect(game.isBotGame(g)).toBe(false);
+  });
+
+  test('returns true for a bot game', () => {
+    const pid = registerPlayer('bot_detect_bot');
+    const result = game.createBotGame(pid, 1, 'white');
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(game.isBotGame(result.game)).toBe(true);
+    }
+  });
+});
