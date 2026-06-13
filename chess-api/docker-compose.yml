@@ -4,7 +4,7 @@ services:
     build: .
     image: chess-api
     expose:
-      - "3000"
+      - "25565"
     restart: unless-stopped
     volumes:
       - chess-data:/app/data
@@ -12,7 +12,7 @@ services:
     environment:
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:25565/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -28,7 +28,7 @@ services:
     depends_on:
       - chess-api
     # ───── Quick tunnel: random URL, no setup needed ─────
-    command: tunnel --url http://chess-api:3000
+    command: tunnel --url http://chess-api:25565
     # ───── Named tunnel (for permanent URL): ─────
     # Uncomment and configure on Cloudflare dashboard first:
     # command: tunnel --config /etc/cloudflared/config.yml run

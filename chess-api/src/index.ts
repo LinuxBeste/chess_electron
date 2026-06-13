@@ -36,8 +36,27 @@ if (!process.env.ADMIN_PASSWORD && !process.env.JEST_WORKER_ID) {
   logger.warn('ADMIN_PASSWORD not set — a random password will be generated and logged on first request');
 }
 
-/* Security headers via helmet */
-app.use(helmet());
+/* Security headers via helmet — CSP allows inline scripts/styles for the
+ * admin React SPA (Vite dev server injects HMR inline scripts; in production
+ * the built files use external scripts from 'self' but 'unsafe-inline' is
+ * harmless when no user-controlled input is rendered as JS). */
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", 'https:', 'data:'],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'none'"],
+        frameSrc: ["'none'"],
+      },
+    },
+  }),
+);
 /* Request logging to both console and file (skip in test) */
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('short', { stream: logger.morganStream() }));
