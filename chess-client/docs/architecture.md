@@ -118,7 +118,7 @@ All pages are lazy-loaded with `React.lazy()` for code-splitting.
 
 ## WebSocket Protocol
 
-Connect: `ws://localhost:3000/?token=<bearer-token>`
+Connect: `ws://localhost:3000/chess-ws?token=<bearer-token>`
 
 Messages are JSON with a `type` discriminator:
 
@@ -126,6 +126,10 @@ Messages are JSON with a `type` discriminator:
 - `type: "game_over"` — game ended
 - `type: "game_started"` — game started for white
 - `type: "chat_message"` — chat message received
+- `type: "opponent_disconnected"` — opponent lost connection
+- `type: "opponent_reconnected"` — opponent reconnected
+- `type: "draw_offered"` — draw offered
+- `type: "draw_declined"` — draw declined
 
 Auto-reconnect: exponential backoff 1s → 2s → 4s → 8s → 10s (capped), 5 max attempts.
 

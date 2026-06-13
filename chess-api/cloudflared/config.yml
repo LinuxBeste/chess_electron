@@ -1,0 +1,18 @@
+# Cloudflare Tunnel configuration for named tunnel.
+#
+# 1. Create a tunnel on Cloudflare Zero Trust dashboard.
+# 2. Copy the tunnel credentials JSON into a file and mount it.
+# 3. Update this file's tunnel: and credentials-file: with your values.
+# 4. Uncomment the named tunnel section in docker-compose.yml.
+#
+# Example:
+#   tunnel: <tunnel-uuid>
+#   credentials-file: /home/nonroot/.cloudflared/<tunnel-uuid>.json
+
+tunnel: YOUR-TUNNEL-ID
+credentials-file: /home/nonroot/.cloudflared/YOUR-TUNNEL-ID.json
+
+ingress:
+  - hostname: your-domain.com
+    service: http://chess-api:3000
+  - service: http_status:404

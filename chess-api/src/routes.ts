@@ -206,15 +206,24 @@ router.post('/auth/login', ipRateLimitMiddleware, (req: Request, res: Response) 
     res.status(400).json({ error: 'Username and password are required' });
     return;
   }
-  const result = game.loginPlayer(username.trim(), password);
+  const trimmed = username.trim();
+  /* Check account lockout before password verification (constant-time) */
+  const lockout = game.checkLoginLockout(trimmed);
+  if (lockout.locked) {
+    const minutes = Math.ceil(lockout.remainingMs! / 60000);
+    logger.audit('login_locked', `username="${trimmed}" ip="${ip}" remaining=${lockout.remainingMs}ms`);
+    res.status(429).json({ error: 'Account temporarily locked. Try again in ' + minutes + ' minute(s).' });
+    return;
+  }
+  const result = game.loginPlayer(trimmed, password);
   if (!result.success) {
-    logger.audit('login_failed', `username="${username.trim()}" ip="${ip}"`);
+    game.recordFailedAttempt(trimmed);
+    logger.audit('login_failed', `username="${trimmed}" ip="${ip}"`);
     res.status(401).json({ error: 'Invalid username or password' });
     return;
   }
-  const token = uuidv4();
-  game.loginPlayer(result.playerId, token);
-  logger.audit('login_ok', `playerId="${result.playerId}" username="${username.trim()}" ip="${ip}"`);
+  game.clearLoginAttempts(trimmed);
+  logger.audit('login_ok', `playerId="${result.playerId}" username="${trimmed}" ip="${ip}"`);
   res.json(result);
 });
 

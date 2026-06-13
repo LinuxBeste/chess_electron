@@ -10,22 +10,22 @@ CLIENT_ENV_FILE="../chess-client/.env"
 
 usage() {
   cat <<EOF
-Usage: $0 [--native | -n] [--tunnel <tool>] [--port <num>] [--no-client-env]
+Usage: $0 [--native | -n] [--tunnel (cloudflared|ngrok)] [--port <num>] [--no-client-env]
 
 Start the chess-api server.
 
 Options:
   --native, -n        Run natively (npm run dev) instead of Docker
-  --tunnel <tool>     Expose via tunnel (ngrok | cloudflared)
-  --port <num>        Host port (default: 25565, maps to container port 3000)
+  --tunnel <tool>     Expose via tunnel (cloudflared | ngrok)
+  --port <num>        Local port for native mode (default: 3000)
   --no-client-env     Skip updating chess-client/.env with tunnel URL
   --help, -h          Show this help
 
 Examples:
-  $0                          # Docker on port 25565
-  $0 --native                 # npm run dev on port 3000
-  $0 --tunnel cloudflared     # Docker + cloudflare tunnel
-  $0 --native --tunnel ngrok  # Native + ngrok tunnel
+  $0                              # Docker (API internal, cloudflared in stack)
+  $0 --native                     # npm run dev on port $PORT
+  $0 --tunnel cloudflared          # Docker + extract cloudflared URL
+  $0 --native --tunnel ngrok       # Native + ngrok tunnel
 EOF
   exit 0
 }
@@ -71,17 +71,28 @@ start_tunnel() {
       tunnel_url=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['tunnels'][0]['public_url'])" 2>/dev/null || true)
       ;;
     cloudflared)
-      echo "Starting cloudflared tunnel on port $local_port ..."
-      local tmpfile
-      tmpfile=$(mktemp)
-      cloudflared tunnel --url "http://localhost:$local_port" 2>&1 | tee "$tmpfile" &
-      sleep 4
-      tunnel_url=$(grep -oP 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' "$tmpfile" 2>/dev/null | head -1 || true)
-      rm -f "$tmpfile"
+      if [[ "${MODE:-docker}" == "native" ]]; then
+        echo "Starting cloudflared tunnel on port $local_port ..."
+        local tmpfile
+        tmpfile=$(mktemp)
+        cloudflared tunnel --url "http://localhost:$local_port" 2>&1 | tee "$tmpfile" &
+        sleep 4
+        tunnel_url=$(grep -oP 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' "$tmpfile" 2>/dev/null | head -1 || true)
+        rm -f "$tmpfile"
+      else
+        echo "Waiting for cloudflared container URL (from docker compose) ..."
+        for i in $(seq 1 10); do
+          tunnel_url=$(docker compose logs cloudflared 2>/dev/null | grep -oP 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' | head -1 || true)
+          if [[ -n "$tunnel_url" ]]; then
+            break
+          fi
+          sleep 2
+        done
+      fi
       ;;
     *)
       if [[ -n "$TUNNEL" ]]; then
-        echo "Unknown tunnel tool '$TUNNEL'. Use 'ngrok' or 'cloudflared'." >&2
+        echo "Unknown tunnel tool '$TUNNEL'. Use 'cloudflared' or 'ngrok'." >&2
         exit 1
       fi
       return
@@ -120,12 +131,11 @@ if [[ "${MODE:-docker}" == "native" ]]; then
   start_tunnel "$PORT"
   exec npm start
 else
-  echo "Starting chess-api in Docker on port $PORT -> 3000 ..."
+  echo "Starting chess-api in Docker (internal-only, cloudflared in stack) ..."
   docker compose up --build -d
   start_tunnel "$PORT"
-  echo "Server running at http://localhost:$PORT"
   echo
-  echo "Press q to stop and remove the container"
+  echo "Press q to stop and remove containers"
   while true; do
     read -rsn 1 key
     if [[ "$key" == "q" ]]; then

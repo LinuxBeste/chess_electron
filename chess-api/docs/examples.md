@@ -14,13 +14,14 @@ Or with Docker:
 docker compose up --build
 ```
 
-All examples assume `http://localhost:3000`.
+All examples assume direct API access at `http://localhost:25565`.
+In dev through the webpack proxy, use `http://localhost:3000` instead.
 
 ## 1. Register Players
 
 ```bash
 # Register white player
-curl -s -X POST http://localhost:3000/auth/register \
+curl -s -X POST http://localhost:25565/auth/register \
   -H "Content-Type: application/json" \
   -d '{"username": "alice"}' | jq
 ```
@@ -36,7 +37,7 @@ curl -s -X POST http://localhost:3000/auth/register \
 
 ```bash
 # Register black player
-curl -s -X POST http://localhost:3000/auth/register \
+curl -s -X POST http://localhost:25565/auth/register \
   -H "Content-Type: application/json" \
   -d '{"username": "bob"}' | jq
 ```
@@ -46,7 +47,7 @@ Save the tokens — you'll need them for authenticated requests.
 ## 2. Create a Game (White)
 
 ```bash
-curl -s -X POST http://localhost:3000/games \
+curl -s -X POST http://localhost:25565/games \
   -H "Authorization: Bearer <white-token>" | jq
 ```
 
@@ -67,13 +68,13 @@ Save the game ID from the response.
 ## 3. List Open Games
 
 ```bash
-curl -s http://localhost:3000/games | jq
+curl -s http://localhost:25565/games | jq
 ```
 
 ## 4. Join a Game (Black)
 
 ```bash
-curl -s -X POST http://localhost:3000/games/<game-id>/join \
+curl -s -X POST http://localhost:25565/games/<game-id>/join \
   -H "Authorization: Bearer <black-token>" | jq
 ```
 
@@ -83,43 +84,43 @@ curl -s -X POST http://localhost:3000/games/<game-id>/join \
 
 ```bash
 # 1. e4
-curl -s -X POST http://localhost:3000/games/<game-id>/move \
+curl -s -X POST http://localhost:25565/games/<game-id>/move \
   -H "Authorization: Bearer <white-token>" \
   -H "Content-Type: application/json" \
   -d '{"from": "e2", "to": "e4"}' | jq
 
 # 1... e5
-curl -s -X POST http://localhost:3000/games/<game-id>/move \
+curl -s -X POST http://localhost:25565/games/<game-id>/move \
   -H "Authorization: Bearer <black-token>" \
   -H "Content-Type: application/json" \
   -d '{"from": "e7", "to": "e5"}' | jq
 
 # 2. Qh5
-curl -s -X POST http://localhost:3000/games/<game-id>/move \
+curl -s -X POST http://localhost:25565/games/<game-id>/move \
   -H "Authorization: Bearer <white-token>" \
   -H "Content-Type: application/json" \
   -d '{"from": "d1", "to": "h5"}' | jq
 
 # 2... Nc6
-curl -s -X POST http://localhost:3000/games/<game-id>/move \
+curl -s -X POST http://localhost:25565/games/<game-id>/move \
   -H "Authorization: Bearer <black-token>" \
   -H "Content-Type: application/json" \
   -d '{"from": "b8", "to": "c6"}' | jq
 
 # 3. Bc4
-curl -s -X POST http://localhost:3000/games/<game-id>/move \
+curl -s -X POST http://localhost:25565/games/<game-id>/move \
   -H "Authorization: Bearer <white-token>" \
   -H "Content-Type: application/json" \
   -d '{"from": "f1", "to": "c4"}' | jq
 
 # 3... Nf6
-curl -s -X POST http://localhost:3000/games/<game-id>/move \
+curl -s -X POST http://localhost:25565/games/<game-id>/move \
   -H "Authorization: Bearer <black-token>" \
   -H "Content-Type: application/json" \
   -d '{"from": "g8", "to": "f6"}' | jq
 
 # 4. Qxf7#  (checkmate!)
-curl -s -X POST http://localhost:3000/games/<game-id>/move \
+curl -s -X POST http://localhost:25565/games/<game-id>/move \
   -H "Authorization: Bearer <white-token>" \
   -H "Content-Type: application/json" \
   -d '{"from": "h5", "to": "f7"}' | jq
@@ -130,7 +131,7 @@ Final response shows `"status": "checkmate"`, `"winner": "white"`.
 ## 6. Get Legal Moves
 
 ```bash
-curl -s http://localhost:3000/games/<game-id>/moves \
+curl -s http://localhost:25565/games/<game-id>/moves \
   -H "Authorization: Bearer <white-token>" | jq
 ```
 
@@ -150,7 +151,7 @@ curl -s http://localhost:3000/games/<game-id>/moves \
 ## 7. Resign
 
 ```bash
-curl -s -X POST http://localhost:3000/games/<game-id>/resign \
+curl -s -X POST http://localhost:25565/games/<game-id>/resign \
   -H "Authorization: Bearer <white-token>" | jq
 ```
 
@@ -159,7 +160,7 @@ curl -s -X POST http://localhost:3000/games/<game-id>/resign \
 ## 8. Health Check
 
 ```bash
-curl -s http://localhost:3000/health | jq
+curl -s http://localhost:25565/health | jq
 ```
 
 **Response:**
@@ -173,19 +174,35 @@ curl -s http://localhost:3000/health | jq
 }
 ```
 
+## 9. Play Against Bot
+
+```bash
+# Create bot game as white with skill level 10
+curl -s -X POST http://localhost:25565/games/bot \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"color": "white", "skillLevel": 10}' | jq
+```
+
+## 10. Get Leaderboard
+
+```bash
+curl -s http://localhost:25565/leaderboard | jq
+```
+
 ## One-Liner Script
 
 ```bash
 # Register two players and play a full game in one script
-W=$(curl -s -X POST http://localhost:3000/auth/register -H "Content-Type: application/json" -d '{"username":"w"}' | jq -r '.token')
-B=$(curl -s -X POST http://localhost:3000/auth/register -H "Content-Type: application/json" -d '{"username":"b"}' | jq -r '.token')
-GID=$(curl -s -X POST http://localhost:3000/games -H "Authorization: Bearer $W" | jq -r '.id')
-curl -s -X POST "http://localhost:3000/games/$GID/join" -H "Authorization: Bearer $B" > /dev/null
-curl -s -X POST "http://localhost:3000/games/$GID/move" -H "Authorization: Bearer $W" -H "Content-Type: application/json" -d '{"from":"e2","to":"e4"}' > /dev/null
-curl -s -X POST "http://localhost:3000/games/$GID/move" -H "Authorization: Bearer $B" -H "Content-Type: application/json" -d '{"from":"e7","to":"e5"}' > /dev/null
-curl -s -X POST "http://localhost:3000/games/$GID/move" -H "Authorization: Bearer $W" -H "Content-Type: application/json" -d '{"from":"d1","to":"h5"}' > /dev/null
-curl -s -X POST "http://localhost:3000/games/$GID/move" -H "Authorization: Bearer $B" -H "Content-Type: application/json" -d '{"from":"b8","to":"c6"}' > /dev/null
-curl -s -X POST "http://localhost:3000/games/$GID/move" -H "Authorization: Bearer $W" -H "Content-Type: application/json" -d '{"from":"f1","to":"c4"}' > /dev/null
-curl -s -X POST "http://localhost:3000/games/$GID/move" -H "Authorization: Bearer $B" -H "Content-Type: application/json" -d '{"from":"g8","to":"f6"}' > /dev/null
-curl -s -X POST "http://localhost:3000/games/$GID/move" -H "Authorization: Bearer $W" -H "Content-Type: application/json" -d '{"from":"h5","to":"f7"}' | jq '{status: .status, winner: .winner, lastMove: .lastMove}'
+W=$(curl -s -X POST http://localhost:25565/auth/register -H "Content-Type: application/json" -d '{"username":"w"}' | jq -r '.token')
+B=$(curl -s -X POST http://localhost:25565/auth/register -H "Content-Type: application/json" -d '{"username":"b"}' | jq -r '.token')
+GID=$(curl -s -X POST http://localhost:25565/games -H "Authorization: Bearer $W" | jq -r '.id')
+curl -s -X POST "http://localhost:25565/games/$GID/join" -H "Authorization: Bearer $B" > /dev/null
+curl -s -X POST "http://localhost:25565/games/$GID/move" -H "Authorization: Bearer $W" -H "Content-Type: application/json" -d '{"from":"e2","to":"e4"}' > /dev/null
+curl -s -X POST "http://localhost:25565/games/$GID/move" -H "Authorization: Bearer $B" -H "Content-Type: application/json" -d '{"from":"e7","to":"e5"}' > /dev/null
+curl -s -X POST "http://localhost:25565/games/$GID/move" -H "Authorization: Bearer $W" -H "Content-Type: application/json" -d '{"from":"d1","to":"h5"}' > /dev/null
+curl -s -X POST "http://localhost:25565/games/$GID/move" -H "Authorization: Bearer $B" -H "Content-Type: application/json" -d '{"from":"b8","to":"c6"}' > /dev/null
+curl -s -X POST "http://localhost:25565/games/$GID/move" -H "Authorization: Bearer $W" -H "Content-Type: application/json" -d '{"from":"f1","to":"c4"}' > /dev/null
+curl -s -X POST "http://localhost:25565/games/$GID/move" -H "Authorization: Bearer $B" -H "Content-Type: application/json" -d '{"from":"g8","to":"f6"}' > /dev/null
+curl -s -X POST "http://localhost:25565/games/$GID/move" -H "Authorization: Bearer $W" -H "Content-Type: application/json" -d '{"from":"h5","to":"f7"}' | jq '{status: .status, winner: .winner, lastMove: .lastMove}'
 ```

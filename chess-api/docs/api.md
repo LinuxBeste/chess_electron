@@ -1,13 +1,13 @@
 # API Reference
 
-Base URL: `http://localhost:3000`
+Base URL: `http://localhost:25565` (direct) or webpack proxy at `http://localhost:3000` (in dev).
 
 ## Authentication
 
 ### Two modes
 
 1. **Anonymous (Quick Play)** — just a display name, no password, no persistence. Name can be a duplicate. Stats are not saved between sessions.
-2. **Registered (Account)** — unique username + password, persisted to SQLite. Stats (wins/losses/draws) are tracked automatically.
+2. **Registered (Account)** — unique username + password, persisted to SQLite. Stats (wins/losses/draws) and Elo rating are tracked automatically.
 
 All authenticated endpoints require a bearer token in the `Authorization` header:
 
@@ -89,6 +89,7 @@ Returns the authenticated player's info. Requires auth. Includes stats for regis
   "username": "alice",
   "displayName": "alice",
   "isRegistered": true,
+  "elo": 1200,
   "stats": { "wins": 5, "losses": 2, "draws": 1 }
 }
 ```
@@ -140,6 +141,23 @@ Optional body field: `visibility` (`'public' | 'private'`, defaults to `'public'
 }
 ```
 
+### POST /games/bot
+
+Create a game against the Stockfish bot. Requires auth.
+
+**Request:**
+
+```json
+{
+  "color": "white",
+  "skillLevel": 10
+}
+```
+
+`skillLevel` ranges from 1 (weakest) to 20 (strongest).
+
+**Response (201):** GameState with black set to `_bot_`.
+
 ### GET /games
 
 List all open (waiting) public games.
@@ -158,6 +176,21 @@ List all active games (for spectating). No auth required.
 
 ```json
 [ { ...GameState }, ... ]
+```
+
+### GET /games/completed
+
+Get completed games for the authenticated player (archive). Supports pagination via `?page=1&limit=20`.
+
+**Response (200):**
+
+```json
+{
+  "games": [ { ...GameState }, ... ],
+  "total": 42,
+  "page": 1,
+  "limit": 20
+}
 ```
 
 ### GET /games/:gameId
@@ -196,9 +229,17 @@ Resign from a game. Requires auth.
 
 **Response:** GameState with status `resigned` and winner set.
 
+### POST /games/:gameId/draw
+
+Offer, accept, or decline a draw. Requires auth.
+
+**Request (offer):** `{ "action": "offer" }`
+**Request (accept):** `{ "action": "accept" }`
+**Request (decline):** `{ "action": "decline" }`
+
 ### GET /players/:playerId/games
 
-Get completed games for the authenticated player (match history). Requires auth. Can only view your own history.
+Get completed games for the authenticated player. Requires auth. Can only view your own history.
 
 **Response (200):**
 
@@ -207,6 +248,18 @@ Get completed games for the authenticated player (match history). Requires auth.
 ```
 
 **Response (403):** `{ "error": "Can only view your own match history" }`
+
+### GET /players/me/active-game
+
+Get the player's current active game ID.
+
+**Response (200):**
+
+```json
+{ "gameId": "uuid-v4" }
+```
+
+**Response (404):** `{ "error": "No active game" }`
 
 ### GET /games/:gameId/moves
 
@@ -222,6 +275,78 @@ Get all legal moves for the authenticated player in a game. Requires auth.
   ]
 }
 ```
+
+## Leaderboard
+
+### GET /leaderboard
+
+Get all registered players sorted by Elo rating.
+
+**Response (200):**
+
+```json
+[
+  { "rank": 1, "playerId": "uuid", "username": "alice", "elo": 1500, "wins": 10, "losses": 2, "draws": 1 },
+  { "rank": 2, "playerId": "uuid", "username": "bob", "elo": 1300, "wins": 5, "losses": 3, "draws": 2 }
+]
+```
+
+## Tournaments
+
+### POST /tournaments
+
+Create a tournament. Requires auth.
+
+**Request:**
+
+```json
+{
+  "name": "My Tournament",
+  "maxPlayers": 8,
+  "isPrivate": false
+}
+```
+
+If `isPrivate` is true, the response includes a `joinCode` (8-char alphanumeric).
+
+**Response (201):**
+
+```json
+{
+  "id": "uuid-v4",
+  "name": "My Tournament",
+  "status": "waiting",
+  "maxPlayers": 8,
+  "isPrivate": false,
+  "joinCode": null,
+  "participants": [],
+  "creatorId": "uuid-v4"
+}
+```
+
+### GET /tournaments
+
+List all tournaments (public or joined).
+
+### GET /tournaments/join-by-code/:code
+
+Join a private tournament using its 8-character join code. Requires auth.
+
+### GET /tournaments/:id
+
+Get tournament details.
+
+### POST /tournaments/:id/join
+
+Join a public tournament. Requires auth.
+
+### PUT /tournaments/:id
+
+Update tournament settings (creator only).
+
+### DELETE /tournaments/:id
+
+Cancel tournament (creator only).
 
 ## Admin Dashboard
 
@@ -315,6 +440,18 @@ All players currently tracked in memory (both registered and temporary).
 ]
 ```
 
+### GET /admin/api/bot-games
+
+All bot games with counts and stats.
+
+### GET /admin/api/tournaments
+
+All tournaments with status and participant counts.
+
+### GET /admin/api/leaderboard
+
+Full leaderboard snapshot for admin.
+
 ### GET /admin/api/accounts
 
 All permanent (registered) accounts from the database.
@@ -330,7 +467,8 @@ All permanent (registered) accounts from the database.
     "createdAt": 1700000000000,
     "wins": 5,
     "losses": 2,
-    "draws": 1
+    "draws": 1,
+    "elo": 1200
   }
 ]
 ```
@@ -367,11 +505,13 @@ Delete an account and all its session tokens.
 
 ## WebSocket
 
-Connect to the WebSocket endpoint at the same host/port with the token as a query parameter:
+Connect to the WebSocket endpoint at `ws://host:port/chess-ws` with the token as a query parameter:
 
 ```
-ws://localhost:3000/?token=<bearer-token>
+ws://localhost:25565/chess-ws?token=<bearer-token>
 ```
+
+In dev with webpack proxy: `ws://localhost:3000/chess-ws?token=<bearer-token>`
 
 ### Client Messages
 
@@ -401,6 +541,29 @@ ws://localhost:3000/?token=<bearer-token>
   "gameId": "uuid",
   "text": "Hello!"
 }
+```
+
+**Offer/accept/decline draw:**
+
+```json
+{ "type": "offer_draw", "gameId": "uuid" }
+{ "type": "accept_draw", "gameId": "uuid" }
+{ "type": "decline_draw", "gameId": "uuid" }
+```
+
+**Rematch:**
+
+```json
+{ "type": "rematch_offer", "gameId": "uuid" }
+{ "type": "rematch_accept", "gameId": "uuid" }
+```
+
+**Challenge another player:**
+
+```json
+{ "type": "challenge", "toPlayerId": "uuid", "gameId": "uuid" }
+{ "type": "challenge_accept", "toPlayerId": "uuid", "gameId": "uuid" }
+{ "type": "challenge_decline", "toPlayerId": "uuid", "gameId": "uuid" }
 ```
 
 ### Server Messages
@@ -441,6 +604,13 @@ ws://localhost:3000/?token=<bearer-token>
   "result": "checkmate",
   "reason": "white wins by checkmate"
 }
+```
+
+**Opponent disconnected/reconnected:**
+
+```json
+{ "type": "opponent_disconnected", "gameId": "uuid" }
+{ "type": "opponent_reconnected", "gameId": "uuid" }
 ```
 
 **Chat message broadcast:**
@@ -484,5 +654,5 @@ ws://localhost:3000/?token=<bearer-token>
 | `active`    | Both players joined, game in progress   |
 | `checkmate` | King is in check with no legal moves    |
 | `stalemate` | No legal moves but king is not in check |
-| `draw`      | Draw by 50-move rule                    |
+| `draw`      | Draw by 50-move rule or agreement       |
 | `resigned`  | A player resigned                       |

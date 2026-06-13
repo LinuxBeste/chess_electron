@@ -13,22 +13,37 @@ import { ipRateLimitMiddleware } from './routes';
 const router: ReturnType<typeof Router> = Router();
 
 let ADMIN_USERNAME: string;
-let ADMIN_PASSWORD: string;
+let ADMIN_PASSWORD_HASH: string;
+
+const ADMIN_TOKEN_TTL = parseInt(process.env.ADMIN_TOKEN_TTL ?? String(24 * 60 * 60 * 1000), 10);
 
 function initAdminCreds(): void {
   ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+  let password: string;
   if (process.env.ADMIN_PASSWORD) {
-    ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+    password = process.env.ADMIN_PASSWORD;
   } else {
-    ADMIN_PASSWORD = crypto.randomBytes(24).toString('hex');
-    logger.warn('No ADMIN_PASSWORD set. Generated random password: ' + ADMIN_PASSWORD);
+    password = crypto.randomBytes(24).toString('hex');
+    logger.warn('No ADMIN_PASSWORD set. Generated random password: ' + password.slice(0, 4) + '...' + password.slice(-4));
     logger.warn('Set ADMIN_PASSWORD env var to use a custom password.');
   }
+  ADMIN_PASSWORD_HASH = crypto.createHash('sha256').update(password).digest('hex');
 }
 
 initAdminCreds();
 
-const adminTokens = new Set<string>();
+/* Map: token → expiry timestamp */
+const adminTokens = new Map<string, number>();
+
+/* Periodic cleanup of expired admin tokens (skip in test) */
+if (process.env.NODE_ENV !== 'test') {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [token, expiry] of adminTokens) {
+      if (expiry <= now) adminTokens.delete(token);
+    }
+  }, Math.min(ADMIN_TOKEN_TTL, 300000));
+}
 
 function adminAuthMiddleware(req: Request, res: Response, next: () => void): void {
   const header = req.headers.authorization;
@@ -37,8 +52,10 @@ function adminAuthMiddleware(req: Request, res: Response, next: () => void): voi
     return;
   }
   const token = header.slice(7);
-  if (!adminTokens.has(token)) {
-    res.status(401).json({ error: 'Invalid admin token' });
+  const expiry = adminTokens.get(token);
+  if (!expiry || expiry <= Date.now()) {
+    adminTokens.delete(token);
+    res.status(401).json({ error: 'Invalid or expired admin token' });
     return;
   }
   next();
@@ -50,15 +67,23 @@ router.post('/admin/api/login', ipRateLimitMiddleware, (req: Request, res: Respo
     res.status(400).json({ error: 'Username and password are required' });
     return;
   }
-  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+  const pwHash = crypto.createHash('sha256').update(password).digest('hex');
+  if (username !== ADMIN_USERNAME || pwHash !== ADMIN_PASSWORD_HASH) {
     logger.audit('admin_login_failed', `username="${username}" ip="${req.ip || ''}"`);
     res.status(401).json({ error: 'Invalid admin credentials' });
     return;
   }
   const token = uuidv4();
-  adminTokens.add(token);
+  adminTokens.set(token, Date.now() + ADMIN_TOKEN_TTL);
   logger.audit('admin_login_ok', `username="${username}" ip="${req.ip || ''}"`);
   res.json({ token });
+});
+
+router.post('/admin/api/logout', adminAuthMiddleware, (req: Request, res: Response) => {
+  const token = req.headers.authorization!.slice(7);
+  adminTokens.delete(token);
+  logger.audit('admin_logout', `token revoked by admin`);
+  res.json({ success: true });
 });
 
 router.get('/admin/api/stats', adminAuthMiddleware, (_req: Request, res: Response) => {

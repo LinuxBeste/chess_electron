@@ -18,6 +18,36 @@ import logger from './logger';
 const games = new Map<string, GameState>();
 const players = new Map<string, Player>();
 
+/* Per-username login attempt tracking for account lockout.
+ * Configurable via LOGIN_MAX_ATTEMPTS and LOGIN_LOCKOUT_MINUTES env vars. */
+const LOGIN_MAX_ATTEMPTS = parseInt(process.env.LOGIN_MAX_ATTEMPTS ?? '5', 10);
+const LOGIN_LOCKOUT_MINUTES = parseInt(process.env.LOGIN_LOCKOUT_MINUTES ?? '15', 10);
+const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+
+export function checkLoginLockout(username: string): { locked: boolean; remainingMs?: number } {
+  const entry = loginAttempts.get(username);
+  if (!entry) return { locked: false };
+  if (Date.now() >= entry.lockedUntil) {
+    loginAttempts.delete(username);
+    return { locked: false };
+  }
+  return { locked: true, remainingMs: entry.lockedUntil - Date.now() };
+}
+
+export function recordFailedAttempt(username: string): void {
+  const entry = loginAttempts.get(username) ?? { count: 0, lockedUntil: 0 };
+  entry.count++;
+  if (entry.count >= LOGIN_MAX_ATTEMPTS) {
+    entry.lockedUntil = Date.now() + LOGIN_LOCKOUT_MINUTES * 60 * 1000;
+    logger.warn('Account locked out: username="' + username + '" for ' + LOGIN_LOCKOUT_MINUTES + ' minutes');
+  }
+  loginAttempts.set(username, entry);
+}
+
+export function clearLoginAttempts(username: string): void {
+  loginAttempts.delete(username);
+}
+
 /* UCI move history for engine use (string[] per game) */
 const uciHistory = new Map<string, string[]>();
 

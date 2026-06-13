@@ -1,13 +1,13 @@
 # Chess API
 
-Production-ready multiplayer chess REST API server with WebSocket real-time updates. Self-contained chess engine — no external chess libraries.
+Production-ready multiplayer chess REST API server with WebSocket real-time updates. Self-contained chess engine — no external chess libraries. Supports Stockfish bot, tournaments, Elo leaderboard, and admin panel.
 
 ## Documentation
 
 - [API Reference](api.md) — Endpoints, authentication, request/response formats
 - [Architecture](architecture.md) — Layering, data flow, design decisions
 - [Chess Logic](chess-logic.md) — How the engine works internally (move gen, check/checkmate, special moves)
-- [Deployment](deployment.md) — Docker build, docker-compose, environment variables
+- [Deployment](deployment.md) — Docker, docker-compose, Cloudflare Tunnel, environment variables
 
 ## Quick Start
 
@@ -15,27 +15,29 @@ Production-ready multiplayer chess REST API server with WebSocket real-time upda
 cd chess-api
 pnpm install
 pnpm run build
-pnpm start        # starts on port 3000
+pnpm start        # starts on port 25565
 ```
 
-Access the admin dashboard at [http://localhost:3000/admin](http://localhost:3000/admin)
+Access the admin dashboard at [http://localhost:25565/admin](http://localhost:25565/admin)
 (default login: `admin` / `admin`).
 
-### With Docker
+### With Docker + Cloudflare Tunnel
 
 ```bash
-docker compose up --build
+docker compose up --build -d
+docker compose logs cloudflared   # get public URL
 ```
 
 ## Stack
 
 - **Runtime:** Node.js 20 + TypeScript (strict mode)
 - **HTTP:** Express 4
-- **WebSocket:** ws (token-authenticated)
+- **WebSocket:** ws (token-authenticated, path `/chess-ws`)
 - **Auth:** Bearer tokens (UUID v4)
+- **Bot engine:** Stockfish 18 (spawned via `child_process.spawn`)
 - **Admin dashboard:** React 19 + Vite + TailwindCSS + lucide-react
-- **Storage:** In-memory (ephemeral) + SQLite (registered users)
-- **Tests:** Jest + supertest
+- **Storage:** In-memory (ephemeral) + SQLite (registered users, tournaments)
+- **Tests:** Jest + supertest (338 tests)
 - **Container:** Multi-stage Docker build on node:20-alpine
 
 ## Project Layout
@@ -43,16 +45,23 @@ docker compose up --build
 ```
 chess-api/
   admin-frontend/   React SPA (Vite + TailwindCSS + lucide-react)
-    src/            Components (LoginPage, Dashboard, OverviewTab, GamesTab, PlayersTab, AccountsTab)
+    src/            Components (Dashboard, OverviewTab, GamesTab, etc.)
   src/
     types.ts        Shared interfaces (Piece, Board, Move, GameState, etc.)
     chess.ts        Complete chess engine (~600 lines)
     game.ts         Game orchestration, auth, WebSocket broadcasting
     routes.ts       Express route handlers (player API)
-    admin.ts        Admin API route handlers (dashboard, accounts CRUD)
+    admin.ts        Admin API route handlers
+    engine.ts       Stockfish engine manager (child process)
+    db.ts           SQLite database helpers
     index.ts        App setup, server start, WebSocket server
   tests/
     chess.test.ts   Unit tests for chess engine
-    api.test.ts     Integration tests for full API surface + admin routes
+    game.test.ts    Unit tests for game logic
+    api.test.ts     Integration tests for full API surface + admin
+  cloudflared/
+    config.yml      Cloudflare Tunnel configuration template
+  Caddyfile         Caddy config (unused, replaced by tunnel)
+  start.sh          Docker/native orchestrator with tunnel support
   docs/             This documentation
 ```

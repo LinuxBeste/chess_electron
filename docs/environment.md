@@ -4,7 +4,7 @@
 
 | Variable                  | Default | Description                          |
 | ------------------------- | ------- | ------------------------------------ |
-| `PORT`                    | `3000`  | HTTP server port                     |
+| `PORT`                    | `25565` | HTTP/WS server port                  |
 | `CORS_ORIGIN`             | `*`     | Allowed CORS origin                  |
 | `WS_HEARTBEAT_INTERVAL`   | `30000` | WebSocket ping interval (ms)         |
 | `LOG_LEVEL`               | `info`  | Log level (debug, info, warn, error) |
@@ -18,7 +18,7 @@
 
 | Variable                 | Default                      | Description                                              |
 | ------------------------ | ---------------------------- | -------------------------------------------------------- |
-| `CHESS_SERVER_URL`       | `http://localhost:3000`      | API server URL                                           |
+| `CHESS_SERVER_URL`       | `http://localhost:3000`      | API server URL (webpack proxy)                           |
 | `CHESS_WS_URL`           | _(same as CHESS_SERVER_URL)_ | WebSocket URL override                                   |
 | `DEFAULT_USERNAME`       | _(empty)_                    | Pre-fills the login username; auto-submits login if set  |
 | `AUTO_CONNECT`           | `true`                       | Auto-connect WebSocket on startup                        |

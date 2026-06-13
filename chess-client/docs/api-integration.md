@@ -4,24 +4,28 @@
 
 All calls go through `src/renderer/api.ts`. Each function was written by reading `../chess-api/src/routes.ts` and confirmed against `../chess-api/docs/api.md`.
 
-| Function         | Method | Path                       | Auth | Request Body               | Response                                         |
-| ---------------- | ------ | -------------------------- | ---- | -------------------------- | ------------------------------------------------ |
-| `register`       | POST   | `/auth/register`           | No   | `{ username }`             | `{ playerId, token }`                            |
-| `getMe`          | GET    | `/auth/me`                 | Yes  | —                          | `{ id, username }`                               |
-| `healthCheck`    | GET    | `/health`                  | No   | —                          | `{ status, uptime, gamesActive, playersOnline }` |
-| `createGame`     | POST   | `/games`                   | Yes  | `{ visibility? }`          | `GameState`                                      |
-| `getOpenGames`   | GET    | `/games`                   | No   | —                          | `GameState[]`                                    |
-| `getActiveGames` | GET    | `/games/active`            | No   | —                          | `GameState[]`                                    |
-| `getGame`        | GET    | `/games/:gameId`           | No   | —                          | `GameState`                                      |
-| `joinGame`       | POST   | `/games/:gameId/join`      | Yes  | —                          | `GameState`                                      |
-| `makeMove`       | POST   | `/games/:gameId/move`      | Yes  | `{ from, to, promotion? }` | `GameState`                                      |
-| `resignGame`     | POST   | `/games/:gameId/resign`    | Yes  | —                          | `GameState`                                      |
-| `getPlayerGames` | GET    | `/players/:playerId/games` | Yes  | —                          | `GameState[]`                                    |
-| `getLegalMoves`  | GET    | `/games/:gameId/moves`     | Yes  | —                          | `{ moves: [{from,to}] }`                         |
+| Function           | Method | Path                       | Auth | Request Body                       | Response                                         |
+| ------------------ | ------ | -------------------------- | ---- | ---------------------------------- | ------------------------------------------------ |
+| `register`         | POST   | `/auth/register`           | No   | `{ username }`                     | `{ playerId, token }`                            |
+| `getMe`            | GET    | `/auth/me`                 | Yes  | —                                  | `{ id, username, elo? }`                         |
+| `healthCheck`      | GET    | `/health`                  | No   | —                                  | `{ status, uptime, gamesActive, playersOnline }` |
+| `createGame`       | POST   | `/games`                   | Yes  | `{ visibility? }`                  | `GameState`                                      |
+| `createBotGame`    | POST   | `/games/bot`               | Yes  | `{ color, skillLevel }`            | `GameState`                                      |
+| `getOpenGames`     | GET    | `/games`                   | No   | —                                  | `GameState[]`                                    |
+| `getActiveGames`   | GET    | `/games/active`            | No   | —                                  | `GameState[]`                                    |
+| `getGame`          | GET    | `/games/:gameId`           | No   | —                                  | `GameState`                                      |
+| `joinGame`         | POST   | `/games/:gameId/join`      | Yes  | —                                  | `GameState`                                      |
+| `makeMove`         | POST   | `/games/:gameId/move`      | Yes  | `{ from, to, promotion? }`         | `GameState`                                      |
+| `resignGame`       | POST   | `/games/:gameId/resign`    | Yes  | —                                  | `GameState`                                      |
+| `getPlayerGames`   | GET    | `/players/:playerId/games` | Yes  | —                                  | `GameState[]`                                    |
+| `getLegalMoves`    | GET    | `/games/:gameId/moves`     | Yes  | —                                  | `{ moves: [{from,to}] }`                         |
+| `getLeaderboard`   | GET    | `/leaderboard`             | No   | —                                  | `LeaderboardEntry[]`                             |
+| `createTournament` | POST   | `/tournaments`             | Yes  | `{ name, maxPlayers, isPrivate? }` | `Tournament`                                     |
+| `getActiveGame`    | GET    | `/players/me/active-game`  | Yes  | —                                  | `{ gameId }`                                     |
 
 ## WebSocket Events
 
-Connection: `ws://localhost:3000/?token=<bearer-token>` (confirmed in `../chess-api/src/index.ts`)
+Connection: `ws://localhost:3000/chess-ws?token=<bearer-token>` (confirmed in `../chess-api/src/index.ts`)
 
 ### `type: "move"`
 
@@ -82,13 +86,31 @@ Broadcast to players and spectators when someone sends a chat message.
 }
 ```
 
+### `type: "opponent_disconnected"` / `"opponent_reconnected"`
+
+Broadcast when the opponent's WebSocket connection drops or reconnects.
+
+```json
+{ "type": "opponent_disconnected", "gameId": "uuid" }
+{ "type": "opponent_reconnected", "gameId": "uuid" }
+```
+
 ### Client Messages (sent via WebSocket)
 
-| Type           | Body               | Description             |
-| -------------- | ------------------ | ----------------------- |
-| `spectate`     | `{ gameId }`       | Start spectating a game |
-| `unspectate`   | `{ gameId }`       | Stop spectating         |
-| `chat_message` | `{ gameId, text }` | Send a chat message     |
+| Type                | Body                     | Description                |
+| ------------------- | ------------------------ | -------------------------- |
+| `spectate`          | `{ gameId }`             | Start spectating a game    |
+| `unspectate`        | `{ gameId }`             | Stop spectating            |
+| `chat_message`      | `{ gameId, text }`       | Send a chat message        |
+| `offer_draw`        | `{ gameId }`             | Offer a draw               |
+| `accept_draw`       | `{ gameId }`             | Accept draw offer          |
+| `decline_draw`      | `{ gameId }`             | Decline draw offer         |
+| `rematch_offer`     | `{ gameId }`             | Offer rematch              |
+| `rematch_accept`    | `{ gameId }`             | Accept rematch             |
+| `challenge`         | `{ toPlayerId, gameId }` | Challenge player to a game |
+| `challenge_accept`  | `{ toPlayerId, gameId }` | Accept challenge           |
+| `challenge_decline` | `{ toPlayerId, gameId }` | Decline challenge          |
+| `get_chat_history`  | `{ gameId }`             | Request chat history       |
 
 ### Server Responses to Client Messages
 
@@ -102,7 +124,8 @@ Broadcast to players and spectators when someone sends a chat message.
 1. Call `register(username)` → receive `{ playerId, token }`
 2. Store both in the observable store
 3. All subsequent authenticated requests read `store.get('token')` and inject it as `Authorization: Bearer <token>`
-4. WebSocket connection includes token as query parameter
+4. WebSocket connection includes the token as a query parameter (`ws://localhost:3000/chess-ws?token=<bearer-token>`)
+
 5. **Session validation** — On app startup, a restored session is validated by calling `GET /auth/me`. If the server rejects the token (server restart wipes the in-memory token store), the session is cleared and the user sees the login view instead of auto-navigating to the lobby.
 
 ## Type Mapping

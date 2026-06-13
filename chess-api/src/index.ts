@@ -21,7 +21,7 @@ export const app: Express = express();
 
 /* ─── Environment defaults ─── */
 
-const PORT = parseInt(process.env.PORT ?? '3000', 10);
+const PORT = parseInt(process.env.PORT ?? '25565', 10);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 const WS_HEARTBEAT_INTERVAL = parseInt(process.env.WS_HEARTBEAT_INTERVAL ?? '30000', 10);
 

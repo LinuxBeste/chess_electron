@@ -4,7 +4,7 @@
 
 - Node.js 20+
 - pnpm
-- chess-api server running on localhost:3000
+- chess-api server running (directly on localhost:25565 or via webpack proxy on localhost:3000)
 
 ## Setup
 
@@ -15,17 +15,26 @@ pnpm install
 
 ## Commands
 
-| Command                   | Description                             |
-| ------------------------- | --------------------------------------- |
-| `pnpm run typecheck`      | TypeScript type checking only           |
-| `pnpm run build:renderer` | Build renderer bundle                   |
-| `pnpm run build:main`     | Build Electron main process             |
-| `pnpm run build`          | Build main + renderer bundles           |
-| `pnpm run build:web`      | Build renderer for standalone web       |
-| `pnpm run dev:web`        | Dev server for browser (port 3000)      |
-| `pnpm run dev`            | Build and launch Electron               |
-| `pnpm run start`          | Launch Electron (build first)           |
-| `pnpm run package`        | Build and package with electron-builder |
+| Command                   | Description                                            |
+| ------------------------- | ------------------------------------------------------ |
+| `pnpm run typecheck`      | TypeScript type checking only                          |
+| `pnpm run build:renderer` | Build renderer bundle                                  |
+| `pnpm run build:main`     | Build Electron main process                            |
+| `pnpm run build`          | Build main + renderer bundles                          |
+| `pnpm run build:web`      | Build renderer for standalone web                      |
+| `pnpm run dev:web`        | Dev server for browser + auto-starts API on port 25565 |
+| `pnpm run dev`            | Build and launch Electron                              |
+| `pnpm run start`          | Launch Electron (build first)                          |
+| `pnpm run package`        | Build and package with electron-builder                |
+
+## Dev Server Architecture
+
+In web mode (`pnpm run dev:web`):
+
+1. The API server is auto-started in the background on port **25565**.
+2. Webpack dev server runs on port **3000** and proxies API calls to `http://localhost:25565`.
+3. WebSocket events go through `/chess-ws` to avoid conflicting with webpack's HMR WebSocket at `/ws`.
+4. The script waits for port 25565 to be ready before starting webpack.
 
 ## Project Conventions
 
