@@ -100,9 +100,10 @@ class EngineManager {
     });
   }
 
-  waitForCondition(_gameId: string, condition: () => boolean): Promise<void> {
+  waitForCondition(gameId: string, condition: () => boolean): Promise<void> {
     return new Promise((resolve) => {
       const check = () => {
+        if (!this.instances.has(gameId)) return;
         if (condition()) return resolve();
         setTimeout(check, 10);
       };

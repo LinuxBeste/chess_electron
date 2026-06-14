@@ -177,8 +177,7 @@ function migrate(): void {
       name TEXT NOT NULL,
       type TEXT NOT NULL DEFAULT 'single_elimination',
       status TEXT NOT NULL DEFAULT 'registration',
-      crea    username: string;
-ted_by TEXT NOT NULL,
+      created_by TEXT NOT NULL,
       max_participants INTEGER NOT NULL DEFAULT 8,
       participant_data TEXT NOT NULL DEFAULT '[]',
       match_data TEXT NOT NULL DEFAULT '[]',
@@ -474,15 +473,29 @@ export function getFriendIds(userId: string): string[] {
 
 /* ─── Leaderboard ─── */
 
-export function getLeaderboard(limit: number, offset: number): {
-  rows: { id: string; username: string; display_name: string; avatar_url: string | null; rating: number; wins: number; losses: number; draws: number }[];
+export function getLeaderboard(
+  limit: number,
+  offset: number,
+): {
+  rows: {
+    id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+    rating: number;
+    wins: number;
+    losses: number;
+    draws: number;
+  }[];
   total: number;
 } {
   const d = getDb();
   const total = (d.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c;
-  const rows = d.prepare(
-    'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users ORDER BY rating DESC LIMIT ? OFFSET ?',
-  ).all(limit, offset) as any[];
+  const rows = d
+    .prepare(
+      'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users ORDER BY rating DESC LIMIT ? OFFSET ?',
+    )
+    .all(limit, offset) as any[];
   return { rows, total };
 }
 
