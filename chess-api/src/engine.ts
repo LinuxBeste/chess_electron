@@ -79,6 +79,7 @@ class EngineManager {
         const err = new Error('Engine process exited (code=' + code + ' signal=' + signal + ')');
         rejectAndCleanup(inst, err);
         this.instances.delete(gameId);
+        reject(err);
       });
 
       this.instances.set(gameId, inst);
