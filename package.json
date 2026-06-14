@@ -12,12 +12,6 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "electron"
-    ]
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "concurrently": "^10.0.3",
