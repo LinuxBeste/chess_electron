@@ -181,17 +181,17 @@ Get a player's public profile. Requires auth.
 
 The server has a bunch of middleware bolted on to keep it from falling over in production. Here's the stack:
 
-| What              | Why it's there                                                    |
-| ----------------- | ----------------------------------------------------------------- |
-| **trust proxy**   | So the server sees real IPs behind Cloudflare, not 127.0.0.1      |
-| **CORS**          | `CORS_ORIGIN` env var, defaults to `*` (change this for prod)     |
-| **CSP**           | Helmet with `'unsafe-inline'` on scripts/styles - Vite needs it   |
-| **JSON limit**    | 10 KB. If your payload is bigger, you're doing something wrong    |
-| **Timeout**       | 30 seconds then 503 + `req.destroy()`. Infinite loops begone      |
-| **IP rate limit** | 20 req/min on login/register. Keeps the script kiddies at bay     |
-| **Player limit**  | 100 req/min per player (configurable). Adjust to taste            |
-| **WS timeout**    | 10s pong timeout. Dead clients get booted                         |
-| **WS IP limit**   | Max 5 WS connections per IP. One person, five tabs - fine         |
+| What              | Why it's there                                                  |
+| ----------------- | --------------------------------------------------------------- |
+| **trust proxy**   | So the server sees real IPs behind Cloudflare, not 127.0.0.1    |
+| **CORS**          | `CORS_ORIGIN` env var, defaults to `*` (change this for prod)   |
+| **CSP**           | Helmet with `'unsafe-inline'` on scripts/styles - Vite needs it |
+| **JSON limit**    | 10 KB. If your payload is bigger, you're doing something wrong  |
+| **Timeout**       | 30 seconds then 503 + `req.destroy()`. Infinite loops begone    |
+| **IP rate limit** | 20 req/min on login/register. Keeps the script kiddies at bay   |
+| **Player limit**  | 100 req/min per player (configurable). Adjust to taste          |
+| **WS timeout**    | 10s pong timeout. Dead clients get booted                       |
+| **WS IP limit**   | Max 5 WS connections per IP. One person, five tabs - fine       |
 
 ### Crash Recovery
 
@@ -337,14 +337,14 @@ Supports pagination and filtering via query parameters.
 
 **Query parameters:**
 
-| Param    | Type     | Description                                       |
-| -------- | -------- | ------------------------------------------------- |
-| `page`   | `number` | Page number (default 1)                           |
-| `limit`  | `number` | Items per page (default 20, max 100)              |
-| `player` | `string` | Filter by player ID                               |
-| `status` | `string` | Filter by status (`checkmate`, `resigned`, etc.)  |
-| `from`   | `number` | Unix timestamp - only games after this date       |
-| `to`     | `number` | Unix timestamp - only games before this date      |
+| Param    | Type     | Description                                      |
+| -------- | -------- | ------------------------------------------------ |
+| `page`   | `number` | Page number (default 1)                          |
+| `limit`  | `number` | Items per page (default 20, max 100)             |
+| `player` | `string` | Filter by player ID                              |
+| `status` | `string` | Filter by status (`checkmate`, `resigned`, etc.) |
+| `from`   | `number` | Unix timestamp - only games after this date      |
+| `to`     | `number` | Unix timestamp - only games before this date     |
 
 **Response (200):**
 
@@ -824,9 +824,7 @@ List running processes sorted by CPU usage (from `ps aux`).
 **Response (200):**
 
 ```json
-[
-  { "user": "chess", "pid": 1234, "cpu": 5.2, "mem": 1.5, "rss": 65536, "command": "node dist/index.js" }
-]
+[{ "user": "chess", "pid": 1234, "cpu": 5.2, "mem": 1.5, "rss": 65536, "command": "node dist/index.js" }]
 ```
 
 ### GET /admin/api/config
@@ -1120,11 +1118,11 @@ If the game was created with `spectateMode: "code"`, the `code` field is require
 
 These are the possible values for `GameState.status`. Nothing too surprising if you've played chess before.
 
-| Status      | What it means                        |
-| ----------- | ------------------------------------ |
-| `waiting`   | Looking for a second player          |
-| `active`    | Game is on                            |
-| `checkmate` | King's trapped, game's over          |
-| `stalemate` | No legal moves, not in check - a draw|
-| `draw`      | 50-move rule, agreement, or repetition|
-| `resigned`  | Someone gave up                      |
+| Status      | What it means                          |
+| ----------- | -------------------------------------- |
+| `waiting`   | Looking for a second player            |
+| `active`    | Game is on                             |
+| `checkmate` | King's trapped, game's over            |
+| `stalemate` | No legal moves, not in check - a draw  |
+| `draw`      | 50-move rule, agreement, or repetition |
+| `resigned`  | Someone gave up                        |

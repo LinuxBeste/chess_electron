@@ -83,7 +83,7 @@ No open firewall ports required. TLS is handled automatically by Cloudflare.
 | Variable                    | Default         | Description                                                |
 | --------------------------- | --------------- | ---------------------------------------------------------- |
 | `PORT`                      | `25565`         | HTTP/WS server port                                        |
-| `NODE_ENV`                  | -              | Set to `test` to skip server startup (used by test runner) |
+| `NODE_ENV`                  | -               | Set to `test` to skip server startup (used by test runner) |
 | `ADMIN_USERNAME`            | `admin`         | Admin dashboard login username                             |
 | `ADMIN_PASSWORD`            | (random)        | Admin dashboard login password (auto-generated if not set) |
 | `ADMIN_TOKEN_TTL`           | `86400000`      | Admin session token TTL in ms (default 24h)                |

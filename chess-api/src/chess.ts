@@ -69,13 +69,19 @@ function generateSlidingMoves(
 
 export function generateRookMoves(board: Board, rank: number, file: number, piece: Piece): Move[] {
   return generateSlidingMoves(board, rank, file, piece, [
-    [0, 1], [0, -1], [1, 0], [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 0],
+    [-1, 0],
   ]);
 }
 
 export function generateBishopMoves(board: Board, rank: number, file: number, piece: Piece): Move[] {
   return generateSlidingMoves(board, rank, file, piece, [
-    [1, 1], [1, -1], [-1, 1], [-1, -1],
+    [1, 1],
+    [1, -1],
+    [-1, 1],
+    [-1, -1],
   ]);
 }
 
@@ -84,8 +90,14 @@ export function generateQueenMoves(board: Board, rank: number, file: number, pie
 }
 
 const KNIGHT_OFFSETS: [number, number][] = [
-  [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-  [1, -2], [1, 2], [2, -1], [2, 1],
+  [-2, -1],
+  [-2, 1],
+  [-1, -2],
+  [-1, 2],
+  [1, -2],
+  [1, 2],
+  [2, -1],
+  [2, 1],
 ];
 
 export function generateKnightMoves(board: Board, rank: number, file: number, piece: Piece): Move[] {
@@ -162,9 +174,14 @@ export function generatePawnMoves(
 }
 
 const KING_OFFSETS: [number, number][] = [
-  [-1, -1], [-1, 0], [-1, 1],
-  [0, -1],          [0, 1],
-  [1, -1], [1, 0], [1, 1],
+  [-1, -1],
+  [-1, 0],
+  [-1, 1],
+  [0, -1],
+  [0, 1],
+  [1, -1],
+  [1, 0],
+  [1, 1],
 ];
 
 /* King moves: one square in any direction + castling candidates.
@@ -222,12 +239,18 @@ function getPseudoLegalMoves(
   castlingRights: CastlingRights,
 ): Move[] {
   switch (piece.type) {
-    case 'pawn': return generatePawnMoves(board, rank, file, piece, enPassantTarget);
-    case 'knight': return generateKnightMoves(board, rank, file, piece);
-    case 'bishop': return generateBishopMoves(board, rank, file, piece);
-    case 'rook': return generateRookMoves(board, rank, file, piece);
-    case 'queen': return generateQueenMoves(board, rank, file, piece);
-    case 'king': return generateKingMoves(board, rank, file, piece, castlingRights);
+    case 'pawn':
+      return generatePawnMoves(board, rank, file, piece, enPassantTarget);
+    case 'knight':
+      return generateKnightMoves(board, rank, file, piece);
+    case 'bishop':
+      return generateBishopMoves(board, rank, file, piece);
+    case 'rook':
+      return generateRookMoves(board, rank, file, piece);
+    case 'queen':
+      return generateQueenMoves(board, rank, file, piece);
+    case 'king':
+      return generateKingMoves(board, rank, file, piece, castlingRights);
   }
 }
 
@@ -267,7 +290,12 @@ export function isSquareAttackedBy(board: Board, rank: number, file: number, byC
   }
 
   /* Orthogonal (rook/queen) */
-  for (const [dr, df] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+  for (const [dr, df] of [
+    [0, 1],
+    [0, -1],
+    [1, 0],
+    [-1, 0],
+  ]) {
     let r = rank + dr;
     let f = file + df;
     while (isInBounds(r, f)) {
@@ -282,7 +310,12 @@ export function isSquareAttackedBy(board: Board, rank: number, file: number, byC
   }
 
   /* Diagonal (bishop/queen) */
-  for (const [dr, df] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+  for (const [dr, df] of [
+    [1, 1],
+    [1, -1],
+    [-1, 1],
+    [-1, -1],
+  ]) {
     let r = rank + dr;
     let f = file + df;
     while (isInBounds(r, f)) {
@@ -481,7 +514,12 @@ export function serializeBoard(board: Board): SerializedSquare[] {
 
 /* PieceType to algebraic notation letter (knight = 'N', pawn = ''). */
 const PIECE_LETTER: Record<PieceType, string> = {
-  king: 'K', queen: 'Q', rook: 'R', bishop: 'B', knight: 'N', pawn: '',
+  king: 'K',
+  queen: 'Q',
+  rook: 'R',
+  bishop: 'B',
+  knight: 'N',
+  pawn: '',
 };
 
 /* Generate standard algebraic notation (without check/mate markers).

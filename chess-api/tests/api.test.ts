@@ -1648,11 +1648,7 @@ describe('Bot games', () => {
   });
 
   test('POST /games/bot returns spectateCode', async () => {
-    const res = await request
-      .post('/games/bot')
-      .set('Authorization', playerAuth)
-      .send({ skillLevel: 1 })
-      .expect(201);
+    const res = await request.post('/games/bot').set('Authorization', playerAuth).send({ skillLevel: 1 }).expect(201);
     expect(res.body.spectateMode).toBe('code');
     expect(res.body.spectateCode).toBeDefined();
     expect(typeof res.body.spectateCode).toBe('string');

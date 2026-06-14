@@ -78,11 +78,14 @@ Each scan stops at the first piece encountered (blocking).
 1. Check if `color`'s king is in check via `isInCheck`.
 2. Compute all legal moves via `getLegalMoves`.
 3. If no legal moves:
-  - In check → `checkmate`
-  - Not in check → `stalemate`
+
+- In check → `checkmate`
+- Not in check → `stalemate`
+
 4. If legal moves exist:
-  - In check → `check` (informational, game continues as `active`)
-  - Not in check → `active`
+
+- In check → `check` (informational, game continues as `active`)
+- Not in check → `active`
 
 ## Applying Moves
 

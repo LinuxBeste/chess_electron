@@ -122,7 +122,9 @@ export function createServer(): http.Server {
     wsIpCount.set(clientIp, current + 1);
 
     (ws as any).__pongReceived = true;
-    ws.on('pong', () => { (ws as any).__pongReceived = true; });
+    ws.on('pong', () => {
+      (ws as any).__pongReceived = true;
+    });
 
     const token = ws.protocol || (req.headers['sec-websocket-protocol'] as string | undefined);
 
@@ -154,7 +156,9 @@ export function createServer(): http.Server {
             ws.send(JSON.stringify({ type: 'spectate_ok', gameId: msg.gameId }));
             logger.info('WS spectate: playerId=' + player.id + ' gameId=' + msg.gameId);
           } else {
-            ws.send(JSON.stringify({ type: 'spectate_error', error: 'Game not found, not active, or invalid spectate code' }));
+            ws.send(
+              JSON.stringify({ type: 'spectate_error', error: 'Game not found, not active, or invalid spectate code' }),
+            );
           }
         } else if (msg.type === 'unspectate' && spectatingGameId) {
           game.removeSpectator(spectatingGameId, ws);
@@ -183,14 +187,22 @@ export function createServer(): http.Server {
             fromDisplayName: player.displayName,
           });
           logger.info('WS challenge: from=' + player.id + ' to=' + msg.toPlayerId + ' gameId=' + msg.gameId);
-        } else if (msg.type === 'challenge_accept' && typeof msg.toPlayerId === 'string' && typeof msg.gameId === 'string') {
+        } else if (
+          msg.type === 'challenge_accept' &&
+          typeof msg.toPlayerId === 'string' &&
+          typeof msg.gameId === 'string'
+        ) {
           game.sendToPlayer(msg.toPlayerId as string, {
             type: 'challenge_accept',
             gameId: msg.gameId,
             fromPlayerId: player.id,
           });
           logger.info('WS challenge accept: from=' + player.id + ' to=' + msg.toPlayerId + ' gameId=' + msg.gameId);
-        } else if (msg.type === 'challenge_decline' && typeof msg.toPlayerId === 'string' && typeof msg.gameId === 'string') {
+        } else if (
+          msg.type === 'challenge_decline' &&
+          typeof msg.toPlayerId === 'string' &&
+          typeof msg.gameId === 'string'
+        ) {
           game.sendToPlayer(msg.toPlayerId as string, {
             type: 'challenge_decline',
             gameId: msg.gameId,

@@ -53,6 +53,7 @@
 ## Features
 
 ### Gameplay
+
 - **Full FIDE chess engine** - all rules: castling, en passant, pawn promotion (auto-queen or dialog), 50-move rule, stalemate, checkmate
 - **Drag-and-drop or click-move** - pieces on an 8×8 board with legal-move hints
 - **Move review** - step through completed games with Prev/Next, or browse the sidebar move history
@@ -60,6 +61,7 @@
 - **Algebraic notation** - all moves recorded in standard algebraic notation (SAN)
 
 ### Multiplayer
+
 - **Quick play (anonymous)** - enter a username, no registration needed
 - **Registered accounts** - username + password, persisted to SQLite, Elo-rated
 - **Spectating** - watch any active game in real time via WebSocket
@@ -70,21 +72,25 @@
 - **Rematch** - offer and accept rematches after a game ends
 
 ### Bot Games
+
 - **Stockfish 18** - play against a UCI-compatible chess engine
 - **Skill levels 1-20** - 1 (weakest) to 20 (strongest)
 - **Choose color** - play as white or black
 - **Concurrent engine limit** - configurable max (default 4)
 
 ### Tournaments
+
 - **Single-elimination brackets** - automatic seeding and match progression
 - **Public / private** - private tournaments use an 8-character join code
 - **Admin management** - view, edit, and delete tournaments from the dashboard
 
 ### Leaderboard
+
 - **Elo rating** - all registered players ranked by Elo (starting at 1200)
 - **Stats** - wins, losses, draws for each player
 
 ### Security & Operations
+
 - **Account lockout** - 5 failed login attempts → 15-minute lockout (per username)
 - **Rate limiting** - 20 requests/min on unauthenticated GET endpoints, 100/min per player on authenticated endpoints
 - **Ban system** - ban by player ID or IP address
@@ -96,6 +102,7 @@
 - **JSON body limit** - 10kb max payload
 
 ### WebSocket Events
+
 - Real-time `move`, `game_started`, `game_over`, `chat_message`, `draw_offered/accepted/declined`
 - `spectate` / `unspectate` with live board updates and spectator count
 - `opponent_disconnected` / `opponent_reconnected` notifications
@@ -103,6 +110,7 @@
 - `rematch_offer` / `rematch_accept` - instant rematch with color swap
 
 ### Admin Dashboard
+
 - **Overview** - active games, online players, registered users, system charts
 - **Games** - all live games with status, players, turn, move count
 - **Players** - all connected players, online status, session count
@@ -116,6 +124,7 @@
 - **Logs** - real-time log stream from the server
 
 ### Infrastructure
+
 - **Docker multi-stage build** - node:20-alpine, 100MB final image
 - **Cloudflare Tunnel** - public HTTPS with zero open ports (quick tunnel or named tunnel)
 - **SQLite backups** - automatic backup every 6 hours, prune after 7 days
@@ -214,26 +223,26 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 
 ### chess-api
 
-| Variable                    | Default         | Description                                    |
-| --------------------------- | --------------- | ---------------------------------------------- |
-| `PORT`                      | `25565`         | HTTP/WS server port                            |
-| `CORS_ORIGIN`               | `*`             | Allowed CORS origin                            |
-| `WS_HEARTBEAT_INTERVAL`     | `30000`         | WebSocket ping interval (ms)                   |
-| `WS_PONG_TIMEOUT`           | `10000`         | WebSocket pong timeout (ms)                    |
-| `WS_MAX_CONNECTIONS_PER_IP` | `5`             | Max WebSocket connections per IP               |
-| `LOG_LEVEL`                 | `info`          | Log level (debug, info, warn, error)           |
-| `ADMIN_USERNAME`            | `admin`         | Admin dashboard login username                 |
-| `ADMIN_PASSWORD`            | (random)        | Admin password (auto-generated if not set)     |
-| `ADMIN_TOKEN_TTL`           | `86400000`      | Admin session TTL in ms (default 24h)          |
-| `DB_PATH`                   | `data/chess.db` | SQLite database file path                      |
-| `MAX_GAMES_PER_PLAYER`      | `20`            | Max concurrent games per player                |
-| `MAX_CONCURRENT_ENGINES`    | `4`             | Max concurrent Stockfish instances             |
-| `RATE_LIMIT_WINDOW_MS`      | `60000`         | Rate limit window (ms)                         |
-| `RATE_LIMIT_MAX_REQUESTS`   | `100`           | Max requests per player per window             |
-| `WAITING_TTL_MS`            | `600000`        | Orphaned waiting game TTL (10 min, 0=disable)  |
-| `LOGIN_MAX_ATTEMPTS`        | `5`             | Failed logins before lockout                   |
-| `LOGIN_LOCKOUT_MINUTES`     | `15`            | Lockout duration after max attempts            |
-| `DB_BACKUP_INTERVAL_MS`     | `21600000`      | DB backup interval (6h, 0=disable)             |
+| Variable                    | Default         | Description                                   |
+| --------------------------- | --------------- | --------------------------------------------- |
+| `PORT`                      | `25565`         | HTTP/WS server port                           |
+| `CORS_ORIGIN`               | `*`             | Allowed CORS origin                           |
+| `WS_HEARTBEAT_INTERVAL`     | `30000`         | WebSocket ping interval (ms)                  |
+| `WS_PONG_TIMEOUT`           | `10000`         | WebSocket pong timeout (ms)                   |
+| `WS_MAX_CONNECTIONS_PER_IP` | `5`             | Max WebSocket connections per IP              |
+| `LOG_LEVEL`                 | `info`          | Log level (debug, info, warn, error)          |
+| `ADMIN_USERNAME`            | `admin`         | Admin dashboard login username                |
+| `ADMIN_PASSWORD`            | (random)        | Admin password (auto-generated if not set)    |
+| `ADMIN_TOKEN_TTL`           | `86400000`      | Admin session TTL in ms (default 24h)         |
+| `DB_PATH`                   | `data/chess.db` | SQLite database file path                     |
+| `MAX_GAMES_PER_PLAYER`      | `20`            | Max concurrent games per player               |
+| `MAX_CONCURRENT_ENGINES`    | `4`             | Max concurrent Stockfish instances            |
+| `RATE_LIMIT_WINDOW_MS`      | `60000`         | Rate limit window (ms)                        |
+| `RATE_LIMIT_MAX_REQUESTS`   | `100`           | Max requests per player per window            |
+| `WAITING_TTL_MS`            | `600000`        | Orphaned waiting game TTL (10 min, 0=disable) |
+| `LOGIN_MAX_ATTEMPTS`        | `5`             | Failed logins before lockout                  |
+| `LOGIN_LOCKOUT_MINUTES`     | `15`            | Lockout duration after max attempts           |
+| `DB_BACKUP_INTERVAL_MS`     | `21600000`      | DB backup interval (6h, 0=disable)            |
 
 ### chess-client (`chess-client/.env`)
 
@@ -377,52 +386,52 @@ Direct API access at `http://localhost:25565` (or tunnel URL in production).
 
 ### REST endpoints
 
-| Method | Endpoint                          | Auth | Description                                      |
-| ------ | --------------------------------- | ---- | ------------------------------------------------ |
-| `GET`  | `/health`                         | -   | Server status, active games, online players      |
-| `POST` | `/auth/register`                  | -   | Create player → `{ playerId, token }`            |
-| `POST` | `/auth/login`                     | -   | Login as registered user                         |
-| `POST` | `/auth/logout`                    | ✓    | Invalidate current session token                 |
-| `GET`  | `/auth/me`                        | ✓    | Current player identity                          |
-| `POST` | `/games`                          | ✓    | Create game (`visibility`, `spectateMode`)       |
-| `GET`  | `/games`                          | -   | List open public games                           |
-| `GET`  | `/games/active`                   | -   | List active games for spectating                 |
-| `GET`  | `/games/:gameId`                  | -   | Full game state                                  |
-| `POST` | `/games/:id/join`                 | ✓    | Join as black                                    |
-| `POST` | `/games/:id/move`                 | ✓    | Submit move (`from`, `to`, `promotion?`)         |
-| `POST` | `/games/:id/resign`               | ✓    | Resign from game                                 |
-| `POST` | `/games/:id/abort`                | ✓    | Abort waiting game (creator only)                |
-| `POST` | `/games/:id/draw`                 | ✓    | Offer/accept/decline draw                        |
-| `POST` | `/games/bot`                      | ✓    | Create bot game (`color`, `skillLevel`)          |
-| `GET`  | `/games/completed`                | ✓    | Completed games archive (pagination)             |
-| `GET`  | `/games/:id/moves`                | ✓    | All legal moves for current player               |
-| `GET`  | `/players/me/active-game`         | ✓    | Rejoin active game after refresh                 |
-| `GET`  | `/players/:id/games`              | ✓    | Completed games for a player                     |
-| `GET`  | `/leaderboard`                    | -   | Elo leaderboard                                  |
-| `POST` | `/tournaments`                    | ✓    | Create tournament                                |
-| `GET`  | `/tournaments`                    | -   | List tournaments                                 |
-| `GET`  | `/tournaments/:id`                | -   | Tournament details                               |
-| `POST` | `/tournaments/:id/join`           | ✓    | Join public tournament                           |
-| `PUT`  | `/tournaments/:id`                | ✓    | Update tournament (creator only)                 |
-| `DELETE` | `/tournaments/:id`              | ✓    | Cancel tournament (creator only)                 |
-| `POST` | `/tournaments/join-by-code/:code` | ✓    | Join private tournament by code                  |
+| Method   | Endpoint                          | Auth | Description                                 |
+| -------- | --------------------------------- | ---- | ------------------------------------------- |
+| `GET`    | `/health`                         | -    | Server status, active games, online players |
+| `POST`   | `/auth/register`                  | -    | Create player → `{ playerId, token }`       |
+| `POST`   | `/auth/login`                     | -    | Login as registered user                    |
+| `POST`   | `/auth/logout`                    | ✓    | Invalidate current session token            |
+| `GET`    | `/auth/me`                        | ✓    | Current player identity                     |
+| `POST`   | `/games`                          | ✓    | Create game (`visibility`, `spectateMode`)  |
+| `GET`    | `/games`                          | -    | List open public games                      |
+| `GET`    | `/games/active`                   | -    | List active games for spectating            |
+| `GET`    | `/games/:gameId`                  | -    | Full game state                             |
+| `POST`   | `/games/:id/join`                 | ✓    | Join as black                               |
+| `POST`   | `/games/:id/move`                 | ✓    | Submit move (`from`, `to`, `promotion?`)    |
+| `POST`   | `/games/:id/resign`               | ✓    | Resign from game                            |
+| `POST`   | `/games/:id/abort`                | ✓    | Abort waiting game (creator only)           |
+| `POST`   | `/games/:id/draw`                 | ✓    | Offer/accept/decline draw                   |
+| `POST`   | `/games/bot`                      | ✓    | Create bot game (`color`, `skillLevel`)     |
+| `GET`    | `/games/completed`                | ✓    | Completed games archive (pagination)        |
+| `GET`    | `/games/:id/moves`                | ✓    | All legal moves for current player          |
+| `GET`    | `/players/me/active-game`         | ✓    | Rejoin active game after refresh            |
+| `GET`    | `/players/:id/games`              | ✓    | Completed games for a player                |
+| `GET`    | `/leaderboard`                    | -    | Elo leaderboard                             |
+| `POST`   | `/tournaments`                    | ✓    | Create tournament                           |
+| `GET`    | `/tournaments`                    | -    | List tournaments                            |
+| `GET`    | `/tournaments/:id`                | -    | Tournament details                          |
+| `POST`   | `/tournaments/:id/join`           | ✓    | Join public tournament                      |
+| `PUT`    | `/tournaments/:id`                | ✓    | Update tournament (creator only)            |
+| `DELETE` | `/tournaments/:id`                | ✓    | Cancel tournament (creator only)            |
+| `POST`   | `/tournaments/join-by-code/:code` | ✓    | Join private tournament by code             |
 
 ### WebSocket events
 
 Connect to `ws://host:port/chess-ws?token=<bearer-token>`.
 
-| Event                   | Trigger                         | Payload includes                         |
-| ----------------------- | ------------------------------- | ---------------------------------------- |
-| `move`                  | Legal move submitted            | `board`, `turn`, `lastMove`              |
-| `game_started`          | Black joins                     | Full `GameState`                         |
-| `game_over`             | Checkmate, stalemate, or resign | `board`, `result`, `reason`              |
-| `chat_message`          | Player or spectator sends chat  | `playerId`, `username`, `text`           |
-| `opponent_disconnected` | Opponent loses connection       | `gameId`                                 |
-| `opponent_reconnected`  | Opponent reconnects             | `gameId`                                 |
-| `draw_offered`          | Player offers draw              | `gameId`, `fromPlayerId`                 |
-| `spectate_ok`           | Spectator registered            | `gameId`                                 |
-| `spectator_count`       | Spectator count changes         | `gameId`, `count`                        |
-| `game_list_update`      | Game list changes               | `openGames`, `activeGames`               |
+| Event                   | Trigger                         | Payload includes               |
+| ----------------------- | ------------------------------- | ------------------------------ |
+| `move`                  | Legal move submitted            | `board`, `turn`, `lastMove`    |
+| `game_started`          | Black joins                     | Full `GameState`               |
+| `game_over`             | Checkmate, stalemate, or resign | `board`, `result`, `reason`    |
+| `chat_message`          | Player or spectator sends chat  | `playerId`, `username`, `text` |
+| `opponent_disconnected` | Opponent loses connection       | `gameId`                       |
+| `opponent_reconnected`  | Opponent reconnects             | `gameId`                       |
+| `draw_offered`          | Player offers draw              | `gameId`, `fromPlayerId`       |
+| `spectate_ok`           | Spectator registered            | `gameId`                       |
+| `spectator_count`       | Spectator count changes         | `gameId`, `count`              |
+| `game_list_update`      | Game list changes               | `openGames`, `activeGames`     |
 
 Client-to-server events: `spectate` (+ `code`), `unspectate`, `chat_message`, `offer_draw`, `accept_draw`, `decline_draw`, `rematch_offer`, `rematch_accept`, `challenge`, `challenge_accept`, `challenge_decline`, `get_chat_history`.
 

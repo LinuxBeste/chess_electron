@@ -30,7 +30,11 @@ function appendLine(file: string, line: string): void {
       fs.closeSync(fd);
     }
   } catch (err) {
-    try { console.error(`[LOGGER] Failed to write to ${file}:`, err); } catch { /* noop */ }
+    try {
+      console.error(`[LOGGER] Failed to write to ${file}:`, err);
+    } catch {
+      /* noop */
+    }
   }
 }
 
@@ -97,12 +101,22 @@ export function cleanupOldLogs(): void {
         fs.unlinkSync(filePath);
       }
     }
-  } catch { /* best-effort cleanup */ }
+  } catch {
+    /* best-effort cleanup */
+  }
 }
 
-function error(message: string, ...args: unknown[]): void { log('error', message, ...args); }
-function warn(message: string, ...args: unknown[]): void { log('warn', message, ...args); }
-function info(message: string, ...args: unknown[]): void { log('info', message, ...args); }
-function debug(message: string, ...args: unknown[]): void { log('debug', message, ...args); }
+function error(message: string, ...args: unknown[]): void {
+  log('error', message, ...args);
+}
+function warn(message: string, ...args: unknown[]): void {
+  log('warn', message, ...args);
+}
+function info(message: string, ...args: unknown[]): void {
+  log('info', message, ...args);
+}
+function debug(message: string, ...args: unknown[]): void {
+  log('debug', message, ...args);
+}
 
 export default { error, warn, info, debug, audit, morganStream, cleanupOldLogs };

@@ -231,4 +231,7 @@ curl -s -X POST "http://localhost:25565/games/$GID/move" -H "Authorization: Bear
 curl -s -X POST "http://localhost:25565/games/$GID/move" -H "Authorization: Bearer $W" -H "Content-Type: application/json" -d '{"from":"f1","to":"c4"}' > /dev/null
 curl -s -X POST "http://localhost:25565/games/$GID/move" -H "Authorization: Bearer $B" -H "Content-Type: application/json" -d '{"from":"g8","to":"f6"}' > /dev/null
 curl -s -X POST "http://localhost:25565/games/$GID/move" -H "Authorization: Bearer $W" -H "Content-Type: application/json" -d '{"from":"h5","to":"f7"}' | jq '{status: .status, winner: .winner, lastMove: .lastMove}'
+
+```
+
 ```

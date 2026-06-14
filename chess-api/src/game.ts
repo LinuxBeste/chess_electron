@@ -716,7 +716,9 @@ export function makeMove(
     recordGameResult(game, winner);
     broadcastGameListUpdate();
   } else if (isBotGame(game)) {
-    setTimeout(() => { triggerBotMove(gameId); }, 100);
+    setTimeout(() => {
+      triggerBotMove(gameId);
+    }, 100);
   }
 
   const moveLog = notation || from + '-' + to;
@@ -1062,7 +1064,14 @@ export function getPlayerStats(playerId: string): { wins: number; losses: number
   if (!user) return null;
   const stats = { wins: user.wins, losses: user.losses, draws: user.draws };
   logger.info(
-    'getPlayerStats: playerId=' + playerId + ' wins=' + stats.wins + ' losses=' + stats.losses + ' draws=' + stats.draws,
+    'getPlayerStats: playerId=' +
+      playerId +
+      ' wins=' +
+      stats.wins +
+      ' losses=' +
+      stats.losses +
+      ' draws=' +
+      stats.draws,
   );
   return stats;
 }
@@ -1139,7 +1148,8 @@ export function changePassword(
 
   const user = db.getUserById(playerId);
   if (!user || !user.password_hash) return { success: false, error: 'Account not found' };
-  if (!verifyPassword(currentPassword, user.password_hash)) return { success: false, error: 'Current password is incorrect' };
+  if (!verifyPassword(currentPassword, user.password_hash))
+    return { success: false, error: 'Current password is incorrect' };
 
   const hash = hashPassword(newPassword);
   db.updateUserPasswordHash(playerId, hash);
@@ -1149,7 +1159,8 @@ export function changePassword(
 
 export function deleteAccount(playerId: string): { success: true } | { success: false; error: string } {
   const player = players.get(playerId);
-  if (!player || !player.isRegistered) return { success: false, error: 'Only registered users can delete their account' };
+  if (!player || !player.isRegistered)
+    return { success: false, error: 'Only registered users can delete their account' };
 
   for (const token of player.tokens) {
     tokenIndex.delete(token);

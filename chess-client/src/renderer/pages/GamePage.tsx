@@ -677,10 +677,7 @@ export default function GamePage() {
               <div className="waiting-id-row">
                 <span className="waiting-id-label">{t('game.gameId')}</span>
                 <span className="waiting-id-value">{game.id}</span>
-                <button
-                  className="btn btn-secondary btn-xs"
-                  onClick={() => copyToClipboard(game.id)}
-                >
+                <button className="btn btn-secondary btn-xs" onClick={() => copyToClipboard(game.id)}>
                   {t('common.copy')}
                 </button>
               </div>
