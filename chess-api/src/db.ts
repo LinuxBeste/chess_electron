@@ -147,6 +147,50 @@ function migrate(): void {
   } catch {
     /* exists */
   }
+
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN rating INTEGER NOT NULL DEFAULT 1200`);
+  } catch {
+    /* column already exists */
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS completed_games (
+      id TEXT PRIMARY KEY,
+      white_player_id TEXT,
+      black_player_id TEXT,
+      white_display_name TEXT NOT NULL DEFAULT '',
+      black_display_name TEXT NOT NULL DEFAULT '',
+      winner TEXT,
+      status TEXT NOT NULL,
+      result TEXT NOT NULL,
+      reason TEXT,
+      move_history TEXT NOT NULL DEFAULT '[]',
+      board_history TEXT NOT NULL DEFAULT '[]',
+      pgn TEXT,
+      played_at INTEGER NOT NULL,
+      time_control TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS tournaments (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'single_elimination',
+      status TEXT NOT NULL DEFAULT 'registration',
+      crea    username: string;
+ted_by TEXT NOT NULL,
+      max_participants INTEGER NOT NULL DEFAULT 8,
+      participant_data TEXT NOT NULL DEFAULT '[]',
+      match_data TEXT NOT NULL DEFAULT '[]',
+      created_at INTEGER NOT NULL,
+      started_at INTEGER,
+      completed_at INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_completed_games_played_at ON completed_games(played_at);
+    CREATE INDEX IF NOT EXISTS idx_completed_games_white ON completed_games(white_player_id);
+    CREATE INDEX IF NOT EXISTS idx_completed_games_black ON completed_games(black_player_id);
+  `);
 }
 
 export interface DbUser {
@@ -430,29 +474,15 @@ export function getFriendIds(userId: string): string[] {
 
 /* ─── Leaderboard ─── */
 
-export function getLeaderboard(
-  limit: number,
-  offset: number,
-): {
-  rows: {
-    id: string;
-    username: string;
-    display_name: string;
-    avatar_url: string | null;
-    rating: number;
-    wins: number;
-    losses: number;
-    draws: number;
-  }[];
+export function getLeaderboard(limit: number, offset: number): {
+  rows: { id: string; username: string; display_name: string; avatar_url: string | null; rating: number; wins: number; losses: number; draws: number }[];
   total: number;
 } {
   const d = getDb();
   const total = (d.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c;
-  const rows = d
-    .prepare(
-      'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users ORDER BY rating DESC LIMIT ? OFFSET ?',
-    )
-    .all(limit, offset) as any[];
+  const rows = d.prepare(
+    'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users ORDER BY rating DESC LIMIT ? OFFSET ?',
+  ).all(limit, offset) as any[];
   return { rows, total };
 }
 
@@ -463,7 +493,15 @@ export function getPlayerRating(userId: string): number {
 }
 
 export function updatePlayerRating(userId: string, rating: number): void {
-  getDb().prepare('UPDATE users SET rating = ? WHERE id = ?').run(rating, userId);
+  const d = getDb();
+  d.prepare('UPDATE users SET rating = ? WHERE id = ?').run(rating, userId);
+}
+
+export function updateWinLossDraw(userId: string, result: 'win' | 'loss' | 'draw'): void {
+  const d = getDb();
+  if (result === 'win') d.prepare('UPDATE users SET wins = wins + 1 WHERE id = ?').run(userId);
+  else if (result === 'loss') d.prepare('UPDATE users SET losses = losses + 1 WHERE id = ?').run(userId);
+  else d.prepare('UPDATE users SET draws = draws + 1 WHERE id = ?').run(userId);
 }
 
 /* ─── Game Archive ─── */
@@ -545,6 +583,11 @@ export function getArchivedGame(id: string): any | undefined {
   return getDb().prepare('SELECT * FROM completed_games WHERE id = ?').get(id);
 }
 
+export function deleteArchivedGame(id: string): void {
+  const d = getDb();
+  d.prepare('DELETE FROM completed_games WHERE id = ?').run(id);
+}
+
 export function getPlayerWinLossDraw(playerId: string): { wins: number; losses: number; draws: number } {
   const d = getDb();
   const wins = (
@@ -567,6 +610,13 @@ export function getPlayerWinLossDraw(playerId: string): { wins: number; losses: 
       .get(playerId, playerId) as { c: number }
   ).c;
   return { wins, losses: allCount - wins - draws, draws };
+}
+
+/* ─── Cancel friend request ─── */
+
+export function deleteFriendRequest(id: string): void {
+  const d = getDb();
+  d.prepare('DELETE FROM friend_requests WHERE id = ? AND status = ?').run(id, 'pending');
 }
 
 /* ─── Tournaments ─── */

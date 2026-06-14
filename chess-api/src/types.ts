@@ -47,6 +47,7 @@ export interface GameState {
   spectateMode: 'public' | 'code';
   spectateCode?: string;
   halfMoveClock: number;
+  aiSkillLevel?: number;
 }
 
 export interface Player {
@@ -74,6 +75,55 @@ export interface RatingEntry {
   draws: number;
 }
 
+export interface ArchivedGame {
+  id: string;
+  whitePlayerId: string | null;
+  blackPlayerId: string | null;
+  whiteDisplayName: string;
+  blackDisplayName: string;
+  winner: string | null;
+  status: string;
+  result: string;
+  reason: string | null;
+  moveHistory: string;
+  boardHistory: string;
+  pgn: string | null;
+  playedAt: number;
+  timeControl: string;
+}
+
+export interface TournamentData {
+  id: string;
+  name: string;
+  type: 'single_elimination' | 'round_robin';
+  status: 'registration' | 'active' | 'completed' | 'cancelled';
+  createdBy: string;
+  maxParticipants: number;
+  participants: TournamentParticipant[];
+  matches: TournamentMatch[];
+  createdAt: number;
+  startedAt?: number;
+  completedAt?: number;
+}
+
+export interface TournamentParticipant {
+  playerId: string;
+  username: string;
+  displayName: string;
+  seed: number;
+  eliminated: boolean;
+}
+
+export interface TournamentMatch {
+  id: string;
+  round: number;
+  position: number;
+  player1Id: string | null;
+  player2Id: string | null;
+  winnerId: string | null;
+  gameId: string | null;
+  completed: boolean;
+}
 declare global {
   namespace Express {
     interface Request {
