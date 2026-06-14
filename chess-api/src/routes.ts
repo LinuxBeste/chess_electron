@@ -1,6 +1,3 @@
-/* Thin route handlers — each one parses input, delegates to game.ts,
- * and sends the response.  No business logic lives here. */
-
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,9 +10,6 @@ import path from 'path';
 
 const router: ReturnType<typeof Router> = Router();
 
-/* ─── Avatar file upload middleware ─── */
-
-/* Check file content (magic bytes) against known image signatures */
 const IMAGE_MAGIC: Record<string, Uint8Array[]> = {
   'image/jpeg': [new Uint8Array([0xff, 0xd8, 0xff])],
   'image/png': [new Uint8Array([0x89, 0x50, 0x4e, 0x47])],
@@ -39,13 +33,10 @@ const avatarUpload = multer({
     destination: path.join(__dirname, '..', 'data', 'avatars'),
     filename: (_req, file, cb) => {
       const ext =
-        file.mimetype === 'image/png'
-          ? '.png'
-          : file.mimetype === 'image/gif'
-            ? '.gif'
-            : file.mimetype === 'image/webp'
-              ? '.webp'
-              : '.jpg';
+        file.mimetype === 'image/png' ? '.png'
+        : file.mimetype === 'image/gif' ? '.gif'
+        : file.mimetype === 'image/webp' ? '.webp'
+        : '.jpg';
       cb(null, uuidv4() + ext);
     },
   }),
@@ -60,7 +51,6 @@ const avatarUpload = multer({
   },
 });
 
-/* IP-based rate limiter for unauthenticated endpoints (login, register) */
 const ipRateBuckets = new Map<string, number[]>();
 const IP_RATE_LIMIT_WINDOW_MS = 60000;
 const IP_RATE_LIMIT_MAX = process.env.NODE_ENV === 'test' ? Infinity : 20;
@@ -80,7 +70,6 @@ export function ipRateLimitMiddleware(req: Request, res: Response, next: () => v
   next();
 }
 
-/* Export for cleanup interval started in index.ts */
 export function cleanupIpRateBuckets(): void {
   const cutoff = Date.now() - IP_RATE_LIMIT_WINDOW_MS;
   for (const [ip, timestamps] of ipRateBuckets) {
@@ -90,16 +79,8 @@ export function cleanupIpRateBuckets(): void {
   }
 }
 
-/**
- * Middleware: extract and validate the bearer token from the
- * Authorization header.  On success, attaches the Player object
- * to req.player so downstream handlers can access player info.
- *
- * Header format: "Authorization: Bearer <uuid>"
- */
 function authMiddleware(req: Request, res: Response, next: () => void): void {
   const header = req.headers.authorization;
-  /* No header or wrong scheme → 401 */
   if (!header || !header.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Authentication required' });
     return;
@@ -111,15 +92,11 @@ function authMiddleware(req: Request, res: Response, next: () => void): void {
     return;
   }
   req.player = player;
-  /* Track player IP for ban enforcement */
   const ip = req.ip || req.socket.remoteAddress || '';
   game.setPlayerIp(player.id, ip);
   next();
 }
 
-/**
- * Rate-limit middleware: applies per-player request throttling.
- * Returns 429 if the player exceeds the configured limit. */
 function rateLimitMiddleware(req: Request, res: Response, next: () => void): void {
   if (!game.checkRateLimit(req.player.id)) {
     res.status(429).json({ error: 'Too many requests. Please slow down.' });
@@ -128,9 +105,6 @@ function rateLimitMiddleware(req: Request, res: Response, next: () => void): voi
   next();
 }
 
-/**
- * Ban-check middleware: rejects requests from banned players or IPs.
- * Must run after authMiddleware so req.player is available. */
 function banCheckMiddleware(req: Request, res: Response, next: () => void): void {
   const ip = req.ip || req.socket.remoteAddress || '';
   if (game.isBanned(req.player.id, ip)) {
@@ -140,27 +114,14 @@ function banCheckMiddleware(req: Request, res: Response, next: () => void): void
   next();
 }
 
-/* General-purpose rate limiter for unauthenticated GET endpoints */
 const globalGetLimiter = ipRateLimitMiddleware;
 
-/* Health check — no auth required */
 router.get('/health', globalGetLimiter, (_req: Request, res: Response) => {
   const { gamesActive, playersOnline } = game.getStats();
   logger.info('GET /health: gamesActive=' + gamesActive + ' playersOnline=' + playersOnline);
-  res.json({
-    status: 'ok',
-    uptime: process.uptime(),
-    gamesActive,
-    playersOnline,
-  });
+  res.json({ status: 'ok', uptime: process.uptime(), gamesActive, playersOnline });
 });
 
-/* Register a new player.
- *
- * Two modes:
- *   - Anonymous (no password): in-memory only, name can be duplicate.
- *   - Registered  (with password): persisted to SQLite, unique username.
- */
 router.post('/auth/register', ipRateLimitMiddleware, (req: Request, res: Response) => {
   const ip = req.ip || req.socket.remoteAddress || '';
   if (game.isBanned('', ip)) {
@@ -197,7 +158,6 @@ router.post('/auth/register', ipRateLimitMiddleware, (req: Request, res: Respons
   }
 });
 
-/* Log out — invalidate the current bearer token */
 router.post('/auth/logout', authMiddleware, (req: Request, res: Response) => {
   const header = req.headers.authorization;
   const token = header!.slice(7);
@@ -206,7 +166,6 @@ router.post('/auth/logout', authMiddleware, (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
-/* Log in as an existing registered user */
 router.post('/auth/login', ipRateLimitMiddleware, (req: Request, res: Response) => {
   const ip = req.ip || req.socket.remoteAddress || '';
   if (game.isBanned('', ip)) {
@@ -219,7 +178,6 @@ router.post('/auth/login', ipRateLimitMiddleware, (req: Request, res: Response) 
     return;
   }
   const trimmed = username.trim();
-  /* Check account lockout before password verification (constant-time) */
   const lockout = game.checkLoginLockout(trimmed);
   if (lockout.locked) {
     const minutes = Math.ceil(lockout.remainingMs! / 60000);
@@ -239,7 +197,6 @@ router.post('/auth/login', ipRateLimitMiddleware, (req: Request, res: Response) 
   res.json(result);
 });
 
-/* Get the authenticated player's info (includes stats for registered users) */
 router.get('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const stats = game.getPlayerStats(req.player.id);
   const user = db.getUserById(req.player.id);
@@ -255,7 +212,6 @@ router.get('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: R
   });
 });
 
-/* Update the authenticated player's display name */
 router.put('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const { displayName } = req.body;
   if (!displayName || typeof displayName !== 'string' || displayName.trim().length === 0) {
@@ -271,7 +227,6 @@ router.put('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: R
   res.json({ success: true, displayName: displayName.trim() });
 });
 
-/* Change the authenticated player's password (registered users only) */
 router.put('/auth/me/password', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) {
@@ -291,7 +246,6 @@ router.put('/auth/me/password', authMiddleware, banCheckMiddleware, (req: Reques
   res.json({ success: true });
 });
 
-/* Upload profile picture (registered users only) */
 router.post('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   if (!req.player.isRegistered) {
     res.status(400).json({ error: 'Only registered accounts can set a profile picture' });
@@ -311,13 +265,8 @@ router.post('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Request
       return;
     }
 
-    /* Verify actual file content matches claimed MIME type (skip in test) */
     if (process.env.NODE_ENV !== 'test' && !isValidImageType(req.file.path, req.file.mimetype)) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch {
-        /* ok */
-      }
+      try { fs.unlinkSync(req.file.path); } catch { /* ok */ }
       res.status(400).json({ error: 'Invalid image content' });
       return;
     }
@@ -325,11 +274,7 @@ router.post('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Request
     const ext = path.extname(req.file.filename) || '.jpg';
     const finalName = req.player.id + ext;
     const finalPath = path.join(__dirname, '..', 'data', 'avatars', finalName);
-    try {
-      fs.renameSync(req.file.path, finalPath);
-    } catch {
-      /* file may already be under the final name on some platforms */
-    }
+    try { fs.renameSync(req.file.path, finalPath); } catch { /* ok */ }
 
     const avatarUrl = '/avatars/' + finalName;
     db.updateUserAvatar(req.player.id, avatarUrl);
@@ -338,23 +283,17 @@ router.post('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Request
   });
 });
 
-/* Remove profile picture */
 router.delete('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const user = db.getUserById(req.player.id);
   if (user?.avatar_url) {
     const filePath = path.join(__dirname, '..', 'data', 'avatars', path.basename(user.avatar_url));
-    try {
-      fs.unlinkSync(filePath);
-    } catch {
-      /* file might not exist */
-    }
+    try { fs.unlinkSync(filePath); } catch { /* ok */ }
   }
   db.updateUserAvatar(req.player.id, null);
   logger.info('Avatar removed: playerId=' + req.player.id);
   res.json({ success: true });
 });
 
-/* Get a player's public profile */
 router.get('/players/:playerId/profile', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const player = game.getPlayerById(req.params.playerId);
   const user = db.getUserById(req.params.playerId);
@@ -370,7 +309,6 @@ router.get('/players/:playerId/profile', authMiddleware, banCheckMiddleware, (re
   });
 });
 
-/* Delete the authenticated player's account (registered users only) */
 router.delete('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const result = game.deleteAccount(req.player.id);
   if (!result.success) {
@@ -381,11 +319,6 @@ router.delete('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res
   res.json({ success: true });
 });
 
-/* Create a new game (player becomes white).
- * Optional body fields:
- *   visibility  — 'public' | 'private' (default 'public')
- *   spectateMode — 'public' | 'code'   (default 'public')
- *     'code' generates a unique spectate code; spectators must provide it. */
 router.post('/games', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const visibility: 'public' | 'private' = req.body.visibility === 'private' ? 'private' : 'public';
   const spectateMode: 'public' | 'code' = req.body.spectateMode === 'code' ? 'code' : 'public';
@@ -396,7 +329,6 @@ router.post('/games', authMiddleware, banCheckMiddleware, (req: Request, res: Re
   res.status(201).json(g);
 });
 
-/* Create Bot game */
 router.post('/games/bot', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const skillLevel = Math.max(1, Math.min(20, parseInt(req.body.skillLevel as string) || 1));
   const playerColor: 'white' | 'black' = req.body.playerColor === 'black' ? 'black' : 'white';
@@ -409,21 +341,18 @@ router.post('/games/bot', authMiddleware, banCheckMiddleware, (req: Request, res
   res.status(201).json(result.game);
 });
 
-/* List all open (waiting) games */
 router.get('/games', globalGetLimiter, (_req: Request, res: Response) => {
   const openGames = game.getOpenGames();
   logger.info('GET /games: count=' + openGames.length);
   res.json(openGames);
 });
 
-/* List all active games (for spectating) */
 router.get('/games/active', globalGetLimiter, (_req: Request, res: Response) => {
   const activeGames = game.getActiveGames();
   logger.info('GET /games/active: count=' + activeGames.length);
   res.json(activeGames);
 });
 
-/* Get a specific game by ID */
 router.get('/games/:gameId', globalGetLimiter, (req: Request, res: Response) => {
   const g = game.getGame(req.params.gameId);
   if (!g) {
@@ -435,7 +364,6 @@ router.get('/games/:gameId', globalGetLimiter, (req: Request, res: Response) => 
   res.json(g);
 });
 
-/* Abort a waiting game (creator only) */
 router.post('/games/:gameId/abort', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const result = game.abortGame(req.params.gameId, req.player.id);
   if (!result.success) {
@@ -447,7 +375,6 @@ router.post('/games/:gameId/abort', authMiddleware, banCheckMiddleware, (req: Re
   res.json({ success: true });
 });
 
-/* Join a game as the black player */
 router.post('/games/:gameId/join', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const result = game.joinGame(req.params.gameId, req.player.id);
   if (!result.success) {
@@ -459,7 +386,6 @@ router.post('/games/:gameId/join', authMiddleware, banCheckMiddleware, (req: Req
   res.json(result.game);
 });
 
-/* Make a move in a game */
 router.post(
   '/games/:gameId/move',
   authMiddleware,
@@ -481,36 +407,18 @@ router.post(
     );
     if (!result.success) {
       logger.info(
-        'Move failed: gameId=' +
-          req.params.gameId +
-          ' playerId=' +
-          req.player.id +
-          ' move=' +
-          from +
-          '-' +
-          to +
-          ' error=' +
-          result.error,
+        'Move failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' move=' + from + '-' + to + ' error=' + result.error,
       );
       res.status(400).json({ error: result.error });
       return;
     }
     logger.info(
-      'Move made: gameId=' +
-        req.params.gameId +
-        ' playerId=' +
-        req.player.id +
-        ' move=' +
-        from +
-        '-' +
-        to +
-        (promotion ? ' promotion=' + promotion : ''),
+      'Move made: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' move=' + from + '-' + to + (promotion ? ' promotion=' + promotion : ''),
     );
     res.json(result.state);
   },
 );
 
-/* Resign from a game */
 router.post(
   '/games/:gameId/resign',
   authMiddleware,
@@ -519,9 +427,7 @@ router.post(
   (req: Request, res: Response) => {
     const result = game.resignGame(req.params.gameId, req.player.id);
     if (!result.success) {
-      logger.info(
-        'Resign failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' error=' + result.error,
-      );
+      logger.info('Resign failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' error=' + result.error);
       res.status(400).json({ error: result.error });
       return;
     }
@@ -530,7 +436,6 @@ router.post(
   },
 );
 
-/* Get the active game for the authenticated player (if any) */
 router.get('/players/me/active-game', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const gameId = game.getPlayerCurrentGameId(req.player.id);
   if (!gameId) {
@@ -541,7 +446,6 @@ router.get('/players/me/active-game', authMiddleware, banCheckMiddleware, (req: 
   res.json({ game: g ?? null });
 });
 
-/* Get match history for the authenticated player */
 router.get('/players/:playerId/games', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   if (req.player.id !== req.params.playerId) {
     logger.info('Match history forbidden: requester=' + req.player.id + ' target=' + req.params.playerId);
@@ -553,70 +457,57 @@ router.get('/players/:playerId/games', authMiddleware, banCheckMiddleware, (req:
   res.json(playerGames);
 });
 
-/* Get all legal moves for the authenticated player in a game */
 router.get('/games/:gameId/moves', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const result = game.getLegalMovesForPlayer(req.params.gameId, req.player.id);
   if (!result.success) {
-    logger.info(
-      'Legal moves failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' error=' + result.error,
-    );
+    logger.info('Legal moves failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' error=' + result.error);
     res.status(400).json({ error: result.error });
     return;
   }
-  logger.info(
-    'Legal moves: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' count=' + result.moves!.length,
-  );
+  logger.info('Legal moves: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' count=' + result.moves!.length);
   res.json({ moves: result.moves! });
 });
 
 /* ─── Friends ─── */
 
-/* Send a friend request by username */
-router.post(
-  '/friends/request',
-  authMiddleware,
-  banCheckMiddleware,
-  rateLimitMiddleware,
-  (req: Request, res: Response) => {
-    if (!req.player.isRegistered) {
-      res.status(403).json({ error: 'Only registered users can send friend requests' });
-      return;
-    }
-    const { username } = req.body;
-    if (!username || typeof username !== 'string') {
-      res.status(400).json({ error: 'Username is required' });
-      return;
-    }
-    const trimmed = username.trim();
-    if (trimmed.length < 2 || trimmed.length > 30) {
-      res.status(400).json({ error: 'Username must be between 2 and 30 characters' });
-      return;
-    }
-    const targetUser = db.getUserByUsername(trimmed);
-    if (!targetUser) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
-    if (targetUser.id === req.player.id) {
-      res.status(400).json({ error: 'Cannot send friend request to yourself' });
-      return;
-    }
-    if (db.areFriends(req.player.id, targetUser.id)) {
-      res.status(409).json({ error: 'Already friends with this user' });
-      return;
-    }
-    if (db.hasPendingRequest(req.player.id, targetUser.id)) {
-      res.status(409).json({ error: 'Friend request already pending' });
-      return;
-    }
-    const requestId = db.createFriendRequest(req.player.id, targetUser.id);
-    game.broadcastFriendRequest(req.player.id, targetUser.id, requestId);
-    logger.info('Friend request sent: from=' + req.player.id + ' to=' + targetUser.id);
-    res.status(201).json({ id: requestId });
-  },
-);
+router.post('/friends/request', authMiddleware, banCheckMiddleware, rateLimitMiddleware, (req: Request, res: Response) => {
+  if (!req.player.isRegistered) {
+    res.status(403).json({ error: 'Only registered users can send friend requests' });
+    return;
+  }
+  const { username } = req.body;
+  if (!username || typeof username !== 'string') {
+    res.status(400).json({ error: 'Username is required' });
+    return;
+  }
+  const trimmed = username.trim();
+  if (trimmed.length < 2 || trimmed.length > 30) {
+    res.status(400).json({ error: 'Username must be between 2 and 30 characters' });
+    return;
+  }
+  const targetUser = db.getUserByUsername(trimmed);
+  if (!targetUser) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
+  if (targetUser.id === req.player.id) {
+    res.status(400).json({ error: 'Cannot send friend request to yourself' });
+    return;
+  }
+  if (db.areFriends(req.player.id, targetUser.id)) {
+    res.status(409).json({ error: 'Already friends with this user' });
+    return;
+  }
+  if (db.hasPendingRequest(req.player.id, targetUser.id)) {
+    res.status(409).json({ error: 'Friend request already pending' });
+    return;
+  }
+  const requestId = db.createFriendRequest(req.player.id, targetUser.id);
+  game.broadcastFriendRequest(req.player.id, targetUser.id, requestId);
+  logger.info('Friend request sent: from=' + req.player.id + ' to=' + targetUser.id);
+  res.status(201).json({ id: requestId });
+});
 
-/* List pending friend requests (incoming and outgoing) */
 router.get('/friends/requests', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   if (!req.player.isRegistered) {
     res.status(403).json({ error: 'Only registered users can view friend requests' });
@@ -624,14 +515,7 @@ router.get('/friends/requests', authMiddleware, banCheckMiddleware, (req: Reques
   }
   const incoming = db.getPendingIncomingRequests(req.player.id);
   const outgoing = db.getPendingOutgoingRequests(req.player.id);
-  logger.info(
-    'Friend requests listed: playerId=' +
-      req.player.id +
-      ' incoming=' +
-      incoming.length +
-      ' outgoing=' +
-      outgoing.length,
-  );
+  logger.info('Friend requests listed: playerId=' + req.player.id + ' incoming=' + incoming.length + ' outgoing=' + outgoing.length);
 
   const enrich = (rows: db.FriendRequestRow[], key: 'from_user_id' | 'to_user_id') =>
     rows.map((r) => {
@@ -648,31 +532,18 @@ router.get('/friends/requests', authMiddleware, banCheckMiddleware, (req: Reques
       };
     });
 
-  res.json({
-    incoming: enrich(incoming, 'from_user_id'),
-    outgoing: enrich(outgoing, 'to_user_id'),
-  });
+  res.json({ incoming: enrich(incoming, 'from_user_id'), outgoing: enrich(outgoing, 'to_user_id') });
 });
 
-/* Accept a friend request */
 router.post('/friends/requests/:id/accept', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   if (!req.player.isRegistered) {
     res.status(403).json({ error: 'Only registered users can accept friend requests' });
     return;
   }
   const fr = db.getFriendRequest(req.params.id);
-  if (!fr) {
-    res.status(404).json({ error: 'Friend request not found' });
-    return;
-  }
-  if (fr.to_user_id !== req.player.id) {
-    res.status(403).json({ error: 'Not your friend request to accept' });
-    return;
-  }
-  if (fr.status !== 'pending') {
-    res.status(400).json({ error: 'Friend request is no longer pending' });
-    return;
-  }
+  if (!fr) { res.status(404).json({ error: 'Friend request not found' }); return; }
+  if (fr.to_user_id !== req.player.id) { res.status(403).json({ error: 'Not your friend request to accept' }); return; }
+  if (fr.status !== 'pending') { res.status(400).json({ error: 'Friend request is no longer pending' }); return; }
   db.updateFriendRequestStatus(fr.id, 'accepted');
   db.addFriendRelationship(fr.from_user_id, fr.to_user_id);
   game.broadcastFriendRequestAccepted(req.player.id, fr.from_user_id);
@@ -680,56 +551,35 @@ router.post('/friends/requests/:id/accept', authMiddleware, banCheckMiddleware, 
   res.json({ success: true });
 });
 
-/* Decline a friend request */
 router.post('/friends/requests/:id/decline', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   if (!req.player.isRegistered) {
     res.status(403).json({ error: 'Only registered users can decline friend requests' });
     return;
   }
   const fr = db.getFriendRequest(req.params.id);
-  if (!fr) {
-    res.status(404).json({ error: 'Friend request not found' });
-    return;
-  }
-  if (fr.to_user_id !== req.player.id) {
-    res.status(403).json({ error: 'Not your friend request to decline' });
-    return;
-  }
-  if (fr.status !== 'pending') {
-    res.status(400).json({ error: 'Friend request is no longer pending' });
-    return;
-  }
+  if (!fr) { res.status(404).json({ error: 'Friend request not found' }); return; }
+  if (fr.to_user_id !== req.player.id) { res.status(403).json({ error: 'Not your friend request to decline' }); return; }
+  if (fr.status !== 'pending') { res.status(400).json({ error: 'Friend request is no longer pending' }); return; }
   db.updateFriendRequestStatus(fr.id, 'declined');
   game.broadcastFriendRequestDeclined(req.player.id, fr.from_user_id);
   logger.info('Friend request declined: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
   res.json({ success: true });
 });
 
-/* Cancel outgoing friend request (by sender) */
 router.post('/friends/requests/:id/cancel', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   if (!req.player.isRegistered) {
     res.status(403).json({ error: 'Only registered users can cancel friend requests' });
     return;
   }
   const fr = db.getFriendRequest(req.params.id);
-  if (!fr) {
-    res.status(404).json({ error: 'Friend request not found' });
-    return;
-  }
-  if (fr.from_user_id !== req.player.id) {
-    res.status(403).json({ error: 'Not your friend request to cancel' });
-    return;
-  }
-  if (fr.status !== 'pending') {
-    res.status(400).json({ error: 'Friend request is no longer pending' });
-    return;
-  }
+  if (!fr) { res.status(404).json({ error: 'Friend request not found' }); return; }
+  if (fr.from_user_id !== req.player.id) { res.status(403).json({ error: 'Not your friend request to cancel' }); return; }
+  if (fr.status !== 'pending') { res.status(400).json({ error: 'Friend request is no longer pending' }); return; }
   db.updateFriendRequestStatus(fr.id, 'cancelled');
   logger.info('Friend request cancelled: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
   res.json({ success: true });
 });
 
-/* Remove a friend */
 router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   if (!req.player.isRegistered) {
     res.status(403).json({ error: 'Only registered users can remove friends' });
@@ -745,7 +595,6 @@ router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, (req: Re
   res.json({ success: true });
 });
 
-/* Leaderboard */
 router.get('/leaderboard', globalGetLimiter, (_req: Request, res: Response) => {
   const page = Math.max(1, parseInt(_req.query.page as string) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string) || 50));
@@ -764,7 +613,6 @@ router.get('/leaderboard', globalGetLimiter, (_req: Request, res: Response) => {
   res.json({ entries, total: result.total, page, limit });
 });
 
-/* List friends with online status and current game */
 router.get('/friends', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   if (!req.player.isRegistered) {
     res.status(403).json({ error: 'Only registered users can list friends' });
@@ -775,7 +623,6 @@ router.get('/friends', authMiddleware, banCheckMiddleware, (req: Request, res: R
   res.json(friends);
 });
 
-/* Game archive */
 router.get('/games/archive', globalGetLimiter, (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
@@ -789,10 +636,7 @@ router.get('/games/archive', globalGetLimiter, (req: Request, res: Response) => 
 
 router.get('/games/archive/:gameId', globalGetLimiter, (req: Request, res: Response) => {
   const game = db.getArchivedGame(req.params.gameId);
-  if (!game) {
-    res.status(404).json({ error: 'Game not found' });
-    return;
-  }
+  if (!game) { res.status(404).json({ error: 'Game not found' }); return; }
   res.json(game);
 });
 
@@ -804,58 +648,32 @@ router.post('/tournaments', authMiddleware, banCheckMiddleware, (req: Request, r
     return;
   }
   const name = ((req.body.name as string) || '').trim();
-  if (!name) {
-    res.status(400).json({ error: 'Tournament name is required' });
-    return;
-  }
+  if (!name) { res.status(400).json({ error: 'Tournament name is required' }); return; }
   const maxPlayers = Math.max(2, Math.min(64, parseInt(req.body.maxPlayers as string) || 8));
   const isPrivate = req.body.isPrivate === true;
   const t = db.createTournament(name, req.player.id, maxPlayers, isPrivate);
   db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, 0);
   const tournament = db.getTournament(t.id);
-  if (t.joinCode) {
-    tournament.join_code = t.joinCode;
-  }
+  if (t.joinCode) tournament.join_code = t.joinCode;
   res.status(201).json(tournament);
 });
 
 router.get('/tournaments', globalGetLimiter, (_req: Request, res: Response) => {
   const tournaments = db.getPublicTournaments();
-  const enriched = tournaments.map((t: any) => ({
-    ...t,
-    participantCount: db.getParticipantCount(t.id),
-  }));
+  const enriched = tournaments.map((t: any) => ({ ...t, participantCount: db.getParticipantCount(t.id) }));
   res.json(enriched);
 });
 
 router.post('/tournaments/join-by-code', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  if (!req.player.isRegistered) {
-    res.status(403).json({ error: 'Only registered users can join tournaments' });
-    return;
-  }
+  if (!req.player.isRegistered) { res.status(403).json({ error: 'Only registered users can join tournaments' }); return; }
   const code = ((req.body.code as string) || '').trim().toUpperCase();
-  if (!code) {
-    res.status(400).json({ error: 'Join code is required' });
-    return;
-  }
+  if (!code) { res.status(400).json({ error: 'Join code is required' }); return; }
   const t = db.getTournamentByJoinCode(code);
-  if (!t) {
-    res.status(404).json({ error: 'Invalid join code' });
-    return;
-  }
-  if (t.status !== 'waiting') {
-    res.status(400).json({ error: 'Tournament is not open' });
-    return;
-  }
-  if (db.isTournamentParticipant(t.id, req.player.id)) {
-    res.status(409).json({ error: 'Already joined' });
-    return;
-  }
+  if (!t) { res.status(404).json({ error: 'Invalid join code' }); return; }
+  if (t.status !== 'waiting') { res.status(400).json({ error: 'Tournament is not open' }); return; }
+  if (db.isTournamentParticipant(t.id, req.player.id)) { res.status(409).json({ error: 'Already joined' }); return; }
   const count = db.getParticipantCount(t.id);
-  if (count >= t.max_players) {
-    res.status(400).json({ error: 'Tournament is full' });
-    return;
-  }
+  if (count >= t.max_players) { res.status(400).json({ error: 'Tournament is full' }); return; }
   db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, count);
   logger.info('Tournament joined via code: tournamentId=' + t.id + ' playerId=' + req.player.id);
   res.json(db.getTournament(t.id));
@@ -863,90 +681,45 @@ router.post('/tournaments/join-by-code', authMiddleware, banCheckMiddleware, (re
 
 router.get('/tournaments/:id', globalGetLimiter, (req: Request, res: Response) => {
   const t = db.getTournament(req.params.id);
-  if (!t) {
-    res.status(404).json({ error: 'Tournament not found' });
-    return;
-  }
+  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
   const participants = db.getTournamentParticipants(req.params.id);
   const matches = db.getTournamentMatches(req.params.id);
   const result: any = { ...t, participants, matches, participantCount: participants.length };
-  /* Only show join_code to the creator */
   const playerId = (req as any).player?.id;
-  if (playerId !== t.created_by) {
-    delete result.join_code;
-  }
+  if (playerId !== t.created_by) delete result.join_code;
   res.json(result);
 });
 
 router.post('/tournaments/:id/join', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  if (!req.player.isRegistered) {
-    res.status(403).json({ error: 'Only registered users can join tournaments' });
-    return;
-  }
+  if (!req.player.isRegistered) { res.status(403).json({ error: 'Only registered users can join tournaments' }); return; }
   const t = db.getTournament(req.params.id);
-  if (!t) {
-    res.status(404).json({ error: 'Tournament not found' });
-    return;
-  }
-  if (t.status !== 'waiting') {
-    res.status(400).json({ error: 'Tournament is not open' });
-    return;
-  }
-  if (db.isTournamentParticipant(t.id, req.player.id)) {
-    res.status(409).json({ error: 'Already joined' });
-    return;
-  }
+  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
+  if (t.status !== 'waiting') { res.status(400).json({ error: 'Tournament is not open' }); return; }
+  if (db.isTournamentParticipant(t.id, req.player.id)) { res.status(409).json({ error: 'Already joined' }); return; }
   const count = db.getParticipantCount(t.id);
-  if (count >= t.max_players) {
-    res.status(400).json({ error: 'Tournament is full' });
-    return;
-  }
+  if (count >= t.max_players) { res.status(400).json({ error: 'Tournament is full' }); return; }
   db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, count);
   logger.info('Tournament joined: tournamentId=' + t.id + ' playerId=' + req.player.id);
   res.json(db.getTournament(t.id));
 });
 
 router.post('/tournaments/:id/leave', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  if (!req.player.isRegistered) {
-    res.status(403).json({ error: 'Only registered users can leave tournaments' });
-    return;
-  }
+  if (!req.player.isRegistered) { res.status(403).json({ error: 'Only registered users can leave tournaments' }); return; }
   const t = db.getTournament(req.params.id);
-  if (!t) {
-    res.status(404).json({ error: 'Tournament not found' });
-    return;
-  }
-  if (t.status !== 'waiting') {
-    res.status(400).json({ error: 'Tournament already started' });
-    return;
-  }
+  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
+  if (t.status !== 'waiting') { res.status(400).json({ error: 'Tournament already started' }); return; }
   db.removeTournamentParticipant(t.id, req.player.id);
   res.json({ success: true });
 });
 
 router.put('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  if (!req.player.isRegistered) {
-    res.status(403).json({ error: 'Only registered users can edit tournaments' });
-    return;
-  }
+  if (!req.player.isRegistered) { res.status(403).json({ error: 'Only registered users can edit tournaments' }); return; }
   const t = db.getTournament(req.params.id);
-  if (!t) {
-    res.status(404).json({ error: 'Tournament not found' });
-    return;
-  }
-  if (t.created_by !== req.player.id) {
-    res.status(403).json({ error: 'Only the creator can edit' });
-    return;
-  }
-  if (t.status !== 'waiting') {
-    res.status(400).json({ error: 'Cannot edit a started tournament' });
-    return;
-  }
+  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
+  if (t.created_by !== req.player.id) { res.status(403).json({ error: 'Only the creator can edit' }); return; }
+  if (t.status !== 'waiting') { res.status(400).json({ error: 'Cannot edit a started tournament' }); return; }
   const name = ((req.body.name as string) || '').trim();
-  if (!name) {
-    res.status(400).json({ error: 'Tournament name is required' });
-    return;
-  }
+  if (!name) { res.status(400).json({ error: 'Tournament name is required' }); return; }
   const maxPlayers = Math.max(2, Math.min(64, parseInt(req.body.maxPlayers as string) || t.max_players));
   const isPrivate = req.body.isPrivate === true ? 1 : 0;
   db.updateTournamentDetails(t.id, name, maxPlayers, isPrivate);
@@ -955,72 +728,35 @@ router.put('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Request
 });
 
 router.delete('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  if (!req.player.isRegistered) {
-    res.status(403).json({ error: 'Only registered users can delete tournaments' });
-    return;
-  }
+  if (!req.player.isRegistered) { res.status(403).json({ error: 'Only registered users can delete tournaments' }); return; }
   const t = db.getTournament(req.params.id);
-  if (!t) {
-    res.status(404).json({ error: 'Tournament not found' });
-    return;
-  }
-  if (t.created_by !== req.player.id) {
-    res.status(403).json({ error: 'Only the creator can delete' });
-    return;
-  }
-  if (t.status !== 'waiting') {
-    res.status(400).json({ error: 'Cannot delete a started tournament' });
-    return;
-  }
+  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
+  if (t.created_by !== req.player.id) { res.status(403).json({ error: 'Only the creator can delete' }); return; }
+  if (t.status !== 'waiting') { res.status(400).json({ error: 'Cannot delete a started tournament' }); return; }
   db.deleteTournament(t.id);
   logger.info('Tournament deleted: tournamentId=' + t.id);
   res.json({ success: true });
 });
 
 router.post('/tournaments/:id/start', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  if (!req.player.isRegistered) {
-    res.status(403).json({ error: 'Only registered users can start tournaments' });
-    return;
-  }
+  if (!req.player.isRegistered) { res.status(403).json({ error: 'Only registered users can start tournaments' }); return; }
   const t = db.getTournament(req.params.id);
-  if (!t) {
-    res.status(404).json({ error: 'Tournament not found' });
-    return;
-  }
-  if (t.created_by !== req.player.id) {
-    res.status(403).json({ error: 'Only the creator can start' });
-    return;
-  }
-  if (t.status !== 'waiting') {
-    res.status(400).json({ error: 'Tournament already started' });
-    return;
-  }
+  if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
+  if (t.created_by !== req.player.id) { res.status(403).json({ error: 'Only the creator can start' }); return; }
+  if (t.status !== 'waiting') { res.status(400).json({ error: 'Tournament already started' }); return; }
 
   const participants = db.getTournamentParticipants(t.id);
   const playerIds = participants.map((p: any) => p.player_id);
   const count = playerIds.length;
-  if (count < 2) {
-    res.status(400).json({ error: 'Need at least 2 players' });
-    return;
-  }
+  if (count < 2) { res.status(400).json({ error: 'Need at least 2 players' }); return; }
 
-  /* Generate bracket — power of 2, fill byes */
   const size = Math.pow(2, Math.ceil(Math.log2(count)));
   const seeds: (string | null)[] = new Array(size).fill(null);
-  /* Top half = best seeds, bottom half = next best */
-  for (let i = 0; i < count; i++) {
-    seeds[i] = playerIds[i];
-  }
+  for (let i = 0; i < count; i++) seeds[i] = playerIds[i];
 
-  /* Create first round matches */
   const matches: { round: number; position: number; white: string | null; black: string | null }[] = [];
   for (let i = 0; i < size / 2; i++) {
-    matches.push({
-      round: 1,
-      position: i,
-      white: seeds[i * 2],
-      black: seeds[i * 2 + 1],
-    });
+    matches.push({ round: 1, position: i, white: seeds[i * 2], black: seeds[i * 2 + 1] });
   }
 
   for (const m of matches) {

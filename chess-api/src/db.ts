@@ -63,17 +63,8 @@ function migrate(): void {
     );
   `);
 
-  try {
-    db.exec(`ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL`);
-  } catch {
-    /* column already exists */
-  }
-
-  try {
-    db.exec(`ALTER TABLE users ADD COLUMN rating INTEGER NOT NULL DEFAULT 1200`);
-  } catch {
-    /* column already exists */
-  }
+  try { db.exec(`ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL`); } catch { /* exists */ }
+  try { db.exec(`ALTER TABLE users ADD COLUMN rating INTEGER NOT NULL DEFAULT 1200`); } catch { /* exists */ }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS completed_games (
@@ -138,17 +129,8 @@ function migrate(): void {
     CREATE INDEX IF NOT EXISTS idx_tournament_matches_tournament ON tournament_matches(tournament_id);
   `);
 
-  try {
-    db.exec(`ALTER TABLE tournaments ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0`);
-  } catch {
-    /* column already exists */
-  }
-
-  try {
-    db.exec(`ALTER TABLE tournaments ADD COLUMN join_code TEXT`);
-  } catch {
-    /* column already exists */
-  }
+  try { db.exec(`ALTER TABLE tournaments ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0`); } catch { /* exists */ }
+  try { db.exec(`ALTER TABLE tournaments ADD COLUMN join_code TEXT`); } catch { /* exists */ }
 }
 
 export interface DbUser {
@@ -166,10 +148,7 @@ export interface DbUser {
 
 export function createUser(id: string, username: string, passwordHash: string | null, displayName: string): void {
   const d = getDb();
-  d.prepare(
-    `INSERT INTO users (id, username, password_hash, display_name, created_at)
-     VALUES (?, ?, ?, ?, ?)`,
-  ).run(id, username, passwordHash, displayName, Date.now());
+  d.prepare('INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES (?, ?, ?, ?, ?)').run(id, username, passwordHash, displayName, Date.now());
   logger.info('DB: user created id=' + id + ' username=' + username);
 }
 
@@ -195,9 +174,7 @@ export function saveToken(token: string, userId: string): void {
 
 export function getUserIdByToken(token: string): string | undefined {
   const d = getDb();
-  const row = d.prepare('SELECT user_id FROM user_tokens WHERE token = ?').get(token) as
-    | { user_id: string }
-    | undefined;
+  const row = d.prepare('SELECT user_id FROM user_tokens WHERE token = ?').get(token) as { user_id: string } | undefined;
   logger.info('DB: getUserIdByToken ' + (row ? 'found userId=' + row.user_id : 'not found'));
   return row?.user_id;
 }
@@ -212,9 +189,7 @@ export function cleanupExpiredTokens(maxAgeMs = 30 * 86400000): number {
   const d = getDb();
   const cutoff = Date.now() - maxAgeMs;
   const result = d.prepare('DELETE FROM user_tokens WHERE created_at < ?').run(cutoff);
-  if (result.changes > 0) {
-    logger.info('DB: cleaned up ' + result.changes + ' expired tokens');
-  }
+  if (result.changes > 0) logger.info('DB: cleaned up ' + result.changes + ' expired tokens');
   return result.changes;
 }
 
@@ -224,12 +199,9 @@ export async function createBackup(): Promise<string | null> {
     fs.mkdirSync(dir, { recursive: true });
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupPath = path.join(dir, `chess-${timestamp}.db`);
-
     await getDb().backup(backupPath);
-
     logger.info('DB backup created: ' + backupPath);
 
-    /* Prune backups older than 7 days */
     const cutoff = Date.now() - 7 * 86400000;
     const files = fs.readdirSync(dir);
     for (const file of files) {
@@ -241,7 +213,6 @@ export async function createBackup(): Promise<string | null> {
         logger.info('DB backup pruned: ' + file);
       }
     }
-
     return backupPath;
   } catch (err) {
     logger.error('DB backup failed:', err);
@@ -250,20 +221,17 @@ export async function createBackup(): Promise<string | null> {
 }
 
 export function addWin(userId: string): void {
-  const d = getDb();
-  d.prepare('UPDATE users SET wins = wins + 1 WHERE id = ?').run(userId);
+  getDb().prepare('UPDATE users SET wins = wins + 1 WHERE id = ?').run(userId);
   logger.info('DB: addWin userId=' + userId);
 }
 
 export function addLoss(userId: string): void {
-  const d = getDb();
-  d.prepare('UPDATE users SET losses = losses + 1 WHERE id = ?').run(userId);
+  getDb().prepare('UPDATE users SET losses = losses + 1 WHERE id = ?').run(userId);
   logger.info('DB: addLoss userId=' + userId);
 }
 
 export function addDraw(userId: string): void {
-  const d = getDb();
-  d.prepare('UPDATE users SET draws = draws + 1 WHERE id = ?').run(userId);
+  getDb().prepare('UPDATE users SET draws = draws + 1 WHERE id = ?').run(userId);
   logger.info('DB: addDraw userId=' + userId);
 }
 
@@ -276,91 +244,62 @@ export function loadAllUsers(): DbUser[] {
 
 export function loadAllTokens(): { token: string; user_id: string }[] {
   const d = getDb();
-  const tokens = d.prepare('SELECT token, user_id FROM user_tokens').all() as {
-    token: string;
-    user_id: string;
-  }[];
+  const tokens = d.prepare('SELECT token, user_id FROM user_tokens').all() as { token: string; user_id: string }[];
   logger.info('DB: loadAllTokens count=' + tokens.length);
   return tokens;
 }
 
-/* ─── Avatar ─── */
-
 export function updateUserAvatar(id: string, url: string | null): void {
-  const d = getDb();
-  d.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(url, id);
+  getDb().prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(url, id);
   logger.info('DB: avatar updated id=' + id + ' url=' + url);
 }
 
-/* ─── Username (admin only) ─── */
-
 export function updateUsername(id: string, username: string): void {
-  const d = getDb();
-  d.prepare('UPDATE users SET username = ? WHERE id = ?').run(username, id);
+  getDb().prepare('UPDATE users SET username = ? WHERE id = ?').run(username, id);
   logger.info('DB: username updated id=' + id + ' username=' + username);
 }
 
-/* ─── Stats (admin only) ─── */
-
 export function updateUserStats(id: string, wins: number, losses: number, draws: number): void {
-  const d = getDb();
-  d.prepare('UPDATE users SET wins = ?, losses = ?, draws = ? WHERE id = ?').run(wins, losses, draws, id);
+  getDb().prepare('UPDATE users SET wins = ?, losses = ?, draws = ? WHERE id = ?').run(wins, losses, draws, id);
   logger.info('DB: stats updated id=' + id + ' w=' + wins + ' l=' + losses + ' d=' + draws);
 }
 
-/* ─── Admin dashboard helpers ─── */
-
 export function updateUserDisplayName(id: string, displayName: string): void {
-  const d = getDb();
-  d.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(displayName, id);
+  getDb().prepare('UPDATE users SET display_name = ? WHERE id = ?').run(displayName, id);
   logger.info('DB: displayName updated id=' + id + ' name=' + displayName);
 }
 
 export function updateUserPasswordHash(id: string, passwordHash: string): void {
-  const d = getDb();
-  d.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, id);
+  getDb().prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, id);
   logger.info('DB: password hash updated id=' + id);
 }
 
 export function deleteUserTokens(id: string): void {
-  const d = getDb();
-  d.prepare('DELETE FROM user_tokens WHERE user_id = ?').run(id);
+  getDb().prepare('DELETE FROM user_tokens WHERE user_id = ?').run(id);
   logger.info('DB: tokens deleted userId=' + id);
 }
 
 export function deleteUserRecord(id: string): void {
-  const d = getDb();
-  d.prepare('DELETE FROM users WHERE id = ?').run(id);
+  getDb().prepare('DELETE FROM users WHERE id = ?').run(id);
   logger.info('DB: user record deleted id=' + id);
 }
 
 /* ─── Bans ─── */
 
 export function saveBan(id: string, playerId: string | null, ip: string | null): void {
-  const d = getDb();
-  d.prepare('INSERT OR REPLACE INTO bans (id, player_id, ip, banned_at) VALUES (?, ?, ?, ?)').run(
-    id,
-    playerId,
-    ip,
-    Date.now(),
-  );
+  getDb().prepare('INSERT OR REPLACE INTO bans (id, player_id, ip, banned_at) VALUES (?, ?, ?, ?)').run(id, playerId, ip, Date.now());
   logger.info('DB: ban saved id=' + id + ' playerId=' + playerId + ' ip=' + ip);
 }
 
 export function loadAllBans(): { id: string; player_id: string | null; ip: string | null }[] {
   const d = getDb();
-  const bans = d.prepare('SELECT id, player_id, ip FROM bans').all() as {
-    id: string;
-    player_id: string | null;
-    ip: string | null;
-  }[];
+  const bans = d.prepare('SELECT id, player_id, ip FROM bans').all() as { id: string; player_id: string | null; ip: string | null }[];
   logger.info('DB: loadAllBans count=' + bans.length);
   return bans;
 }
 
 export function deleteBanById(id: string): void {
-  const d = getDb();
-  d.prepare('DELETE FROM bans WHERE id = ?').run(id);
+  getDb().prepare('DELETE FROM bans WHERE id = ?').run(id);
   logger.info('DB: ban deleted id=' + id);
 }
 
@@ -379,9 +318,7 @@ export function createFriendRequest(fromUserId: string, toUserId: string): strin
   const d = getDb();
   const id = crypto.randomUUID();
   const now = Date.now();
-  d.prepare(
-    'INSERT INTO friend_requests (id, from_user_id, to_user_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-  ).run(id, fromUserId, toUserId, 'pending', now, now);
+  d.prepare('INSERT INTO friend_requests (id, from_user_id, to_user_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, fromUserId, toUserId, 'pending', now, now);
   logger.info('DB: friend request created id=' + id + ' from=' + fromUserId + ' to=' + toUserId);
   return id;
 }
@@ -395,64 +332,41 @@ export function getFriendRequest(id: string): FriendRequestRow | undefined {
 
 export function getPendingIncomingRequests(userId: string): FriendRequestRow[] {
   const d = getDb();
-  const rows = d
-    .prepare('SELECT * FROM friend_requests WHERE to_user_id = ? AND status = ? ORDER BY created_at DESC')
-    .all(userId, 'pending') as FriendRequestRow[];
+  const rows = d.prepare('SELECT * FROM friend_requests WHERE to_user_id = ? AND status = ? ORDER BY created_at DESC').all(userId, 'pending') as FriendRequestRow[];
   logger.info('DB: pending incoming requests userId=' + userId + ' count=' + rows.length);
   return rows;
 }
 
 export function getPendingOutgoingRequests(userId: string): FriendRequestRow[] {
   const d = getDb();
-  const rows = d
-    .prepare('SELECT * FROM friend_requests WHERE from_user_id = ? AND status = ? ORDER BY created_at DESC')
-    .all(userId, 'pending') as FriendRequestRow[];
+  const rows = d.prepare('SELECT * FROM friend_requests WHERE from_user_id = ? AND status = ? ORDER BY created_at DESC').all(userId, 'pending') as FriendRequestRow[];
   logger.info('DB: pending outgoing requests userId=' + userId + ' count=' + rows.length);
   return rows;
 }
 
 export function hasPendingRequest(fromUserId: string, toUserId: string): boolean {
   const d = getDb();
-  const row = d
-    .prepare(
-      'SELECT 1 FROM friend_requests WHERE ((from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)) AND status = ?',
-    )
-    .get(fromUserId, toUserId, toUserId, fromUserId, 'pending');
+  const row = d.prepare('SELECT 1 FROM friend_requests WHERE ((from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)) AND status = ?').get(fromUserId, toUserId, toUserId, fromUserId, 'pending');
   const result = !!row;
   logger.info('DB: hasPendingRequest from=' + fromUserId + ' to=' + toUserId + ' =' + result);
   return result;
 }
 
 export function updateFriendRequestStatus(id: string, status: string): void {
-  const d = getDb();
-  d.prepare('UPDATE friend_requests SET status = ?, updated_at = ? WHERE id = ?').run(status, Date.now(), id);
+  getDb().prepare('UPDATE friend_requests SET status = ?, updated_at = ? WHERE id = ?').run(status, Date.now(), id);
   logger.info('DB: friend request status updated id=' + id + ' status=' + status);
 }
 
 export function addFriendRelationship(userId: string, friendId: string): void {
   const d = getDb();
   const now = Date.now();
-  d.prepare('INSERT OR IGNORE INTO friends (user_id, friend_id, created_at) VALUES (?, ?, ?)').run(
-    userId,
-    friendId,
-    now,
-  );
-  d.prepare('INSERT OR IGNORE INTO friends (user_id, friend_id, created_at) VALUES (?, ?, ?)').run(
-    friendId,
-    userId,
-    now,
-  );
+  d.prepare('INSERT OR IGNORE INTO friends (user_id, friend_id, created_at) VALUES (?, ?, ?)').run(userId, friendId, now);
+  d.prepare('INSERT OR IGNORE INTO friends (user_id, friend_id, created_at) VALUES (?, ?, ?)').run(friendId, userId, now);
   logger.info('DB: friend relationship added user1=' + userId + ' user2=' + friendId);
 }
 
 export function removeFriendRelationship(userId: string, friendId: string): void {
-  const d = getDb();
-  d.prepare('DELETE FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)').run(
-    userId,
-    friendId,
-    friendId,
-    userId,
-  );
+  getDb().prepare('DELETE FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)').run(userId, friendId, friendId, userId);
   logger.info('DB: friend relationship removed user1=' + userId + ' user2=' + friendId);
 }
 
@@ -466,29 +380,13 @@ export function getFriendIds(userId: string): string[] {
 
 /* ─── Leaderboard ─── */
 
-export function getLeaderboard(
-  limit: number,
-  offset: number,
-): {
-  rows: {
-    id: string;
-    username: string;
-    display_name: string;
-    avatar_url: string | null;
-    rating: number;
-    wins: number;
-    losses: number;
-    draws: number;
-  }[];
+export function getLeaderboard(limit: number, offset: number): {
+  rows: { id: string; username: string; display_name: string; avatar_url: string | null; rating: number; wins: number; losses: number; draws: number }[];
   total: number;
 } {
   const d = getDb();
   const total = (d.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c;
-  const rows = d
-    .prepare(
-      'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users ORDER BY rating DESC LIMIT ? OFFSET ?',
-    )
-    .all(limit, offset) as any[];
+  const rows = d.prepare('SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users ORDER BY rating DESC LIMIT ? OFFSET ?').all(limit, offset) as any[];
   return { rows, total };
 }
 
@@ -499,8 +397,7 @@ export function getPlayerRating(userId: string): number {
 }
 
 export function updatePlayerRating(userId: string, rating: number): void {
-  const d = getDb();
-  d.prepare('UPDATE users SET rating = ? WHERE id = ?').run(rating, userId);
+  getDb().prepare('UPDATE users SET rating = ? WHERE id = ?').run(rating, userId);
 }
 
 /* ─── Game Archive ─── */
@@ -522,24 +419,8 @@ export function saveCompletedGame(
 ): void {
   const d = getDb();
   d.prepare(
-    `INSERT INTO completed_games (id, white_player_id, black_player_id, white_display_name, black_display_name, winner, status, result, reason, move_history, board_history, pgn, played_at, time_control)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    id,
-    whitePlayerId,
-    blackPlayerId,
-    whiteDisplayName,
-    blackDisplayName,
-    winner,
-    status,
-    result,
-    reason,
-    moveHistory,
-    boardHistory,
-    pgn,
-    Date.now(),
-    timeControl,
-  );
+    'INSERT INTO completed_games (id, white_player_id, black_player_id, white_display_name, black_display_name, winner, status, result, reason, move_history, board_history, pgn, played_at, time_control) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, whitePlayerId, blackPlayerId, whiteDisplayName, blackDisplayName, winner, status, result, reason, moveHistory, boardHistory, pgn, Date.now(), timeControl);
   logger.info('DB: completed game saved id=' + id);
 }
 
@@ -554,181 +435,95 @@ export function getArchivedGames(
   const d = getDb();
   const conditions: string[] = [];
   const params: any[] = [];
-  if (playerId) {
-    conditions.push('(white_player_id = ? OR black_player_id = ?)');
-    params.push(playerId, playerId);
-  }
-  if (status) {
-    conditions.push('status = ?');
-    params.push(status);
-  }
-  if (fromDate) {
-    conditions.push('played_at >= ?');
-    params.push(fromDate);
-  }
-  if (toDate) {
-    conditions.push('played_at <= ?');
-    params.push(toDate);
-  }
+  if (playerId) { conditions.push('(white_player_id = ? OR black_player_id = ?)'); params.push(playerId, playerId); }
+  if (status) { conditions.push('status = ?'); params.push(status); }
+  if (fromDate) { conditions.push('played_at >= ?'); params.push(fromDate); }
+  if (toDate) { conditions.push('played_at <= ?'); params.push(toDate); }
   const where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
   const total = (d.prepare('SELECT COUNT(*) as c FROM completed_games' + where).get(...params) as { c: number }).c;
   const offset = (page - 1) * limit;
-  const rows = d
-    .prepare('SELECT * FROM completed_games' + where + ' ORDER BY played_at DESC LIMIT ? OFFSET ?')
-    .all(...params, limit, offset);
+  const rows = d.prepare('SELECT * FROM completed_games' + where + ' ORDER BY played_at DESC LIMIT ? OFFSET ?').all(...params, limit, offset);
   return { rows, total };
 }
 
 export function getArchivedGame(id: string): any | undefined {
-  const d = getDb();
-  return d.prepare('SELECT * FROM completed_games WHERE id = ?').get(id);
+  return getDb().prepare('SELECT * FROM completed_games WHERE id = ?').get(id);
 }
 
 export function getPlayerWinLossDraw(playerId: string): { wins: number; losses: number; draws: number } {
   const d = getDb();
-  const wins = (
-    d
-      .prepare(
-        'SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner = ?',
-      )
-      .get(playerId, playerId, playerId) as { c: number }
-  ).c;
-  const allCount = (
-    d
-      .prepare('SELECT COUNT(*) as c FROM completed_games WHERE white_player_id = ? OR black_player_id = ?')
-      .get(playerId, playerId) as { c: number }
-  ).c;
-  const draws = (
-    d
-      .prepare(
-        'SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner IS NULL',
-      )
-      .get(playerId, playerId) as { c: number }
-  ).c;
+  const wins = (d.prepare('SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner = ?').get(playerId, playerId, playerId) as { c: number }).c;
+  const allCount = (d.prepare('SELECT COUNT(*) as c FROM completed_games WHERE white_player_id = ? OR black_player_id = ?').get(playerId, playerId) as { c: number }).c;
+  const draws = (d.prepare('SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner IS NULL').get(playerId, playerId) as { c: number }).c;
   return { wins, losses: allCount - wins - draws, draws };
 }
 
 /* ─── Tournaments ─── */
 
-export function createTournament(
-  name: string,
-  createdBy: string,
-  maxPlayers: number,
-  isPrivate?: boolean,
-): { id: string; joinCode?: string } {
+export function createTournament(name: string, createdBy: string, maxPlayers: number, isPrivate?: boolean): { id: string; joinCode?: string } {
   const d = getDb();
   const id = crypto.randomUUID();
   const joinCode = isPrivate ? crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase() : undefined;
-  d.prepare(
-    'INSERT INTO tournaments (id, name, status, created_by, max_players, is_private, join_code, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, name, 'waiting', createdBy, maxPlayers, isPrivate ? 1 : 0, joinCode, Date.now());
+  d.prepare('INSERT INTO tournaments (id, name, status, created_by, max_players, is_private, join_code, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(id, name, 'waiting', createdBy, maxPlayers, isPrivate ? 1 : 0, joinCode, Date.now());
   return { id, joinCode };
 }
 
 export function getTournament(id: string): any | undefined {
-  const d = getDb();
-  return d.prepare('SELECT * FROM tournaments WHERE id = ?').get(id);
+  return getDb().prepare('SELECT * FROM tournaments WHERE id = ?').get(id);
 }
 
 export function getTournamentByJoinCode(code: string): any | undefined {
-  const d = getDb();
-  return d.prepare('SELECT * FROM tournaments WHERE join_code = ?').get(code);
+  return getDb().prepare('SELECT * FROM tournaments WHERE join_code = ?').get(code);
 }
 
 export function getPublicTournaments(status?: string): any[] {
   const d = getDb();
-  if (status) {
-    return d
-      .prepare('SELECT * FROM tournaments WHERE status = ? AND is_private = 0 ORDER BY created_at DESC')
-      .all(status);
-  }
+  if (status) return d.prepare('SELECT * FROM tournaments WHERE status = ? AND is_private = 0 ORDER BY created_at DESC').all(status);
   return d.prepare('SELECT * FROM tournaments WHERE is_private = 0 ORDER BY created_at DESC').all();
 }
 
 export function getTournaments(status?: string): any[] {
   const d = getDb();
-  if (status) {
-    return d.prepare('SELECT * FROM tournaments WHERE status = ? ORDER BY created_at DESC').all(status);
-  }
+  if (status) return d.prepare('SELECT * FROM tournaments WHERE status = ? ORDER BY created_at DESC').all(status);
   return d.prepare('SELECT * FROM tournaments ORDER BY created_at DESC').all();
 }
 
 export function getTournamentParticipants(tournamentId: string): any[] {
-  const d = getDb();
-  return d.prepare('SELECT * FROM tournament_participants WHERE tournament_id = ? ORDER BY seed').all(tournamentId);
+  return getDb().prepare('SELECT * FROM tournament_participants WHERE tournament_id = ? ORDER BY seed').all(tournamentId);
 }
 
-export function addTournamentParticipant(
-  tournamentId: string,
-  playerId: string,
-  displayName: string,
-  seed: number,
-): void {
+export function addTournamentParticipant(tournamentId: string, playerId: string, displayName: string, seed: number): void {
   const d = getDb();
-  const id = crypto.randomUUID();
-  d.prepare(
-    'INSERT INTO tournament_participants (id, tournament_id, player_id, display_name, seed, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-  ).run(id, tournamentId, playerId, displayName, seed, Date.now());
+  d.prepare('INSERT INTO tournament_participants (id, tournament_id, player_id, display_name, seed, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(crypto.randomUUID(), tournamentId, playerId, displayName, seed, Date.now());
 }
 
 export function removeTournamentParticipant(tournamentId: string, playerId: string): void {
-  const d = getDb();
-  d.prepare('DELETE FROM tournament_participants WHERE tournament_id = ? AND player_id = ?').run(
-    tournamentId,
-    playerId,
-  );
+  getDb().prepare('DELETE FROM tournament_participants WHERE tournament_id = ? AND player_id = ?').run(tournamentId, playerId);
 }
 
 export function isTournamentParticipant(tournamentId: string, playerId: string): boolean {
-  const d = getDb();
-  const row = d
-    .prepare('SELECT 1 FROM tournament_participants WHERE tournament_id = ? AND player_id = ?')
-    .get(tournamentId, playerId);
+  const row = getDb().prepare('SELECT 1 FROM tournament_participants WHERE tournament_id = ? AND player_id = ?').get(tournamentId, playerId);
   return !!row;
 }
 
 export function getParticipantCount(tournamentId: string): number {
-  const d = getDb();
-  const row = d
-    .prepare('SELECT COUNT(*) as c FROM tournament_participants WHERE tournament_id = ?')
-    .get(tournamentId) as { c: number };
+  const row = getDb().prepare('SELECT COUNT(*) as c FROM tournament_participants WHERE tournament_id = ?').get(tournamentId) as { c: number };
   return row.c;
 }
 
-export function updateTournamentStatus(
-  id: string,
-  status: string,
-  startedAt?: number,
-  completedAt?: number,
-  winnerId?: string,
-): void {
+export function updateTournamentStatus(id: string, status: string, startedAt?: number, completedAt?: number, winnerId?: string): void {
   const d = getDb();
   const updates: string[] = ['status = ?'];
   const params: any[] = [status];
-  if (startedAt) {
-    updates.push('started_at = ?');
-    params.push(startedAt);
-  }
-  if (completedAt) {
-    updates.push('completed_at = ?');
-    params.push(completedAt);
-  }
-  if (winnerId) {
-    updates.push('winner_id = ?');
-    params.push(winnerId);
-  }
+  if (startedAt) { updates.push('started_at = ?'); params.push(startedAt); }
+  if (completedAt) { updates.push('completed_at = ?'); params.push(completedAt); }
+  if (winnerId) { updates.push('winner_id = ?'); params.push(winnerId); }
   params.push(id);
   d.prepare(`UPDATE tournaments SET ${updates.join(', ')} WHERE id = ?`).run(...params);
 }
 
 export function updateTournamentDetails(id: string, name: string, maxPlayers: number, isPrivate: number): void {
-  const d = getDb();
-  d.prepare('UPDATE tournaments SET name = ?, max_players = ?, is_private = ? WHERE id = ?').run(
-    name,
-    maxPlayers,
-    isPrivate,
-    id,
-  );
+  getDb().prepare('UPDATE tournaments SET name = ?, max_players = ?, is_private = ? WHERE id = ?').run(name, maxPlayers, isPrivate, id);
 }
 
 export function deleteTournament(id: string): void {
@@ -739,40 +534,22 @@ export function deleteTournament(id: string): void {
 }
 
 export function getTournamentMatches(tournamentId: string): any[] {
-  const d = getDb();
-  return d
-    .prepare('SELECT * FROM tournament_matches WHERE tournament_id = ? ORDER BY round, position')
-    .all(tournamentId);
+  return getDb().prepare('SELECT * FROM tournament_matches WHERE tournament_id = ? ORDER BY round, position').all(tournamentId);
 }
 
-export function createTournamentMatch(
-  tournamentId: string,
-  round: number,
-  position: number,
-  whitePlayerId: string | null,
-  blackPlayerId: string | null,
-): string {
+export function createTournamentMatch(tournamentId: string, round: number, position: number, whitePlayerId: string | null, blackPlayerId: string | null): string {
   const d = getDb();
   const id = crypto.randomUUID();
-  d.prepare(
-    'INSERT INTO tournament_matches (id, tournament_id, round, position, white_player_id, black_player_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, tournamentId, round, position, whitePlayerId, blackPlayerId, 'pending');
+  d.prepare('INSERT INTO tournament_matches (id, tournament_id, round, position, white_player_id, black_player_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, tournamentId, round, position, whitePlayerId, blackPlayerId, 'pending');
   return id;
 }
 
 export function updateTournamentMatch(id: string, gameId: string, winnerId: string | null, status: string): void {
-  const d = getDb();
-  d.prepare('UPDATE tournament_matches SET game_id = ?, winner_id = ?, status = ? WHERE id = ?').run(
-    gameId,
-    winnerId,
-    status,
-    id,
-  );
+  getDb().prepare('UPDATE tournament_matches SET game_id = ?, winner_id = ?, status = ? WHERE id = ?').run(gameId, winnerId, status, id);
 }
 
 export function areFriends(userId: string, friendId: string): boolean {
-  const d = getDb();
-  const row = d.prepare('SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?').get(userId, friendId);
+  const row = getDb().prepare('SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?').get(userId, friendId);
   const result = !!row;
   logger.info('DB: areFriends user1=' + userId + ' user2=' + friendId + ' =' + result);
   return result;
@@ -780,11 +557,6 @@ export function areFriends(userId: string, friendId: string): boolean {
 
 export function closeDb(): void {
   if (db) {
-    try {
-      db.close();
-      logger.info('DB connection closed');
-    } catch (err) {
-      logger.error('Error closing DB:', err);
-    }
+    try { db.close(); logger.info('DB connection closed'); } catch (err) { logger.error('Error closing DB:', err); }
   }
 }

@@ -2,17 +2,26 @@
 
 ## chess-api
 
-| Variable                  | Default | Description                          |
-| ------------------------- | ------- | ------------------------------------ |
-| `PORT`                    | `25565` | HTTP/WS server port                  |
-| `CORS_ORIGIN`             | `*`     | Allowed CORS origin                  |
-| `WS_HEARTBEAT_INTERVAL`   | `30000` | WebSocket ping interval (ms)         |
-| `LOG_LEVEL`               | `info`  | Log level (debug, info, warn, error) |
-| `MAX_GAMES_PER_PLAYER`    | `1`     | Max concurrent games per player      |
-| `RATE_LIMIT_WINDOW_MS`    | `60000` | Rate limit window (ms)               |
-| `RATE_LIMIT_MAX_REQUESTS` | `30`    | Max requests per window per player   |
-| `ADMIN_USERNAME`          | `admin` | Admin dashboard login username       |
-| `ADMIN_PASSWORD`          | `admin` | Admin dashboard login password       |
+| Variable                    | Default         | Description                                    |
+| --------------------------- | --------------- | ---------------------------------------------- |
+| `PORT`                      | `25565`         | HTTP/WS server port                            |
+| `CORS_ORIGIN`               | `*`             | Allowed CORS origin                            |
+| `WS_HEARTBEAT_INTERVAL`     | `30000`         | WebSocket ping interval (ms)                   |
+| `WS_PONG_TIMEOUT`           | `10000`         | WebSocket pong timeout (ms)                    |
+| `WS_MAX_CONNECTIONS_PER_IP` | `5`             | Max WebSocket connections per IP               |
+| `LOG_LEVEL`                 | `info`          | Log level (debug, info, warn, error)           |
+| `ADMIN_USERNAME`            | `admin`         | Admin dashboard login username                 |
+| `ADMIN_PASSWORD`            | (random)        | Admin password (auto-generated if not set)     |
+| `ADMIN_TOKEN_TTL`           | `86400000`      | Admin session TTL in ms (default 24h)          |
+| `DB_PATH`                   | `data/chess.db` | SQLite database file path                      |
+| `MAX_GAMES_PER_PLAYER`      | `20`            | Max concurrent games per player                |
+| `MAX_CONCURRENT_ENGINES`    | `4`             | Max concurrent Stockfish instances             |
+| `RATE_LIMIT_WINDOW_MS`      | `60000`         | Rate limit window (ms)                         |
+| `RATE_LIMIT_MAX_REQUESTS`   | `100`           | Max requests per player per window             |
+| `WAITING_TTL_MS`            | `600000`        | Orphaned waiting game TTL (10 min, 0=disable)  |
+| `LOGIN_MAX_ATTEMPTS`        | `5`             | Failed logins before lockout                   |
+| `LOGIN_LOCKOUT_MINUTES`     | `15`            | Lockout duration after max attempts            |
+| `DB_BACKUP_INTERVAL_MS`     | `21600000`      | DB backup interval (6h, 0=disable)             |
 
 ## chess-client
 

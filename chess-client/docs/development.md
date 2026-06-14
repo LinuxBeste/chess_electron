@@ -40,10 +40,10 @@ In web mode (`pnpm run dev:web`):
 
 ### Code Style
 
-- Strict TypeScript throughout — no `any` types
+- Strict TypeScript throughout - no `any` types
 - Descriptive variable names over abbreviated ones
-- Comments explain _why_, not _what_ — the code itself says what it does
-- No banner/heading comments (`// === SECTION ===`)
+- Comments explain _why_, not _what_ - the code says what it does well enough
+- No banner comments like `// === SECTION ===`. You're not writing COBOL
 
 ### Adding a New Page
 
@@ -70,7 +70,7 @@ Settings are stored in localStorage under `chess_settings`. The schema is define
 
 ### Web vs Electron
 
-- The renderer targets `'web'` in webpack — same build works in browser and Electron
+- The renderer targets `'web'` in webpack - same build works in browser and Electron
 - `window.electronAPI` is optional (typed as `electronAPI?: {...}`) and always accessed with `?.`
 - In browser: all Electron-specific features gracefully degrade
 - In Electron: the preload script exposes `electronAPI` via `contextBridge`

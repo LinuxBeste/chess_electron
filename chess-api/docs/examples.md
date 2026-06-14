@@ -2,20 +2,19 @@
 
 ## Prerequisites
 
-Start the server:
+Make sure the server is running:
 
 ```bash
-npm run build && npm start
+pnpm run build && pnpm start
 ```
 
-Or with Docker:
+Or via Docker:
 
 ```bash
 docker compose up --build
 ```
 
-All examples assume direct API access at `http://localhost:25565`.
-In dev through the webpack proxy, use `http://localhost:3000` instead.
+All examples hit `http://localhost:25565` directly. If you're running through the webpack dev proxy, swap in `http://localhost:3000` instead.
 
 ## 1. Register Players
 
@@ -31,7 +30,9 @@ curl -s -X POST http://localhost:25565/auth/register \
 ```json
 {
   "playerId": "550e8400-e29b-41d4-a716-446655440000",
-  "token": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+  "token": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+  "isRegistered": false,
+  "displayName": "alice"
 }
 ```
 
@@ -42,7 +43,7 @@ curl -s -X POST http://localhost:25565/auth/register \
   -d '{"username": "bob"}' | jq
 ```
 
-Save the tokens — you'll need them for authenticated requests.
+Save the tokens - you'll need them for authenticated requests.
 
 ## 2. Create a Game (White)
 
@@ -79,6 +80,23 @@ curl -s -X POST http://localhost:25565/games/<game-id>/join \
 ```
 
 **Response:** status changes to `active`.
+
+## 4b. Create a Game with Spectate Code
+
+```bash
+curl -s -X POST http://localhost:25565/games \
+  -H "Authorization: Bearer <white-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"visibility": "public", "spectateMode": "code"}' | jq
+```
+
+**Response** includes `"spectateCode": "uuid"` - share this with spectators.
+
+Spectators connect via WebSocket and include the code:
+
+```json
+{ "type": "spectate", "gameId": "<game-id>", "code": "<spectate-code>" }
+```
 
 ## 5. Play a Full Game (Scholar's Mate)
 
@@ -184,16 +202,24 @@ curl -s -X POST http://localhost:25565/games/bot \
   -d '{"color": "white", "skillLevel": 10}' | jq
 ```
 
-## 10. Get Leaderboard
+## 10. Logout
+
+```bash
+curl -s -X POST http://localhost:25565/auth/logout \
+  -H "Authorization: Bearer <token>" | jq
+```
+
+**Response:** `{ "success": true }`
+
+## 11. Get Leaderboard
 
 ```bash
 curl -s http://localhost:25565/leaderboard | jq
 ```
 
-## One-Liner Script
+## Full Game in One Script
 
-```bash
-# Register two players and play a full game in one script
+The whole Scholar's Mate in a single bash pipeline, because why not:
 W=$(curl -s -X POST http://localhost:25565/auth/register -H "Content-Type: application/json" -d '{"username":"w"}' | jq -r '.token')
 B=$(curl -s -X POST http://localhost:25565/auth/register -H "Content-Type: application/json" -d '{"username":"b"}' | jq -r '.token')
 GID=$(curl -s -X POST http://localhost:25565/games -H "Authorization: Bearer $W" | jq -r '.id')

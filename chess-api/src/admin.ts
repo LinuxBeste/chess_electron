@@ -33,20 +33,15 @@ function initAdminCreds(): void {
 
 initAdminCreds();
 
-/* Map: token → expiry timestamp */
 const adminTokens = new Map<string, number>();
 
-/* Periodic cleanup of expired admin tokens (skip in test) */
 if (process.env.NODE_ENV !== 'test') {
-  setInterval(
-    () => {
-      const now = Date.now();
-      for (const [token, expiry] of adminTokens) {
-        if (expiry <= now) adminTokens.delete(token);
-      }
-    },
-    Math.min(ADMIN_TOKEN_TTL, 300000),
-  );
+  setInterval(() => {
+    const now = Date.now();
+    for (const [token, expiry] of adminTokens) {
+      if (expiry <= now) adminTokens.delete(token);
+    }
+  }, Math.min(ADMIN_TOKEN_TTL, 300000));
 }
 
 function adminAuthMiddleware(req: Request, res: Response, next: () => void): void {
@@ -95,16 +90,7 @@ router.get('/admin/api/stats', adminAuthMiddleware, (_req: Request, res: Respons
     const allPlayers = game.getAllPlayers();
     const registeredUsers = allPlayers.filter((p) => p.isRegistered).length;
     const totalUsers = db.loadAllUsers().length;
-    logger.info(
-      'Admin stats: gamesActive=' +
-        gamesActive +
-        ' playersOnline=' +
-        playersOnline +
-        ' registered=' +
-        registeredUsers +
-        ' totalUsers=' +
-        totalUsers,
-    );
+    logger.info('Admin stats: gamesActive=' + gamesActive + ' playersOnline=' + playersOnline + ' registered=' + registeredUsers + ' totalUsers=' + totalUsers);
     res.json({ gamesActive, playersOnline, registeredUsers, totalUsers });
   } catch (err) {
     logger.error('Stats error:', err);
@@ -119,11 +105,7 @@ let prevNet: { rx: number; tx: number } | null = null;
 let prevDisk: { read: number; write: number } | null = null;
 
 function readProc(path: string): string | null {
-  try {
-    return fs.readFileSync(path, 'utf-8');
-  } catch {
-    return null;
-  }
+  try { return fs.readFileSync(path, 'utf-8'); } catch { return null; }
 }
 
 function sampleCpu(): { idle: number; total: number } | null {
@@ -138,8 +120,7 @@ function sampleCpu(): { idle: number; total: number } | null {
 function sampleNet(): { rx: number; tx: number } | null {
   const content = readProc('/proc/net/dev');
   if (!content) return null;
-  let rx = 0,
-    tx = 0;
+  let rx = 0, tx = 0;
   for (const line of content.split('\n').slice(2)) {
     const parts = line.trim().split(/\s+/);
     if (parts.length < 10) continue;
@@ -152,8 +133,7 @@ function sampleNet(): { rx: number; tx: number } | null {
 function sampleDisk(): { read: number; write: number } | null {
   const content = readProc('/proc/diskstats');
   if (!content) return null;
-  let read = 0,
-    write = 0;
+  let read = 0, write = 0;
   for (const line of content.split('\n').filter((l) => l.trim())) {
     const parts = line.trim().split(/\s+/);
     if (parts.length < 14) continue;
@@ -178,8 +158,7 @@ router.get('/admin/api/system/metrics', adminAuthMiddleware, (_req: Request, res
   }
   if (cpu) prevCpu = cpu;
 
-  let rxRate = 0,
-    txRate = 0;
+  let rxRate = 0, txRate = 0;
   const net = sampleNet();
   if (net && prevNet) {
     rxRate = Math.max(0, net.rx - prevNet.rx);
@@ -187,8 +166,7 @@ router.get('/admin/api/system/metrics', adminAuthMiddleware, (_req: Request, res
   }
   if (net) prevNet = net;
 
-  let readRate = 0,
-    writeRate = 0;
+  let readRate = 0, writeRate = 0;
   const disk = sampleDisk();
   if (disk && prevDisk) {
     readRate = Math.max(0, disk.read - prevDisk.read);
@@ -217,17 +195,14 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
   const heapUsed = process.memoryUsage().heapUsed;
   const heapTotal = process.memoryUsage().heapTotal;
 
-  let diskTotal = 0;
-  let diskFree = 0;
+  let diskTotal = 0, diskFree = 0;
   try {
     const out = execFileSync('df', ['-k', '/'], { maxBuffer: 65536 }).toString().split('\n')[1]?.split(/\s+/);
     if (out && out.length >= 4) {
       diskTotal = parseInt(out[1], 10) * 1024 || 0;
       diskFree = parseInt(out[3], 10) * 1024 || 0;
     }
-  } catch (e) {
-    logger.warn('Failed to read disk info via df: ' + e);
-  }
+  } catch (e) { logger.warn('Failed to read disk info via df: ' + e); }
 
   const nets = os.networkInterfaces();
   const addrs: { name: string; address: string; family: string }[] = [];
@@ -241,41 +216,11 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
   }
 
   res.json({
-    memory: {
-      total: totalMem,
-      free: freeMem,
-      used: usedMem,
-      usagePercent: Math.round((usedMem / totalMem) * 100 * 100) / 100,
-    },
-    cpu: {
-      cores: cpus.length,
-      model: cpus[0]?.model || 'unknown',
-      speed: cpus[0]?.speed || 0,
-      loadAverage1: loadAvg[0],
-      loadAverage5: loadAvg[1],
-      loadAverage15: loadAvg[2],
-    },
-    process: {
-      uptime: process.uptime(),
-      nodeVersion: process.version,
-      pid: process.pid,
-      memoryRss: rss,
-      heapUsed,
-      heapTotal,
-    },
-    system: {
-      uptime: os.uptime(),
-      platform: os.platform(),
-      release: os.release(),
-      hostname: os.hostname(),
-      arch: os.arch(),
-    },
-    disk: {
-      total: diskTotal,
-      free: diskFree,
-      used: diskTotal - diskFree,
-      usagePercent: diskTotal > 0 ? Math.round(((diskTotal - diskFree) / diskTotal) * 100 * 100) / 100 : 0,
-    },
+    memory: { total: totalMem, free: freeMem, used: usedMem, usagePercent: Math.round((usedMem / totalMem) * 100 * 100) / 100 },
+    cpu: { cores: cpus.length, model: cpus[0]?.model || 'unknown', speed: cpus[0]?.speed || 0, loadAverage1: loadAvg[0], loadAverage5: loadAvg[1], loadAverage15: loadAvg[2] },
+    process: { uptime: process.uptime(), nodeVersion: process.version, pid: process.pid, memoryRss: rss, heapUsed, heapTotal },
+    system: { uptime: os.uptime(), platform: os.platform(), release: os.release(), hostname: os.hostname(), arch: os.arch() },
+    disk: { total: diskTotal, free: diskFree, used: diskTotal - diskFree, usagePercent: diskTotal > 0 ? Math.round(((diskTotal - diskFree) / diskTotal) * 100 * 100) / 100 : 0 },
     networks: addrs,
   });
 });
@@ -289,13 +234,14 @@ router.get('/admin/api/system/processes', adminAuthMiddleware, (_req: Request, r
       if (!line.trim()) continue;
       const parts = line.trim().split(/\s+/);
       if (parts.length < 11) continue;
-      const user = parts[0];
-      const pid = parseInt(parts[1], 10);
-      const cpu = parseFloat(parts[2]);
-      const mem = parseFloat(parts[3]);
-      const rss = parseInt(parts[5], 10) * 1024;
-      const command = parts.slice(10).join(' ').slice(0, 80);
-      processes.push({ user, pid, cpu, mem, rss, command });
+      processes.push({
+        user: parts[0],
+        pid: parseInt(parts[1], 10),
+        cpu: parseFloat(parts[2]),
+        mem: parseFloat(parts[3]),
+        rss: parseInt(parts[5], 10) * 1024,
+        command: parts.slice(10).join(' ').slice(0, 80),
+      });
     }
     logger.info('Admin processes listed: count=' + processes.length);
     res.json(processes);
@@ -357,40 +303,22 @@ router.get('/admin/api/accounts', adminAuthMiddleware, (_req: Request, res: Resp
 router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: Response) => {
   const { username, displayName, wins, losses, draws } = req.body;
   const user = db.getUserById(req.params.id);
-  if (!user) {
-    res.status(404).json({ error: 'Account not found' });
-    return;
-  }
+  if (!user) { res.status(404).json({ error: 'Account not found' }); return; }
 
   if (username !== undefined) {
-    if (typeof username !== 'string' || username.trim().length === 0) {
-      res.status(400).json({ error: 'Username cannot be empty' });
-      return;
-    }
+    if (typeof username !== 'string' || username.trim().length === 0) { res.status(400).json({ error: 'Username cannot be empty' }); return; }
     const trimmed = username.trim();
-    if (trimmed.length < 2) {
-      res.status(400).json({ error: 'Username must be at least 2 characters' });
-      return;
-    }
-    if (trimmed.length > 30) {
-      res.status(400).json({ error: 'Username must be at most 30 characters' });
-      return;
-    }
+    if (trimmed.length < 2) { res.status(400).json({ error: 'Username must be at least 2 characters' }); return; }
+    if (trimmed.length > 30) { res.status(400).json({ error: 'Username must be at most 30 characters' }); return; }
     const existing = db.getUserByUsername(trimmed);
-    if (existing && existing.id !== req.params.id) {
-      res.status(409).json({ error: 'Username is already taken' });
-      return;
-    }
+    if (existing && existing.id !== req.params.id) { res.status(409).json({ error: 'Username is already taken' }); return; }
     db.updateUsername(req.params.id, trimmed);
     const player = game.getAllPlayers().find((p) => p.id === req.params.id);
     if (player) player.username = trimmed;
   }
 
   if (displayName !== undefined) {
-    if (typeof displayName !== 'string' || displayName.trim().length === 0) {
-      res.status(400).json({ error: 'displayName cannot be empty' });
-      return;
-    }
+    if (typeof displayName !== 'string' || displayName.trim().length === 0) { res.status(400).json({ error: 'displayName cannot be empty' }); return; }
     db.updateUserDisplayName(req.params.id, displayName.trim());
     const player = game.getAllPlayers().find((p) => p.id === req.params.id);
     if (player) player.displayName = displayName.trim();
@@ -400,10 +328,7 @@ router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: R
     const newWins = wins !== undefined ? wins : user.wins;
     const newLosses = losses !== undefined ? losses : user.losses;
     const newDraws = draws !== undefined ? draws : user.draws;
-    if (typeof newWins !== 'number' || typeof newLosses !== 'number' || typeof newDraws !== 'number') {
-      res.status(400).json({ error: 'Stats must be numbers' });
-      return;
-    }
+    if (typeof newWins !== 'number' || typeof newLosses !== 'number' || typeof newDraws !== 'number') { res.status(400).json({ error: 'Stats must be numbers' }); return; }
     db.updateUserStats(req.params.id, newWins, newLosses, newDraws);
   }
 
@@ -413,17 +338,10 @@ router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: R
 
 router.delete('/admin/api/accounts/:id/avatar', adminAuthMiddleware, (req: Request, res: Response) => {
   const user = db.getUserById(req.params.id);
-  if (!user) {
-    res.status(404).json({ error: 'Account not found' });
-    return;
-  }
+  if (!user) { res.status(404).json({ error: 'Account not found' }); return; }
   if (user.avatar_url) {
     const filePath = path.join(__dirname, '..', 'data', 'avatars', path.basename(user.avatar_url));
-    try {
-      fs.unlinkSync(filePath);
-    } catch {
-      /* ok */
-    }
+    try { fs.unlinkSync(filePath); } catch { /* ok */ }
   }
   db.updateUserAvatar(req.params.id, null);
   logger.audit('admin_avatar_cleared', `account="${req.params.id}" by admin`);
@@ -433,28 +351,20 @@ router.delete('/admin/api/accounts/:id/avatar', adminAuthMiddleware, (req: Reque
 router.post('/admin/api/accounts/:id/reset-password', adminAuthMiddleware, (req: Request, res: Response) => {
   const { newPassword } = req.body;
   if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
-    res.status(400).json({ error: 'newPassword must be at least 8 characters' });
-    return;
+    res.status(400).json({ error: 'newPassword must be at least 8 characters' }); return;
   }
   const user = db.getUserById(req.params.id);
-  if (!user) {
-    res.status(404).json({ error: 'Account not found' });
-    return;
-  }
+  if (!user) { res.status(404).json({ error: 'Account not found' }); return; }
   const salt = crypto.randomBytes(16).toString('hex');
   const key = crypto.pbkdf2Sync(newPassword, salt, 100000, 64, 'sha512').toString('hex');
-  const hash = `${salt}:${key}`;
-  db.updateUserPasswordHash(req.params.id, hash);
+  db.updateUserPasswordHash(req.params.id, `${salt}:${key}`);
   logger.audit('admin_password_reset', `account="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
 router.delete('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: Response) => {
   const user = db.getUserById(req.params.id);
-  if (!user) {
-    res.status(404).json({ error: 'Account not found' });
-    return;
-  }
+  if (!user) { res.status(404).json({ error: 'Account not found' }); return; }
   db.deleteUserTokens(req.params.id);
   db.deleteUserRecord(req.params.id);
   logger.audit('admin_account_deleted', `account="${req.params.id}" by admin`);
@@ -465,45 +375,30 @@ router.delete('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res
 
 router.post('/admin/api/players/:id/ban', adminAuthMiddleware, (req: Request, res: Response) => {
   const result = game.banPlayer(req.params.id);
-  if (!result.success) {
-    res.status(400).json({ error: result.error });
-    return;
-  }
+  if (!result.success) { res.status(400).json({ error: result.error }); return; }
   logger.audit('admin_player_banned', `player="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
 router.post('/admin/api/players/:id/kick', adminAuthMiddleware, (req: Request, res: Response) => {
   const result = game.kickPlayer(req.params.id);
-  if (!result.success) {
-    res.status(400).json({ error: result.error });
-    return;
-  }
+  if (!result.success) { res.status(400).json({ error: result.error }); return; }
   logger.audit('admin_player_kicked', `player="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
 router.post('/admin/api/games/:id/end', adminAuthMiddleware, (req: Request, res: Response) => {
   const result = game.endGame(req.params.id);
-  if (!result.success) {
-    res.status(400).json({ error: result.error });
-    return;
-  }
+  if (!result.success) { res.status(400).json({ error: result.error }); return; }
   logger.audit('admin_game_ended', `game="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
 router.post('/admin/api/bans/ip', adminAuthMiddleware, (req: Request, res: Response) => {
   const { ip } = req.body;
-  if (!ip || typeof ip !== 'string') {
-    res.status(400).json({ error: 'IP is required' });
-    return;
-  }
+  if (!ip || typeof ip !== 'string') { res.status(400).json({ error: 'IP is required' }); return; }
   const result = game.banIp(ip.trim());
-  if (!result.success) {
-    res.status(400).json({ error: result.error });
-    return;
-  }
+  if (!result.success) { res.status(400).json({ error: result.error }); return; }
   logger.audit('admin_ip_banned', `ip="${ip.trim()}" by admin`);
   res.json({ success: true });
 });
@@ -534,43 +429,29 @@ const LOG_DIR = path.join(__dirname, '..', 'logs');
 function tailFile(filePath: string, lines: number): string[] {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
-    const allLines = content.split('\n').filter(Boolean);
-    return allLines.slice(-lines);
-  } catch {
-    return [];
-  }
+    return content.split('\n').filter(Boolean).slice(-lines);
+  } catch { return []; }
 }
 
 router.get('/admin/api/logs', adminAuthMiddleware, (req: Request, res: Response) => {
   const maxLines = Math.min(parseInt(req.query.lines as string) || 200, 5000);
   const type = (req.query.type as string) || 'all';
-
   const today = new Date().toISOString().slice(0, 10);
   const result: Record<string, string[]> = {};
 
-  if (type === 'all' || type === 'app') {
-    result.app = tailFile(path.join(LOG_DIR, `app-${today}.log`), maxLines);
-  }
-  if (type === 'all' || type === 'audit') {
-    result.audit = tailFile(path.join(LOG_DIR, `audit-${today}.log`), maxLines);
-  }
-  if (type === 'all' || type === 'http') {
-    result.http = tailFile(path.join(LOG_DIR, `http-${today}.log`), maxLines);
-  }
+  if (type === 'all' || type === 'app') result.app = tailFile(path.join(LOG_DIR, `app-${today}.log`), maxLines);
+  if (type === 'all' || type === 'audit') result.audit = tailFile(path.join(LOG_DIR, `audit-${today}.log`), maxLines);
+  if (type === 'all' || type === 'http') result.http = tailFile(path.join(LOG_DIR, `http-${today}.log`), maxLines);
 
-  const logFiles: string[] = [];
-  try {
-    const files = fs.readdirSync(LOG_DIR).filter((f) => f.endsWith('.log'));
-    logFiles.push(...files.sort().reverse());
-  } catch {
-    /* ok */
-  }
+  let logFiles: string[] = [];
+  try { logFiles = fs.readdirSync(LOG_DIR).filter((f) => f.endsWith('.log')).sort().reverse(); } catch { /* ok */ }
 
   logger.info('Admin logs viewed: type=' + type + ' lines=' + maxLines);
   res.json({ logs: result, files: logFiles });
 });
 
 /* ─── Admin: Leaderboard ─── */
+
 router.get('/admin/api/leaderboard', adminAuthMiddleware, (_req: Request, res: Response) => {
   const page = Math.max(1, parseInt(_req.query.page as string) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string) || 50));
@@ -580,6 +461,7 @@ router.get('/admin/api/leaderboard', adminAuthMiddleware, (_req: Request, res: R
 });
 
 /* ─── Admin: Game Archive ─── */
+
 router.get('/admin/api/archive', adminAuthMiddleware, (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
@@ -590,6 +472,7 @@ router.get('/admin/api/archive', adminAuthMiddleware, (req: Request, res: Respon
 });
 
 /* ─── Admin: Tournaments ─── */
+
 router.get('/admin/api/tournaments', adminAuthMiddleware, (_req: Request, res: Response) => {
   const ts = db.getTournaments();
   const enriched = ts.map((t: any) => ({ ...t, participantCount: db.getParticipantCount(t.id) }));
@@ -598,10 +481,7 @@ router.get('/admin/api/tournaments', adminAuthMiddleware, (_req: Request, res: R
 
 router.get('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, res: Response) => {
   const t = db.getTournament(req.params.id);
-  if (!t) {
-    res.status(404).json({ error: 'Not found' });
-    return;
-  }
+  if (!t) { res.status(404).json({ error: 'Not found' }); return; }
   const participants = db.getTournamentParticipants(req.params.id);
   const matches = db.getTournamentMatches(req.params.id);
   res.json({ ...t, participants, matches, participantCount: participants.length });
@@ -609,11 +489,7 @@ router.get('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, res
 
 router.delete('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, res: Response) => {
   const t = db.getTournament(req.params.id);
-  if (!t) {
-    res.status(404).json({ error: 'Not found' });
-    return;
-  }
-  /* Cascade delete via foreign keys */
+  if (!t) { res.status(404).json({ error: 'Not found' }); return; }
   const d = (db as any).getDb();
   d.prepare('DELETE FROM tournament_matches WHERE tournament_id = ?').run(req.params.id);
   d.prepare('DELETE FROM tournament_participants WHERE tournament_id = ?').run(req.params.id);
@@ -622,40 +498,30 @@ router.delete('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, 
   res.json({ success: true });
 });
 
-/* ─── Admin: Bot Games stats (count active Bot games) ─── */
+/* ─── Admin: Bot Games stats ─── */
+
 router.get('/admin/api/bot-games', adminAuthMiddleware, (_req: Request, res: Response) => {
   const allGames = game.getAllGames();
   const botGames = allGames.filter((g: any) => game.isBotGame(g));
   res.json({
     total: botGames.length,
     active: botGames.filter((g: any) => g.status === 'active').length,
-    games: botGames.map((g: any) => ({
-      id: g.id,
-      status: g.status,
-      players: g.players,
-      moves: g.moveHistory.length,
-      createdAt: g.createdAt,
-    })),
+    games: botGames.map((g: any) => ({ id: g.id, status: g.status, players: g.players, moves: g.moveHistory.length, createdAt: g.createdAt })),
   });
 });
 
-/* ─── Admin: Broadcast message to all connected players ─── */
+/* ─── Admin: Broadcast message ─── */
+
 router.post('/admin/api/broadcast', adminAuthMiddleware, (req: Request, res: Response) => {
   const { message } = req.body;
-  if (!message || typeof message !== 'string' || !message.trim()) {
-    res.status(400).json({ error: 'Message is required' });
-    return;
-  }
-  const count = game.broadcastToAll({
-    type: 'admin_broadcast',
-    message: message.trim(),
-    timestamp: Date.now(),
-  });
+  if (!message || typeof message !== 'string' || !message.trim()) { res.status(400).json({ error: 'Message is required' }); return; }
+  const count = game.broadcastToAll({ type: 'admin_broadcast', message: message.trim(), timestamp: Date.now() });
   logger.audit('admin_broadcast', `message="${message.trim()}" sent to ${count} players by admin`);
   res.json({ success: true, recipientCount: count });
 });
 
 /* ─── Admin: Server config ─── */
+
 router.get('/admin/api/config', adminAuthMiddleware, (_req: Request, res: Response) => {
   res.json({
     maxGamesPerPlayer: parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '20', 10),

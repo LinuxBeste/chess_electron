@@ -16,7 +16,7 @@ A cell is either `null` (empty) or a `Piece` object `{ type, color }`.
 
 ## Move Generation
 
-Each piece type has its own generator function. These produce **pseudo-legal** moves — they obey piece movement rules but do not filter out moves that leave the king in check.
+Each piece type has its own generator function. These produce **pseudo-legal** moves - they obey piece movement rules but do not filter out moves that leave the king in check.
 
 ### Pawn (`generatePawnMoves`)
 
@@ -47,7 +47,7 @@ Each piece type has its own generator function. These produce **pseudo-legal** m
 ### King (`generateKingMoves`)
 
 - 8 adjacent squares (filters out-of-bounds and friendly-occupied)
-- Castling: kingside (O-O) and queenside (O-O-O) — checks that intermediate squares and the rook's destination are empty. Attack validation is done later in `getLegalMoves`.
+- Castling: kingside (O-O) and queenside (O-O-O) - checks that intermediate squares and the rook's destination are empty. Attack validation is done later in `getLegalMoves`.
 
 ## Legal Move Filtering
 
@@ -66,8 +66,8 @@ For **castling**, an additional pre-check verifies that the king does not pass t
 1. Knight offsets (direct lookup)
 2. King offsets (direct lookup)
 3. Pawn offsets (direction depends on color)
-4. Orthogonal sliding (rook/queen) — scans 4 directions
-5. Diagonal sliding (bishop/queen) — scans 4 directions
+4. Orthogonal sliding (rook/queen) - scans 4 directions
+5. Diagonal sliding (bishop/queen) - scans 4 directions
 
 Each scan stops at the first piece encountered (blocking).
 
@@ -78,11 +78,11 @@ Each scan stops at the first piece encountered (blocking).
 1. Check if `color`'s king is in check via `isInCheck`.
 2. Compute all legal moves via `getLegalMoves`.
 3. If no legal moves:
-   - In check → `checkmate`
-   - Not in check → `stalemate`
+  - In check → `checkmate`
+  - Not in check → `stalemate`
 4. If legal moves exist:
-   - In check → `check` (informational, game continues as `active`)
-   - Not in check → `active`
+  - In check → `check` (informational, game continues as `active`)
+  - Not in check → `active`
 
 ## Applying Moves
 

@@ -8,13 +8,13 @@ src/routes.ts         Player API route handlers → parse input, delegate, respo
 src/admin.ts          Admin API route handlers → auth, stats, accounts CRUD
 src/game.ts           Game orchestration, auth, WebSocket broadcasting
 src/engine.ts         Stockfish engine manager (child process spawn)
-src/chess.ts          Pure chess engine — no I/O, no side effects
+src/chess.ts          Pure chess engine - no I/O, no side effects
 src/db.ts             SQLite database helpers (users, tokens, tournaments)
 src/types.ts          Shared TypeScript interfaces
 admin-frontend/src/   React SPA components (Vite + TailwindCSS + lucide-react)
 ```
 
-Data flows **downward**: routes call game functions, game functions call chess functions. Chess has no knowledge of HTTP, WebSocket, or game state — it operates on plain data structures (`Board`, `Move`, etc.).
+Data flows **downward**: routes call game functions, game functions call chess functions. Chess has no knowledge of HTTP, WebSocket, or game state - it operates on plain data structures (`Board`, `Move`, etc.).
 
 ## Data Flow
 
@@ -34,7 +34,7 @@ The Stockfish bot (`engine.ts`) spawns `stockfish-18-lite-single.js` as a child 
 1. On bot game creation, the engine is started and initialized with UCI commands.
 2. When it's the bot's turn, `engine.ts` sends the current board position via `position fen ...` and runs `go depth ...` or `go movetime ...`.
 3. The bot's best move is parsed from the UCI output and applied via the same move pipeline as human moves.
-4. Skill level (1–20) controls search depth and node limits.
+4. Skill level (1-20) controls search depth and node limits.
 
 Engine lifecycle: spawned on game creation, destroyed on resign/game end.
 
@@ -54,13 +54,17 @@ in-memory for the duration of the server process.
 ### In-Memory State
 
 Game/player state lives in `Map` objects in `game.ts`. No database for active games.
-Data is ephemeral — restarting the process loses in-progress games. This is acceptable
+Data is ephemeral - restarting the process loses in-progress games. This is acceptable
 for the target use case (local multiplayer, demos, small tournaments).
 
 ### SQLite for Persistence
 
 Registered users, auth tokens, friend relationships, tournament data, and bans are
 persisted to SQLite via `db.ts`. This allows server restarts without losing accounts.
+
+### Spectate Code Access
+
+Games can be created with `spectateMode: 'code'`, which generates a UUID `spectateCode`. Spectators must provide this code in their WebSocket `spectate` message. The code is stripped from all public responses (`GET /games`, `GET /games/active`, `GET /games/:id`, WS broadcasts) via `sanitizeForClient()` - it is only visible to the game creator in the creation response.
 
 ### Token-Based Auth
 
@@ -83,7 +87,7 @@ The WebSocket path is `/chess-ws` to avoid conflicts with webpack dev server's H
 1. Generate **pseudo-legal** moves for each piece (movement rules only).
 2. For each pseudo-legal move, `applyMove` on a cloned board, then check if the king is in check. If not, the move is legal.
 
-This is computationally heavier than integrating check-avoidance into each piece's move generator, but it is **provably correct** — there is no way for a pseudo-legal move to slip through as long as `applyMove` and `isInCheck` are correct.
+This is computationally heavier than integrating check-avoidance into each piece's move generator, but it is **provably correct** - there is no way for a pseudo-legal move to slip through as long as `applyMove` and `isInCheck` are correct.
 
 ### Attack Detection
 
@@ -93,9 +97,9 @@ This is computationally heavier than integrating check-avoidance into each piece
 
 The board is `board[rank][file]` where rank 0 = rank 8 (black's home) and rank 7 = rank 1 (white's home). This matches standard top-to-bottom rendering.
 
-### One-Game-Per-Player
+### Max Games Per Player
 
-A player cannot be in more than one active game at a time. This prevents game-stalling exploits and simplifies the concurrency model.
+A player is limited to `MAX_GAMES_PER_PLAYER` (default 20) concurrent active games. This prevents game-stalling exploits while allowing multiple simultaneous games.
 
 ### Elo Rating
 
@@ -107,6 +111,7 @@ In production, the API runs behind a Cloudflare Tunnel (no open ports). The dock
 
 ## Testing Strategy
 
-- **`chess.test.ts`** — Pure unit tests for chess engine functions. No HTTP, no I/O.
-- **`game.test.ts`** — Game logic unit tests (state transitions, validation).
-- **`api.test.ts`** — Integration tests using supertest against the Express app. Covers authentication, game lifecycle, bot games, tournaments, admin routes.
+- **`chess.test.ts`** - Pure unit tests for chess engine functions. No HTTP, no I/O.
+- **`game.test.ts`** - Game logic unit tests (state transitions, validation).
+- **`api.test.ts`** - Integration tests using supertest against the Express app. Covers authentication, game lifecycle, bot games, tournaments, admin routes. (396 tests)
+- **`ws.test.ts`** - WebSocket end-to-end tests (spectate with/without code, auth rejection, chat, challenge forwarding).

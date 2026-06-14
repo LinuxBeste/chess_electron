@@ -8,32 +8,33 @@ chess-client is a React + TypeScript application built on Electron. It connects 
 
 ```
 main process (Electron)
-  ├── main.ts          — Window creation, lifecycle
-  └── preload.ts       — Context bridge (exposes electronAPI)
+  ├── main.ts         - Window creation, lifecycle
+  └── preload.ts      - Context bridge (exposes electronAPI)
 
 renderer process (Web / React SPA)
-  ├── index.tsx        — Entry: mounts <App /> inside <HashRouter>
-  ├── App.tsx          — Routes, session restore, env config
-  ├── store.ts         — Observable state (singleton, shared by all components)
-  ├── api.ts           — Typed REST client (all fetch calls)
-  ├── socket.ts        — WebSocket manager with auto-reconnect
-  ├── chess.ts         — Board utilities, algebraic notation helpers
-  ├── settings.ts      — Settings schema, persistence, CSS variable application
-  ├── sound.ts         — Sound effect playback
-  ├── pages/           — Route-level page components
+  ├── index.tsx       - Entry: mounts <App /> inside <HashRouter>
+  ├── App.tsx         - Routes, session restore, env config
+  ├── store.ts        - Observable state (singleton, shared by all components)
+  ├── api.ts          - Typed REST client (all fetch calls)
+  ├── socket.ts       - WebSocket manager with auto-reconnect
+  ├── chess.ts        - Board utilities, algebraic notation helpers
+  ├── clipboard.ts    - Cross-platform clipboard (electronAPI → Clipboard API → execCommand)
+  ├── settings.ts     - Settings schema, persistence, CSS variable application
+  ├── sound.ts        - Sound effect playback
+  ├── pages/          - Route-level page components
   │   ├── LoginPage.tsx
   │   ├── LobbyPage.tsx
   │   ├── GamePage.tsx
   │   ├── ResultPage.tsx
   │   └── LocalGamePage.tsx (offline 1v1)
-  ├── components/      — Reusable UI components
+  ├── components/     - Reusable UI components
   │   ├── Navbar.tsx
   │   ├── Board.tsx / Square.tsx
   │   ├── MoveHistory.tsx
   │   ├── PromotionDialog.tsx
   │   ├── SettingsDialog.tsx
   │   └── ...
-  └── hooks/           — Custom React hooks
+  └── hooks/          - Custom React hooks
 ```
 
 ## Data Flow (Online)
@@ -44,7 +45,7 @@ User Input → React handler → api.ts (REST) → chess-api server
 chess-api broadcasts → socket.ts (WS) → store subscribers → React re-render
 ```
 
-Moves are sent via REST and broadcast back via WebSocket. The game view also performs optimistic updates — the board reflects the move immediately, then reconciles with the authoritative server state.
+Moves are sent via REST and broadcast back via WebSocket. The game view also performs optimistic updates - the board reflects the move immediately, then reconciles with the authoritative server state.
 
 ### Local 1v1 (Offline)
 
@@ -96,11 +97,12 @@ CSS variables are applied via `data-theme`, `data-board-style`, and `data-backgr
 
 ## Security
 
-- `contextIsolation: true` — renderer has no direct Node.js access
-- `nodeIntegration: false` — no require() in renderer
-- CSP headers restrict font loading to Google Fonts and API connections to the configured server URL
-- Preload exposes minimal surface area: `platform`, `openNewWindow`, `serverUrl`, `wsUrl`, `defaultUsername`, `autoConnect`, `defaultTheme`, `defaultSound`, `defaultHints`
-- In browser mode, `window.electronAPI` is `undefined` — all access is guarded with `?.`
+- `contextIsolation: true` - renderer has no direct Node.js access
+- `nodeIntegration: false` - no require() in renderer
+- CSP headers lock down fonts to Google Fonts and API calls to the configured server URL
+- Preload exposes only what's needed: `platform`, `openNewWindow`, `serverUrl`, `wsUrl`, `defaultUsername`, `autoConnect`, `defaultTheme`, `defaultSound`, `defaultHints`, `clipboardWrite`
+- In browser mode, `window.electronAPI` is `undefined` - all access is guarded with `?.`
+- Clipboard access uses a 3-tier fallback in `clipboard.ts`: tries Electron's native clipboard first, falls back to the web Clipboard API, then tries the ancient `document.execCommand('copy')` as a last resort. One of them usually works.
 
 ## Routing
 
@@ -122,23 +124,23 @@ Connect: `ws://localhost:3000/chess-ws?token=<bearer-token>`
 
 Messages are JSON with a `type` discriminator:
 
-- `type: "move"` — opponent made a move
-- `type: "game_over"` — game ended
-- `type: "game_started"` — game started for white
-- `type: "chat_message"` — chat message received
-- `type: "opponent_disconnected"` — opponent lost connection
-- `type: "opponent_reconnected"` — opponent reconnected
-- `type: "draw_offered"` — draw offered
-- `type: "draw_declined"` — draw declined
+- `type: "move"` - opponent made a move
+- `type: "game_over"` - game ended
+- `type: "game_started"` - game started for white
+- `type: "chat_message"` - chat message received
+- `type: "opponent_disconnected"` - opponent lost connection
+- `type: "opponent_reconnected"` - opponent reconnected
+- `type: "draw_offered"` - draw offered
+- `type: "draw_declined"` - draw declined
 
 Auto-reconnect: exponential backoff 1s → 2s → 4s → 8s → 10s (capped), 5 max attempts.
 
 ## Key Design Decisions
 
-1. **React + TypeScript** — Component-based architecture with strict typing throughout.
-2. **CSS-in-HTML** — All styles are in `index.html` `<style>` block (no CSS modules, no preprocessors). CSS variables for theming.
-3. **DOM-based board** — 64 `<div>` elements in an absolute-positioned grid, not Canvas. Enables CSS transitions and smooth interaction.
-4. **Lazy routes** — Each page is code-split via `React.lazy()` for smaller initial bundle.
-5. **Settings via data-attributes** — Theme, board style, and background are applied as `data-*` attributes on `<html>`, consumed by CSS selectors.
-6. **Offline local mode** — Full chess rules (moves, check, checkmate, stalemate, promotion, timers) run client-side with no server.
-7. **Same build for web + Electron** — The renderer targets `'web'`. `window.electronAPI` is optional. No compile-time branching.
+1. **React + TypeScript** - Component-based architecture with strict typing throughout.
+2. **CSS-in-HTML** - All styles are in `index.html` `<style>` block (no CSS modules, no preprocessors). CSS variables for theming.
+3. **DOM-based board** - 64 `<div>` elements in an absolute-positioned grid, not Canvas. Enables CSS transitions and smooth interaction.
+4. **Lazy routes** - Each page is code-split via `React.lazy()` for smaller initial bundle.
+5. **Settings via data-attributes** - Theme, board style, and background are applied as `data-*` attributes on `<html>`, consumed by CSS selectors.
+6. **Offline local mode** - Full chess rules (moves, check, checkmate, stalemate, promotion, timers) run client-side with no server.
+7. **Same build for web + Electron** - The renderer targets `'web'`. `window.electronAPI` is optional. No compile-time branching.

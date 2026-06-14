@@ -14,9 +14,7 @@ function timestamp(): string {
 }
 
 function ensureDir(dir: string): void {
-  if (!isTest) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+  if (!isTest) fs.mkdirSync(dir, { recursive: true });
 }
 
 function appendLine(file: string, line: string): void {
@@ -32,11 +30,7 @@ function appendLine(file: string, line: string): void {
       fs.closeSync(fd);
     }
   } catch (err) {
-    try {
-      console.error(`[LOGGER] Failed to write to ${file}:`, err);
-    } catch {
-      /* noop */
-    }
+    try { console.error(`[LOGGER] Failed to write to ${file}:`, err); } catch { /* noop */ }
   }
 }
 
@@ -75,9 +69,7 @@ function log(level: LogLevel, message: string, ...args: unknown[]): void {
 export function audit(action: string, detail: string): void {
   const ts = timestamp();
   const line = `[AUDIT] ${action} — ${detail}`;
-  if (!isTest) {
-    console.log(`\x1b[35m${line}\x1b[0m`);
-  }
+  if (!isTest) console.log(`\x1b[35m${line}\x1b[0m`);
   appendLine(`audit-${dateTag()}.log`, `[${ts}] ${line}`);
 }
 
@@ -105,22 +97,12 @@ export function cleanupOldLogs(): void {
         fs.unlinkSync(filePath);
       }
     }
-  } catch {
-    /* best-effort cleanup */
-  }
+  } catch { /* best-effort cleanup */ }
 }
 
-function error(message: string, ...args: unknown[]): void {
-  log('error', message, ...args);
-}
-function warn(message: string, ...args: unknown[]): void {
-  log('warn', message, ...args);
-}
-function info(message: string, ...args: unknown[]): void {
-  log('info', message, ...args);
-}
-function debug(message: string, ...args: unknown[]): void {
-  log('debug', message, ...args);
-}
+function error(message: string, ...args: unknown[]): void { log('error', message, ...args); }
+function warn(message: string, ...args: unknown[]): void { log('warn', message, ...args); }
+function info(message: string, ...args: unknown[]): void { log('info', message, ...args); }
+function debug(message: string, ...args: unknown[]): void { log('debug', message, ...args); }
 
 export default { error, warn, info, debug, audit, morganStream, cleanupOldLogs };
