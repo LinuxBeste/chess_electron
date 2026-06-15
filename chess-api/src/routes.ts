@@ -310,18 +310,42 @@ router.delete('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Reque
 });
 
 router.get('/players/:playerId/profile', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  const player = game.getPlayerById(req.params.playerId);
-  const user = db.getUserById(req.params.playerId);
-  logger.info('GET /players/' + req.params.playerId + '/profile: viewed by playerId=' + req.player.id);
-  res.json({
-    id: req.params.playerId,
-    username: player?.username ?? user?.username ?? null,
-    displayName: player?.displayName ?? user?.display_name ?? null,
-    isRegistered: player?.isRegistered ?? !!user,
-    avatarUrl: user?.avatar_url ?? null,
-    createdAt: user?.created_at ?? null,
-    stats: user ? { wins: user.wins, losses: user.losses, draws: user.draws } : null,
-  });
+  try {
+    if (!req.params.playerId) {
+      res.status(400).json({ error: 'Player ID is required' });
+      return;
+    }
+    const onlineIds = game.getOnlinePlayerIds();
+    const player = game.getPlayerById(req.params.playerId);
+    const user = db.getUserById(req.params.playerId);
+    const friendStatus = req.params.playerId === req.player.id ? 'none' : db.getFriendStatus(req.player.id, req.params.playerId);
+    const isOnline = onlineIds.has(req.params.playerId);
+    const currentGameId = isOnline ? game.getPlayerCurrentGameId(req.params.playerId) : null;
+    const friendIds = db.getFriendIds(req.params.playerId);
+    const archivedStats = db.getPlayerWinLossDraw(req.params.playerId);
+    const tournamentStats = db.getPlayerTournamentStats(req.params.playerId);
+    logger.info('GET /players/' + req.params.playerId + '/profile: viewed by playerId=' + req.player.id + ' online=' + isOnline);
+    res.json({
+      id: req.params.playerId,
+      username: player?.username ?? user?.username ?? null,
+      displayName: player?.displayName ?? user?.display_name ?? null,
+      isRegistered: player?.isRegistered ?? !!user,
+      avatarUrl: user?.avatar_url ?? null,
+      createdAt: user?.created_at ?? null,
+      rating: user?.rating ?? null,
+      friendStatus,
+      friendCount: friendIds.length,
+      isOnline,
+      currentGameId,
+      totalGames: archivedStats.wins + archivedStats.losses + archivedStats.draws,
+      archivedStats,
+      tournaments: tournamentStats,
+      stats: user ? { wins: user.wins, losses: user.losses, draws: user.draws } : null,
+    });
+  } catch (err) {
+    logger.error('Profile fetch failed: ' + err);
+    res.status(500).json({ error: 'Failed to load profile data' });
+  }
 });
 
 router.delete('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
@@ -374,6 +398,36 @@ router.get('/games/active', globalGetLimiter, (_req: Request, res: Response) => 
   const activeGames = game.getActiveGames();
   logger.info('GET /games/active: count=' + activeGames.length);
   res.json(activeGames);
+});
+
+router.get('/games/archive', globalGetLimiter, (req: Request, res: Response) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const playerId = req.query.player as string | undefined;
+    const status = req.query.status as string | undefined;
+    const fromDate = req.query.from ? parseInt(req.query.from as string) : undefined;
+    const toDate = req.query.to ? parseInt(req.query.to as string) : undefined;
+    const result = db.getArchivedGames(page, limit, playerId, status, fromDate, toDate);
+    res.json({ games: result.rows, total: result.total, page, limit });
+  } catch (err) {
+    logger.error('Archive query failed: ' + err);
+    res.status(500).json({ error: 'Failed to load archived games' });
+  }
+});
+
+router.get('/games/archive/:gameId', globalGetLimiter, (req: Request, res: Response) => {
+  try {
+    const game = db.getArchivedGame(req.params.gameId);
+    if (!game) {
+      res.status(404).json({ error: 'Game not found' });
+      return;
+    }
+    res.json(game);
+  } catch (err) {
+    logger.error('Archive game query failed: ' + err);
+    res.status(500).json({ error: 'Failed to load archived game' });
+  }
 });
 
 router.get('/games/:gameId', globalGetLimiter, (req: Request, res: Response) => {
@@ -737,36 +791,6 @@ router.get('/friends', authMiddleware, banCheckMiddleware, (req: Request, res: R
   const friends = game.getFriendList(req.player.id);
   logger.info('Friend list: playerId=' + req.player.id + ' count=' + friends.length);
   res.json(friends);
-});
-
-router.get('/games/archive', globalGetLimiter, (req: Request, res: Response) => {
-  try {
-    const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
-    const playerId = req.query.player as string | undefined;
-    const status = req.query.status as string | undefined;
-    const fromDate = req.query.from ? parseInt(req.query.from as string) : undefined;
-    const toDate = req.query.to ? parseInt(req.query.to as string) : undefined;
-    const result = db.getArchivedGames(page, limit, playerId, status, fromDate, toDate);
-    res.json({ games: result.rows, total: result.total, page, limit });
-  } catch (err) {
-    logger.error('Archive query failed: ' + err);
-    res.status(500).json({ error: 'Failed to load archived games' });
-  }
-});
-
-router.get('/games/archive/:gameId', globalGetLimiter, (req: Request, res: Response) => {
-  try {
-    const game = db.getArchivedGame(req.params.gameId);
-    if (!game) {
-      res.status(404).json({ error: 'Game not found' });
-      return;
-    }
-    res.json(game);
-  } catch (err) {
-    logger.error('Archive game query failed: ' + err);
-    res.status(500).json({ error: 'Failed to load archived game' });
-  }
 });
 
 /* ─── Tournaments ─── */

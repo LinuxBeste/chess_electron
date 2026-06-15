@@ -423,6 +423,20 @@ export function getPendingOutgoingRequests(userId: string): FriendRequestRow[] {
   return rows;
 }
 
+export function getFriendStatus(authUserId: string, otherUserId: string): 'none' | 'friends' | 'incoming' | 'outgoing' {
+  const d = getDb();
+  if (areFriends(authUserId, otherUserId)) return 'friends';
+  const incoming = d
+    .prepare('SELECT 1 FROM friend_requests WHERE from_user_id = ? AND to_user_id = ? AND status = ?')
+    .get(otherUserId, authUserId, 'pending');
+  if (incoming) return 'incoming';
+  const outgoing = d
+    .prepare('SELECT 1 FROM friend_requests WHERE from_user_id = ? AND to_user_id = ? AND status = ?')
+    .get(authUserId, otherUserId, 'pending');
+  if (outgoing) return 'outgoing';
+  return 'none';
+}
+
 export function hasPendingRequest(fromUserId: string, toUserId: string): boolean {
   const d = getDb();
   const row = d
@@ -606,9 +620,10 @@ export function getPlayerWinLossDraw(playerId: string): { wins: number; losses: 
   const wins = (
     d
       .prepare(
-        'SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner = ?',
+        `SELECT COUNT(*) as c FROM completed_games
+         WHERE (white_player_id = ? AND winner = 'white') OR (black_player_id = ? AND winner = 'black')`,
       )
-      .get(playerId, playerId, playerId) as { c: number }
+      .get(playerId, playerId) as { c: number }
   ).c;
   const allCount = (
     d
@@ -622,7 +637,8 @@ export function getPlayerWinLossDraw(playerId: string): { wins: number; losses: 
       )
       .get(playerId, playerId) as { c: number }
   ).c;
-  return { wins, losses: allCount - wins - draws, draws };
+  const losses = allCount - wins - draws;
+  return { wins, losses, draws };
 }
 
 /* ─── Cancel friend request ─── */
@@ -753,6 +769,29 @@ export function getTournamentMatches(tournamentId: string): any[] {
   return getDb()
     .prepare('SELECT * FROM tournament_matches WHERE tournament_id = ? ORDER BY round, position')
     .all(tournamentId);
+}
+
+export function getPlayerTournamentStats(playerId: string): { total: number; wins: number; currentId: string | null } {
+  const d = getDb();
+  const total = (
+    d
+      .prepare('SELECT COUNT(*) as c FROM tournament_participants WHERE player_id = ?')
+      .get(playerId) as { c: number }
+  ).c;
+  const wins = (
+    d
+      .prepare('SELECT COUNT(*) as c FROM tournaments WHERE winner_id = ?')
+      .get(playerId) as { c: number }
+  ).c;
+  const current = d
+    .prepare(
+      `SELECT t.id FROM tournament_participants tp
+       JOIN tournaments t ON t.id = tp.tournament_id
+       WHERE tp.player_id = ? AND t.status = 'active'
+       LIMIT 1`,
+    )
+    .get(playerId) as { id: string } | undefined;
+  return { total, wins, currentId: current?.id ?? null };
 }
 
 export function createTournamentMatch(

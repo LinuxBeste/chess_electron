@@ -601,7 +601,24 @@ export interface PlayerProfile {
   isRegistered: boolean;
   avatarUrl: string | null;
   createdAt: number | null;
+  rating: number | null;
+  friendStatus: 'none' | 'friends' | 'incoming' | 'outgoing';
+  friendCount: number;
+  isOnline: boolean;
+  currentGameId: string | null;
+  totalGames: number;
+  archivedStats: { wins: number; losses: number; draws: number };
+  tournaments: { total: number; wins: number; currentId: string | null };
   stats: { wins: number; losses: number; draws: number } | null;
+}
+
+/* Helper: get archived games for a specific player. */
+export async function getArchivedGamesForPlayer(
+  playerId: string,
+  page = 1,
+  limit = 20,
+): Promise<{ games: any[]; total: number; page: number; limit: number }> {
+  return getArchivedGames({ player: playerId, page, limit });
 }
 
 /* GET /players/:playerId/profile — auth required.

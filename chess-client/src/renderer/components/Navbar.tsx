@@ -92,7 +92,14 @@ export default function Navbar() {
         {(isLoggedIn || isOffline) && (
           <>
             {isLoggedIn && (
-              <span className="navbar-player" style={{ gap: 8 }}>
+              <span
+                className="navbar-player"
+                style={{ gap: 8, cursor: 'pointer' }}
+                onClick={() => {
+                  const pid = store.get('playerId');
+                  if (pid) navigate(`/profile/${pid}`);
+                }}
+              >
                 {avatarUrl ? (
                   <img
                     src={avatarSrc(avatarUrl)}

@@ -268,9 +268,16 @@ export default function GamePage() {
       store.set('currentGame', g);
       initGame(g);
     } catch (err: any) {
-      logger.error('Failed to fetch game', { gameId: gid, error: err.message });
-      store.toast(err.message || t('game.failedLoad'));
-      navigate('/lobby');
+      logger.info('Game not found via /games/, trying archive fallback', { gameId: gid });
+      try {
+        const g = await api.getArchivedGame(gid);
+        store.set('currentGame', g);
+        initGame(g);
+      } catch (err2: any) {
+        logger.error('Failed to fetch game (both live and archive)', { gameId: gid, error: err2.message });
+        store.toast(err.message || t('game.failedLoad'));
+        navigate('/lobby');
+      }
     }
   }
 

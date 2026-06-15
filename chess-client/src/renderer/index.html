@@ -180,41 +180,156 @@
          and hover effects.  Kept together to avoid duplication and to
          make it easy to tune timing globally. -- */
       @keyframes fadeIn {
-        from {
-          opacity: 0;
-        }
-        to {
-          opacity: 1;
-        }
+        from { opacity: 0; }
+        to   { opacity: 1; }
       }
       @keyframes scaleIn {
-        from {
-          opacity: 0;
-          transform: scale(0.8);
-        }
-        to {
-          opacity: 1;
-          transform: scale(1);
-        }
+        from { opacity: 0; transform: scale(0.8); }
+        to   { opacity: 1; transform: scale(1); }
       }
       @keyframes slideUp {
-        from {
-          opacity: 0;
-          transform: translateY(12px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
       }
       @keyframes pulse {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.4;
-        }
+        0%, 100% { opacity: 1; }
+        50%      { opacity: 0.4; }
+      }
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes slideInRight {
+        from { opacity: 0; transform: translateX(24px); }
+        to   { opacity: 1; transform: translateX(0); }
+      }
+      @keyframes shimmer {
+        0%   { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+      @keyframes countUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50%      { transform: translateY(-4px); }
+      }
+      @keyframes glow {
+        0%   { box-shadow: 0 0 4px rgba(79, 142, 247, 0.2); }
+        50%  { box-shadow: 0 0 16px rgba(79, 142, 247, 0.4); }
+        100% { box-shadow: 0 0 4px rgba(79, 142, 247, 0.2); }
+      }
+      @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+
+      /* ─── Page Entrance ─── */
+      .page-container {
+        animation: fadeInUp 300ms ease;
+      }
+      .page-content {
+        animation: slideInRight 350ms ease;
+      }
+      .stagger-enter {
+        animation: fadeInUp 300ms ease both;
+      }
+      .stagger-enter:nth-child(1) { animation-delay: 0ms; }
+      .stagger-enter:nth-child(2) { animation-delay: 40ms; }
+      .stagger-enter:nth-child(3) { animation-delay: 80ms; }
+      .stagger-enter:nth-child(4) { animation-delay: 120ms; }
+      .stagger-enter:nth-child(5) { animation-delay: 160ms; }
+      .stagger-enter:nth-child(6) { animation-delay: 200ms; }
+      .stagger-enter:nth-child(7) { animation-delay: 240ms; }
+      .stagger-enter:nth-child(8) { animation-delay: 280ms; }
+      .stagger-enter:nth-child(9) { animation-delay: 320ms; }
+      .stagger-enter:nth-child(10) { animation-delay: 360ms; }
+
+      /* ─── Shimmer Loading ─── */
+      .shimmer {
+        background: linear-gradient(90deg, var(--surface) 25%, var(--elevated) 50%, var(--surface) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s ease-in-out infinite;
+        border-radius: var(--radius-sm);
+      }
+      .shimmer-line {
+        height: 12px;
+        margin-bottom: 8px;
+        width: 100%;
+      }
+      .shimmer-line:last-child {
+        width: 60%;
+      }
+      .shimmer-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        margin: 0 auto 12px;
+      }
+      .shimmer-title {
+        height: 18px;
+        width: 120px;
+        margin: 0 auto 8px;
+      }
+      .shimmer-text {
+        height: 12px;
+        width: 80px;
+        margin: 0 auto;
+      }
+
+      /* ─── Hover Effects ─── */
+      .card {
+        transition: transform 200ms ease, box-shadow 200ms ease;
+      }
+      .card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+      }
+      .game-card {
+        transition: transform 200ms ease, box-shadow 200ms ease;
+      }
+      .game-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+        border-color: rgba(255,255,255,0.12);
+      }
+      .navbar-btn {
+        transition: all 200ms ease;
+      }
+      .navbar-btn:hover {
+        transform: scale(1.04);
+      }
+      .btn {
+        transition: all 200ms ease;
+      }
+      .btn:hover {
+        transform: scale(1.03);
+      }
+      .btn:active {
+        transform: scale(0.97);
+      }
+      .live-game-card {
+        transition: transform 200ms ease, box-shadow 200ms ease;
+      }
+      .live-game-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+      }
+
+      /* ─── Loading Spinner ─── */
+      .spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255,255,255,0.1);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: rotate 0.6s linear infinite;
+      }
+      .spinner-lg {
+        width: 32px;
+        height: 32px;
+        border-width: 3px;
       }
 
       /* ─── Navbar ─── */
@@ -1349,6 +1464,355 @@
       @media (max-width: 600px) {
         .login-card {
           padding: 20px 12px !important;
+        }
+      }
+
+      /* ─── Profile Page ─── */
+      .profile-page {
+        min-height: 100%;
+        width: 100%;
+        max-width: none;
+        padding: 0 24px 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .profile-body {
+        display: flex;
+        gap: 32px;
+        flex: 1;
+        min-height: 0;
+        align-items: flex-start;
+      }
+      .profile-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .profile-main > .game-card:first-child {
+        margin-top: 0;
+      }
+      .profile-side {
+        width: clamp(280px, 26vw, 420px);
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        position: sticky;
+        top: 20px;
+      }
+      .profile-header-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 20px;
+      }
+      .profile-avatar {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid var(--bg);
+        margin-top: -40px;
+        flex-shrink: 0;
+      }
+      .profile-avatar-placeholder {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        background: #2a2a2a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 4px solid var(--bg);
+        margin-top: -40px;
+        flex-shrink: 0;
+        font-size: 38px;
+        color: #555;
+      }
+      .profile-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        padding: 16px 0;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+      .profile-stat {
+        text-align: center;
+      }
+      .profile-stat-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .profile-stat-label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .profile-badge {
+        display: inline-block;
+        font-size: 12px;
+        padding: 3px 10px;
+        border-radius: 4px;
+        font-weight: 600;
+      }
+      .profile-badge-registered {
+        background: rgba(76,175,80,0.2);
+        color: #4caf50;
+      }
+      .profile-badge-temp {
+        background: rgba(255,152,0,0.2);
+        color: #ff9800;
+      }
+      .profile-badge-online {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: rgba(76,175,80,0.15);
+        color: #4caf50;
+      }
+      .profile-badge-offline {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: rgba(255,255,255,0.06);
+        color: var(--muted);
+      }
+      .profile-badge-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .profile-badge-dot-online { background: #4caf50; }
+      .profile-badge-dot-offline { background: #555; }
+      .profile-card {
+        padding: 24px;
+      }
+      .profile-card-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text);
+        margin: 0 0 6px;
+      }
+      .profile-card-sub {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 16px;
+      }
+      .profile-perf-row {
+        display: flex;
+        justify-content: space-around;
+        text-align: center;
+      }
+      .profile-perf-value {
+        font-size: 30px;
+        font-weight: 700;
+      }
+      .profile-perf-label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .profile-perf-pct {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .profile-wl-row {
+        display: flex;
+        justify-content: center;
+        gap: 24px;
+        margin-top: 14px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .profile-action-row {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+      .profile-about {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .profile-about-game {
+        color: #4f8ef7;
+      }
+      .profile-tourney-row {
+        display: flex;
+        gap: 24px;
+        font-size: 14px;
+      }
+      .profile-tourney-stat {
+        font-weight: 700;
+        color: var(--text);
+      }
+      .profile-tourney-label {
+        color: var(--muted);
+        margin-left: 4px;
+      }
+      .profile-tourney-active {
+        color: #4f8ef7;
+      }
+      .profile-match-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      .profile-match-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        transition: background 150ms ease;
+      }
+      .profile-match-row:hover {
+        background: rgba(255,255,255,0.03);
+        transform: none !important;
+        box-shadow: none !important;
+        border-color: transparent !important;
+      }
+      .profile-match-pawn {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: #2a2a2a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        color: #555;
+        flex-shrink: 0;
+      }
+      .profile-match-info {
+        flex: 1;
+        min-width: 0;
+        font-size: 14px;
+      }
+      .profile-match-names {
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .profile-match-meta {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 2px;
+      }
+      .profile-match-result {
+        font-size: 13px;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 4px;
+        flex-shrink: 0;
+      }
+
+      /* ─── Profile Responsive ─── */
+      @media (min-width: 1400px) {
+        .profile-page {
+          padding: 40px 32px 48px;
+        }
+        .profile-body {
+          gap: 40px;
+        }
+        .profile-main {
+          gap: 28px;
+        }
+        .profile-side {
+          gap: 28px;
+          width: clamp(320px, 24vw, 460px);
+        }
+      }
+      @media (max-width: 1100px) {
+        .profile-body {
+          gap: 28px;
+        }
+        .profile-side {
+          width: clamp(250px, 30vw, 360px);
+        }
+      }
+      @media (max-width: 900px) {
+        .profile-body {
+          flex-direction: column;
+          gap: 24px;
+        }
+        .profile-side {
+          width: 100%;
+          position: static;
+        }
+        .profile-page {
+          padding: 0 16px 32px;
+        }
+        .profile-main {
+          gap: 20px;
+        }
+      }
+      @media (max-width: 600px) {
+        .profile-stats-grid {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 8px;
+        }
+        .profile-avatar,
+        .profile-avatar-placeholder {
+          width: 72px;
+          height: 72px;
+          font-size: 28px;
+          margin-top: -32px;
+        }
+        .profile-header-row {
+          gap: 14px;
+        }
+        .profile-page {
+          padding: 0 12px 24px;
+        }
+        .profile-card {
+          padding: 18px;
+        }
+        .profile-perf-value {
+          font-size: 24px;
+        }
+        .profile-stat-value {
+          font-size: 18px;
+        }
+        .profile-match-row {
+          padding: 10px 12px;
+        }
+        .profile-body {
+          gap: 18px;
+        }
+        .profile-main {
+          gap: 18px;
+        }
+        .profile-side {
+          gap: 18px;
+        }
+      }
+      @media (max-width: 400px) {
+        .profile-stats-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+        .profile-avatar,
+        .profile-avatar-placeholder {
+          width: 60px;
+          height: 60px;
+          font-size: 24px;
+          margin-top: -28px;
+        }
+        .profile-perf-value {
+          font-size: 20px;
+        }
+        .profile-page {
+          padding: 0 8px 16px;
+        }
+        .profile-card {
+          padding: 14px;
         }
       }
     </style>

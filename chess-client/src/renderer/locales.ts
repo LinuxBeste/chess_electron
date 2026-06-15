@@ -234,6 +234,24 @@ export type TranslationKeys = {
     draws: string;
     total: string;
   };
+  profile: {
+    title: string;
+    rating: string;
+    gamesPlayed: string;
+    winRate: string;
+    addFriend: string;
+    removeFriend: string;
+    pendingRequest: string;
+    acceptRequest: string;
+    acceptRequestShort: string;
+    declineRequest: string;
+    friend: string;
+    editProfile: string;
+    matchHistory: string;
+    noGames: string;
+    back: string;
+    viewFullProfile: string;
+  };
   matchHistory: {
     title: string;
     loading: string;
@@ -723,6 +741,24 @@ export const en: TranslationKeys = {
     draws: 'Draws',
     total: 'Total: {count} games',
   },
+  profile: {
+    title: 'Profile',
+    rating: 'Rating',
+    gamesPlayed: 'Games Played',
+    winRate: 'Win Rate',
+    addFriend: 'Add Friend',
+    removeFriend: 'Remove Friend',
+    pendingRequest: 'Request Pending',
+    acceptRequest: 'Accept Friend Request',
+    acceptRequestShort: 'Accept',
+    declineRequest: 'Decline',
+    friend: 'Friends',
+    editProfile: 'Edit Profile',
+    matchHistory: 'Match History',
+    noGames: 'No games played yet',
+    back: 'Back',
+    viewFullProfile: 'View full profile →',
+  },
   matchHistory: {
     title: 'Match History',
     loading: 'Loading...',
@@ -1120,14 +1156,14 @@ export const de: TranslationKeys = {
     youBlack: 'Du (Schwarz)',
     waiting: 'Warte auf Gegner...',
     gameId: 'Spiel-ID:',
-    opponentDraw: 'Gegner bietet Remis an',
+    opponentDraw: 'Gegner bietet Unentschieden an',
     accept: 'Annehmen',
     decline: 'Ablehnen',
     menu: '☰ Menü',
     resign: 'Aufgeben',
     areYouSure: 'Bist du sicher?',
-    offerDraw: 'Remis anbieten',
-    drawOffered: 'Remis angeboten...',
+    offerDraw: 'Unentschieden anbieten',
+    drawOffered: 'Unentschieden angeboten...',
     abortGame: 'Spiel abbrechen',
     leave: 'Verlassen',
     failedLoad: 'Spiel laden fehlgeschlagen',
@@ -1144,7 +1180,7 @@ export const de: TranslationKeys = {
     blackToMove: '◄ Schwarz ist am Zug',
     whiteToMove: 'Weiß ist am Zug ◄',
     wins: '{color} gewinnt!',
-    stalemate: 'Patt — Remis',
+    stalemate: 'Patt — Unentschieden',
     ranOutOfTime: '{color} hat keine Zeit mehr',
     gameOver: 'Spiel vorbei',
     checkmate: 'Schachmatt',
@@ -1157,7 +1193,7 @@ export const de: TranslationKeys = {
     instruction: 'Gib das Gerät nach jedem Zug an deinen Gegner weiter.',
   },
   result: {
-    draw: 'Remis',
+    draw: 'Unentschieden',
     youWon: 'Gewonnen',
     youLost: 'Verloren',
     byCheckmate: 'durch Schachmatt',
@@ -1210,8 +1246,26 @@ export const de: TranslationKeys = {
     signUpPrompt: 'Melde dich an oder erstelle ein Konto, um deine Statistik zu verfolgen.',
     wins: 'Siege',
     losses: 'Niederlagen',
-    draws: 'Remis',
+    draws: 'Unentschieden',
     total: 'Insgesamt: {count} Spiele',
+  },
+  profile: {
+    title: 'Profil',
+    rating: 'Wertung',
+    gamesPlayed: 'Spiele gespielt',
+    winRate: 'Gewinnrate',
+    addFriend: 'Freund hinzufügen',
+    removeFriend: 'Freund entfernen',
+    pendingRequest: 'Anfrage ausstehend',
+    acceptRequest: 'Freundschaftsanfrage annehmen',
+    acceptRequestShort: 'Annehmen',
+    declineRequest: 'Ablehnen',
+    friend: 'Freunde',
+    editProfile: 'Profil bearbeiten',
+    matchHistory: 'Spielverlauf',
+    noGames: 'Noch keine Spiele gespielt',
+    back: 'Zurück',
+    viewFullProfile: 'Vollständiges Profil →',
   },
   matchHistory: {
     title: 'Spielverlauf',
@@ -1220,7 +1274,7 @@ export const de: TranslationKeys = {
     searchPlayer: 'Spieler suchen...',
     won: 'Gewonnen',
     lost: 'Verloren',
-    draw: 'Remis',
+    draw: 'Unentschieden',
     review: 'Rückblick',
   },
   settings: {
@@ -1267,7 +1321,7 @@ export const de: TranslationKeys = {
       statsLoading: 'Lade Statistiken...',
       wins: 'Siege',
       losses: 'Niederlagen',
-      draws: 'Remis',
+      draws: 'Unentschieden',
       notRegistered: 'Temporäres Konto',
       signUpPrompt:
         'Registriere dich mit einem Passwort, um deine Statistiken zu behalten und von jedem Gerät aus zu spielen.',
@@ -1389,8 +1443,8 @@ export const de: TranslationKeys = {
       confirmation: 'Bestätigung',
       confirmResign: 'Aufgeben bestätigen',
       confirmResignDesc: 'Doppelklick zum Aufgeben erforderlich',
-      confirmDraw: 'Remis bestätigen',
-      confirmDrawDesc: 'Bestätigung für Remis-Vereinbarung erforderlich',
+      confirmDraw: 'Unentschieden bestätigen',
+      confirmDrawDesc: 'Bestätigung für Unentschieden-Vereinbarung erforderlich',
       confirmAbort: 'Abbruch bestätigen',
       confirmAbortDesc: 'Bestätigung zum Abbrechen eines Spiels erforderlich',
       autoNextGame: 'Nächstes Spiel automatisch',

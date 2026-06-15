@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getPlayerProfile, sendFriendRequest, PlayerProfile, avatarSrc } from '../api';
 import { store } from '../store';
 import { t } from '../translate';
@@ -14,6 +15,7 @@ function fmtDate(ts: number): string {
 }
 
 export default function PlayerProfileDialog({ playerId, onClose }: Props) {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [error, setError] = useState('');
   const [friendLoading, setFriendLoading] = useState(false);
@@ -196,6 +198,18 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
                 {t('stats.unregistered')}
               </p>
             )}
+
+            <div style={{ marginTop: 12 }}>
+              <button
+                className="btn btn-sm btn-ghost"
+                onClick={() => {
+                  onClose();
+                  navigate(`/profile/${profile.id}`);
+                }}
+              >
+                {t('profile.viewFullProfile')}
+              </button>
+            </div>
           </>
         )}
       </div>
