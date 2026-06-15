@@ -117,7 +117,11 @@ class EngineManager {
       logger.warn('Engine not found for game', gameId);
       return;
     }
-    inst.process.stdin!.write(cmd + '\n');
+    try {
+      inst.process.stdin!.write(cmd + '\n');
+    } catch (err) {
+      logger.warn('Engine send failed for game ' + gameId + ': ' + err);
+    }
   }
 
   async getBestMove(gameId: string, movetime = 500): Promise<string> {
@@ -169,7 +173,11 @@ class EngineManager {
   destroyInstance(gameId: string): void {
     const inst = this.instances.get(gameId);
     if (inst) {
-      inst.process.kill();
+      try {
+        inst.process.kill();
+      } catch (err) {
+        logger.warn('Engine kill failed for game ' + gameId + ': ' + err);
+      }
       this.instances.delete(gameId);
       logger.info('Engine instance destroyed for game', gameId);
     }
@@ -181,7 +189,11 @@ class EngineManager {
 
   killAll(): void {
     for (const [gameId, inst] of this.instances) {
-      inst.process.kill();
+      try {
+        inst.process.kill();
+      } catch (err) {
+        logger.warn('Engine kill failed during shutdown for game ' + gameId + ': ' + err);
+      }
       logger.info('Engine killed on shutdown: game=' + gameId);
     }
     this.instances.clear();

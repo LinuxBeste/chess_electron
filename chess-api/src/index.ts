@@ -253,20 +253,31 @@ process.on('uncaughtException', (err: Error) => {
 const isTestEnv = typeof process.env.JEST_WORKER_ID !== 'undefined' || process.env.NODE_ENV === 'test';
 if (!isTestEnv) {
   const server = createServer();
-  setInterval(cleanupIpRateBuckets, 60000);
   setInterval(() => {
-    game.cleanupRateLimitBuckets();
-    game.cleanupLoginAttempts();
+    try { cleanupIpRateBuckets(); } catch (e) { logger.error('cleanupIpRateBuckets failed: ' + e); }
+  }, 60000);
+  setInterval(() => {
+    try { game.cleanupRateLimitBuckets(); } catch (e) { logger.error('cleanupRateLimitBuckets failed: ' + e); }
+    try { game.cleanupLoginAttempts(); } catch (e) { logger.error('cleanupLoginAttempts failed: ' + e); }
   }, 60000);
   logger.cleanupOldLogs();
-  setInterval(logger.cleanupOldLogs, 86400000);
-  setInterval(() => db.cleanupExpiredTokens(), 3600000);
+  setInterval(() => { try { logger.cleanupOldLogs(); } catch (e) { logger.error('cleanupOldLogs failed: ' + e); } }, 86400000);
+  setInterval(() => { try { db.cleanupExpiredTokens(); } catch (e) { logger.error('cleanupExpiredTokens failed: ' + e); } }, 3600000);
 
   const DB_BACKUP_INTERVAL_MS = parseInt(process.env.DB_BACKUP_INTERVAL_MS ?? String(6 * 3600000), 10);
   if (DB_BACKUP_INTERVAL_MS > 0) {
-    db.createBackup();
-    setInterval(() => db.createBackup(), DB_BACKUP_INTERVAL_MS);
+    try { db.createBackup(); } catch (e) { logger.error('Initial DB backup failed: ' + e); }
+    setInterval(() => { try { db.createBackup(); } catch (e) { logger.error('DB backup failed: ' + e); } }, DB_BACKUP_INTERVAL_MS);
   }
+
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error('Port ' + PORT + ' is already in use');
+    } else {
+      logger.error('Server error: ' + err.message);
+    }
+    process.exit(1);
+  });
 
   server.listen(PORT, () => {
     logger.info('Chess API server listening on port ' + PORT);

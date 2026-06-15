@@ -45,10 +45,9 @@ afterAll(() => {
 function wsConnect(token: string): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://localhost:${port}`, token);
-    ws.on('open', () => resolve(ws));
-    ws.on('error', (err) => reject(err));
-    /* Safety timeout */
-    setTimeout(() => reject(new Error('WS connect timeout')), 5000);
+    const timer = setTimeout(() => reject(new Error('WS connect timeout')), 5000);
+    ws.on('open', () => { clearTimeout(timer); resolve(ws); });
+    ws.on('error', (err) => { clearTimeout(timer); reject(err); });
   });
 }
 
@@ -93,9 +92,9 @@ describe('WebSocket connection', () => {
   test('rejects connection without token', async () => {
     const ws = new WebSocket(`ws://localhost:${port}`);
     await new Promise<void>((resolve, reject) => {
-      ws.on('open', () => resolve());
-      ws.on('error', () => reject(new Error('connect error')));
-      setTimeout(() => reject(new Error('timeout')), 5000);
+      const timer = setTimeout(() => reject(new Error('timeout')), 5000);
+      ws.on('open', () => { clearTimeout(timer); resolve(); });
+      ws.on('error', () => { clearTimeout(timer); reject(new Error('connect error')); });
     });
     const code = await wsWaitForClose(ws);
     expect(code).toBe(4001);

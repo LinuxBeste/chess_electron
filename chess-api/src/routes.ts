@@ -337,30 +337,31 @@ router.delete('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res
 router.post('/games', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const visibility: 'public' | 'private' = req.body.visibility === 'private' ? 'private' : 'public';
   const spectateMode: 'public' | 'code' = req.body.spectateMode === 'code' ? 'code' : 'public';
-  const g = game.createGame(req.player.id, visibility, spectateMode);
-  logger.info(
-    'Game created: gameId=' +
-      g.id +
-      ' by playerId=' +
-      req.player.id +
-      ' visibility=' +
-      visibility +
-      ' spectateMode=' +
-      spectateMode,
-  );
-  res.status(201).json(g);
+  try {
+    const g = game.createGame(req.player.id, visibility, spectateMode);
+    logger.info('Game created: gameId=' + g.id + ' by playerId=' + req.player.id + ' visibility=' + visibility + ' spectateMode=' + spectateMode);
+    res.status(201).json(g);
+  } catch (err) {
+    logger.error('Game creation failed: ' + err);
+    res.status(500).json({ error: 'Failed to create game' });
+  }
 });
 
 router.post('/games/bot', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const skillLevel = Math.max(1, Math.min(20, parseInt(req.body.skillLevel as string) || 1));
   const playerColor: 'white' | 'black' = req.body.playerColor === 'black' ? 'black' : 'white';
-  const result = game.createBotGame(req.player.id, skillLevel, playerColor);
-  if (!result.success) {
-    res.status(503).json({ error: result.error });
-    return;
+  try {
+    const result = game.createBotGame(req.player.id, skillLevel, playerColor);
+    if (!result.success) {
+      res.status(503).json({ error: result.error });
+      return;
+    }
+    logger.info('Bot game created: gameId=' + result.game.id + ' by playerId=' + req.player.id + ' skill=' + skillLevel);
+    res.status(201).json(result.game);
+  } catch (err) {
+    logger.error('Bot game creation failed: ' + err);
+    res.status(500).json({ error: 'Failed to create bot game' });
   }
-  logger.info('Bot game created: gameId=' + result.game.id + ' by playerId=' + req.player.id + ' skill=' + skillLevel);
-  res.status(201).json(result.game);
 });
 
 router.get('/games', globalGetLimiter, (_req: Request, res: Response) => {
@@ -552,10 +553,15 @@ router.post(
       res.status(409).json({ error: 'Friend request already pending' });
       return;
     }
-    const requestId = db.createFriendRequest(req.player.id, targetUser.id);
-    game.broadcastFriendRequest(req.player.id, targetUser.id, requestId);
-    logger.info('Friend request sent: from=' + req.player.id + ' to=' + targetUser.id);
-    res.status(201).json({ id: requestId });
+    try {
+      const requestId = db.createFriendRequest(req.player.id, targetUser.id);
+      game.broadcastFriendRequest(req.player.id, targetUser.id, requestId);
+      logger.info('Friend request sent: from=' + req.player.id + ' to=' + targetUser.id);
+      res.status(201).json({ id: requestId });
+    } catch (err) {
+      logger.error('Friend request creation failed: ' + err);
+      res.status(500).json({ error: 'Failed to send friend request' });
+    }
   },
 );
 
@@ -611,11 +617,16 @@ router.post('/friends/requests/:id/accept', authMiddleware, banCheckMiddleware, 
     res.status(400).json({ error: 'Friend request is no longer pending' });
     return;
   }
-  db.updateFriendRequestStatus(fr.id, 'accepted');
-  db.addFriendRelationship(fr.from_user_id, fr.to_user_id);
-  game.broadcastFriendRequestAccepted(req.player.id, fr.from_user_id);
-  logger.info('Friend request accepted: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
-  res.json({ success: true });
+  try {
+    db.updateFriendRequestStatus(fr.id, 'accepted');
+    db.addFriendRelationship(fr.from_user_id, fr.to_user_id);
+    game.broadcastFriendRequestAccepted(req.player.id, fr.from_user_id);
+    logger.info('Friend request accepted: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Friend request accept failed: ' + err);
+    res.status(500).json({ error: 'Failed to accept friend request' });
+  }
 });
 
 router.post('/friends/requests/:id/decline', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
@@ -636,10 +647,15 @@ router.post('/friends/requests/:id/decline', authMiddleware, banCheckMiddleware,
     res.status(400).json({ error: 'Friend request is no longer pending' });
     return;
   }
-  db.updateFriendRequestStatus(fr.id, 'declined');
-  game.broadcastFriendRequestDeclined(req.player.id, fr.from_user_id);
-  logger.info('Friend request declined: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
-  res.json({ success: true });
+  try {
+    db.updateFriendRequestStatus(fr.id, 'declined');
+    game.broadcastFriendRequestDeclined(req.player.id, fr.from_user_id);
+    logger.info('Friend request declined: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Friend request decline failed: ' + err);
+    res.status(500).json({ error: 'Failed to decline friend request' });
+  }
 });
 
 router.post('/friends/requests/:id/cancel', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
@@ -660,9 +676,14 @@ router.post('/friends/requests/:id/cancel', authMiddleware, banCheckMiddleware, 
     res.status(400).json({ error: 'Friend request is no longer pending' });
     return;
   }
-  db.updateFriendRequestStatus(fr.id, 'cancelled');
-  logger.info('Friend request cancelled: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
-  res.json({ success: true });
+  try {
+    db.updateFriendRequestStatus(fr.id, 'cancelled');
+    logger.info('Friend request cancelled: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Friend request cancel failed: ' + err);
+    res.status(500).json({ error: 'Failed to cancel friend request' });
+  }
 });
 
 router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
@@ -674,28 +695,38 @@ router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, (req: Re
     res.status(404).json({ error: 'Not friends with this user' });
     return;
   }
-  db.removeFriendRelationship(req.player.id, req.params.friendId);
-  game.broadcastFriendRemoved(req.player.id, req.params.friendId);
-  logger.info('Friend removed: playerId=' + req.player.id + ' friendId=' + req.params.friendId);
-  res.json({ success: true });
+  try {
+    db.removeFriendRelationship(req.player.id, req.params.friendId);
+    game.broadcastFriendRemoved(req.player.id, req.params.friendId);
+    logger.info('Friend removed: playerId=' + req.player.id + ' friendId=' + req.params.friendId);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Friend remove failed: ' + err);
+    res.status(500).json({ error: 'Failed to remove friend' });
+  }
 });
 
 router.get('/leaderboard', globalGetLimiter, (_req: Request, res: Response) => {
-  const page = Math.max(1, parseInt(_req.query.page as string) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string) || 50));
-  const offset = (page - 1) * limit;
-  const result = db.getLeaderboard(limit, offset);
-  const entries = result.rows.map((r) => ({
-    playerId: r.id,
-    username: r.username,
-    displayName: r.display_name,
-    avatarUrl: r.avatar_url,
-    rating: r.rating,
-    wins: r.wins,
-    losses: r.losses,
-    draws: r.draws,
-  }));
-  res.json({ entries, total: result.total, page, limit });
+  try {
+    const page = Math.max(1, parseInt(_req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string) || 50));
+    const offset = (page - 1) * limit;
+    const result = db.getLeaderboard(limit, offset);
+    const entries = result.rows.map((r) => ({
+      playerId: r.id,
+      username: r.username,
+      displayName: r.display_name,
+      avatarUrl: r.avatar_url,
+      rating: r.rating,
+      wins: r.wins,
+      losses: r.losses,
+      draws: r.draws,
+    }));
+    res.json({ entries, total: result.total, page, limit });
+  } catch (err) {
+    logger.error('Leaderboard query failed: ' + err);
+    res.status(500).json({ error: 'Failed to load leaderboard' });
+  }
 });
 
 router.get('/friends', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
@@ -709,23 +740,33 @@ router.get('/friends', authMiddleware, banCheckMiddleware, (req: Request, res: R
 });
 
 router.get('/games/archive', globalGetLimiter, (req: Request, res: Response) => {
-  const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
-  const playerId = req.query.player as string | undefined;
-  const status = req.query.status as string | undefined;
-  const fromDate = req.query.from ? parseInt(req.query.from as string) : undefined;
-  const toDate = req.query.to ? parseInt(req.query.to as string) : undefined;
-  const result = db.getArchivedGames(page, limit, playerId, status, fromDate, toDate);
-  res.json({ games: result.rows, total: result.total, page, limit });
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const playerId = req.query.player as string | undefined;
+    const status = req.query.status as string | undefined;
+    const fromDate = req.query.from ? parseInt(req.query.from as string) : undefined;
+    const toDate = req.query.to ? parseInt(req.query.to as string) : undefined;
+    const result = db.getArchivedGames(page, limit, playerId, status, fromDate, toDate);
+    res.json({ games: result.rows, total: result.total, page, limit });
+  } catch (err) {
+    logger.error('Archive query failed: ' + err);
+    res.status(500).json({ error: 'Failed to load archived games' });
+  }
 });
 
 router.get('/games/archive/:gameId', globalGetLimiter, (req: Request, res: Response) => {
-  const game = db.getArchivedGame(req.params.gameId);
-  if (!game) {
-    res.status(404).json({ error: 'Game not found' });
-    return;
+  try {
+    const game = db.getArchivedGame(req.params.gameId);
+    if (!game) {
+      res.status(404).json({ error: 'Game not found' });
+      return;
+    }
+    res.json(game);
+  } catch (err) {
+    logger.error('Archive game query failed: ' + err);
+    res.status(500).json({ error: 'Failed to load archived game' });
   }
-  res.json(game);
 });
 
 /* ─── Tournaments ─── */
@@ -742,17 +783,27 @@ router.post('/tournaments', authMiddleware, banCheckMiddleware, (req: Request, r
   }
   const maxPlayers = Math.max(2, Math.min(64, parseInt(req.body.maxPlayers as string) || 8));
   const isPrivate = req.body.isPrivate === true;
-  const t = db.createTournament(name, req.player.id, maxPlayers, isPrivate);
-  db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, 0);
-  const tournament = db.getTournament(t.id);
-  if (t.joinCode) tournament.join_code = t.joinCode;
-  res.status(201).json(tournament);
+  try {
+    const t = db.createTournament(name, req.player.id, maxPlayers, isPrivate);
+    db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, 0);
+    const tournament = db.getTournament(t.id);
+    if (t.joinCode) tournament.join_code = t.joinCode;
+    res.status(201).json(tournament);
+  } catch (err) {
+    logger.error('Tournament creation failed: ' + err);
+    res.status(500).json({ error: 'Tournament creation failed' });
+  }
 });
 
 router.get('/tournaments', globalGetLimiter, (_req: Request, res: Response) => {
-  const tournaments = db.getPublicTournaments();
-  const enriched = tournaments.map((t: any) => ({ ...t, participantCount: db.getParticipantCount(t.id) }));
-  res.json(enriched);
+  try {
+    const tournaments = db.getPublicTournaments();
+    const enriched = tournaments.map((t: any) => ({ ...t, participantCount: db.getParticipantCount(t.id) }));
+    res.json(enriched);
+  } catch (err) {
+    logger.error('Tournament list query failed: ' + err);
+    res.status(500).json({ error: 'Failed to load tournaments' });
+  }
 });
 
 router.post('/tournaments/join-by-code', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
@@ -783,23 +834,33 @@ router.post('/tournaments/join-by-code', authMiddleware, banCheckMiddleware, (re
     res.status(400).json({ error: 'Tournament is full' });
     return;
   }
-  db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, count);
-  logger.info('Tournament joined via code: tournamentId=' + t.id + ' playerId=' + req.player.id);
-  res.json(db.getTournament(t.id));
+  try {
+    db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, count);
+    logger.info('Tournament joined via code: tournamentId=' + t.id + ' playerId=' + req.player.id);
+    res.json(db.getTournament(t.id));
+  } catch (err) {
+    logger.error('Failed to join tournament: ' + err);
+    res.status(500).json({ error: 'Failed to join tournament' });
+  }
 });
 
 router.get('/tournaments/:id', globalGetLimiter, (req: Request, res: Response) => {
-  const t = db.getTournament(req.params.id);
-  if (!t) {
-    res.status(404).json({ error: 'Tournament not found' });
-    return;
+  try {
+    const t = db.getTournament(req.params.id);
+    if (!t) {
+      res.status(404).json({ error: 'Tournament not found' });
+      return;
+    }
+    const participants = db.getTournamentParticipants(req.params.id);
+    const matches = db.getTournamentMatches(req.params.id);
+    const result: any = { ...t, participants, matches, participantCount: participants.length };
+    const playerId = (req as any).player?.id;
+    if (playerId !== t.created_by) delete result.join_code;
+    res.json(result);
+  } catch (err) {
+    logger.error('Tournament detail query failed: ' + err);
+    res.status(500).json({ error: 'Failed to load tournament details' });
   }
-  const participants = db.getTournamentParticipants(req.params.id);
-  const matches = db.getTournamentMatches(req.params.id);
-  const result: any = { ...t, participants, matches, participantCount: participants.length };
-  const playerId = (req as any).player?.id;
-  if (playerId !== t.created_by) delete result.join_code;
-  res.json(result);
 });
 
 router.post('/tournaments/:id/join', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
@@ -825,9 +886,14 @@ router.post('/tournaments/:id/join', authMiddleware, banCheckMiddleware, (req: R
     res.status(400).json({ error: 'Tournament is full' });
     return;
   }
-  db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, count);
-  logger.info('Tournament joined: tournamentId=' + t.id + ' playerId=' + req.player.id);
-  res.json(db.getTournament(t.id));
+  try {
+    db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, count);
+    logger.info('Tournament joined: tournamentId=' + t.id + ' playerId=' + req.player.id);
+    res.json(db.getTournament(t.id));
+  } catch (err) {
+    logger.error('Failed to join tournament: ' + err);
+    res.status(500).json({ error: 'Failed to join tournament' });
+  }
 });
 
 router.post('/tournaments/:id/leave', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
@@ -844,8 +910,13 @@ router.post('/tournaments/:id/leave', authMiddleware, banCheckMiddleware, (req: 
     res.status(400).json({ error: 'Tournament already started' });
     return;
   }
-  db.removeTournamentParticipant(t.id, req.player.id);
-  res.json({ success: true });
+  try {
+    db.removeTournamentParticipant(t.id, req.player.id);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Failed to leave tournament: ' + err);
+    res.status(500).json({ error: 'Failed to leave tournament' });
+  }
 });
 
 router.put('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
@@ -873,9 +944,14 @@ router.put('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Request
   }
   const maxPlayers = Math.max(2, Math.min(64, parseInt(req.body.maxPlayers as string) || t.max_players));
   const isPrivate = req.body.isPrivate === true ? 1 : 0;
-  db.updateTournamentDetails(t.id, name, maxPlayers, isPrivate);
-  logger.info('Tournament updated: tournamentId=' + t.id);
-  res.json(db.getTournament(t.id));
+  try {
+    db.updateTournamentDetails(t.id, name, maxPlayers, isPrivate);
+    logger.info('Tournament updated: tournamentId=' + t.id);
+    res.json(db.getTournament(t.id));
+  } catch (err) {
+    logger.error('Tournament update failed: ' + err);
+    res.status(500).json({ error: 'Failed to update tournament' });
+  }
 });
 
 router.delete('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
@@ -896,9 +972,14 @@ router.delete('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Requ
     res.status(400).json({ error: 'Cannot delete a started tournament' });
     return;
   }
-  db.deleteTournament(t.id);
-  logger.info('Tournament deleted: tournamentId=' + t.id);
-  res.json({ success: true });
+  try {
+    db.deleteTournament(t.id);
+    logger.info('Tournament deleted: tournamentId=' + t.id);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Tournament delete failed: ' + err);
+    res.status(500).json({ error: 'Failed to delete tournament' });
+  }
 });
 
 router.post('/tournaments/:id/start', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
@@ -932,18 +1013,23 @@ router.post('/tournaments/:id/start', authMiddleware, banCheckMiddleware, (req: 
   const seeds: (string | null)[] = new Array(size).fill(null);
   for (let i = 0; i < count; i++) seeds[i] = playerIds[i];
 
-  const matches: { round: number; position: number; white: string | null; black: string | null }[] = [];
-  for (let i = 0; i < size / 2; i++) {
-    matches.push({ round: 1, position: i, white: seeds[i * 2], black: seeds[i * 2 + 1] });
-  }
+  try {
+    const matches: { round: number; position: number; white: string | null; black: string | null }[] = [];
+    for (let i = 0; i < size / 2; i++) {
+      matches.push({ round: 1, position: i, white: seeds[i * 2], black: seeds[i * 2 + 1] });
+    }
 
-  for (const m of matches) {
-    db.createTournamentMatch(t.id, m.round, m.position, m.white, m.black);
-  }
+    for (const m of matches) {
+      db.createTournamentMatch(t.id, m.round, m.position, m.white, m.black);
+    }
 
-  db.updateTournamentStatus(t.id, 'active', Date.now());
-  logger.info('Tournament started: tournamentId=' + t.id + ' players=' + count);
-  res.json(db.getTournament(t.id));
+    db.updateTournamentStatus(t.id, 'active', Date.now());
+    logger.info('Tournament started: tournamentId=' + t.id + ' players=' + count);
+    res.json(db.getTournament(t.id));
+  } catch (err) {
+    logger.error('Failed to start tournament: ' + err);
+    res.status(500).json({ error: 'Failed to start tournament' });
+  }
 });
 
 export default router;
