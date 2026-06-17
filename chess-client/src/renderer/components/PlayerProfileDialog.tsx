@@ -23,15 +23,19 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
 
   useEffect(() => {
     logger.info('Loading profile for playerId=' + playerId);
+    const aborted = { current: false };
     getPlayerProfile(playerId)
       .then((p) => {
+        if (aborted.current) return;
         logger.info('Profile loaded: username=' + (p.username || '?'));
         setProfile(p);
       })
       .catch((e) => {
+        if (aborted.current) return;
         logger.error('Profile load failed: playerId=' + playerId + ' error=' + e);
         setError(e.message || 'Failed to load profile');
       });
+    return () => { aborted.current = true; };
   }, [playerId]);
 
   async function handleAddFriend() {

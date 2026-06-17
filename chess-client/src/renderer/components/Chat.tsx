@@ -6,7 +6,7 @@
  * Sending uses the socketManager.send() method with a chat_message type.
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { socketManager } from '../socket';
 import { store } from '../store';
 import { t } from '../translate';
@@ -22,7 +22,7 @@ interface ChatProps {
   gameId: string;
 }
 
-export default function Chat({ gameId }: ChatProps) {
+const Chat = memo(function Chat({ gameId }: ChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
@@ -33,7 +33,7 @@ export default function Chat({ gameId }: ChatProps) {
 
     const unsubHistory = socketManager.onChatHistory((msg) => {
       if (msg.gameId === gameId) {
-        setMessages(msg.messages);
+        setMessages(msg.messages.slice(-200));
       }
     });
 
@@ -45,7 +45,11 @@ export default function Chat({ gameId }: ChatProps) {
         length: chatMsg.text.length,
         gameId,
       });
-      setMessages((prev) => [...prev, chatMsg]);
+      setMessages((prev) => {
+        const next = [...prev, chatMsg];
+        if (next.length > 200) next.splice(0, next.length - 200);
+        return next;
+      });
     });
 
     return () => {
@@ -81,7 +85,7 @@ export default function Chat({ gameId }: ChatProps) {
         {messages.map((msg, i) => {
           const isMe = msg.playerId === store.get('playerId');
           return (
-            <div key={i} className={`chat-msg ${isMe ? 'chat-msg-self' : ''}`}>
+            <div key={msg.playerId + '-' + i} className={`chat-msg ${isMe ? 'chat-msg-self' : ''}`}>
               <span className="chat-name" style={{ color: isMe ? '#4f8ef7' : '#888' }}>
                 {isMe ? t('chat.you') : msg.username}
               </span>
@@ -108,4 +112,6 @@ export default function Chat({ gameId }: ChatProps) {
       </div>
     </div>
   );
-}
+});
+
+export default Chat;

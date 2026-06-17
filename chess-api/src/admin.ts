@@ -22,6 +22,7 @@ function initAdminCreds(): void {
   ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
   if (process.env.ADMIN_PASSWORD) {
     ADMIN_PASSWORD_HASH = hashPassword(process.env.ADMIN_PASSWORD);
+    logger.info('ADMIN_PASSWORD has been set from ENV. No random password was generated.');
   } else {
     const password = crypto.randomBytes(24).toString('hex');
     logger.warn('No ADMIN_PASSWORD set. A random password was generated for this session and will be logged.');

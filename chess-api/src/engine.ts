@@ -105,7 +105,7 @@ class EngineManager {
       const check = () => {
         if (!this.instances.has(gameId)) return;
         if (condition()) return resolve();
-        setTimeout(check, 10);
+        setTimeout(check, 100);
       };
       check();
     });

@@ -218,9 +218,7 @@ export function saveSettings(settings: AppSettings): void {
 }
 
 export function getSetting<K extends keyof AppSettings>(key: K): AppSettings[K] {
-  const val = loadSettings()[key];
-  logger.debug('Setting accessed', { key, value: val });
-  return val;
+  return cachedSettings[key];
 }
 
 export function applyTheme(theme: string): void {

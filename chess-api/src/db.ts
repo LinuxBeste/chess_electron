@@ -39,6 +39,8 @@ function migrate(): void {
       created_at INTEGER NOT NULL
     );
 
+    CREATE INDEX IF NOT EXISTS idx_user_tokens_user_id ON user_tokens(user_id);
+
     CREATE TABLE IF NOT EXISTS bans (
       id TEXT PRIMARY KEY,
       player_id TEXT,
@@ -54,6 +56,10 @@ function migrate(): void {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
+
+    CREATE INDEX IF NOT EXISTS idx_friend_requests_to_status ON friend_requests(to_user_id, status);
+    CREATE INDEX IF NOT EXISTS idx_friend_requests_from_status ON friend_requests(from_user_id, status);
+    CREATE INDEX IF NOT EXISTS idx_friend_requests_both_status ON friend_requests(from_user_id, to_user_id, status);
 
     CREATE TABLE IF NOT EXISTS friends (
       user_id TEXT NOT NULL REFERENCES users(id),
@@ -214,27 +220,27 @@ export function createUser(id: string, username: string, passwordHash: string | 
     displayName,
     Date.now(),
   );
-  logger.info('DB: user created id=' + id + ' username=' + username);
+  logger.debug('DB: user created id=' + id + ' username=' + username);
 }
 
 export function getUserByUsername(username: string): DbUser | undefined {
   const d = getDb();
   const user = d.prepare('SELECT * FROM users WHERE username = ?').get(username) as DbUser | undefined;
-  logger.info('DB: getUserByUsername username=' + username + (user ? ' found' : ' not found'));
+  logger.debug('DB: getUserByUsername username=' + username + (user ? ' found' : ' not found'));
   return user;
 }
 
 export function getUserById(id: string): DbUser | undefined {
   const d = getDb();
   const user = d.prepare('SELECT * FROM users WHERE id = ?').get(id) as DbUser | undefined;
-  logger.info('DB: getUserById id=' + id + (user ? ' found' : ' not found'));
+  logger.debug('DB: getUserById id=' + id + (user ? ' found' : ' not found'));
   return user;
 }
 
 export function saveToken(token: string, userId: string): void {
   const d = getDb();
   d.prepare('INSERT INTO user_tokens (token, user_id, created_at) VALUES (?, ?, ?)').run(token, userId, Date.now());
-  logger.info('DB: token saved userId=' + userId);
+  logger.debug('DB: token saved userId=' + userId);
 }
 
 export function getUserIdByToken(token: string): string | undefined {
@@ -242,14 +248,14 @@ export function getUserIdByToken(token: string): string | undefined {
   const row = d.prepare('SELECT user_id FROM user_tokens WHERE token = ?').get(token) as
     | { user_id: string }
     | undefined;
-  logger.info('DB: getUserIdByToken ' + (row ? 'found userId=' + row.user_id : 'not found'));
+  logger.debug('DB: getUserIdByToken ' + (row ? 'found userId=' + row.user_id : 'not found'));
   return row?.user_id;
 }
 
 export function deleteToken(token: string): void {
   const d = getDb();
   d.prepare('DELETE FROM user_tokens WHERE token = ?').run(token);
-  logger.info('DB: token deleted');
+  logger.debug('DB: token deleted');
 }
 
 export function cleanupExpiredTokens(maxAgeMs = 30 * 86400000): number {
@@ -289,66 +295,66 @@ export async function createBackup(): Promise<string | null> {
 
 export function addWin(userId: string): void {
   getDb().prepare('UPDATE users SET wins = wins + 1 WHERE id = ?').run(userId);
-  logger.info('DB: addWin userId=' + userId);
+  logger.debug('DB: addWin userId=' + userId);
 }
 
 export function addLoss(userId: string): void {
   getDb().prepare('UPDATE users SET losses = losses + 1 WHERE id = ?').run(userId);
-  logger.info('DB: addLoss userId=' + userId);
+  logger.debug('DB: addLoss userId=' + userId);
 }
 
 export function addDraw(userId: string): void {
   getDb().prepare('UPDATE users SET draws = draws + 1 WHERE id = ?').run(userId);
-  logger.info('DB: addDraw userId=' + userId);
+  logger.debug('DB: addDraw userId=' + userId);
 }
 
 export function loadAllUsers(): DbUser[] {
   const d = getDb();
   const users = d.prepare('SELECT * FROM users').all() as DbUser[];
-  logger.info('DB: loadAllUsers count=' + users.length);
+  logger.debug('DB: loadAllUsers count=' + users.length);
   return users;
 }
 
 export function loadAllTokens(): { token: string; user_id: string }[] {
   const d = getDb();
   const tokens = d.prepare('SELECT token, user_id FROM user_tokens').all() as { token: string; user_id: string }[];
-  logger.info('DB: loadAllTokens count=' + tokens.length);
+  logger.debug('DB: loadAllTokens count=' + tokens.length);
   return tokens;
 }
 
 export function updateUserAvatar(id: string, url: string | null): void {
   getDb().prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(url, id);
-  logger.info('DB: avatar updated id=' + id + ' url=' + url);
+  logger.debug('DB: avatar updated id=' + id + ' url=' + url);
 }
 
 export function updateUsername(id: string, username: string): void {
   getDb().prepare('UPDATE users SET username = ? WHERE id = ?').run(username, id);
-  logger.info('DB: username updated id=' + id + ' username=' + username);
+  logger.debug('DB: username updated id=' + id + ' username=' + username);
 }
 
 export function updateUserStats(id: string, wins: number, losses: number, draws: number): void {
   getDb().prepare('UPDATE users SET wins = ?, losses = ?, draws = ? WHERE id = ?').run(wins, losses, draws, id);
-  logger.info('DB: stats updated id=' + id + ' w=' + wins + ' l=' + losses + ' d=' + draws);
+  logger.debug('DB: stats updated id=' + id + ' w=' + wins + ' l=' + losses + ' d=' + draws);
 }
 
 export function updateUserDisplayName(id: string, displayName: string): void {
   getDb().prepare('UPDATE users SET display_name = ? WHERE id = ?').run(displayName, id);
-  logger.info('DB: displayName updated id=' + id + ' name=' + displayName);
+  logger.debug('DB: displayName updated id=' + id + ' name=' + displayName);
 }
 
 export function updateUserPasswordHash(id: string, passwordHash: string): void {
   getDb().prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, id);
-  logger.info('DB: password hash updated id=' + id);
+  logger.debug('DB: password hash updated id=' + id);
 }
 
 export function deleteUserTokens(id: string): void {
   getDb().prepare('DELETE FROM user_tokens WHERE user_id = ?').run(id);
-  logger.info('DB: tokens deleted userId=' + id);
+  logger.debug('DB: tokens deleted userId=' + id);
 }
 
 export function deleteUserRecord(id: string): void {
   getDb().prepare('DELETE FROM users WHERE id = ?').run(id);
-  logger.info('DB: user record deleted id=' + id);
+  logger.debug('DB: user record deleted id=' + id);
 }
 
 /* ─── Bans ─── */
@@ -357,7 +363,7 @@ export function saveBan(id: string, playerId: string | null, ip: string | null):
   getDb()
     .prepare('INSERT OR REPLACE INTO bans (id, player_id, ip, banned_at) VALUES (?, ?, ?, ?)')
     .run(id, playerId, ip, Date.now());
-  logger.info('DB: ban saved id=' + id + ' playerId=' + playerId + ' ip=' + ip);
+  logger.debug('DB: ban saved id=' + id + ' playerId=' + playerId + ' ip=' + ip);
 }
 
 export function loadAllBans(): { id: string; player_id: string | null; ip: string | null }[] {
@@ -367,13 +373,13 @@ export function loadAllBans(): { id: string; player_id: string | null; ip: strin
     player_id: string | null;
     ip: string | null;
   }[];
-  logger.info('DB: loadAllBans count=' + bans.length);
+  logger.debug('DB: loadAllBans count=' + bans.length);
   return bans;
 }
 
 export function deleteBanById(id: string): void {
   getDb().prepare('DELETE FROM bans WHERE id = ?').run(id);
-  logger.info('DB: ban deleted id=' + id);
+  logger.debug('DB: ban deleted id=' + id);
 }
 
 /* ─── Friends ─── */
@@ -394,14 +400,14 @@ export function createFriendRequest(fromUserId: string, toUserId: string): strin
   d.prepare(
     'INSERT INTO friend_requests (id, from_user_id, to_user_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
   ).run(id, fromUserId, toUserId, 'pending', now, now);
-  logger.info('DB: friend request created id=' + id + ' from=' + fromUserId + ' to=' + toUserId);
+  logger.debug('DB: friend request created id=' + id + ' from=' + fromUserId + ' to=' + toUserId);
   return id;
 }
 
 export function getFriendRequest(id: string): FriendRequestRow | undefined {
   const d = getDb();
   const fr = d.prepare('SELECT * FROM friend_requests WHERE id = ?').get(id) as FriendRequestRow | undefined;
-  logger.info('DB: getFriendRequest id=' + id + (fr ? ' found' : ' not found'));
+  logger.debug('DB: getFriendRequest id=' + id + (fr ? ' found' : ' not found'));
   return fr;
 }
 
@@ -410,7 +416,7 @@ export function getPendingIncomingRequests(userId: string): FriendRequestRow[] {
   const rows = d
     .prepare('SELECT * FROM friend_requests WHERE to_user_id = ? AND status = ? ORDER BY created_at DESC')
     .all(userId, 'pending') as FriendRequestRow[];
-  logger.info('DB: pending incoming requests userId=' + userId + ' count=' + rows.length);
+  logger.debug('DB: pending incoming requests userId=' + userId + ' count=' + rows.length);
   return rows;
 }
 
@@ -419,7 +425,7 @@ export function getPendingOutgoingRequests(userId: string): FriendRequestRow[] {
   const rows = d
     .prepare('SELECT * FROM friend_requests WHERE from_user_id = ? AND status = ? ORDER BY created_at DESC')
     .all(userId, 'pending') as FriendRequestRow[];
-  logger.info('DB: pending outgoing requests userId=' + userId + ' count=' + rows.length);
+  logger.debug('DB: pending outgoing requests userId=' + userId + ' count=' + rows.length);
   return rows;
 }
 
@@ -445,13 +451,13 @@ export function hasPendingRequest(fromUserId: string, toUserId: string): boolean
     )
     .get(fromUserId, toUserId, toUserId, fromUserId, 'pending');
   const result = !!row;
-  logger.info('DB: hasPendingRequest from=' + fromUserId + ' to=' + toUserId + ' =' + result);
+  logger.debug('DB: hasPendingRequest from=' + fromUserId + ' to=' + toUserId + ' =' + result);
   return result;
 }
 
 export function updateFriendRequestStatus(id: string, status: string): void {
   getDb().prepare('UPDATE friend_requests SET status = ?, updated_at = ? WHERE id = ?').run(status, Date.now(), id);
-  logger.info('DB: friend request status updated id=' + id + ' status=' + status);
+  logger.debug('DB: friend request status updated id=' + id + ' status=' + status);
 }
 
 export function addFriendRelationship(userId: string, friendId: string): void {
@@ -467,21 +473,21 @@ export function addFriendRelationship(userId: string, friendId: string): void {
     userId,
     now,
   );
-  logger.info('DB: friend relationship added user1=' + userId + ' user2=' + friendId);
+  logger.debug('DB: friend relationship added user1=' + userId + ' user2=' + friendId);
 }
 
 export function removeFriendRelationship(userId: string, friendId: string): void {
   getDb()
     .prepare('DELETE FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)')
     .run(userId, friendId, friendId, userId);
-  logger.info('DB: friend relationship removed user1=' + userId + ' user2=' + friendId);
+  logger.debug('DB: friend relationship removed user1=' + userId + ' user2=' + friendId);
 }
 
 export function getFriendIds(userId: string): string[] {
   const d = getDb();
   const rows = d.prepare('SELECT friend_id FROM friends WHERE user_id = ?').all(userId) as { friend_id: string }[];
   const ids = rows.map((r) => r.friend_id);
-  logger.info('DB: getFriendIds userId=' + userId + ' count=' + ids.length);
+  logger.debug('DB: getFriendIds userId=' + userId + ' count=' + ids.length);
   return ids;
 }
 
@@ -567,7 +573,7 @@ export function saveCompletedGame(
     Date.now(),
     timeControl,
   );
-  logger.info('DB: completed game saved id=' + id);
+  logger.debug('DB: completed game saved id=' + id);
 }
 
 export function getArchivedGames(
@@ -617,28 +623,17 @@ export function deleteArchivedGame(id: string): void {
 
 export function getPlayerWinLossDraw(playerId: string): { wins: number; losses: number; draws: number } {
   const d = getDb();
-  const wins = (
-    d
-      .prepare(
-        `SELECT COUNT(*) as c FROM completed_games
-         WHERE (white_player_id = ? AND winner = 'white') OR (black_player_id = ? AND winner = 'black')`,
-      )
-      .get(playerId, playerId) as { c: number }
-  ).c;
-  const allCount = (
-    d
-      .prepare('SELECT COUNT(*) as c FROM completed_games WHERE white_player_id = ? OR black_player_id = ?')
-      .get(playerId, playerId) as { c: number }
-  ).c;
-  const draws = (
-    d
-      .prepare(
-        'SELECT COUNT(*) as c FROM completed_games WHERE (white_player_id = ? OR black_player_id = ?) AND winner IS NULL',
-      )
-      .get(playerId, playerId) as { c: number }
-  ).c;
-  const losses = allCount - wins - draws;
-  return { wins, losses, draws };
+  const row = d
+    .prepare(
+      `SELECT
+        COUNT(*) FILTER (WHERE (white_player_id = ? AND winner = 'white') OR (black_player_id = ? AND winner = 'black')) AS wins,
+        COUNT(*) FILTER (WHERE winner IS NULL) AS draws,
+        COUNT(*) AS total
+       FROM completed_games
+       WHERE white_player_id = ? OR black_player_id = ?`,
+    )
+    .get(playerId, playerId, playerId, playerId) as { wins: number; draws: number; total: number };
+  return { wins: row.wins, losses: row.total - row.wins - row.draws, draws: row.draws };
 }
 
 /* ─── Cancel friend request ─── */
@@ -724,6 +719,19 @@ export function getParticipantCount(tournamentId: string): number {
     .prepare('SELECT COUNT(*) as c FROM tournament_participants WHERE tournament_id = ?')
     .get(tournamentId) as { c: number };
   return row.c;
+}
+
+export function getPublicTournamentsWithCounts(): any[] {
+  return getDb()
+    .prepare(
+      `SELECT t.*, COUNT(tp.id) AS participantCount
+       FROM tournaments t
+       LEFT JOIN tournament_participants tp ON tp.tournament_id = t.id
+       WHERE t.is_private = 0
+       GROUP BY t.id
+       ORDER BY t.created_at DESC`,
+    )
+    .all();
 }
 
 export function updateTournamentStatus(
@@ -818,7 +826,7 @@ export function updateTournamentMatch(id: string, gameId: string, winnerId: stri
 export function areFriends(userId: string, friendId: string): boolean {
   const row = getDb().prepare('SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?').get(userId, friendId);
   const result = !!row;
-  logger.info('DB: areFriends user1=' + userId + ' user2=' + friendId + ' =' + result);
+  logger.debug('DB: areFriends user1=' + userId + ' user2=' + friendId + ' =' + result);
   return result;
 }
 

@@ -89,6 +89,18 @@ describe('WebSocket connection', () => {
     ws.close();
   });
 
+  test('connects with comma-separated protocol header', async () => {
+    const p = await registerPlayer('ws_comma');
+    const ws = await new Promise<WebSocket>((resolve, reject) => {
+      const ws = new WebSocket(`ws://localhost:${port}`, [p.token, 'extra-value']);
+      const timer = setTimeout(() => reject(new Error('WS connect timeout')), 5000);
+      ws.on('open', () => { clearTimeout(timer); resolve(ws); });
+      ws.on('error', (err) => { clearTimeout(timer); reject(err); });
+    });
+    expect(ws.readyState).toBe(WebSocket.OPEN);
+    ws.close();
+  });
+
   test('rejects connection without token', async () => {
     const ws = new WebSocket(`ws://localhost:${port}`);
     await new Promise<void>((resolve, reject) => {

@@ -126,7 +126,10 @@ export function createServer(): http.Server {
       (ws as any).__pongReceived = true;
     });
 
-    const token = ws.protocol || (req.headers['sec-websocket-protocol'] as string | undefined);
+    /* sec-websocket-protocol is a comma-separated list; pick the first real value.
+       ws.protocol is the server-chosen protocol, not the client token. */
+    const protocolHeader = req.headers['sec-websocket-protocol'] as string | undefined;
+    const token = protocolHeader ? protocolHeader.split(',')[0].trim() : undefined;
 
     if (!token) {
       decrementWsIp(clientIp);
@@ -165,7 +168,8 @@ export function createServer(): http.Server {
           logger.info('WS unspectate: playerId=' + player.id + ' gameId=' + spectatingGameId);
           spectatingGameId = null;
         } else if (msg.type === 'chat_message' && typeof msg.gameId === 'string' && typeof msg.text === 'string') {
-          game.handleChatMessage(msg.gameId, player.id, (msg.text as string).trim(), ws);
+          const trimmed = (msg.text as string).trim().slice(0, 500);
+          if (trimmed) game.handleChatMessage(msg.gameId, player.id, trimmed, ws);
         } else if (msg.type === 'get_chat_history' && typeof msg.gameId === 'string') {
           game.sendChatHistory(msg.gameId as string, ws);
         } else if (msg.type === 'offer_draw' && typeof msg.gameId === 'string') {

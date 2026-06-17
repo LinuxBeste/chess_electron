@@ -101,7 +101,7 @@ export function findKing(board: Board, color: 'white' | 'black'): [number, numbe
 }
 
 /** Unicode chess characters for piece rendering */
-const PIECE_CHARS: Record<string, Record<string, string>> = {
+export const PIECE_CHARS: Record<string, Record<string, string>> = {
   white: { king: '♔', queen: '♕', rook: '♖', bishop: '♗', knight: '♘', pawn: '♙' },
   black: { king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟' },
 };

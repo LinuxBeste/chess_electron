@@ -151,9 +151,17 @@ export function hashPassword(password: string): string {
 }
 
 export function verifyPassword(password: string, stored: string): boolean {
-  const [salt, key] = stored.split(':');
+  const parts = stored.split(':');
+  if (parts.length < 2) return false;
+  const [salt, key] = parts;
+  if (!salt || !key) return false;
   const check = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
-  return key === check;
+  if (key.length !== check.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(key), Buffer.from(check));
+  } catch {
+    return false;
+  }
 }
 
 export function authenticatePlayer(token: string): Player | null {
@@ -164,9 +172,9 @@ export function authenticatePlayer(token: string): Player | null {
   }
   const player = players.get(playerId) ?? null;
   if (player) {
-    logger.info('Auth ok: playerId=' + playerId + ' username=' + player.username);
+    logger.debug('Auth ok: playerId=' + playerId + ' username=' + player.username);
   } else {
-    logger.info('Auth failed: playerId=' + playerId + ' not in memory');
+    logger.debug('Auth failed: playerId=' + playerId + ' not in memory');
   }
   return player;
 }
@@ -230,17 +238,25 @@ export function cleanupPlayerWaitingGames(playerId: string): void {
     }
   }
   for (const id of toDelete) {
-    games.delete(id);
+    removeGameById(id);
   }
   if (toDelete.length > 0) {
     logger.info('Cleaned up waiting games: playerId=' + playerId + ' count=' + toDelete.length);
   }
 }
 
+export function removeGameById(id: string): void {
+  games.delete(id);
+  chatHistory.delete(id);
+}
+
 export function sendToPlayer(playerId: string, message: Record<string, unknown>): void {
+  sendToPlayerRaw(playerId, JSON.stringify(message));
+}
+
+export function sendToPlayerRaw(playerId: string, data: string): void {
   const conns = wsConnections.get(playerId);
   if (!conns) return;
-  const data = JSON.stringify(message);
   for (const ws of conns) {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(data);
@@ -274,10 +290,10 @@ export function removeSpectator(gameId: string, ws: WebSocket): void {
   logger.info('Spectator removed: gameId=' + gameId);
 }
 
-function sendToSpectators(gameId: string, message: Record<string, unknown>): void {
+function sendToSpectators(gameId: string, dataOrMessage: Record<string, unknown> | string): void {
   const conns = spectatorConnections.get(gameId);
   if (!conns) return;
-  const data = JSON.stringify(message);
+  const data = typeof dataOrMessage === 'string' ? dataOrMessage : JSON.stringify(dataOrMessage);
   for (const ws of conns) {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(data);
@@ -318,12 +334,13 @@ function broadcastGameListUpdate(): void {
 }
 
 function broadcastToGame(gameId: string, message: Record<string, unknown>): void {
+  const data = JSON.stringify(message);
   const game = games.get(gameId);
   if (!game) return;
   const { white, black } = game.players;
-  if (white) sendToPlayer(white, message);
-  if (black) sendToPlayer(black, message);
-  sendToSpectators(gameId, message);
+  if (white) sendToPlayerRaw(white, data);
+  if (black) sendToPlayerRaw(black, data);
+  sendToSpectators(gameId, data);
 }
 
 function countActiveGamesForPlayer(playerId: string): number {
@@ -582,7 +599,7 @@ export function abortGame(gameId: string, playerId: string): { success: boolean;
   if (game.players.black) sendToPlayer(game.players.black, { type: 'game_aborted', gameId });
   sendToSpectators(gameId, { type: 'game_aborted', gameId });
   spectatorConnections.delete(gameId);
-  games.delete(gameId);
+  removeGame(gameId);
   broadcastGameListUpdate();
   logger.info('Game aborted: gameId=' + gameId + ' by playerId=' + playerId);
   return { success: true };
@@ -804,10 +821,11 @@ function updateEloRatings(game: GameState, winner: Color | null): void {
 
 function recordGameResult(game: GameState, winner: Color | null): void {
   game.winner = winner;
-  const user = db.getUserById(winner || '');
+  const winnerId = winner ? game.players[winner] : null;
+  const user = winnerId ? db.getUserById(winnerId) : null;
   if (user) {
     db.addWin(user.id);
-    const opponentId = game.players.white === winner ? game.players.black : game.players.white;
+    const opponentId = winner === 'white' ? game.players.black : game.players.white;
     if (opponentId) {
       const opponent = db.getUserById(opponentId);
       if (opponent) db.addLoss(opponent.id);
@@ -1078,8 +1096,17 @@ export function getPlayerStats(playerId: string): { wins: number; losses: number
 
 const chatHistory = new Map<string, { playerId: string; username: string; text: string; timestamp: number }[]>();
 
+export function cleanupChatHistory(gameId: string): void {
+  chatHistory.delete(gameId);
+}
+
+function removeGame(gameId: string): void {
+  removeGameById(gameId);
+}
+
 export function handleChatMessage(gameId: string, playerId: string, text: string, ws: WebSocket): void {
   if (!text) return;
+  if (text.length > 500) text = text.slice(0, 500);
   const player = players.get(playerId);
   if (!player) return;
   const game = games.get(gameId);
@@ -1213,7 +1240,7 @@ export function banPlayer(playerId: string): { success: true } | { success: fals
   for (const [gameId, g] of games) {
     if (g.players.white === playerId || g.players.black === playerId) {
       if (g.status === 'waiting') {
-        games.delete(gameId);
+  removeGameById(gameId);
       } else if (g.status === 'active') {
         g.status = 'resigned';
         g.winner = g.players.white === playerId ? 'black' : 'white';
@@ -1301,7 +1328,7 @@ export function kickPlayer(playerId: string): { success: true } | { success: fal
 
   for (const [gameId, g] of games) {
     if (g.status === 'waiting' && g.players.white === playerId) {
-      games.delete(gameId);
+      removeGame(gameId);
     }
   }
   broadcastGameListUpdate();
@@ -1533,7 +1560,7 @@ export function sweepStaleWaitingGames(): number {
     }
   }
   for (const id of toDelete) {
-    games.delete(id);
+    removeGameById(id);
   }
   if (toDelete.length > 0) {
     logger.info('Swept stale waiting games: count=' + toDelete.length);

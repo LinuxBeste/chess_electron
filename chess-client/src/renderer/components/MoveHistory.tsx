@@ -6,7 +6,7 @@
  * gets the `history-latest` highlight class for quick visual scanning.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, Fragment, memo } from 'react';
 import { t } from '../translate';
 import logger from '../logger';
 
@@ -14,7 +14,7 @@ interface MoveHistoryProps {
   moves: string[];
 }
 
-export default function MoveHistory({ moves }: MoveHistoryProps) {
+const MoveHistory = memo(function MoveHistory({ moves }: MoveHistoryProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   /* Auto-scroll the container to show the latest move */
@@ -63,7 +63,7 @@ export default function MoveHistory({ moves }: MoveHistoryProps) {
             const isLastWhite = wIdx >= moves.length - 1;
             const isLastBlack = bIdx >= moves.length - 1;
             return (
-              <>
+              <Fragment key={i}>
                 <div className="history-num">{i + 1}.</div>
                 <div className={`history-move ${isLastWhite ? 'history-latest' : ''}`}>{moves[wIdx]}</div>
                 {bIdx < moves.length ? (
@@ -71,11 +71,13 @@ export default function MoveHistory({ moves }: MoveHistoryProps) {
                 ) : (
                   <div />
                 )}
-              </>
+              </Fragment>
             );
           })}
         </div>
       </div>
     </div>
   );
-}
+});
+
+export default MoveHistory;

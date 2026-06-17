@@ -1,4 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
+import { PIECE_CHARS } from '../src/renderer/chess';
 
 /* Re-implement the functions from chess.ts to test them independently,
  * since the real functions import DOM types which jsdom provides. */
@@ -206,6 +207,30 @@ describe('chess client helpers', () => {
         const svg = `<span class="piece-char" style="font-size:36px;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;text-shadow:0 2px 4px rgba(0,0,0,0.4);color:${color === 'white' ? '#ffffff' : '#1a1a1a'}">${char}</span>`;
         expect(svg).toContain(char);
         expect(svg).toContain('piece-char');
+      }
+    }
+  });
+});
+
+describe('PIECE_CHARS', () => {
+  test('contains all 6 piece types for each color', () => {
+    const expected = { king: 1, queen: 1, rook: 1, bishop: 1, knight: 1, pawn: 1 };
+    expect(Object.keys(PIECE_CHARS.white)).toHaveLength(6);
+    expect(Object.keys(PIECE_CHARS.black)).toHaveLength(6);
+    for (const color of ['white', 'black'] as const) {
+      for (const [type] of Object.entries(expected)) {
+        expect(PIECE_CHARS[color]).toHaveProperty(type);
+        expect(typeof PIECE_CHARS[color][type]).toBe('string');
+        expect(PIECE_CHARS[color][type].length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  test('chars are valid Unicode strings', () => {
+    for (const color of ['white', 'black'] as const) {
+      for (const [, char] of Object.entries(PIECE_CHARS[color])) {
+        expect(char.codePointAt(0)).toBeGreaterThanOrEqual(0x2654);
+        expect(char.codePointAt(0)).toBeLessThanOrEqual(0x265f);
       }
     }
   });

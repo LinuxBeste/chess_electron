@@ -331,6 +331,21 @@ describe('GET /health', () => {
     expect(res.body).toHaveProperty('gamesActive');
     expect(res.body).toHaveProperty('playersOnline');
   });
+
+  test('rate limits after 60 rapid requests', async () => {
+    const { clearIpRateBuckets } = await import('../src/routes');
+    clearIpRateBuckets();
+
+    /* Fire 60 requests — all should succeed */
+    for (let i = 0; i < 60; i++) {
+      const res = await request.get('/health');
+      expect(res.status).toBe(200);
+    }
+
+    /* 61st should be rate limited */
+    const blocked = await request.get('/health');
+    expect(blocked.status).toBe(429);
+  });
 });
 
 describe('Auth — extended', () => {
@@ -1145,6 +1160,35 @@ describe('GET /players/:playerId/profile', () => {
     expect(profile.body.stats).toEqual({ wins: 0, losses: 0, draws: 0 });
   });
 
+  test('stats update after a completed game', async () => {
+    const white = await request.post('/auth/register').send({ username: 'stats_w_' + Date.now(), password: 'test1234' }).expect(201);
+    const black = await request.post('/auth/register').send({ username: 'stats_b_' + Date.now(), password: 'test1234' }).expect(201);
+    const whiteAuth = `Bearer ${white.body.token}`;
+    const blackAuth = `Bearer ${black.body.token}`;
+
+    /* Play Scholar's Mate to completion */
+    const gameId = await createGame(whiteAuth);
+    await joinGame(gameId, blackAuth);
+    await makeMove(gameId, whiteAuth, 'e2', 'e4');
+    await makeMove(gameId, blackAuth, 'e7', 'e5');
+    await makeMove(gameId, whiteAuth, 'd1', 'h5');
+    await makeMove(gameId, blackAuth, 'b8', 'c6');
+    await makeMove(gameId, whiteAuth, 'f1', 'c4');
+    await makeMove(gameId, blackAuth, 'g8', 'f6');
+    const result = await makeMove(gameId, whiteAuth, 'h5', 'f7');
+    expect(result.status).toBe(200);
+    expect(result.body.status).toBe('checkmate');
+
+    /* Verify both live stats and archived stats */
+    const wProfile = await request.get(`/players/${white.body.playerId}/profile`).set('Authorization', whiteAuth).expect(200);
+    expect(wProfile.body.stats).toEqual({ wins: 1, losses: 0, draws: 0 });
+    expect(wProfile.body.archivedStats).toEqual({ wins: 1, losses: 0, draws: 0 });
+
+    const bProfile = await request.get(`/players/${black.body.playerId}/profile`).set('Authorization', blackAuth).expect(200);
+    expect(bProfile.body.stats).toEqual({ wins: 0, losses: 1, draws: 0 });
+    expect(bProfile.body.archivedStats).toEqual({ wins: 0, losses: 1, draws: 0 });
+  });
+
   test('returns limited profile for anonymous user', async () => {
     const res = await request.post('/auth/register').send({ username: 'prof_anon' }).expect(201);
     const auth = `Bearer ${res.body.token}`;
@@ -1443,6 +1487,34 @@ describe('Tournaments', () => {
     const t = res.body.find((t: any) => t.name === 'Test Tournament');
     expect(t).toBeDefined();
     expect(t).toHaveProperty('participantCount');
+  });
+
+  test('participantCount reflects actual number of joined players', async () => {
+    /* Create a new tournament with two additional joiners */
+    const regA = await request.post('/auth/register').send({ username: 'pcount_a', password: 'test1234' }).expect(201);
+    const authA = `Bearer ${regA.body.token}`;
+    const regB = await request.post('/auth/register').send({ username: 'pcount_b', password: 'test1234' }).expect(201);
+    const authB = `Bearer ${regB.body.token}`;
+
+    const createRes = await request.post('/tournaments').set('Authorization', creatorAuth).send({ name: 'PCount Test', maxPlayers: 8 }).expect(201);
+    const tId = createRes.body.id;
+
+    /* Only creator initially */
+    let list = await request.get('/tournaments').expect(200);
+    let t = list.body.find((t: any) => t.id === tId);
+    expect(t.participantCount).toBe(1);
+
+    /* Join player A */
+    await request.post(`/tournaments/${tId}/join`).set('Authorization', authA).expect(200);
+    list = await request.get('/tournaments').expect(200);
+    t = list.body.find((t: any) => t.id === tId);
+    expect(t.participantCount).toBe(2);
+
+    /* Join player B */
+    await request.post(`/tournaments/${tId}/join`).set('Authorization', authB).expect(200);
+    list = await request.get('/tournaments').expect(200);
+    t = list.body.find((t: any) => t.id === tId);
+    expect(t.participantCount).toBe(3);
   });
 
   test('POST /tournaments/:id/join allows joining', async () => {

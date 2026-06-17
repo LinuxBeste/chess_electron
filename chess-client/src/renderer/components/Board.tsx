@@ -7,7 +7,7 @@
  * logical board array (rank/file) stays fixed.
  */
 
-import { useRef, useCallback, useState, useEffect } from 'react';
+import { useRef, useCallback, useState, useEffect, memo } from 'react';
 import Square from './Square';
 import { squareToIndices, indicesToSquare } from '../chess';
 import { getSetting } from '../settings';
@@ -27,7 +27,7 @@ interface BoardProps {
   children?: React.ReactNode;
 }
 
-export default function Board({
+const Board = memo(function Board({
   board,
   playerColor,
   selectedSquare,
@@ -45,13 +45,15 @@ export default function Board({
   const [dragFrom, setDragFrom] = useState<string | null>(null);
 
   /* Track the board DOM element's width so square sizing is always exact.
-     A ResizeObserver is more reliable than window resize events. */
+     A ResizeObserver is more reliable than window resize events.
+     Also caches the board DOM rect to avoid layout thrashing on drag. */
   useEffect(() => {
     const el = boardRef.current;
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setBoardSize(entry.contentRect.width);
+        boardRectRef.current = el.getBoundingClientRect();
       }
     });
     ro.observe(el);
@@ -70,12 +72,19 @@ export default function Board({
   }, [legalHints.length, playerColor, selectedSquare]);
 
   const sqSize = boardSize / 8;
-  const alwaysBottom = getSetting('alwaysWhiteBottom');
-  const showCoordinates = getSetting('showCoordinates');
-  const highlightLastMove = getSetting('highlightLastMove');
+  const boardRectRef = useRef<DOMRect | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const alwaysBottom = useRef(getSetting('alwaysWhiteBottom')).current;
+  const showCoordinates = useRef(getSetting('showCoordinates')).current;
+  const highlightLastMove = useRef(getSetting('highlightLastMove')).current;
   /* When alwaysWhiteBottom is on, white is always at the visual bottom
      regardless of player colour.  Otherwise the active player's side is at the bottom. */
   const isWhiteBottom = alwaysBottom ? true : playerColor === 'white';
+
+  /* Initialise cached board rect after first layout. */
+  useEffect(() => {
+    if (boardRef.current) boardRectRef.current = boardRef.current.getBoundingClientRect();
+  }, [boardSize]);
 
   const handleClick = useCallback(
     (square: string) => {
@@ -102,11 +111,12 @@ export default function Board({
     [isActive, board, playerColor, onDragStart],
   );
 
-  /* Track which square the pointer is hovering over during a drag */
+  /* Track which square the pointer is hovering over during a drag.
+     Uses cached board rect to avoid layout thrashing. */
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (!dragFrom || !boardRef.current) return;
-      const rect = boardRef.current.getBoundingClientRect();
+      const rect = boardRectRef.current ?? boardRef.current.getBoundingClientRect();
       const relX = e.clientX - rect.left;
       const relY = e.clientY - rect.top;
       const hf = Math.floor(relX / sqSize);
@@ -131,7 +141,7 @@ export default function Board({
         setHoverSquare(null);
         return;
       }
-      const rect = boardRef.current.getBoundingClientRect();
+      const rect = boardRectRef.current ?? boardRef.current.getBoundingClientRect();
       const relX = e.clientX - rect.left;
       const relY = e.clientY - rect.top;
       const tf = Math.floor(relX / sqSize);
@@ -187,11 +197,8 @@ export default function Board({
               isLegalCapture={getIsLegalCapture(squareName)}
               isHovered={hoverSquare === squareName && getIsLegalHint(squareName)}
               showCoordinates={showCoordinates}
-              alwaysBottom={alwaysBottom}
-              playerColor={playerColor}
               onClick={handleClick}
               onPointerDown={handlePointerDown}
-              onPointerEnter={() => setHoverSquare(squareName)}
             />
           );
         });
@@ -199,4 +206,6 @@ export default function Board({
       {children}
     </div>
   );
-}
+});
+
+export default Board;

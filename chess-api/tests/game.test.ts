@@ -793,3 +793,77 @@ describe('isBotGame', () => {
     }
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  verifyPassword                                                       */
+/* ------------------------------------------------------------------ */
+
+describe('verifyPassword', () => {
+  test('returns true for correct password', () => {
+    const password = 'correct-horse-battery-staple';
+    const hash = game.hashPassword(password);
+    expect(game.verifyPassword(password, hash)).toBe(true);
+  });
+
+  test('returns false for incorrect password', () => {
+    const hash = game.hashPassword('real-password');
+    expect(game.verifyPassword('wrong-password', hash)).toBe(false);
+  });
+
+  test('returns false for malformed hash (no colon)', () => {
+    expect(game.verifyPassword('any', 'not-a-valid-hash')).toBe(false);
+  });
+
+  test('returns false for empty stored hash', () => {
+    expect(game.verifyPassword('any', '')).toBe(false);
+  });
+
+  test('returns false for empty password', () => {
+    const hash = game.hashPassword('some-password');
+    expect(game.verifyPassword('', hash)).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  removeGameById / cleanupChatHistory                                  */
+/* ------------------------------------------------------------------ */
+
+describe('removeGameById / cleanupChatHistory', () => {
+  test('cleanupChatHistory removes chat for a game', () => {
+    const pid = registerPlayer('chat_clean');
+    const g = game.createGame(pid);
+    const ws = { readyState: 1, send: () => {} } as any;
+
+    game.handleChatMessage(g.id, pid, 'hello', ws);
+
+    /* Should not throw — chat history exists */
+    expect(() => game.cleanupChatHistory(g.id)).not.toThrow();
+
+    /* Second call should also not throw */
+    expect(() => game.cleanupChatHistory(g.id)).not.toThrow();
+  });
+
+  test('removeGameById removes game and chat history', () => {
+    const pid = registerPlayer('remove_test');
+    const g = game.createGame(pid);
+    const ws = { readyState: 1, send: () => {} } as any;
+
+    game.handleChatMessage(g.id, pid, 'test message', ws);
+
+    expect(game.getGame(g.id)).not.toBeNull();
+
+    game.removeGameById(g.id);
+
+    expect(game.getGame(g.id)).toBeNull();
+    /* Second call should not throw */
+    expect(() => game.removeGameById(g.id)).not.toThrow();
+  });
+
+  test('removeGameById does not throw for non-existent game', () => {
+    expect(() => game.removeGameById('no-such-id')).not.toThrow();
+  });
+
+  test('cleanupChatHistory does not throw for non-existent game', () => {
+    expect(() => game.cleanupChatHistory('no-such-id')).not.toThrow();
+  });
+});

@@ -82,6 +82,10 @@ export function cleanupIpRateBuckets(): void {
   }
 }
 
+export function clearIpRateBuckets(): void {
+  ipRateBuckets.clear();
+}
+
 function authMiddleware(req: Request, res: Response, next: () => void): void {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
@@ -117,11 +121,26 @@ function banCheckMiddleware(req: Request, res: Response, next: () => void): void
   next();
 }
 
+export function healthLimiter(req: Request, res: Response, next: () => void): void {
+  const now = Date.now();
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const windowStart = now - IP_RATE_LIMIT_WINDOW_MS;
+  let timestamps = ipRateBuckets.get(ip) ?? [];
+  timestamps = timestamps.filter((t) => t > windowStart);
+  if (timestamps.length >= 60) {
+    res.status(429).json({ error: 'Too many requests. Please slow down.' });
+    return;
+  }
+  timestamps.push(now);
+  ipRateBuckets.set(ip, timestamps);
+  next();
+}
+
 const globalGetLimiter = ipRateLimitMiddleware;
 
-router.get('/health', globalGetLimiter, (_req: Request, res: Response) => {
+router.get('/health', healthLimiter, (_req: Request, res: Response) => {
   const { gamesActive, playersOnline } = game.getStats();
-  logger.info('GET /health: gamesActive=' + gamesActive + ' playersOnline=' + playersOnline);
+  logger.debug('GET /health: gamesActive=' + gamesActive + ' playersOnline=' + playersOnline);
   res.json({ status: 'ok', uptime: process.uptime(), gamesActive, playersOnline });
 });
 
@@ -149,8 +168,13 @@ router.post('/auth/register', ipRateLimitMiddleware, (req: Request, res: Respons
     res.status(400).json({ error: 'Password must be at least 8 characters' });
     return;
   }
+  if (typeof password === 'string' && password.length > 128) {
+    res.status(400).json({ error: 'Password must be at most 128 characters' });
+    return;
+  }
+  const pwd = typeof password === 'string' ? password.trim() : undefined;
   try {
-    const result = game.registerPlayer(trimmed, password || undefined);
+    const result = game.registerPlayer(trimmed, pwd);
     game.setPlayerIp(result.playerId, ip);
     logger.audit('register', `username="${trimmed}" registered=${result.isRegistered} ip="${ip}"`);
     res.status(201).json({ playerId: result.playerId, token: result.token });
@@ -181,6 +205,7 @@ router.post('/auth/login', ipRateLimitMiddleware, (req: Request, res: Response) 
     return;
   }
   const trimmed = username.trim();
+  const pwd = password.trim();
   const lockout = game.checkLoginLockout(trimmed);
   if (lockout.locked) {
     const minutes = Math.ceil(lockout.remainingMs! / 60000);
@@ -188,7 +213,7 @@ router.post('/auth/login', ipRateLimitMiddleware, (req: Request, res: Response) 
     res.status(429).json({ error: 'Account temporarily locked. Try again in ' + minutes + ' minute(s).' });
     return;
   }
-  const result = game.loginPlayer(trimmed, password);
+  const result = game.loginPlayer(trimmed, pwd);
   if (!result.success) {
     game.recordFailedAttempt(trimmed);
     logger.audit('login_failed', `username="${trimmed}" ip="${ip}"`);
@@ -221,6 +246,10 @@ router.put('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: R
     res.status(400).json({ error: 'Display name is required' });
     return;
   }
+  if (displayName.trim().length > 50) {
+    res.status(400).json({ error: 'Display name must be at most 50 characters' });
+    return;
+  }
   const result = game.updateDisplayName(req.player.id, displayName.trim());
   if (!result.success) {
     res.status(400).json({ error: result.error });
@@ -232,15 +261,20 @@ router.put('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: R
 
 router.put('/auth/me/password', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
   const { currentPassword, newPassword } = req.body;
-  if (!currentPassword || !newPassword) {
+  if (!currentPassword || typeof currentPassword !== 'string' || !newPassword || typeof newPassword !== 'string') {
     res.status(400).json({ error: 'Current password and new password are required' });
     return;
   }
-  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+  const trimmedNew = newPassword.trim();
+  if (trimmedNew.length < 8) {
     res.status(400).json({ error: 'New password must be at least 8 characters' });
     return;
   }
-  const result = game.changePassword(req.player.id, currentPassword, newPassword);
+  if (trimmedNew.length > 128) {
+    res.status(400).json({ error: 'New password must be at most 128 characters' });
+    return;
+  }
+  const result = game.changePassword(req.player.id, currentPassword.trim(), trimmedNew);
   if (!result.success) {
     res.status(400).json({ error: result.error });
     return;
@@ -473,6 +507,10 @@ router.post(
     if (!from || !to) {
       logger.info('Move failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' error=missing from/to');
       res.status(400).json({ error: 'from and to are required' });
+      return;
+    }
+    if (typeof from !== 'string' || typeof to !== 'string' || !/^[a-h][1-8]$/i.test(from) || !/^[a-h][1-8]$/i.test(to)) {
+      res.status(400).json({ error: 'Invalid square format' });
       return;
     }
     const result = game.makeMove(
@@ -805,6 +843,10 @@ router.post('/tournaments', authMiddleware, banCheckMiddleware, (req: Request, r
     res.status(400).json({ error: 'Tournament name is required' });
     return;
   }
+  if (name.length > 100) {
+    res.status(400).json({ error: 'Tournament name must be at most 100 characters' });
+    return;
+  }
   const maxPlayers = Math.max(2, Math.min(64, parseInt(req.body.maxPlayers as string) || 8));
   const isPrivate = req.body.isPrivate === true;
   try {
@@ -821,9 +863,8 @@ router.post('/tournaments', authMiddleware, banCheckMiddleware, (req: Request, r
 
 router.get('/tournaments', globalGetLimiter, (_req: Request, res: Response) => {
   try {
-    const tournaments = db.getPublicTournaments();
-    const enriched = tournaments.map((t: any) => ({ ...t, participantCount: db.getParticipantCount(t.id) }));
-    res.json(enriched);
+    const tournaments = db.getPublicTournamentsWithCounts();
+    res.json(tournaments);
   } catch (err) {
     logger.error('Tournament list query failed: ' + err);
     res.status(500).json({ error: 'Failed to load tournaments' });
@@ -964,6 +1005,10 @@ router.put('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Request
   const name = ((req.body.name as string) || '').trim();
   if (!name) {
     res.status(400).json({ error: 'Tournament name is required' });
+    return;
+  }
+  if (name.length > 100) {
+    res.status(400).json({ error: 'Tournament name must be at most 100 characters' });
     return;
   }
   const maxPlayers = Math.max(2, Math.min(64, parseInt(req.body.maxPlayers as string) || t.max_players));
