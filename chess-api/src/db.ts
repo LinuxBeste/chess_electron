@@ -782,15 +782,10 @@ export function getTournamentMatches(tournamentId: string): any[] {
 export function getPlayerTournamentStats(playerId: string): { total: number; wins: number; currentId: string | null } {
   const d = getDb();
   const total = (
-    d
-      .prepare('SELECT COUNT(*) as c FROM tournament_participants WHERE player_id = ?')
-      .get(playerId) as { c: number }
+    d.prepare('SELECT COUNT(*) as c FROM tournament_participants WHERE player_id = ?').get(playerId) as { c: number }
   ).c;
-  const wins = (
-    d
-      .prepare('SELECT COUNT(*) as c FROM tournaments WHERE winner_id = ?')
-      .get(playerId) as { c: number }
-  ).c;
+  const wins = (d.prepare('SELECT COUNT(*) as c FROM tournaments WHERE winner_id = ?').get(playerId) as { c: number })
+    .c;
   const current = d
     .prepare(
       `SELECT t.id FROM tournament_participants tp

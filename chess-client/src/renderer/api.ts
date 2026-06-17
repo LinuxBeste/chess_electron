@@ -453,7 +453,9 @@ export async function getGame(gameId: string): Promise<GameState> {
 export async function abortGame(gameId: string): Promise<{ success: boolean }> {
   logger.info('abortGame called: gameId=' + gameId);
   try {
-    const result = await request<{ success: boolean }>(`/games/${encodeURIComponent(gameId)}/abort`, { method: 'POST' });
+    const result = await request<{ success: boolean }>(`/games/${encodeURIComponent(gameId)}/abort`, {
+      method: 'POST',
+    });
     logger.info('abortGame ok: gameId=' + gameId);
     return result;
   } catch (err) {
@@ -676,7 +678,9 @@ export async function getFriendRequests(): Promise<{
 export async function acceptFriendRequest(id: string): Promise<{ success: boolean }> {
   logger.info('acceptFriendRequest called: id=' + id);
   try {
-    const result = await request<{ success: boolean }>(`/friends/requests/${encodeURIComponent(id)}/accept`, { method: 'POST' });
+    const result = await request<{ success: boolean }>(`/friends/requests/${encodeURIComponent(id)}/accept`, {
+      method: 'POST',
+    });
     logger.info('acceptFriendRequest ok: id=' + id);
     return result;
   } catch (err) {
@@ -689,7 +693,9 @@ export async function acceptFriendRequest(id: string): Promise<{ success: boolea
 export async function declineFriendRequest(id: string): Promise<{ success: boolean }> {
   logger.info('declineFriendRequest called: id=' + id);
   try {
-    const result = await request<{ success: boolean }>(`/friends/requests/${encodeURIComponent(id)}/decline`, { method: 'POST' });
+    const result = await request<{ success: boolean }>(`/friends/requests/${encodeURIComponent(id)}/decline`, {
+      method: 'POST',
+    });
     logger.info('declineFriendRequest ok: id=' + id);
     return result;
   } catch (err) {
@@ -702,7 +708,9 @@ export async function declineFriendRequest(id: string): Promise<{ success: boole
 export async function cancelFriendRequest(id: string): Promise<{ success: boolean }> {
   logger.info('cancelFriendRequest called: id=' + id);
   try {
-    const result = await request<{ success: boolean }>(`/friends/requests/${encodeURIComponent(id)}/cancel`, { method: 'POST' });
+    const result = await request<{ success: boolean }>(`/friends/requests/${encodeURIComponent(id)}/cancel`, {
+      method: 'POST',
+    });
     logger.info('cancelFriendRequest ok: id=' + id);
     return result;
   } catch (err) {
@@ -715,7 +723,9 @@ export async function cancelFriendRequest(id: string): Promise<{ success: boolea
 export async function removeFriend(friendId: string): Promise<{ success: boolean }> {
   logger.info('removeFriend called: friendId=' + friendId);
   try {
-    const result = await request<{ success: boolean }>(`/friends/${encodeURIComponent(friendId)}`, { method: 'DELETE' });
+    const result = await request<{ success: boolean }>(`/friends/${encodeURIComponent(friendId)}`, {
+      method: 'DELETE',
+    });
     logger.info('removeFriend ok: friendId=' + friendId);
     return result;
   } catch (err) {

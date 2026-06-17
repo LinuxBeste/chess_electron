@@ -9,8 +9,13 @@ import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
 import {
-  usernameSchema, passwordSchema, displayNameSchema, squareSchema,
-  promotionSchema, tournamentNameSchema, friendRequestUsernameSchema,
+  usernameSchema,
+  passwordSchema,
+  displayNameSchema,
+  squareSchema,
+  promotionSchema,
+  tournamentNameSchema,
+  friendRequestUsernameSchema,
   joinCodeSchema,
 } from './validation';
 
@@ -156,10 +161,12 @@ router.post('/auth/register', ipRateLimitMiddleware, (req: Request, res: Respons
     res.status(403).json({ error: 'Your IP has been banned' });
     return;
   }
-  const parsed = z.object({
-    username: usernameSchema,
-    password: passwordSchema.optional(),
-  }).safeParse(req.body);
+  const parsed = z
+    .object({
+      username: usernameSchema,
+      password: passwordSchema.optional(),
+    })
+    .safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message });
     return;
@@ -247,10 +254,12 @@ router.put('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: R
 });
 
 router.put('/auth/me/password', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  const parsed = z.object({
-    currentPassword: z.string().min(1, 'Current password is required'),
-    newPassword: passwordSchema,
-  }).safeParse(req.body);
+  const parsed = z
+    .object({
+      currentPassword: z.string().min(1, 'Current password is required'),
+      newPassword: passwordSchema,
+    })
+    .safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message });
     return;
@@ -334,13 +343,16 @@ router.get('/players/:playerId/profile', authMiddleware, banCheckMiddleware, (re
     const onlineIds = game.getOnlinePlayerIds();
     const player = game.getPlayerById(req.params.playerId);
     const user = db.getUserById(req.params.playerId);
-    const friendStatus = req.params.playerId === req.player.id ? 'none' : db.getFriendStatus(req.player.id, req.params.playerId);
+    const friendStatus =
+      req.params.playerId === req.player.id ? 'none' : db.getFriendStatus(req.player.id, req.params.playerId);
     const isOnline = onlineIds.has(req.params.playerId);
     const currentGameId = isOnline ? game.getPlayerCurrentGameId(req.params.playerId) : null;
     const friendIds = db.getFriendIds(req.params.playerId);
     const archivedStats = db.getPlayerWinLossDraw(req.params.playerId);
     const tournamentStats = db.getPlayerTournamentStats(req.params.playerId);
-    logger.info('GET /players/' + req.params.playerId + '/profile: viewed by playerId=' + req.player.id + ' online=' + isOnline);
+    logger.info(
+      'GET /players/' + req.params.playerId + '/profile: viewed by playerId=' + req.player.id + ' online=' + isOnline,
+    );
     res.json({
       id: req.params.playerId,
       username: player?.username ?? user?.username ?? null,
@@ -379,7 +391,16 @@ router.post('/games', authMiddleware, banCheckMiddleware, (req: Request, res: Re
   const spectateMode: 'public' | 'code' = req.body.spectateMode === 'code' ? 'code' : 'public';
   try {
     const g = game.createGame(req.player.id, visibility, spectateMode);
-    logger.info('Game created: gameId=' + g.id + ' by playerId=' + req.player.id + ' visibility=' + visibility + ' spectateMode=' + spectateMode);
+    logger.info(
+      'Game created: gameId=' +
+        g.id +
+        ' by playerId=' +
+        req.player.id +
+        ' visibility=' +
+        visibility +
+        ' spectateMode=' +
+        spectateMode,
+    );
     res.status(201).json(g);
   } catch (err) {
     logger.error('Game creation failed: ' + err);
@@ -396,7 +417,9 @@ router.post('/games/bot', authMiddleware, banCheckMiddleware, (req: Request, res
       res.status(503).json({ error: result.error });
       return;
     }
-    logger.info('Bot game created: gameId=' + result.game.id + ' by playerId=' + req.player.id + ' skill=' + skillLevel);
+    logger.info(
+      'Bot game created: gameId=' + result.game.id + ' by playerId=' + req.player.id + ' skill=' + skillLevel,
+    );
     res.status(201).json(result.game);
   } catch (err) {
     logger.error('Bot game creation failed: ' + err);
@@ -485,23 +508,19 @@ router.post(
   banCheckMiddleware,
   rateLimitMiddleware,
   (req: Request, res: Response) => {
-    const parsed = z.object({
-      from: squareSchema,
-      to: squareSchema,
-      promotion: promotionSchema,
-    }).safeParse(req.body);
+    const parsed = z
+      .object({
+        from: squareSchema,
+        to: squareSchema,
+        promotion: promotionSchema,
+      })
+      .safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
     const { from, to, promotion } = parsed.data;
-    const result = game.makeMove(
-      req.params.gameId,
-      req.player.id,
-      from,
-      to,
-      promotion as PieceType | undefined,
-    );
+    const result = game.makeMove(req.params.gameId, req.player.id, from, to, promotion as PieceType | undefined);
     if (!result.success) {
       logger.info(
         'Move failed: gameId=' +
@@ -816,17 +835,19 @@ router.post('/tournaments', authMiddleware, banCheckMiddleware, (req: Request, r
     res.status(403).json({ error: 'Only registered users can create tournaments' });
     return;
   }
-  const parsed = z.object({
-    name: tournamentNameSchema,
-    maxPlayers: z.union([z.string(), z.number()]).optional(),
-    isPrivate: z.boolean().optional(),
-  }).safeParse(req.body);
+  const parsed = z
+    .object({
+      name: tournamentNameSchema,
+      maxPlayers: z.union([z.string(), z.number()]).optional(),
+      isPrivate: z.boolean().optional(),
+    })
+    .safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
   const { name, maxPlayers: maxPlayersRaw, isPrivate } = parsed.data;
-  const maxPlayersStr = typeof maxPlayersRaw === 'number' ? String(maxPlayersRaw) : (maxPlayersRaw || '8');
+  const maxPlayersStr = typeof maxPlayersRaw === 'number' ? String(maxPlayersRaw) : maxPlayersRaw || '8';
   const maxPlayers = Math.max(2, Math.min(64, parseInt(maxPlayersStr, 10) || 8));
   try {
     const t = db.createTournament(name, req.player.id, maxPlayers, isPrivate);
@@ -982,17 +1003,20 @@ router.put('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Request
     res.status(400).json({ error: 'Cannot edit a started tournament' });
     return;
   }
-  const parsed = z.object({
-    name: tournamentNameSchema,
-    maxPlayers: z.union([z.string(), z.number()]).optional(),
-    isPrivate: z.boolean().optional(),
-  }).safeParse(req.body);
+  const parsed = z
+    .object({
+      name: tournamentNameSchema,
+      maxPlayers: z.union([z.string(), z.number()]).optional(),
+      isPrivate: z.boolean().optional(),
+    })
+    .safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
   const { name, maxPlayers: maxPlayersRaw } = parsed.data;
-  const maxPlayersStr = typeof maxPlayersRaw === 'number' ? String(maxPlayersRaw) : (maxPlayersRaw || String(t.max_players));
+  const maxPlayersStr =
+    typeof maxPlayersRaw === 'number' ? String(maxPlayersRaw) : maxPlayersRaw || String(t.max_players);
   const maxPlayers = Math.max(2, Math.min(64, parseInt(maxPlayersStr, 10) || t.max_players));
   const isPrivate = parsed.data.isPrivate === true ? 1 : 0;
   try {

@@ -1161,8 +1161,14 @@ describe('GET /players/:playerId/profile', () => {
   });
 
   test('stats update after a completed game', async () => {
-    const white = await request.post('/auth/register').send({ username: 'stats_w_' + Date.now(), password: 'test1234' }).expect(201);
-    const black = await request.post('/auth/register').send({ username: 'stats_b_' + Date.now(), password: 'test1234' }).expect(201);
+    const white = await request
+      .post('/auth/register')
+      .send({ username: 'stats_w_' + Date.now(), password: 'test1234' })
+      .expect(201);
+    const black = await request
+      .post('/auth/register')
+      .send({ username: 'stats_b_' + Date.now(), password: 'test1234' })
+      .expect(201);
     const whiteAuth = `Bearer ${white.body.token}`;
     const blackAuth = `Bearer ${black.body.token}`;
 
@@ -1180,11 +1186,17 @@ describe('GET /players/:playerId/profile', () => {
     expect(result.body.status).toBe('checkmate');
 
     /* Verify both live stats and archived stats */
-    const wProfile = await request.get(`/players/${white.body.playerId}/profile`).set('Authorization', whiteAuth).expect(200);
+    const wProfile = await request
+      .get(`/players/${white.body.playerId}/profile`)
+      .set('Authorization', whiteAuth)
+      .expect(200);
     expect(wProfile.body.stats).toEqual({ wins: 1, losses: 0, draws: 0 });
     expect(wProfile.body.archivedStats).toEqual({ wins: 1, losses: 0, draws: 0 });
 
-    const bProfile = await request.get(`/players/${black.body.playerId}/profile`).set('Authorization', blackAuth).expect(200);
+    const bProfile = await request
+      .get(`/players/${black.body.playerId}/profile`)
+      .set('Authorization', blackAuth)
+      .expect(200);
     expect(bProfile.body.stats).toEqual({ wins: 0, losses: 1, draws: 0 });
     expect(bProfile.body.archivedStats).toEqual({ wins: 0, losses: 1, draws: 0 });
   });
@@ -1496,7 +1508,11 @@ describe('Tournaments', () => {
     const regB = await request.post('/auth/register').send({ username: 'pcount_b', password: 'test1234' }).expect(201);
     const authB = `Bearer ${regB.body.token}`;
 
-    const createRes = await request.post('/tournaments').set('Authorization', creatorAuth).send({ name: 'PCount Test', maxPlayers: 8 }).expect(201);
+    const createRes = await request
+      .post('/tournaments')
+      .set('Authorization', creatorAuth)
+      .send({ name: 'PCount Test', maxPlayers: 8 })
+      .expect(201);
     const tId = createRes.body.id;
 
     /* Only creator initially */

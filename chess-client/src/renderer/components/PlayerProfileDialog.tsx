@@ -35,7 +35,9 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
         logger.error('Profile load failed: playerId=' + playerId + ' error=' + e);
         setError(e.message || 'Failed to load profile');
       });
-    return () => { aborted.current = true; };
+    return () => {
+      aborted.current = true;
+    };
   }, [playerId]);
 
   async function handleAddFriend() {

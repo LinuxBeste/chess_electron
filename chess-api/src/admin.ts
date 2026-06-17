@@ -11,9 +11,7 @@ import * as db from './db';
 import logger from './logger';
 import { ipRateLimitMiddleware } from './routes';
 import { hashPassword, verifyPassword } from './game';
-import {
-  passwordSchema, displayNameSchema, ipSchema, statsValueSchema, broadcastMessageSchema,
-} from './validation';
+import { passwordSchema, displayNameSchema, ipSchema, statsValueSchema, broadcastMessageSchema } from './validation';
 
 const router: ReturnType<typeof Router> = Router();
 
@@ -69,10 +67,12 @@ function adminAuthMiddleware(req: Request, res: Response, next: () => void): voi
 }
 
 router.post('/admin/api/login', ipRateLimitMiddleware, (req: Request, res: Response) => {
-  const parsed = z.object({
-    username: z.string().min(1, 'Username is required'),
-    password: z.string().min(1, 'Password is required'),
-  }).safeParse(req.body);
+  const parsed = z
+    .object({
+      username: z.string().min(1, 'Username is required'),
+      password: z.string().min(1, 'Password is required'),
+    })
+    .safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message });
     return;
@@ -425,11 +425,13 @@ router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: R
       const newWins = wins !== undefined ? wins : user.wins;
       const newLosses = losses !== undefined ? losses : user.losses;
       const newDraws = draws !== undefined ? draws : user.draws;
-      const statsParsed = z.object({
-        wins: statsValueSchema,
-        losses: statsValueSchema,
-        draws: statsValueSchema,
-      }).safeParse({ wins: newWins, losses: newLosses, draws: newDraws });
+      const statsParsed = z
+        .object({
+          wins: statsValueSchema,
+          losses: statsValueSchema,
+          draws: statsValueSchema,
+        })
+        .safeParse({ wins: newWins, losses: newLosses, draws: newDraws });
       if (!statsParsed.success) {
         res.status(400).json({ error: statsParsed.error.issues[0].message });
         return;

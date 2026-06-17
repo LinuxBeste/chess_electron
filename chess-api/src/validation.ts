@@ -52,10 +52,7 @@ export function limitSchema(defaultVal = 20, maxVal = 100) {
     .transform((v) => Math.min(maxVal, Math.max(1, parseInt(v, 10) || defaultVal)));
 }
 
-export const statsValueSchema = z
-  .number()
-  .int('Stats must be integers')
-  .nonnegative('Stats cannot be negative');
+export const statsValueSchema = z.number().int('Stats must be integers').nonnegative('Stats cannot be negative');
 
 export const friendRequestUsernameSchema = z
   .string()

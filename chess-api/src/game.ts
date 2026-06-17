@@ -1240,7 +1240,7 @@ export function banPlayer(playerId: string): { success: true } | { success: fals
   for (const [gameId, g] of games) {
     if (g.players.white === playerId || g.players.black === playerId) {
       if (g.status === 'waiting') {
-  removeGameById(gameId);
+        removeGameById(gameId);
       } else if (g.status === 'active') {
         g.status = 'resigned';
         g.winner = g.players.white === playerId ? 'black' : 'white';

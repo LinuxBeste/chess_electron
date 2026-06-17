@@ -46,8 +46,14 @@ function wsConnect(token: string): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://localhost:${port}`, token);
     const timer = setTimeout(() => reject(new Error('WS connect timeout')), 5000);
-    ws.on('open', () => { clearTimeout(timer); resolve(ws); });
-    ws.on('error', (err) => { clearTimeout(timer); reject(err); });
+    ws.on('open', () => {
+      clearTimeout(timer);
+      resolve(ws);
+    });
+    ws.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
   });
 }
 
@@ -94,8 +100,14 @@ describe('WebSocket connection', () => {
     const ws = await new Promise<WebSocket>((resolve, reject) => {
       const ws = new WebSocket(`ws://localhost:${port}`, [p.token, 'extra-value']);
       const timer = setTimeout(() => reject(new Error('WS connect timeout')), 5000);
-      ws.on('open', () => { clearTimeout(timer); resolve(ws); });
-      ws.on('error', (err) => { clearTimeout(timer); reject(err); });
+      ws.on('open', () => {
+        clearTimeout(timer);
+        resolve(ws);
+      });
+      ws.on('error', (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
     });
     expect(ws.readyState).toBe(WebSocket.OPEN);
     ws.close();
@@ -105,8 +117,14 @@ describe('WebSocket connection', () => {
     const ws = new WebSocket(`ws://localhost:${port}`);
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('timeout')), 5000);
-      ws.on('open', () => { clearTimeout(timer); resolve(); });
-      ws.on('error', () => { clearTimeout(timer); reject(new Error('connect error')); });
+      ws.on('open', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+      ws.on('error', () => {
+        clearTimeout(timer);
+        reject(new Error('connect error'));
+      });
     });
     const code = await wsWaitForClose(ws);
     expect(code).toBe(4001);

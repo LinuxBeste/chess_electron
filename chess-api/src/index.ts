@@ -258,20 +258,54 @@ const isTestEnv = typeof process.env.JEST_WORKER_ID !== 'undefined' || process.e
 if (!isTestEnv) {
   const server = createServer();
   setInterval(() => {
-    try { cleanupIpRateBuckets(); } catch (e) { logger.error('cleanupIpRateBuckets failed: ' + e); }
+    try {
+      cleanupIpRateBuckets();
+    } catch (e) {
+      logger.error('cleanupIpRateBuckets failed: ' + e);
+    }
   }, 60000);
   setInterval(() => {
-    try { game.cleanupRateLimitBuckets(); } catch (e) { logger.error('cleanupRateLimitBuckets failed: ' + e); }
-    try { game.cleanupLoginAttempts(); } catch (e) { logger.error('cleanupLoginAttempts failed: ' + e); }
+    try {
+      game.cleanupRateLimitBuckets();
+    } catch (e) {
+      logger.error('cleanupRateLimitBuckets failed: ' + e);
+    }
+    try {
+      game.cleanupLoginAttempts();
+    } catch (e) {
+      logger.error('cleanupLoginAttempts failed: ' + e);
+    }
   }, 60000);
   logger.cleanupOldLogs();
-  setInterval(() => { try { logger.cleanupOldLogs(); } catch (e) { logger.error('cleanupOldLogs failed: ' + e); } }, 86400000);
-  setInterval(() => { try { db.cleanupExpiredTokens(); } catch (e) { logger.error('cleanupExpiredTokens failed: ' + e); } }, 3600000);
+  setInterval(() => {
+    try {
+      logger.cleanupOldLogs();
+    } catch (e) {
+      logger.error('cleanupOldLogs failed: ' + e);
+    }
+  }, 86400000);
+  setInterval(() => {
+    try {
+      db.cleanupExpiredTokens();
+    } catch (e) {
+      logger.error('cleanupExpiredTokens failed: ' + e);
+    }
+  }, 3600000);
 
   const DB_BACKUP_INTERVAL_MS = parseInt(process.env.DB_BACKUP_INTERVAL_MS ?? String(6 * 3600000), 10);
   if (DB_BACKUP_INTERVAL_MS > 0) {
-    try { db.createBackup(); } catch (e) { logger.error('Initial DB backup failed: ' + e); }
-    setInterval(() => { try { db.createBackup(); } catch (e) { logger.error('DB backup failed: ' + e); } }, DB_BACKUP_INTERVAL_MS);
+    try {
+      db.createBackup();
+    } catch (e) {
+      logger.error('Initial DB backup failed: ' + e);
+    }
+    setInterval(() => {
+      try {
+        db.createBackup();
+      } catch (e) {
+        logger.error('DB backup failed: ' + e);
+      }
+    }, DB_BACKUP_INTERVAL_MS);
   }
 
   server.on('error', (err: NodeJS.ErrnoException) => {

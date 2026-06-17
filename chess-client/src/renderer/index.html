@@ -180,49 +180,107 @@
          and hover effects.  Kept together to avoid duplication and to
          make it easy to tune timing globally. -- */
       @keyframes fadeIn {
-        from { opacity: 0; }
-        to   { opacity: 1; }
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
       }
       @keyframes scaleIn {
-        from { opacity: 0; transform: scale(0.8); }
-        to   { opacity: 1; transform: scale(1); }
+        from {
+          opacity: 0;
+          transform: scale(0.8);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
       }
       @keyframes slideUp {
-        from { opacity: 0; transform: translateY(12px); }
-        to   { opacity: 1; transform: translateY(0); }
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
       @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50%      { opacity: 0.4; }
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
       }
       @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(16px); }
-        to   { opacity: 1; transform: translateY(0); }
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
       @keyframes slideInRight {
-        from { opacity: 0; transform: translateX(24px); }
-        to   { opacity: 1; transform: translateX(0); }
+        from {
+          opacity: 0;
+          transform: translateX(24px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
       }
       @keyframes shimmer {
-        0%   { background-position: -200% 0; }
-        100% { background-position: 200% 0; }
+        0% {
+          background-position: -200% 0;
+        }
+        100% {
+          background-position: 200% 0;
+        }
       }
       @keyframes countUp {
-        from { opacity: 0; transform: translateY(8px); }
-        to   { opacity: 1; transform: translateY(0); }
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
       @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50%      { transform: translateY(-4px); }
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-4px);
+        }
       }
       @keyframes glow {
-        0%   { box-shadow: 0 0 4px rgba(79, 142, 247, 0.2); }
-        50%  { box-shadow: 0 0 16px rgba(79, 142, 247, 0.4); }
-        100% { box-shadow: 0 0 4px rgba(79, 142, 247, 0.2); }
+        0% {
+          box-shadow: 0 0 4px rgba(79, 142, 247, 0.2);
+        }
+        50% {
+          box-shadow: 0 0 16px rgba(79, 142, 247, 0.4);
+        }
+        100% {
+          box-shadow: 0 0 4px rgba(79, 142, 247, 0.2);
+        }
       }
       @keyframes rotate {
-        from { transform: rotate(0deg); }
-        to   { transform: rotate(360deg); }
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
       }
 
       /* ─── Page Entrance ─── */
@@ -235,16 +293,36 @@
       .stagger-enter {
         animation: fadeInUp 300ms ease both;
       }
-      .stagger-enter:nth-child(1) { animation-delay: 0ms; }
-      .stagger-enter:nth-child(2) { animation-delay: 40ms; }
-      .stagger-enter:nth-child(3) { animation-delay: 80ms; }
-      .stagger-enter:nth-child(4) { animation-delay: 120ms; }
-      .stagger-enter:nth-child(5) { animation-delay: 160ms; }
-      .stagger-enter:nth-child(6) { animation-delay: 200ms; }
-      .stagger-enter:nth-child(7) { animation-delay: 240ms; }
-      .stagger-enter:nth-child(8) { animation-delay: 280ms; }
-      .stagger-enter:nth-child(9) { animation-delay: 320ms; }
-      .stagger-enter:nth-child(10) { animation-delay: 360ms; }
+      .stagger-enter:nth-child(1) {
+        animation-delay: 0ms;
+      }
+      .stagger-enter:nth-child(2) {
+        animation-delay: 40ms;
+      }
+      .stagger-enter:nth-child(3) {
+        animation-delay: 80ms;
+      }
+      .stagger-enter:nth-child(4) {
+        animation-delay: 120ms;
+      }
+      .stagger-enter:nth-child(5) {
+        animation-delay: 160ms;
+      }
+      .stagger-enter:nth-child(6) {
+        animation-delay: 200ms;
+      }
+      .stagger-enter:nth-child(7) {
+        animation-delay: 240ms;
+      }
+      .stagger-enter:nth-child(8) {
+        animation-delay: 280ms;
+      }
+      .stagger-enter:nth-child(9) {
+        animation-delay: 320ms;
+      }
+      .stagger-enter:nth-child(10) {
+        animation-delay: 360ms;
+      }
 
       /* ─── Shimmer Loading ─── */
       .shimmer {
@@ -280,19 +358,23 @@
 
       /* ─── Hover Effects ─── */
       .card {
-        transition: transform 200ms ease, box-shadow 200ms ease;
+        transition:
+          transform 200ms ease,
+          box-shadow 200ms ease;
       }
       .card:hover {
         transform: translateY(-2px);
         box-shadow: var(--shadow-lg);
       }
       .game-card {
-        transition: transform 200ms ease, box-shadow 200ms ease;
+        transition:
+          transform 200ms ease,
+          box-shadow 200ms ease;
       }
       .game-card:hover {
         transform: translateY(-2px);
         box-shadow: var(--shadow);
-        border-color: rgba(255,255,255,0.12);
+        border-color: rgba(255, 255, 255, 0.12);
       }
       .navbar-btn {
         transition: all 200ms ease;
@@ -310,7 +392,9 @@
         transform: scale(0.97);
       }
       .live-game-card {
-        transition: transform 200ms ease, box-shadow 200ms ease;
+        transition:
+          transform 200ms ease,
+          box-shadow 200ms ease;
       }
       .live-game-card:hover {
         transform: translateY(-2px);
@@ -321,7 +405,7 @@
       .spinner {
         width: 20px;
         height: 20px;
-        border: 2px solid rgba(255,255,255,0.1);
+        border: 2px solid rgba(255, 255, 255, 0.1);
         border-top-color: var(--accent);
         border-radius: 50%;
         animation: rotate 0.6s linear infinite;
@@ -1559,25 +1643,25 @@
         font-weight: 600;
       }
       .profile-badge-registered {
-        background: rgba(76,175,80,0.2);
+        background: rgba(76, 175, 80, 0.2);
         color: #4caf50;
       }
       .profile-badge-temp {
-        background: rgba(255,152,0,0.2);
+        background: rgba(255, 152, 0, 0.2);
         color: #ff9800;
       }
       .profile-badge-online {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        background: rgba(76,175,80,0.15);
+        background: rgba(76, 175, 80, 0.15);
         color: #4caf50;
       }
       .profile-badge-offline {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        background: rgba(255,255,255,0.06);
+        background: rgba(255, 255, 255, 0.06);
         color: var(--muted);
       }
       .profile-badge-dot {
@@ -1585,8 +1669,12 @@
         height: 8px;
         border-radius: 50%;
       }
-      .profile-badge-dot-online { background: #4caf50; }
-      .profile-badge-dot-offline { background: #555; }
+      .profile-badge-dot-online {
+        background: #4caf50;
+      }
+      .profile-badge-dot-offline {
+        background: #555;
+      }
       .profile-card {
         padding: 24px;
       }
@@ -1673,7 +1761,7 @@
         transition: background 150ms ease;
       }
       .profile-match-row:hover {
-        background: rgba(255,255,255,0.03);
+        background: rgba(255, 255, 255, 0.03);
         transform: none !important;
         box-shadow: none !important;
         border-color: transparent !important;

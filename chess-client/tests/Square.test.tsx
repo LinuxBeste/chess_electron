@@ -78,14 +78,14 @@ describe('Square', () => {
   test('calls onClick callback when clicked', () => {
     const onClick = jest.fn();
     const { container } = render(<Square {...baseProps} onClick={onClick} rank={3} file={4} />);
-    container.firstChild && fireEvent.click(container.firstChild);
+    if (container.firstChild) fireEvent.click(container.firstChild);
     expect(onClick).toHaveBeenCalledWith('e5');
   });
 
   test('calls onPointerDown callback', () => {
     const onPointerDown = jest.fn();
     const { container } = render(<Square {...baseProps} onPointerDown={onPointerDown} rank={1} file={2} />);
-    container.firstChild && fireEvent.pointerDown(container.firstChild);
+    if (container.firstChild) fireEvent.pointerDown(container.firstChild);
     expect(onPointerDown).toHaveBeenCalledWith('c7', expect.any(Object));
   });
 
