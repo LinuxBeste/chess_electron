@@ -36,7 +36,7 @@ export default function ProfilePage() {
   const [friendLoading, setFriendLoading] = useState(false);
   const [editingDisplay, setEditingDisplay] = useState(false);
   const [displayName, setDisplayName] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [_saving, _setSaving] = useState(false);
 
   const myId = store.get('playerId');
   const isMe = myId === playerId;
@@ -106,18 +106,18 @@ export default function ProfilePage() {
     }
   }
 
-  async function handleSaveDisplayName() {
+  async function _handleSaveDisplayName() {
     if (!displayName.trim()) return;
-    setSaving(true);
+    _setSaving(true);
     try {
       await api.updateDisplayName(displayName.trim());
       store.toast(t('settings.account.saved'), 'info');
       setEditingDisplay(false);
       if (profile) setProfile({ ...profile, displayName: displayName.trim() });
-    } catch (e: any) {
-      store.toast(e.message || t('settings.account.saveFailed'), 'error');
+    } catch (e: unknown) {
+      store.toast(e instanceof Error ? e.message : t('settings.account.saveFailed'), 'error');
     } finally {
-      setSaving(false);
+      _setSaving(false);
     }
   }
 
