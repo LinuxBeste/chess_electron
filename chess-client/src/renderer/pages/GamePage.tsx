@@ -271,7 +271,7 @@ export default function GamePage() {
       const msg = err instanceof Error ? err.message : String(err);
       logger.info('Game not found via /games/, trying archive fallback', { gameId: gid });
       try {
-        const g = await api.getArchivedGame(gid) as GameState;
+        const g = (await api.getArchivedGame(gid)) as GameState;
         store.set('currentGame', g);
         initGame(g);
       } catch (err2: unknown) {

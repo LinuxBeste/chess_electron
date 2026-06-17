@@ -1496,7 +1496,9 @@ describe('Tournaments', () => {
     const res = await request.get('/tournaments').expect(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBeGreaterThanOrEqual(1);
-    const t = res.body.find((t: { name: string; id: string; participantCount: number }) => t.name === 'Test Tournament');
+    const t = res.body.find(
+      (t: { name: string; id: string; participantCount: number }) => t.name === 'Test Tournament',
+    );
     expect(t).toBeDefined();
     expect(t).toHaveProperty('participantCount');
   });

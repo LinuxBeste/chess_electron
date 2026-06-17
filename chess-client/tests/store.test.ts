@@ -41,7 +41,7 @@ class Store {
 
   toast(text: string, type: 'error' | 'info' = 'error'): void {
     const id = ++this.toastIdCounter;
-      const msg = { text, type, id };
+    const msg = { text, type, id };
     const current = this.get('toasts') as Array<{ text: string; type: string; id: number }>;
     this.set('toasts', [...current, msg]);
     setTimeout(() => {

@@ -102,7 +102,10 @@ export function createServer(): http.Server {
         (ws as WebSocket & { __pongReceived: boolean }).__pongReceived = false;
         ws.ping();
         setTimeout(() => {
-          if ((ws as WebSocket & { __pongReceived: boolean }).__pongReceived === false && ws.readyState === WebSocket.OPEN) {
+          if (
+            (ws as WebSocket & { __pongReceived: boolean }).__pongReceived === false &&
+            ws.readyState === WebSocket.OPEN
+          ) {
             logger.warn('WS pong timeout — terminating stale connection');
             ws.terminate();
           }

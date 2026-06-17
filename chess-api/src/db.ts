@@ -741,7 +741,9 @@ export function getPublicTournaments(status?: string): TournamentRow[] {
 export function getTournaments(status?: string): TournamentRow[] {
   const d = getDb();
   if (status)
-    return d.prepare('SELECT * FROM tournaments WHERE status = ? ORDER BY created_at DESC').all(status) as TournamentRow[];
+    return d
+      .prepare('SELECT * FROM tournaments WHERE status = ? ORDER BY created_at DESC')
+      .all(status) as TournamentRow[];
   return d.prepare('SELECT * FROM tournaments ORDER BY created_at DESC').all() as TournamentRow[];
 }
 

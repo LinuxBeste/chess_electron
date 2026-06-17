@@ -41,7 +41,7 @@ function CreateTournamentMenu({ onClose }: { onClose: () => void }) {
     if (!name.trim()) return;
     setCreating(true);
     try {
-      const result = await api.createTournament(name.trim(), maxPlayers, isPrivate) as TournamentData;
+      const result = (await api.createTournament(name.trim(), maxPlayers, isPrivate)) as TournamentData;
       store.toast('Tournament created!', 'info');
       if (result.join_code) {
         await copyToClipboard(result.join_code);
@@ -328,7 +328,7 @@ export default function TournamentPage() {
   async function load() {
     setLoading(true);
     try {
-      const tlist = await api.getTournaments() as TournamentData[];
+      const tlist = (await api.getTournaments()) as TournamentData[];
       setTournaments(tlist);
     } catch {
       logger.warn('Failed to load tournaments');
@@ -339,7 +339,7 @@ export default function TournamentPage() {
 
   async function openDetails(id: string) {
     try {
-      const t = await api.getTournament(id) as TournamentData;
+      const t = (await api.getTournament(id)) as TournamentData;
       setSelected(t);
     } catch {
       logger.warn('Failed to load tournament');
@@ -381,7 +381,7 @@ export default function TournamentPage() {
     if (!code) return;
     setJoiningCode(true);
     try {
-      const t = await api.joinTournamentByCode(code) as TournamentData;
+      const t = (await api.joinTournamentByCode(code)) as TournamentData;
       store.toast('Joined tournament!', 'info');
       setJoinCode('');
       openDetails(t.id);

@@ -345,7 +345,16 @@ export async function getLeaderboard(
 }> {
   logger.info('getLeaderboard called page=' + page + ' limit=' + limit);
   const result = await request<{
-    entries: { playerId: string; username: string; displayName: string; avatarUrl: string | null; rating: number; wins: number; losses: number; draws: number }[];
+    entries: {
+      playerId: string;
+      username: string;
+      displayName: string;
+      avatarUrl: string | null;
+      rating: number;
+      wins: number;
+      losses: number;
+      draws: number;
+    }[];
     total: number;
     page: number;
     limit: number;
