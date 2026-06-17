@@ -224,14 +224,14 @@ function GeneralTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (
         desc={t('settings.general.moveSoundDesc')}
         options={soundOptions}
         value={settings.moveSound}
-        onChange={(v) => onUpdate({ ...settings, moveSound: v as any })}
+        onChange={(v) => onUpdate({ ...settings, moveSound: v as AppSettings['moveSound'] })}
       />
       <SelectRow
         label={t('settings.general.captureSound')}
         desc={t('settings.general.captureSoundDesc')}
         options={soundOptions}
         value={settings.captureSound}
-        onChange={(v) => onUpdate({ ...settings, captureSound: v as any })}
+        onChange={(v) => onUpdate({ ...settings, captureSound: v as AppSettings['captureSound'] })}
       />
       <ToggleRow
         label={t('settings.general.notifications')}
@@ -252,14 +252,14 @@ function GeneralTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (
         desc={t('settings.general.animationSpeedDesc')}
         options={animSpeedOptions}
         value={settings.moveAnimationSpeed}
-        onChange={(v) => onUpdate({ ...settings, moveAnimationSpeed: v as any })}
+        onChange={(v) => onUpdate({ ...settings, moveAnimationSpeed: v as AppSettings['moveAnimationSpeed'] })}
       />
       <SelectRow
         label={t('settings.general.pieceAnimation')}
         desc={t('settings.general.pieceAnimationDesc')}
         options={pieceAnimOptions}
         value={settings.pieceAnimation}
-        onChange={(v) => onUpdate({ ...settings, pieceAnimation: v as any })}
+        onChange={(v) => onUpdate({ ...settings, pieceAnimation: v as AppSettings['pieceAnimation'] })}
       />
       <ToggleRow
         label={t('settings.general.animateBoardFlip')}
@@ -280,7 +280,7 @@ function GeneralTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (
         desc={t('settings.general.pieceSetDesc')}
         options={pieceSetOptions}
         value={settings.pieceSet}
-        onChange={(v) => onUpdate({ ...settings, pieceSet: v as any })}
+        onChange={(v) => onUpdate({ ...settings, pieceSet: v as AppSettings['pieceSet'] })}
       />
       <ToggleRow
         label={t('settings.general.pieceDropShadow')}
@@ -339,21 +339,21 @@ function BoardTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (s:
         desc={t('settings.board.boardThemeDesc')}
         options={themeOptions}
         value={settings.boardTheme}
-        onChange={(v) => onUpdate({ ...settings, boardTheme: v as any })}
+        onChange={(v) => onUpdate({ ...settings, boardTheme: v as AppSettings['boardTheme'] })}
       />
       <SelectRow
         label={t('settings.board.boardStyle')}
         desc={t('settings.board.boardStyleDesc')}
         options={boardStyleOptions}
         value={settings.boardStyle}
-        onChange={(v) => onUpdate({ ...settings, boardStyle: v as any })}
+        onChange={(v) => onUpdate({ ...settings, boardStyle: v as AppSettings['boardStyle'] })}
       />
       <SelectRow
         label={t('settings.board.boardSize')}
         desc={t('settings.board.boardSizeDesc')}
         options={boardSizeOptions}
         value={settings.boardSize}
-        onChange={(v) => onUpdate({ ...settings, boardSize: v as any })}
+        onChange={(v) => onUpdate({ ...settings, boardSize: v as AppSettings['boardSize'] })}
       />
       <ToggleRow
         label={t('settings.board.boardBorder')}
@@ -366,7 +366,7 @@ function BoardTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (s:
         desc={t('settings.board.coordinateStyleDesc')}
         options={coordStyleOptions}
         value={settings.boardCoordinateStyle}
-        onChange={(v) => onUpdate({ ...settings, boardCoordinateStyle: v as any })}
+        onChange={(v) => onUpdate({ ...settings, boardCoordinateStyle: v as AppSettings['boardCoordinateStyle'] })}
       />
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
         <div
@@ -505,7 +505,7 @@ function DisplayTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (
         desc={t('settings.display.uiDensityDesc')}
         options={densityOptions}
         value={settings.uiDensity}
-        onChange={(v) => onUpdate({ ...settings, uiDensity: v as any })}
+        onChange={(v) => onUpdate({ ...settings, uiDensity: v as AppSettings['uiDensity'] })}
       />
       <ToggleRow
         label={t('settings.display.showPlayerNames')}
@@ -532,7 +532,7 @@ function DisplayTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (
         desc={t('settings.display.backgroundPatternDesc')}
         options={backgroundOptions}
         value={settings.background}
-        onChange={(v) => onUpdate({ ...settings, background: v as any })}
+        onChange={(v) => onUpdate({ ...settings, background: v as AppSettings['background'] })}
       />
       <ToggleRow
         label={t('settings.display.legalMoveHints')}
@@ -559,7 +559,7 @@ function DisplayTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (
         desc={t('settings.display.clockStyleDesc')}
         options={clockStyleOptions}
         value={settings.clockStyle}
-        onChange={(v) => onUpdate({ ...settings, clockStyle: v as any })}
+        onChange={(v) => onUpdate({ ...settings, clockStyle: v as AppSettings['clockStyle'] })}
       />
       <SelectRow
         label={t('settings.display.decimalPlaces')}
@@ -610,7 +610,7 @@ function GameplayTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: 
         desc={t('settings.gameplay.moveNotationDesc')}
         options={moveNotationOptions}
         value={settings.moveNotation}
-        onChange={(v) => onUpdate({ ...settings, moveNotation: v as any })}
+        onChange={(v) => onUpdate({ ...settings, moveNotation: v as AppSettings['moveNotation'] })}
       />
       <ToggleRow
         label={t('settings.gameplay.keyboardNavigation')}
@@ -899,8 +899,8 @@ function AccountTab() {
         setStatsLoading(false);
         logger.debug('Account info loaded', { username: me.username, isRegistered: me.isRegistered });
       })
-      .catch((err: any) => {
-        logger.error('Failed to load account info', { error: err.message });
+      .catch((err: unknown) => {
+        logger.error('Failed to load account info', { error: err instanceof Error ? err.message : String(err) });
         setStatsLoading(false);
       });
   }, [token]);
@@ -919,9 +919,10 @@ function AccountTab() {
       store.set('username', newName);
       setDisplayNameMsg(t('settings.account.saved'));
       logger.info('Display name updated', { displayName: newName });
-    } catch (err: any) {
-      logger.error('Failed to update display name', { error: err.message });
-      setDisplayNameError(err.message || t('settings.account.saveFailed'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Failed to update display name', { error: msg });
+      setDisplayNameError(msg || t('settings.account.saveFailed'));
     }
   }
 
@@ -937,9 +938,10 @@ function AccountTab() {
       store.set('avatarUrl', result.avatarUrl);
       setAvatarMsg(t('settings.account.avatarUpdated'));
       logger.info('Avatar uploaded successfully');
-    } catch (err: any) {
-      logger.error('Avatar upload failed', { error: err.message });
-      setAvatarError(err.message || t('settings.account.avatarFailed'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Avatar upload failed', { error: msg });
+      setAvatarError(msg || t('settings.account.avatarFailed'));
     }
   }
 
@@ -953,9 +955,10 @@ function AccountTab() {
       store.set('avatarUrl', null);
       setAvatarMsg(t('settings.account.avatarRemoved'));
       logger.info('Avatar removed successfully');
-    } catch (err: any) {
-      logger.error('Avatar removal failed', { error: err.message });
-      setAvatarError(err.message || t('settings.account.avatarFailed'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Avatar removal failed', { error: msg });
+      setAvatarError(msg || t('settings.account.avatarFailed'));
     }
   }
 
@@ -973,9 +976,10 @@ function AccountTab() {
       setCurrentPassword('');
       setNewPassword('');
       logger.info('Password changed successfully');
-    } catch (err: any) {
-      logger.error('Password change failed', { error: err.message });
-      setPasswordError(err.message || t('settings.account.passwordChangeFailed'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Password change failed', { error: msg });
+      setPasswordError(msg || t('settings.account.passwordChangeFailed'));
     }
   }
 
@@ -990,9 +994,10 @@ function AccountTab() {
       store.clearSession();
       window.location.href = '/login';
       logger.info('Account deleted successfully');
-    } catch (err: any) {
-      logger.error('Account deletion failed', { error: err.message });
-      setDeleteError(err.message || t('settings.account.deleteFailed'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Account deletion failed', { error: msg });
+      setDeleteError(msg || t('settings.account.deleteFailed'));
     }
   }
 

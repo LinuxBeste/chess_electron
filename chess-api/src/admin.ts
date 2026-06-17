@@ -687,7 +687,7 @@ router.get('/admin/api/archive', adminAuthMiddleware, (req: Request, res: Respon
 router.get('/admin/api/tournaments', adminAuthMiddleware, (_req: Request, res: Response) => {
   try {
     const ts = db.getTournaments();
-    const enriched = ts.map((t: any) => ({ ...t, participantCount: db.getParticipantCount(t.id) }));
+    const enriched = ts.map((t) => ({ ...t, participantCount: db.getParticipantCount((t as { id: string }).id) }));
     res.json(enriched);
   } catch (err) {
     logger.error('Admin tournaments query failed: ' + err);
@@ -718,7 +718,7 @@ router.delete('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, 
       res.status(404).json({ error: 'Not found' });
       return;
     }
-    const d = (db as any).getDb();
+    const d = db.getDb();
     d.prepare('DELETE FROM tournament_matches WHERE tournament_id = ?').run(req.params.id);
     d.prepare('DELETE FROM tournament_participants WHERE tournament_id = ?').run(req.params.id);
     d.prepare('DELETE FROM tournaments WHERE id = ?').run(req.params.id);
@@ -735,11 +735,11 @@ router.delete('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, 
 router.get('/admin/api/bot-games', adminAuthMiddleware, (_req: Request, res: Response) => {
   try {
     const allGames = game.getAllGames();
-    const botGames = allGames.filter((g: any) => game.isBotGame(g));
+    const botGames = allGames.filter((g) => game.isBotGame(g));
     res.json({
       total: botGames.length,
-      active: botGames.filter((g: any) => g.status === 'active').length,
-      games: botGames.map((g: any) => ({
+      active: botGames.filter((g) => g.status === 'active').length,
+      games: botGames.map((g) => ({
         id: g.id,
         status: g.status,
         players: g.players,

@@ -853,7 +853,7 @@ router.post('/tournaments', authMiddleware, banCheckMiddleware, (req: Request, r
     const t = db.createTournament(name, req.player.id, maxPlayers, isPrivate);
     db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, 0);
     const tournament = db.getTournament(t.id);
-    if (t.joinCode) tournament.join_code = t.joinCode;
+    if (tournament && t.joinCode) tournament.join_code = t.joinCode;
     res.status(201).json(tournament);
   } catch (err) {
     logger.error('Tournament creation failed: ' + err);
@@ -919,8 +919,8 @@ router.get('/tournaments/:id', globalGetLimiter, (req: Request, res: Response) =
     }
     const participants = db.getTournamentParticipants(req.params.id);
     const matches = db.getTournamentMatches(req.params.id);
-    const result: any = { ...t, participants, matches, participantCount: participants.length };
-    const playerId = (req as any).player?.id;
+    const result: Record<string, unknown> = { ...t, participants, matches, participantCount: participants.length };
+    const playerId = req.player?.id;
     if (playerId !== t.created_by) delete result.join_code;
     res.json(result);
   } catch (err) {
@@ -1077,7 +1077,7 @@ router.post('/tournaments/:id/start', authMiddleware, banCheckMiddleware, (req: 
   }
 
   const participants = db.getTournamentParticipants(t.id);
-  const playerIds = participants.map((p: any) => p.player_id);
+  const playerIds = participants.map((p) => (p as { player_id: string }).player_id);
   const count = playerIds.length;
   if (count < 2) {
     res.status(400).json({ error: 'Need at least 2 players' });

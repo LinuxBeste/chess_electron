@@ -6,6 +6,31 @@ import { t } from '../translate';
 import { useNavigate } from 'react-router-dom';
 import { copyToClipboard } from '../clipboard';
 
+interface TournamentData {
+  id: string;
+  name: string;
+  max_players: number;
+  is_private: number;
+  status: string;
+  created_by?: string;
+  join_code?: string;
+  participantCount?: number;
+  participants?: Array<{
+    id: string;
+    player_id: string;
+    display_name?: string;
+  }>;
+  matches?: Array<{
+    id: string;
+    round: number;
+    game_id?: string;
+    white_player_id?: string;
+    black_player_id?: string;
+    winner_id?: string;
+    status: string;
+  }>;
+}
+
 function CreateTournamentMenu({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
   const [maxPlayers, setMaxPlayers] = useState(8);
@@ -16,7 +41,7 @@ function CreateTournamentMenu({ onClose }: { onClose: () => void }) {
     if (!name.trim()) return;
     setCreating(true);
     try {
-      const result = await api.createTournament(name.trim(), maxPlayers, isPrivate);
+      const result = await api.createTournament(name.trim(), maxPlayers, isPrivate) as TournamentData;
       store.toast('Tournament created!', 'info');
       if (result.join_code) {
         await copyToClipboard(result.join_code);
@@ -24,8 +49,8 @@ function CreateTournamentMenu({ onClose }: { onClose: () => void }) {
       }
       onClose();
       window.location.hash = '#/tournaments';
-    } catch (err: any) {
-      store.toast(err.message || 'Failed to create', 'error');
+    } catch (err: unknown) {
+      store.toast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setCreating(false);
     }
@@ -123,7 +148,7 @@ function ManageTournamentDialog({
   onClose,
   onSaved,
 }: {
-  tournament: any;
+  tournament: TournamentData;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -141,8 +166,8 @@ function ManageTournamentDialog({
       store.toast('Tournament updated!', 'info');
       onSaved();
       onClose();
-    } catch (err: any) {
-      store.toast(err.message || 'Failed to update', 'error');
+    } catch (err: unknown) {
+      store.toast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setSaving(false);
     }
@@ -156,8 +181,8 @@ function ManageTournamentDialog({
       store.toast('Tournament deleted', 'info');
       onClose();
       onSaved();
-    } catch (err: any) {
-      store.toast(err.message || 'Failed to delete', 'error');
+    } catch (err: unknown) {
+      store.toast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setDeleting(false);
     }
@@ -280,8 +305,8 @@ function ManageTournamentDialog({
 export default function TournamentPage() {
   const navigate = useNavigate();
   const myId = store.get('playerId');
-  const [tournaments, setTournaments] = useState<any[]>([]);
-  const [selected, setSelected] = useState<any | null>(null);
+  const [tournaments, setTournaments] = useState<TournamentData[]>([]);
+  const [selected, setSelected] = useState<TournamentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showManage, setShowManage] = useState(false);
@@ -303,7 +328,7 @@ export default function TournamentPage() {
   async function load() {
     setLoading(true);
     try {
-      const tlist = await api.getTournaments();
+      const tlist = await api.getTournaments() as TournamentData[];
       setTournaments(tlist);
     } catch {
       logger.warn('Failed to load tournaments');
@@ -314,7 +339,7 @@ export default function TournamentPage() {
 
   async function openDetails(id: string) {
     try {
-      const t = await api.getTournament(id);
+      const t = await api.getTournament(id) as TournamentData;
       setSelected(t);
     } catch {
       logger.warn('Failed to load tournament');
@@ -326,8 +351,8 @@ export default function TournamentPage() {
       await api.joinTournament(tid);
       store.toast('Joined tournament!', 'info');
       openDetails(tid);
-    } catch (err: any) {
-      store.toast(err.message || 'Failed to join', 'error');
+    } catch (err: unknown) {
+      store.toast(err instanceof Error ? err.message : String(err), 'error');
     }
   }
 
@@ -336,8 +361,8 @@ export default function TournamentPage() {
       await api.leaveTournament(tid);
       store.toast('Left tournament', 'info');
       openDetails(tid);
-    } catch (err: any) {
-      store.toast(err.message || 'Failed to leave', 'error');
+    } catch (err: unknown) {
+      store.toast(err instanceof Error ? err.message : String(err), 'error');
     }
   }
 
@@ -346,8 +371,8 @@ export default function TournamentPage() {
       await api.startTournament(tid);
       store.toast('Tournament started!', 'info');
       openDetails(tid);
-    } catch (err: any) {
-      store.toast(err.message || 'Failed to start', 'error');
+    } catch (err: unknown) {
+      store.toast(err instanceof Error ? err.message : String(err), 'error');
     }
   }
 
@@ -356,12 +381,12 @@ export default function TournamentPage() {
     if (!code) return;
     setJoiningCode(true);
     try {
-      const t = await api.joinTournamentByCode(code);
+      const t = await api.joinTournamentByCode(code) as TournamentData;
       store.toast('Joined tournament!', 'info');
       setJoinCode('');
       openDetails(t.id);
-    } catch (err: any) {
-      store.toast(err.message || 'Invalid code', 'error');
+    } catch (err: unknown) {
+      store.toast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setJoiningCode(false);
     }
@@ -382,14 +407,14 @@ export default function TournamentPage() {
     }
   }
 
-  function renderBracket(matches: any[]) {
+  function renderBracket(matches: NonNullable<TournamentData['matches']>) {
     if (!matches || matches.length === 0)
       return <p style={{ fontSize: 13, color: '#888', textAlign: 'center', padding: 24 }}>No matches yet</p>;
-    const rounds = [...new Set(matches.map((m: any) => m.round))].sort();
+    const rounds = [...new Set(matches.map((m) => m.round))].sort();
     return (
       <div style={{ display: 'flex', gap: 24, overflowX: 'auto', padding: '8px 0' }}>
         {rounds.map((round) => {
-          const roundMatches = matches.filter((m: any) => m.round === round);
+          const roundMatches = matches.filter((m) => m.round === round);
           return (
             <div key={round} style={{ minWidth: 200 }}>
               <h4
@@ -397,7 +422,7 @@ export default function TournamentPage() {
               >
                 Round {round}
               </h4>
-              {roundMatches.map((m: any) => (
+              {roundMatches.map((m) => (
                 <div
                   key={m.id}
                   className="card"
@@ -481,7 +506,7 @@ export default function TournamentPage() {
 
         {selected.status === 'waiting' && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {!selected.participants?.find((p: any) => p.player_id === myId) ? (
+            {!selected.participants?.find((p) => p.player_id === myId) ? (
               <button className="btn btn-primary btn-sm" onClick={() => handleJoin(selected.id)}>
                 {t('lobby.join')}
               </button>
@@ -508,7 +533,7 @@ export default function TournamentPage() {
 
         <h3 style={{ fontSize: 14, fontWeight: 500, marginBottom: 8 }}>Participants</h3>
         <div style={{ marginBottom: 24 }}>
-          {(selected.participants || []).map((p: any) => (
+          {(selected.participants || []).map((p) => (
             <div key={p.id} style={{ fontSize: 13, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
               {p.display_name || p.player_id?.slice(0, 8)}
             </div>
@@ -518,7 +543,7 @@ export default function TournamentPage() {
         {(selected.matches?.length || 0) > 0 && (
           <>
             <h3 style={{ fontSize: 14, fontWeight: 500, marginBottom: 8 }}>Bracket</h3>
-            {renderBracket(selected.matches)}
+            {renderBracket(selected.matches ?? [])}
           </>
         )}
 
@@ -570,7 +595,7 @@ export default function TournamentPage() {
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>{t('tournaments.none')}</div>
       ) : (
         <div>
-          {tournaments.map((t: any) => (
+          {tournaments.map((t) => (
             <div
               key={t.id}
               className="game-card"

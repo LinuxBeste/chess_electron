@@ -267,15 +267,17 @@ export default function GamePage() {
       const g = await api.getGame(gid);
       store.set('currentGame', g);
       initGame(g);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       logger.info('Game not found via /games/, trying archive fallback', { gameId: gid });
       try {
-        const g = await api.getArchivedGame(gid);
+        const g = await api.getArchivedGame(gid) as GameState;
         store.set('currentGame', g);
         initGame(g);
-      } catch (err2: any) {
-        logger.error('Failed to fetch game (both live and archive)', { gameId: gid, error: err2.message });
-        store.toast(err.message || t('game.failedLoad'));
+      } catch (err2: unknown) {
+        const msg2 = err2 instanceof Error ? err2.message : String(err2);
+        logger.error('Failed to fetch game (both live and archive)', { gameId: gid, error: msg2 });
+        store.toast(msg || t('game.failedLoad'));
         navigate('/lobby');
       }
     }
@@ -526,11 +528,12 @@ export default function GamePage() {
         logger.info('Game ended after move', { gameId: gameRef.current.id, status: updated.status });
         if (getSetting('soundEnabled')) playGameOverSound();
       }
-    } catch (err: any) {
-      logger.error('Move failed', { gameId: gameRef.current?.id, from, to, error: err.message });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Move failed', { gameId: gameRef.current?.id, from, to, error: msg });
       setBoard(oldBoard);
       setLastMove(gameRef.current?.lastMove || null);
-      store.toast(err.message || t('game.moveFailed'));
+      store.toast(msg || t('game.moveFailed'));
     }
   }
 
@@ -580,9 +583,10 @@ export default function GamePage() {
         store.set('currentGame', updated);
         navigate(`/result/${updated.id}`);
       })
-      .catch((err: any) => {
-        logger.error('Resignation failed', { error: err.message });
-        store.toast(err.message || t('game.failedResign'));
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error('Resignation failed', { error: msg });
+        store.toast(msg || t('game.failedResign'));
       });
     setResignConfirmed(false);
   }

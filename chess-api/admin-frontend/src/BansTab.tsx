@@ -32,8 +32,8 @@ export default function BansTab() {
       await api('/bans/ip', { method: 'POST', body: JSON.stringify({ ip }) });
       setNewIp('');
       load();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setActionId(null);
     }
@@ -44,8 +44,8 @@ export default function BansTab() {
     try {
       await api('/bans/player/' + encodeURIComponent(id), { method: 'DELETE' });
       load();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setActionId(null);
     }
@@ -56,8 +56,8 @@ export default function BansTab() {
     try {
       await api('/bans/ip/' + encodeURIComponent(ip), { method: 'DELETE' });
       load();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setActionId(null);
     }

@@ -83,9 +83,10 @@ export default function ResultPage() {
       logger.info('Rematch created', { newGameId: g.id });
       store.set('currentGame', g);
       navigate(`/game/${g.id}`);
-    } catch (err: any) {
-      logger.error('Rematch failed', { error: err?.message });
-      store.toast(err?.message || t('result.failedRematch'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Rematch failed', { error: msg });
+      store.toast(msg || t('result.failedRematch'));
       setRematching(false);
     }
   }

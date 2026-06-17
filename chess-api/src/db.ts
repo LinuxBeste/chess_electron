@@ -211,6 +211,58 @@ export interface DbUser {
   rating: number;
 }
 
+interface CompletedGameRow {
+  id: string;
+  white_player_id: string | null;
+  black_player_id: string | null;
+  white_display_name: string;
+  black_display_name: string;
+  winner: string | null;
+  status: string;
+  result: string;
+  reason: string | null;
+  move_history: string;
+  board_history: string;
+  pgn: string | null;
+  played_at: number;
+  time_control: string;
+}
+
+interface TournamentRow {
+  id: string;
+  name: string;
+  status: string;
+  created_by: string;
+  max_players: number;
+  is_private: number;
+  join_code: string | null;
+  created_at: number;
+  started_at: number | null;
+  completed_at: number | null;
+  winner_id: string | null;
+}
+
+interface TournamentParticipantRow {
+  id: string;
+  tournament_id: string;
+  player_id: string;
+  display_name: string;
+  seed: number;
+  created_at: number;
+}
+
+interface TournamentMatchRow {
+  id: string;
+  tournament_id: string;
+  round: number;
+  position: number;
+  white_player_id: string | null;
+  black_player_id: string | null;
+  game_id: string | null;
+  winner_id: string | null;
+  status: string;
+}
+
 export function createUser(id: string, username: string, passwordHash: string | null, displayName: string): void {
   const d = getDb();
   d.prepare('INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES (?, ?, ?, ?, ?)').run(
@@ -515,7 +567,16 @@ export function getLeaderboard(
     .prepare(
       'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users ORDER BY rating DESC LIMIT ? OFFSET ?',
     )
-    .all(limit, offset) as any[];
+    .all(limit, offset) as {
+    id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+    rating: number;
+    wins: number;
+    losses: number;
+    draws: number;
+  }[];
   return { rows, total };
 }
 
@@ -583,10 +644,10 @@ export function getArchivedGames(
   status?: string,
   fromDate?: number,
   toDate?: number,
-): { rows: any[]; total: number } {
+): { rows: CompletedGameRow[]; total: number } {
   const d = getDb();
   const conditions: string[] = [];
-  const params: any[] = [];
+  const params: unknown[] = [];
   if (playerId) {
     conditions.push('(white_player_id = ? OR black_player_id = ?)');
     params.push(playerId, playerId);
@@ -608,12 +669,12 @@ export function getArchivedGames(
   const offset = (page - 1) * limit;
   const rows = d
     .prepare('SELECT * FROM completed_games' + where + ' ORDER BY played_at DESC LIMIT ? OFFSET ?')
-    .all(...params, limit, offset);
+    .all(...params, limit, offset) as CompletedGameRow[];
   return { rows, total };
 }
 
-export function getArchivedGame(id: string): any | undefined {
-  return getDb().prepare('SELECT * FROM completed_games WHERE id = ?').get(id);
+export function getArchivedGame(id: string): CompletedGameRow | undefined {
+  return getDb().prepare('SELECT * FROM completed_games WHERE id = ?').get(id) as CompletedGameRow | undefined;
 }
 
 export function deleteArchivedGame(id: string): void {
@@ -660,33 +721,34 @@ export function createTournament(
   return { id, joinCode };
 }
 
-export function getTournament(id: string): any | undefined {
-  return getDb().prepare('SELECT * FROM tournaments WHERE id = ?').get(id);
+export function getTournament(id: string): TournamentRow | undefined {
+  return getDb().prepare('SELECT * FROM tournaments WHERE id = ?').get(id) as TournamentRow | undefined;
 }
 
-export function getTournamentByJoinCode(code: string): any | undefined {
-  return getDb().prepare('SELECT * FROM tournaments WHERE join_code = ?').get(code);
+export function getTournamentByJoinCode(code: string): TournamentRow | undefined {
+  return getDb().prepare('SELECT * FROM tournaments WHERE join_code = ?').get(code) as TournamentRow | undefined;
 }
 
-export function getPublicTournaments(status?: string): any[] {
+export function getPublicTournaments(status?: string): TournamentRow[] {
   const d = getDb();
   if (status)
     return d
       .prepare('SELECT * FROM tournaments WHERE status = ? AND is_private = 0 ORDER BY created_at DESC')
-      .all(status);
-  return d.prepare('SELECT * FROM tournaments WHERE is_private = 0 ORDER BY created_at DESC').all();
+      .all(status) as TournamentRow[];
+  return d.prepare('SELECT * FROM tournaments WHERE is_private = 0 ORDER BY created_at DESC').all() as TournamentRow[];
 }
 
-export function getTournaments(status?: string): any[] {
+export function getTournaments(status?: string): TournamentRow[] {
   const d = getDb();
-  if (status) return d.prepare('SELECT * FROM tournaments WHERE status = ? ORDER BY created_at DESC').all(status);
-  return d.prepare('SELECT * FROM tournaments ORDER BY created_at DESC').all();
+  if (status)
+    return d.prepare('SELECT * FROM tournaments WHERE status = ? ORDER BY created_at DESC').all(status) as TournamentRow[];
+  return d.prepare('SELECT * FROM tournaments ORDER BY created_at DESC').all() as TournamentRow[];
 }
 
-export function getTournamentParticipants(tournamentId: string): any[] {
+export function getTournamentParticipants(tournamentId: string): TournamentParticipantRow[] {
   return getDb()
     .prepare('SELECT * FROM tournament_participants WHERE tournament_id = ? ORDER BY seed')
-    .all(tournamentId);
+    .all(tournamentId) as TournamentParticipantRow[];
 }
 
 export function addTournamentParticipant(
@@ -721,7 +783,7 @@ export function getParticipantCount(tournamentId: string): number {
   return row.c;
 }
 
-export function getPublicTournamentsWithCounts(): any[] {
+export function getPublicTournamentsWithCounts(): Record<string, unknown>[] {
   return getDb()
     .prepare(
       `SELECT t.*, COUNT(tp.id) AS participantCount
@@ -731,7 +793,7 @@ export function getPublicTournamentsWithCounts(): any[] {
        GROUP BY t.id
        ORDER BY t.created_at DESC`,
     )
-    .all();
+    .all() as Record<string, unknown>[];
 }
 
 export function updateTournamentStatus(
@@ -743,7 +805,7 @@ export function updateTournamentStatus(
 ): void {
   const d = getDb();
   const updates: string[] = ['status = ?'];
-  const params: any[] = [status];
+  const params: unknown[] = [status];
   if (startedAt) {
     updates.push('started_at = ?');
     params.push(startedAt);
@@ -773,10 +835,10 @@ export function deleteTournament(id: string): void {
   d.prepare('DELETE FROM tournaments WHERE id = ?').run(id);
 }
 
-export function getTournamentMatches(tournamentId: string): any[] {
+export function getTournamentMatches(tournamentId: string): TournamentMatchRow[] {
   return getDb()
     .prepare('SELECT * FROM tournament_matches WHERE tournament_id = ? ORDER BY round, position')
-    .all(tournamentId);
+    .all(tournamentId) as TournamentMatchRow[];
 }
 
 export function getPlayerTournamentStats(playerId: string): { total: number; wins: number; currentId: string | null } {

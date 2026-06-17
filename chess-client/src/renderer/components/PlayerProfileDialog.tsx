@@ -30,10 +30,10 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
         logger.info('Profile loaded: username=' + (p.username || '?'));
         setProfile(p);
       })
-      .catch((e) => {
+      .catch((e: unknown) => {
         if (aborted.current) return;
         logger.error('Profile load failed: playerId=' + playerId + ' error=' + e);
-        setError(e.message || 'Failed to load profile');
+        setError(e instanceof Error ? e.message : 'Failed to load profile');
       });
     return () => {
       aborted.current = true;
@@ -50,9 +50,9 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
       logger.info('Friend request sent from profile: username=' + profile.username);
       setFriendMsg(t('friends.requestSent', { name: profile.displayName || profile.username }));
       store.toast(t('friends.requestSent', { name: profile.displayName || profile.username }), 'info');
-    } catch (e: any) {
+    } catch (e: unknown) {
       logger.error('Friend request failed from profile: ' + e);
-      setFriendMsg(e.message || 'Failed');
+      setFriendMsg(e instanceof Error ? e.message : 'Failed');
     } finally {
       setFriendLoading(false);
     }

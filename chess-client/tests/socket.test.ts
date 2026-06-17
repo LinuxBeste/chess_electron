@@ -7,8 +7,8 @@ describe('SocketManager logic', () => {
       get(k: string) {
         return this.data[k as keyof typeof this.data];
       },
-      set(k: string, v: any) {
-        (this.data as any)[k] = v;
+      set(k: string, v: unknown) {
+        (this.data as Record<string, unknown>)[k] = v;
       },
     };
 
@@ -22,11 +22,11 @@ describe('SocketManager logic', () => {
 
   test('scheduleReconnect caps at MAX_RETRIES', () => {
     const store = {
-      data: { wsStatus: 'disconnected' } as any,
+      data: { wsStatus: 'disconnected' } as Record<string, unknown>,
       get(k: string) {
         return this.data[k];
       },
-      set(k: string, v: any) {
+      set(k: string, v: unknown) {
         this.data[k] = v;
       },
     };
@@ -40,18 +40,18 @@ describe('SocketManager logic', () => {
   });
 
   test('onMove handler registration and invocation', () => {
-    const handlers = new Set<(msg: any) => void>();
+    const handlers = new Set<(msg: Record<string, unknown>) => void>();
     const handler = jest.fn();
 
     handlers.add(handler);
     expect(handlers.size).toBe(1);
 
-    handlers.forEach((h) => h({ type: 'move', gameId: 'g1' }));
+    handlers.forEach((h) => h({ type: 'move', gameId: 'g1' } as Record<string, unknown>));
     expect(handler).toHaveBeenCalledWith({ type: 'move', gameId: 'g1' });
   });
 
   test('onMove unsubscribe removes handler', () => {
-    const handlers = new Set<(msg: any) => void>();
+    const handlers = new Set<(msg: Record<string, unknown>) => void>();
     const handler = jest.fn();
 
     handlers.add(handler);
@@ -61,20 +61,20 @@ describe('SocketManager logic', () => {
   });
 
   test('onGameOver handler invocation', () => {
-    const handlers = new Set<(msg: any) => void>();
+    const handlers = new Set<(msg: Record<string, unknown>) => void>();
     const handler = jest.fn();
 
     handlers.add(handler);
-    handlers.forEach((h) => h({ type: 'game_over', gameId: 'g1', result: 'checkmate' }));
+    handlers.forEach((h) => h({ type: 'game_over', gameId: 'g1', result: 'checkmate' } as Record<string, unknown>));
     expect(handler).toHaveBeenCalledWith({ type: 'game_over', gameId: 'g1', result: 'checkmate' });
   });
 
   test('onGameStarted handler invocation', () => {
-    const handlers = new Set<(msg: any) => void>();
+    const handlers = new Set<(msg: Record<string, unknown>) => void>();
     const handler = jest.fn();
 
     handlers.add(handler);
-    handlers.forEach((h) => h({ type: 'game_started', gameId: 'g1' }));
+    handlers.forEach((h) => h({ type: 'game_started', gameId: 'g1' } as Record<string, unknown>));
     expect(handler).toHaveBeenCalledWith({ type: 'game_started', gameId: 'g1' });
   });
 
@@ -92,7 +92,7 @@ describe('SocketManager logic', () => {
   });
 
   test('multiple handlers can subscribe to same event', () => {
-    const handlers = new Set<(msg: any) => void>();
+    const handlers = new Set<(msg: Record<string, unknown>) => void>();
     const h1 = jest.fn();
     const h2 = jest.fn();
 
@@ -100,13 +100,13 @@ describe('SocketManager logic', () => {
     handlers.add(h2);
     expect(handlers.size).toBe(2);
 
-    handlers.forEach((h) => h({ type: 'move' }));
+    handlers.forEach((h) => h({ type: 'move' } as Record<string, unknown>));
     expect(h1).toHaveBeenCalled();
     expect(h2).toHaveBeenCalled();
   });
 
   test('removing handler does not affect other handlers', () => {
-    const handlers = new Set<(msg: any) => void>();
+    const handlers = new Set<(msg: Record<string, unknown>) => void>();
     const h1 = jest.fn();
     const h2 = jest.fn();
 
@@ -114,7 +114,7 @@ describe('SocketManager logic', () => {
     handlers.add(h2);
     handlers.delete(h1);
 
-    handlers.forEach((h) => h({ type: 'move' }));
+    handlers.forEach((h) => h({ type: 'move' } as Record<string, unknown>));
     expect(h1).not.toHaveBeenCalled();
     expect(h2).toHaveBeenCalled();
   });

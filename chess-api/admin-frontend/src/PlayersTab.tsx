@@ -55,8 +55,8 @@ export default function PlayersTab() {
       await api('/players/' + id + '/ban', { method: 'POST' });
       addToast(`Banned ${name}`, 'success');
       load();
-    } catch (err: any) {
-      addToast(err.message, 'error');
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setActionId(null);
     }
@@ -69,8 +69,8 @@ export default function PlayersTab() {
       await api('/players/' + id + '/kick', { method: 'POST' });
       addToast(`Kicked ${name}`, 'success');
       load();
-    } catch (err: any) {
-      addToast(err.message, 'error');
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setActionId(null);
     }
@@ -83,8 +83,8 @@ export default function PlayersTab() {
       await api('/bans/ip', { method: 'POST', body: JSON.stringify({ ip }) });
       addToast(`Banned IP ${ip}`, 'success');
       load();
-    } catch (err: any) {
-      addToast(err.message, 'error');
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setActionId(null);
     }

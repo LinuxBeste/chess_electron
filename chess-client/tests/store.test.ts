@@ -2,7 +2,7 @@ import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { store as realStore } from '../src/renderer/store';
 
 class Store {
-  private state: Record<string, any> = {
+  private state: Record<string, unknown> = {
     token: null,
     playerId: null,
     username: null,
@@ -25,7 +25,7 @@ class Store {
     };
   }
 
-  get(key: string): any {
+  get(key: string): unknown {
     return this.state[key];
   }
 
@@ -41,14 +41,14 @@ class Store {
 
   toast(text: string, type: 'error' | 'info' = 'error'): void {
     const id = ++this.toastIdCounter;
-    const msg = { text, type, id };
-    const current = this.get('toasts');
+      const msg = { text, type, id };
+    const current = this.get('toasts') as Array<{ text: string; type: string; id: number }>;
     this.set('toasts', [...current, msg]);
     setTimeout(() => {
       const cur = this.get('toasts');
       this.set(
         'toasts',
-        cur.filter((t: any) => t.id !== id),
+        (cur as Array<{ text: string; type: string; id: number }>).filter((t) => t.id !== id),
       );
     }, 4000);
   }
@@ -65,7 +65,7 @@ class Store {
   restoreSession(): { token: string; playerId: string; username: string } | null {
     try {
       const raw = localStorage.getItem('chess_session');
-      return raw ? JSON.parse(raw) : null;
+      return raw ? (JSON.parse(raw) as { token: string; playerId: string; username: string }) : null;
     } catch {
       return null;
     }
@@ -116,9 +116,10 @@ describe('Store', () => {
     jest.useFakeTimers();
     const store = new Store();
     store.toast('Error!', 'error');
-    expect(store.get('toasts')).toHaveLength(1);
-    expect(store.get('toasts')[0].text).toBe('Error!');
-    expect(store.get('toasts')[0].type).toBe('error');
+    const toasts1 = store.get('toasts') as Array<{ text: string; type: string; id: number }>;
+    expect(toasts1).toHaveLength(1);
+    expect(toasts1[0].text).toBe('Error!');
+    expect(toasts1[0].type).toBe('error');
 
     jest.advanceTimersByTime(4000);
     expect(store.get('toasts')).toHaveLength(0);
@@ -129,7 +130,8 @@ describe('Store', () => {
     jest.useFakeTimers();
     const store = new Store();
     store.toast('Info message', 'info');
-    expect(store.get('toasts')[0].type).toBe('info');
+    const toasts = store.get('toasts') as Array<{ text: string; type: string; id: number }>;
+    expect(toasts[0].type).toBe('info');
     jest.useRealTimers();
   });
 

@@ -280,9 +280,9 @@ describe('Private games via API', () => {
     const list = await request.get('/games').expect(200);
     expect(Array.isArray(list.body)).toBe(true);
     /* The public game is listed */
-    expect(list.body.some((g: any) => g.players.white === pub.playerId)).toBe(true);
+    expect(list.body.some((g: { players: { white: string } }) => g.players.white === pub.playerId)).toBe(true);
     /* The private game is NOT listed */
-    expect(list.body.some((g: any) => g.players.white === priv.playerId)).toBe(false);
+    expect(list.body.some((g: { players: { white: string } }) => g.players.white === priv.playerId)).toBe(false);
   });
 
   test('private game can be joined by ID', async () => {
@@ -633,7 +633,7 @@ describe('GET /games/active', () => {
 
     const res = await request.get('/games/active').expect(200);
     expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.some((g: any) => g.id === gameId)).toBe(true);
+    expect(res.body.some((g: { id: string }) => g.id === gameId)).toBe(true);
   });
 
   test('does not include waiting games', async () => {
@@ -643,7 +643,7 @@ describe('GET /games/active', () => {
 
     const res = await request.get('/games/active').expect(200);
     if (res.body.length > 0) {
-      expect(res.body.every((g: any) => g.status === 'active')).toBe(true);
+      expect(res.body.every((g: { status: string }) => g.status === 'active')).toBe(true);
     }
   });
 
@@ -656,7 +656,7 @@ describe('GET /games/active', () => {
     await request.post(`/games/${gameId}/resign`).set('Authorization', p1.authHeader).expect(200);
 
     const res = await request.get('/games/active').expect(200);
-    expect(res.body.some((g: any) => g.id === gameId)).toBe(false);
+    expect(res.body.some((g: { id: string }) => g.id === gameId)).toBe(false);
   });
 });
 
@@ -675,7 +675,7 @@ describe('GET /players/:playerId/games', () => {
     const res = await request.get(`/players/${p1.playerId}/games`).set('Authorization', p1.authHeader).expect(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBeGreaterThanOrEqual(1);
-    expect(res.body.every((g: any) => g.status !== 'active' && g.status !== 'waiting')).toBe(true);
+    expect(res.body.every((g: { status: string }) => g.status !== 'active' && g.status !== 'waiting')).toBe(true);
   });
 
   test('returns 403 when accessing another player history', async () => {
@@ -775,8 +775,8 @@ describe('Admin API — games', () => {
     const res = await request.get('/admin/api/games').set('Authorization', authHeader).expect(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBeGreaterThanOrEqual(2);
-    expect(res.body.some((g: any) => g.status === 'waiting')).toBe(true);
-    expect(res.body.some((g: any) => g.status === 'active')).toBe(true);
+    expect(res.body.some((g: { status: string }) => g.status === 'waiting')).toBe(true);
+    expect(res.body.some((g: { status: string }) => g.status === 'active')).toBe(true);
     /* Each entry has the expected shape */
     for (const g of res.body) {
       expect(g).toHaveProperty('id');
@@ -832,9 +832,9 @@ describe('Admin API — accounts CRUD', () => {
   test('GET /admin/api/accounts lists all registered users', async () => {
     const res = await request.get('/admin/api/accounts').set('Authorization', authHeader).expect(200);
     expect(Array.isArray(res.body)).toBe(true);
-    const target = res.body.find((a: any) => a.id === accountId);
+    const target = res.body.find((a: { id: string; username: string }) => a.id === accountId);
     expect(target).toBeDefined();
-    expect(target.username).toBe('adm_crud');
+    expect(target!.username).toBe('adm_crud');
   });
 
   test('PUT /admin/api/accounts/:id updates display name', async () => {
@@ -845,8 +845,8 @@ describe('Admin API — accounts CRUD', () => {
       .expect(200);
 
     const res = await request.get('/admin/api/accounts').set('Authorization', authHeader).expect(200);
-    const target = res.body.find((a: any) => a.id === accountId);
-    expect(target.displayName).toBe('Admin Test');
+    const target = res.body.find((a: { id: string; displayName: string }) => a.id === accountId);
+    expect(target!.displayName).toBe('Admin Test');
   });
 
   test('PUT /admin/api/accounts/:id rejects empty displayName', async () => {
@@ -905,7 +905,7 @@ describe('Admin API — accounts CRUD', () => {
 
     /* Verify it's gone from the accounts list */
     const res = await request.get('/admin/api/accounts').set('Authorization', authHeader).expect(200);
-    expect(res.body.some((a: any) => a.id === delId)).toBe(false);
+    expect(res.body.some((a: { id: string }) => a.id === delId)).toBe(false);
   });
 
   test('DELETE /admin/api/accounts/:id rejects non-existent account', async () => {
@@ -1496,7 +1496,7 @@ describe('Tournaments', () => {
     const res = await request.get('/tournaments').expect(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBeGreaterThanOrEqual(1);
-    const t = res.body.find((t: any) => t.name === 'Test Tournament');
+    const t = res.body.find((t: { name: string; id: string; participantCount: number }) => t.name === 'Test Tournament');
     expect(t).toBeDefined();
     expect(t).toHaveProperty('participantCount');
   });
@@ -1517,33 +1517,33 @@ describe('Tournaments', () => {
 
     /* Only creator initially */
     let list = await request.get('/tournaments').expect(200);
-    let t = list.body.find((t: any) => t.id === tId);
-    expect(t.participantCount).toBe(1);
+    let t = list.body.find((t: { id: string; participantCount: number }) => t.id === tId);
+    expect(t!.participantCount).toBe(1);
 
     /* Join player A */
     await request.post(`/tournaments/${tId}/join`).set('Authorization', authA).expect(200);
     list = await request.get('/tournaments').expect(200);
-    t = list.body.find((t: any) => t.id === tId);
-    expect(t.participantCount).toBe(2);
+    t = list.body.find((t: { id: string; participantCount: number }) => t.id === tId);
+    expect(t!.participantCount).toBe(2);
 
     /* Join player B */
     await request.post(`/tournaments/${tId}/join`).set('Authorization', authB).expect(200);
     list = await request.get('/tournaments').expect(200);
-    t = list.body.find((t: any) => t.id === tId);
-    expect(t.participantCount).toBe(3);
+    t = list.body.find((t: { id: string; participantCount: number }) => t.id === tId);
+    expect(t!.participantCount).toBe(3);
   });
 
   test('POST /tournaments/:id/join allows joining', async () => {
     const list = await request.get('/tournaments').expect(200);
-    const t = list.body.find((t: any) => t.name === 'Test Tournament');
-    const res = await request.post(`/tournaments/${t.id}/join`).set('Authorization', joinerAuth).expect(200);
+    const t = list.body.find((t: { name: string; id: string }) => t.name === 'Test Tournament');
+    const res = await request.post(`/tournaments/${t!.id}/join`).set('Authorization', joinerAuth).expect(200);
     expect(res.body.id).toBe(t.id);
   });
 
   test('POST /tournaments/:id/join rejects duplicate', async () => {
     const list = await request.get('/tournaments').expect(200);
-    const t = list.body.find((t: any) => t.name === 'Test Tournament');
-    await request.post(`/tournaments/${t.id}/join`).set('Authorization', joinerAuth).expect(409);
+    const t = list.body.find((t: { name: string; id: string }) => t.name === 'Test Tournament');
+    await request.post(`/tournaments/${t!.id}/join`).set('Authorization', joinerAuth).expect(409);
   });
 
   test('POST /tournaments/:id/join rejects non-existent', async () => {
@@ -1552,30 +1552,30 @@ describe('Tournaments', () => {
 
   test('POST /tournaments/:id/leave allows leaving', async () => {
     const list = await request.get('/tournaments').expect(200);
-    const t = list.body.find((t: any) => t.name === 'Test Tournament');
-    await request.post(`/tournaments/${t.id}/leave`).set('Authorization', joinerAuth).expect(200);
+    const t = list.body.find((t: { name: string; id: string }) => t.name === 'Test Tournament');
+    await request.post(`/tournaments/${t!.id}/leave`).set('Authorization', joinerAuth).expect(200);
 
     /* can re-join after leaving */
-    await request.post(`/tournaments/${t.id}/join`).set('Authorization', joinerAuth).expect(200);
+    await request.post(`/tournaments/${t!.id}/join`).set('Authorization', joinerAuth).expect(200);
   });
 
   test('POST /tournaments/:id/start with 2+ players', async () => {
     const list = await request.get('/tournaments').expect(200);
-    const t = list.body.find((t: any) => t.name === 'Test Tournament');
-    const res = await request.post(`/tournaments/${t.id}/start`).set('Authorization', creatorAuth).expect(200);
+    const t = list.body.find((t: { name: string; id: string }) => t.name === 'Test Tournament');
+    const res = await request.post(`/tournaments/${t!.id}/start`).set('Authorization', creatorAuth).expect(200);
     expect(res.body.status).toBe('active');
   });
 
   test('POST /tournaments/:id/start rejects already started', async () => {
     const list = await request.get('/tournaments').expect(200);
-    const t = list.body.find((t: any) => t.name === 'Test Tournament');
-    await request.post(`/tournaments/${t.id}/start`).set('Authorization', creatorAuth).expect(400);
+    const t = list.body.find((t: { name: string; id: string }) => t.name === 'Test Tournament');
+    await request.post(`/tournaments/${t!.id}/start`).set('Authorization', creatorAuth).expect(400);
   });
 
   test('POST /tournaments/:id/leave rejected after start', async () => {
     const list = await request.get('/tournaments').expect(200);
-    const t = list.body.find((t: any) => t.name === 'Test Tournament');
-    await request.post(`/tournaments/${t.id}/leave`).set('Authorization', joinerAuth).expect(400);
+    const t = list.body.find((t: { name: string; id: string }) => t.name === 'Test Tournament');
+    await request.post(`/tournaments/${t!.id}/leave`).set('Authorization', joinerAuth).expect(400);
   });
 
   test('POST /tournaments requires at least 2 players to start', async () => {
@@ -1661,7 +1661,7 @@ describe('Tournaments', () => {
     const joinCode = res.body.join_code;
 
     const list = await request.get('/tournaments').expect(200);
-    expect(list.body.some((t: any) => t.name === 'Secret Tourney')).toBe(false);
+    expect(list.body.some((t: { name: string }) => t.name === 'Secret Tourney')).toBe(false);
 
     const joinByCode = await request
       .post('/tournaments/join-by-code')

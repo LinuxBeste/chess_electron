@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function ArchivePage() {
   const navigate = useNavigate();
-  const [games, setGames] = useState<any[]>([]);
+  const [games, setGames] = useState<api.ArchivedGame[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);

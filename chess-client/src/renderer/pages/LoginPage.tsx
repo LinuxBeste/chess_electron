@@ -80,9 +80,10 @@ export default function LoginPage() {
       store.set('username', trimmed);
       store.set('isRegistered', result.isRegistered);
       navigate('/lobby');
-    } catch (err: any) {
-      logger.error('Quick play failed', { error: err.message });
-      store.toast(err.message || t('login.failedConnect'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Quick play failed', { error: msg });
+      store.toast(msg || t('login.failedConnect'));
     } finally {
       setLoading(false);
     }
@@ -111,9 +112,10 @@ export default function LoginPage() {
       store.set('username', result.displayName);
       store.set('isRegistered', result.isRegistered);
       navigate('/lobby');
-    } catch (err: any) {
-      logger.error('Register failed', { error: err.message });
-      store.toast(err.message || t('login.registrationFailed'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Register failed', { error: msg });
+      store.toast(msg || t('login.registrationFailed'));
     } finally {
       setLoading(false);
     }
@@ -135,9 +137,10 @@ export default function LoginPage() {
       store.set('username', result.displayName);
       store.set('isRegistered', true);
       navigate('/lobby');
-    } catch (err: any) {
-      logger.error('Sign in failed', { error: err.message });
-      store.toast(err.message || t('login.loginFailed'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Sign in failed', { error: msg });
+      store.toast(msg || t('login.loginFailed'));
     } finally {
       setLoading(false);
     }

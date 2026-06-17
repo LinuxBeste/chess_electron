@@ -232,7 +232,7 @@ export async function getArchivedGames(params: {
   status?: string;
   from?: number;
   to?: number;
-}): Promise<{ games: any[]; total: number; page: number; limit: number }> {
+}): Promise<{ games: ArchivedGame[]; total: number; page: number; limit: number }> {
   logger.info('getArchivedGames called', params);
   const q = new URLSearchParams();
   if (params.page) q.set('page', String(params.page));
@@ -244,58 +244,58 @@ export async function getArchivedGames(params: {
   return request('/games/archive?' + q.toString());
 }
 
-export async function getArchivedGame(gameId: string): Promise<any> {
+export async function getArchivedGame(gameId: string): Promise<unknown> {
   logger.info('getArchivedGame called', { gameId });
   return request('/games/archive/' + encodeURIComponent(gameId));
 }
 
 /* ─── Tournaments ─── */
 
-export async function createTournament(name: string, maxPlayers: number, isPrivate?: boolean): Promise<any> {
+export async function createTournament(name: string, maxPlayers: number, isPrivate?: boolean): Promise<unknown> {
   return request('/tournaments', {
     method: 'POST',
     body: JSON.stringify({ name, maxPlayers, isPrivate }),
   });
 }
 
-export async function getTournaments(): Promise<any[]> {
+export async function getTournaments(): Promise<unknown[]> {
   return request('/tournaments');
 }
 
-export async function getTournament(id: string): Promise<any> {
+export async function getTournament(id: string): Promise<unknown> {
   return request('/tournaments/' + encodeURIComponent(id));
 }
 
-export async function joinTournament(id: string): Promise<any> {
+export async function joinTournament(id: string): Promise<unknown> {
   return request('/tournaments/' + encodeURIComponent(id) + '/join', { method: 'POST' });
 }
 
-export async function joinTournamentByCode(code: string): Promise<any> {
+export async function joinTournamentByCode(code: string): Promise<unknown> {
   return request('/tournaments/join-by-code', {
     method: 'POST',
     body: JSON.stringify({ code }),
   });
 }
 
-export async function leaveTournament(id: string): Promise<any> {
+export async function leaveTournament(id: string): Promise<unknown> {
   return request('/tournaments/' + encodeURIComponent(id) + '/leave', { method: 'POST' });
 }
 
 export async function updateTournament(
   id: string,
   data: { name?: string; maxPlayers?: number; isPrivate?: boolean },
-): Promise<any> {
+): Promise<unknown> {
   return request('/tournaments/' + encodeURIComponent(id), {
     method: 'PUT',
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteTournament(id: string): Promise<any> {
+export async function deleteTournament(id: string): Promise<unknown> {
   return request('/tournaments/' + encodeURIComponent(id), { method: 'DELETE' });
 }
 
-export async function startTournament(id: string): Promise<any> {
+export async function startTournament(id: string): Promise<unknown> {
   return request('/tournaments/' + encodeURIComponent(id) + '/start', { method: 'POST' });
 }
 
@@ -345,7 +345,7 @@ export async function getLeaderboard(
 }> {
   logger.info('getLeaderboard called page=' + page + ' limit=' + limit);
   const result = await request<{
-    entries: any[];
+    entries: { playerId: string; username: string; displayName: string; avatarUrl: string | null; rating: number; wins: number; losses: number; draws: number }[];
     total: number;
     page: number;
     limit: number;
@@ -596,6 +596,19 @@ export async function deleteAvatar(): Promise<{ success: true }> {
 
 /* ─── Player Profiles ─── */
 
+export interface ArchivedGame {
+  id: string;
+  white_display_name: string;
+  black_display_name: string;
+  white_player_id: string;
+  black_player_id: string;
+  played_at: number;
+  status: string;
+  reason: string;
+  winner: string | null;
+  time_control?: string;
+}
+
 export interface PlayerProfile {
   id: string;
   username: string | null;
@@ -619,7 +632,7 @@ export async function getArchivedGamesForPlayer(
   playerId: string,
   page = 1,
   limit = 20,
-): Promise<{ games: any[]; total: number; page: number; limit: number }> {
+): Promise<{ games: ArchivedGame[]; total: number; page: number; limit: number }> {
   return getArchivedGames({ player: playerId, page, limit });
 }
 

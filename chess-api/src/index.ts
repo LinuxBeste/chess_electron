@@ -94,15 +94,15 @@ export function createServer(): http.Server {
     handleProtocols: (protocols) => protocols.values().next().value || false,
   });
 
-  (server as any).__wss = wss;
+  (server as http.Server & { __wss: WebSocketServer }).__wss = wss;
 
   const heartbeatInterval = setInterval(() => {
     wss.clients.forEach((ws) => {
       if (ws.readyState === WebSocket.OPEN) {
-        (ws as any).__pongReceived = false;
+        (ws as WebSocket & { __pongReceived: boolean }).__pongReceived = false;
         ws.ping();
         setTimeout(() => {
-          if ((ws as any).__pongReceived === false && ws.readyState === WebSocket.OPEN) {
+          if ((ws as WebSocket & { __pongReceived: boolean }).__pongReceived === false && ws.readyState === WebSocket.OPEN) {
             logger.warn('WS pong timeout — terminating stale connection');
             ws.terminate();
           }
@@ -121,9 +121,9 @@ export function createServer(): http.Server {
     }
     wsIpCount.set(clientIp, current + 1);
 
-    (ws as any).__pongReceived = true;
+    (ws as WebSocket & { __pongReceived: boolean }).__pongReceived = true;
     ws.on('pong', () => {
-      (ws as any).__pongReceived = true;
+      (ws as WebSocket & { __pongReceived: boolean }).__pongReceived = true;
     });
 
     /* sec-websocket-protocol is a comma-separated list; pick the first real value.
@@ -328,7 +328,7 @@ if (!isTestEnv) {
     game.killAllEngines();
     server.close(() => {
       logger.info('HTTP server closed');
-      const wss: WebSocketServer | undefined = (server as any).__wss;
+      const wss = (server as http.Server & { __wss: WebSocketServer | undefined }).__wss;
       if (wss) {
         wss.clients.forEach((client) => client.close(1001, 'Server shutting down'));
       }

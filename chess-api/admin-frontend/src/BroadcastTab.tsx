@@ -21,8 +21,8 @@ export default function BroadcastTab() {
       setResult(res);
       addToast('Broadcast sent to ' + res.recipientCount + ' players', 'success');
       setMessage('');
-    } catch (err: any) {
-      addToast(err.message, 'error');
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setSending(false);
     }

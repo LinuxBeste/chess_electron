@@ -17,7 +17,7 @@ describe('LoginPage — offline mode', () => {
     store.set('username', null);
     store.set('offline', false);
 
-    (window as any).electronAPI = undefined;
+    (window as unknown as Record<string, unknown>).electronAPI = undefined;
   });
 
   function renderPage() {

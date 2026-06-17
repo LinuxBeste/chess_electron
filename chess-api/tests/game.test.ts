@@ -7,6 +7,7 @@
 
 import * as game from '../src/game';
 import { describe, test, expect } from '@jest/globals';
+import type { WebSocket } from 'ws';
 
 /* Each test gets a unique ID by registering a player.
  * Tests are isolated because game.ts uses in-memory maps. */
@@ -588,19 +589,19 @@ describe('spectator registration', () => {
     const g = game.createGame(host);
     game.joinGame(g.id, joiner);
 
-    const ws = { readyState: 1, send: () => {} } as any;
+    const ws = { readyState: 1, send: () => {} } as unknown as WebSocket;
     expect(game.registerSpectator(g.id, ws)).toBe(true);
   });
 
   test('registerSpectator fails for waiting game', () => {
     const host = registerPlayer('spec_wait');
     const g = game.createGame(host);
-    const ws = { readyState: 1, send: () => {} } as any;
+    const ws = { readyState: 1, send: () => {} } as unknown as WebSocket;
     expect(game.registerSpectator(g.id, ws)).toBe(false);
   });
 
   test('registerSpectator fails for non-existent game', () => {
-    const ws = { readyState: 1, send: () => {} } as any;
+    const ws = { readyState: 1, send: () => {} } as unknown as WebSocket;
     expect(game.registerSpectator('fake', ws)).toBe(false);
   });
 
@@ -611,12 +612,12 @@ describe('spectator registration', () => {
     game.joinGame(g.id, joiner);
     game.resignGame(g.id, host);
 
-    const ws = { readyState: 1, send: () => {} } as any;
+    const ws = { readyState: 1, send: () => {} } as unknown as WebSocket;
     expect(game.registerSpectator(g.id, ws)).toBe(false);
   });
 
   test('removeSpectator does not throw', () => {
-    const ws = { readyState: 1, send: () => {} } as any;
+    const ws = { readyState: 1, send: () => {} } as unknown as WebSocket;
     expect(() => game.removeSpectator('any-id', ws)).not.toThrow();
   });
 });
@@ -670,7 +671,7 @@ describe('boardHistory', () => {
 
 describe('chat messages', () => {
   test('handleChatMessage does not throw for invalid player', () => {
-    const ws = { readyState: 1, send: () => {} } as any;
+    const ws = { readyState: 1, send: () => {} } as unknown as WebSocket;
     expect(() => game.handleChatMessage('any-game', 'fake-player', 'hello', ws)).not.toThrow();
   });
 });
@@ -701,7 +702,7 @@ describe('game state enrichment', () => {
 describe('chat messages', () => {
   test('handleChatMessage does not throw for non-existent game', () => {
     const pid = registerPlayer('chat_ghost');
-    const ws = { readyState: 1, send: () => {} } as any;
+    const ws = { readyState: 1, send: () => {} } as unknown as WebSocket;
     expect(() => game.handleChatMessage('fake-game', pid, 'hello', ws)).not.toThrow();
   });
 });
@@ -832,7 +833,7 @@ describe('removeGameById / cleanupChatHistory', () => {
   test('cleanupChatHistory removes chat for a game', () => {
     const pid = registerPlayer('chat_clean');
     const g = game.createGame(pid);
-    const ws = { readyState: 1, send: () => {} } as any;
+    const ws = { readyState: 1, send: () => {} } as unknown as WebSocket;
 
     game.handleChatMessage(g.id, pid, 'hello', ws);
 
@@ -846,7 +847,7 @@ describe('removeGameById / cleanupChatHistory', () => {
   test('removeGameById removes game and chat history', () => {
     const pid = registerPlayer('remove_test');
     const g = game.createGame(pid);
-    const ws = { readyState: 1, send: () => {} } as any;
+    const ws = { readyState: 1, send: () => {} } as unknown as WebSocket;
 
     game.handleChatMessage(g.id, pid, 'test message', ws);
 

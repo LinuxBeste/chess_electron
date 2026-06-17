@@ -104,9 +104,10 @@ export default function LobbyPage() {
       logger.info('Game created', { gameId: game.id, visibility });
       store.set('currentGame', game);
       navigate(`/game/${game.id}`);
-    } catch (err: any) {
-      logger.error('Failed to create game', { error: err.message });
-      store.toast(err.message || t('lobby.failedCreate'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Failed to create game', { error: msg });
+      store.toast(msg || t('lobby.failedCreate'));
     }
   }
 
@@ -117,9 +118,10 @@ export default function LobbyPage() {
       logger.info('Bot game created', { gameId: game.id });
       store.set('currentGame', game);
       navigate(`/game/${game.id}`);
-    } catch (err: any) {
-      logger.error('Failed to create Bot game', { error: err.message });
-      store.toast(err.message || t('lobby.failedCreate'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Failed to create Bot game', { error: msg });
+      store.toast(msg || t('lobby.failedCreate'));
     }
   }
 
@@ -130,9 +132,10 @@ export default function LobbyPage() {
       logger.info('Joined game', { gameId: game.id });
       store.set('currentGame', game);
       navigate(`/game/${game.id}`);
-    } catch (err: any) {
-      logger.error('Failed to join game', { gameId: gid, error: err.message });
-      store.toast(err.message || t('lobby.failedJoin'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Failed to join game', { gameId: gid, error: msg });
+      store.toast(msg || t('lobby.failedJoin'));
     }
   }
 
@@ -143,9 +146,10 @@ export default function LobbyPage() {
       logger.info('Now spectating game', { gameId: gid });
       store.set('currentGame', fresh);
       navigate(`/game/${gid}?spectate=1`);
-    } catch (err: any) {
-      logger.error('Failed to spectate game', { gameId: gid, error: err.message });
-      store.toast(err.message || t('lobby.failedLoad'));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Failed to spectate game', { gameId: gid, error: msg });
+      store.toast(msg || t('lobby.failedLoad'));
     }
   }
 

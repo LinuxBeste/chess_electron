@@ -37,8 +37,8 @@ export default function AccountEditModal({ account, onClose, onSaved }: Props) {
       });
       onSaved();
       onClose();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -49,8 +49,8 @@ export default function AccountEditModal({ account, onClose, onSaved }: Props) {
     try {
       await api('/accounts/' + account.id + '/avatar', { method: 'DELETE' });
       onSaved();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   }
 

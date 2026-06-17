@@ -30,8 +30,8 @@ export default function AccountsTab() {
     try {
       await api('/accounts/' + id + '/reset-password', { method: 'POST', body: JSON.stringify({ newPassword: pw }) });
       alert('Password reset.');
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -40,8 +40,8 @@ export default function AccountsTab() {
     try {
       await api('/accounts/' + id, { method: 'DELETE' });
       load();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     }
   }
 

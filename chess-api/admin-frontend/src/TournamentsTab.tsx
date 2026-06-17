@@ -14,13 +14,33 @@ interface Tournament {
   participantCount: number;
 }
 
+interface TournamentParticipant {
+  player_id: string;
+  display_name?: string;
+  seed?: number;
+}
+
+interface TournamentMatch {
+  id: string;
+  round: number;
+  white_player_id?: string;
+  black_player_id?: string;
+  winner?: string;
+}
+
+interface TournamentDetail {
+  id: string;
+  participants: TournamentParticipant[];
+  matches: TournamentMatch[];
+}
+
 export default function TournamentsTab() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [detail, setDetail] = useState<any>(null);
+  const [detail, setDetail] = useState<TournamentDetail | null>(null);
   const { addToast } = useToast();
 
   function load() {
@@ -32,9 +52,9 @@ export default function TournamentsTab() {
   useEffect(load, []);
 
   function loadDetail(id: string) {
-    api('/tournaments/' + id)
+    api<TournamentDetail>('/tournaments/' + id)
       .then(setDetail)
-      .catch((e) => addToast(e.message, 'error'));
+      .catch((e) => addToast(e instanceof Error ? e.message : String(e), 'error'));
   }
 
   const filtered = query
@@ -54,8 +74,8 @@ export default function TournamentsTab() {
         setExpanded(null);
         setDetail(null);
       }
-    } catch (err: any) {
-      addToast(err.message, 'error');
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setDeleting(null);
     }
@@ -142,7 +162,7 @@ export default function TournamentsTab() {
                             <Users size={12} /> Participants ({detail.participants.length})
                           </h4>
                           <div className="text-xs text-[#ccc] space-y-1">
-                            {detail.participants.map((p: any) => (
+                            {detail.participants.map((p) => (
                               <div key={p.player_id} className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-green-500" />
                                 {p.display_name || p.player_id.slice(0, 8)}
@@ -159,7 +179,7 @@ export default function TournamentsTab() {
                             {detail.matches.length === 0 ? (
                               <span className="text-[#555]">No matches yet</span>
                             ) : (
-                              detail.matches.map((m: any) => (
+                              detail.matches.map((m) => (
                                 <div key={m.id} className="flex items-center gap-2">
                                   <span className="text-[#888]">R{m.round}</span>
                                   <span>{m.white_player_id?.slice(0, 8) || 'BYE'}</span>

@@ -31,7 +31,7 @@ beforeAll(async () => {
   server = createServer();
   await new Promise<void>((resolve) => {
     server.listen(0, () => {
-      port = (server.address() as any).port;
+      port = (server.address() as { port: number }).port;
       resolve();
     });
   });
@@ -65,7 +65,7 @@ function wsWaitForClose(ws: WebSocket): Promise<number> {
 }
 
 /* Helper: wait for a specific message type from a WS connection. */
-function waitForMessage(ws: WebSocket, type: string, timeout = 5000): Promise<any> {
+function waitForMessage(ws: WebSocket, type: string, timeout = 5000): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Timeout waiting for ' + type)), timeout);
     ws.on('message', (raw) => {

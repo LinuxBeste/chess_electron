@@ -64,8 +64,8 @@ export default function GamesTab() {
       await api('/games/' + gameId + '/end', { method: 'POST' });
       addToast('Game ended', 'success');
       load();
-    } catch (err: any) {
-      addToast(err.message, 'error');
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setEnding(null);
     }

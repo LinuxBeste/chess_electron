@@ -27,7 +27,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState<api.PlayerProfile | null>(null);
-  const [games, setGames] = useState<any[]>([]);
+  const [games, setGames] = useState<api.ArchivedGame[]>([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingGames, setLoadingGames] = useState(true);
   const [profileError, setProfileError] = useState('');
@@ -85,8 +85,8 @@ export default function ProfilePage() {
       await api.sendFriendRequest(profile.username);
       store.toast(t('friends.requestSent', { name: profile.displayName || profile.username }), 'info');
       setProfile({ ...profile, friendStatus: 'outgoing' });
-    } catch (e: any) {
-      store.toast(e.message || 'Failed', 'error');
+    } catch (e: unknown) {
+      store.toast(e instanceof Error ? e.message : String(e), 'error');
     } finally {
       setFriendLoading(false);
     }
@@ -99,8 +99,8 @@ export default function ProfilePage() {
       await api.removeFriend(profile.id);
       store.toast(t('profile.removeFriend'), 'info');
       setProfile({ ...profile, friendStatus: 'none' });
-    } catch (e: any) {
-      store.toast(e.message || 'Failed', 'error');
+    } catch (e: unknown) {
+      store.toast(e instanceof Error ? e.message : String(e), 'error');
     } finally {
       setFriendLoading(false);
     }

@@ -41,8 +41,8 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
       const f = await getFriends();
       store.set('friends', f);
       logger.debug('Friend list refreshed', { count: f.length });
-    } catch (err: any) {
-      logger.error('Failed to load friends list', { error: err.message });
+    } catch (err: unknown) {
+      logger.error('Failed to load friends list', { error: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -55,8 +55,8 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
         incoming: r.incoming.length,
         outgoing: r.outgoing.length,
       });
-    } catch (err: any) {
-      logger.error('Failed to load friend requests', { error: err.message });
+    } catch (err: unknown) {
+      logger.error('Failed to load friend requests', { error: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -78,9 +78,10 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
       setAddUsername('');
       loadRequests();
       store.toast(t('friends.requestSent', { name }), 'info');
-    } catch (e: any) {
-      logger.error('Failed to send friend request', { username: name, error: e.message });
-      setAddError(e.message || 'Failed to send request');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      logger.error('Failed to send friend request', { username: name, error: msg });
+      setAddError(msg || 'Failed to send request');
     } finally {
       setAddLoading(false);
     }
@@ -92,8 +93,8 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
       logger.info('Friend request accepted', { requestId: id });
       loadRequests();
       loadFriends();
-    } catch (err: any) {
-      logger.error('Failed to accept friend request', { requestId: id, error: err.message });
+    } catch (err: unknown) {
+      logger.error('Failed to accept friend request', { requestId: id, error: err instanceof Error ? err.message : String(err) });
       store.toast(t('friends.failedAccept'), 'error');
     }
   }
@@ -103,8 +104,8 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
       await declineFriendRequest(id);
       logger.info('Friend request declined', { requestId: id });
       loadRequests();
-    } catch (err: any) {
-      logger.error('Failed to decline friend request', { requestId: id, error: err.message });
+    } catch (err: unknown) {
+      logger.error('Failed to decline friend request', { requestId: id, error: err instanceof Error ? err.message : String(err) });
       store.toast(t('friends.failedDecline'), 'error');
     }
   }
@@ -114,8 +115,8 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
       await cancelFriendRequest(id);
       logger.info('Friend request cancelled', { requestId: id });
       loadRequests();
-    } catch (err: any) {
-      logger.error('Failed to cancel friend request', { requestId: id, error: err.message });
+    } catch (err: unknown) {
+      logger.error('Failed to cancel friend request', { requestId: id, error: err instanceof Error ? err.message : String(err) });
       store.toast(t('friends.failedCancel'), 'error');
     }
   }
@@ -125,8 +126,8 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
       await removeFriend(friendId);
       logger.info('Friend removed', { friendId });
       loadFriends();
-    } catch (err: any) {
-      logger.error('Failed to remove friend', { friendId, error: err.message });
+    } catch (err: unknown) {
+      logger.error('Failed to remove friend', { friendId, error: err instanceof Error ? err.message : String(err) });
       store.toast(t('friends.failedRemove'), 'error');
     }
   }
@@ -145,8 +146,8 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
         gameId: game.id,
       });
       store.toast(t('friends.challengeSent', { name: friend.displayName }), 'info');
-    } catch (err: any) {
-      logger.error('Failed to challenge friend', { friendId: friend.playerId, error: err.message });
+    } catch (err: unknown) {
+      logger.error('Failed to challenge friend', { friendId: friend.playerId, error: err instanceof Error ? err.message : String(err) });
       store.toast(t('friends.failedChallenge'), 'error');
     }
   }
