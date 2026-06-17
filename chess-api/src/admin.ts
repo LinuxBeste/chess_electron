@@ -5,11 +5,15 @@ import os from 'os';
 import fs from 'fs';
 import { execFileSync } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
 import * as game from './game';
 import * as db from './db';
 import logger from './logger';
 import { ipRateLimitMiddleware } from './routes';
 import { hashPassword, verifyPassword } from './game';
+import {
+  passwordSchema, displayNameSchema, ipSchema, statsValueSchema, broadcastMessageSchema,
+} from './validation';
 
 const router: ReturnType<typeof Router> = Router();
 
@@ -65,11 +69,15 @@ function adminAuthMiddleware(req: Request, res: Response, next: () => void): voi
 }
 
 router.post('/admin/api/login', ipRateLimitMiddleware, (req: Request, res: Response) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    res.status(400).json({ error: 'Username and password are required' });
+  const parsed = z.object({
+    username: z.string().min(1, 'Username is required'),
+    password: z.string().min(1, 'Password is required'),
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
+  const { username, password } = parsed.data;
   if (username !== ADMIN_USERNAME || !verifyPassword(password, ADMIN_PASSWORD_HASH)) {
     logger.audit('admin_login_failed', `username="${username}" ip="${req.ip || ''}"`);
     res.status(401).json({ error: 'Invalid admin credentials' });
@@ -403,21 +411,27 @@ router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: R
     }
 
     if (displayName !== undefined) {
-      if (typeof displayName !== 'string' || displayName.trim().length === 0) {
-        res.status(400).json({ error: 'displayName cannot be empty' });
+      const parsed = displayNameSchema.safeParse(displayName);
+      if (!parsed.success) {
+        res.status(400).json({ error: parsed.error.issues[0].message });
         return;
       }
-      db.updateUserDisplayName(req.params.id, displayName.trim());
+      db.updateUserDisplayName(req.params.id, parsed.data);
       const player = game.getAllPlayers().find((p) => p.id === req.params.id);
-      if (player) player.displayName = displayName.trim();
+      if (player) player.displayName = parsed.data;
     }
 
     if (wins !== undefined || losses !== undefined || draws !== undefined) {
       const newWins = wins !== undefined ? wins : user.wins;
       const newLosses = losses !== undefined ? losses : user.losses;
       const newDraws = draws !== undefined ? draws : user.draws;
-      if (typeof newWins !== 'number' || typeof newLosses !== 'number' || typeof newDraws !== 'number') {
-        res.status(400).json({ error: 'Stats must be numbers' });
+      const statsParsed = z.object({
+        wins: statsValueSchema,
+        losses: statsValueSchema,
+        draws: statsValueSchema,
+      }).safeParse({ wins: newWins, losses: newLosses, draws: newDraws });
+      if (!statsParsed.success) {
+        res.status(400).json({ error: statsParsed.error.issues[0].message });
         return;
       }
       db.updateUserStats(req.params.id, newWins, newLosses, newDraws);
@@ -452,11 +466,12 @@ router.delete('/admin/api/accounts/:id/avatar', adminAuthMiddleware, (req: Reque
 
 router.post('/admin/api/accounts/:id/reset-password', adminAuthMiddleware, (req: Request, res: Response) => {
   try {
-    const { newPassword } = req.body;
-    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
-      res.status(400).json({ error: 'newPassword must be at least 8 characters' });
+    const parsed = passwordSchema.safeParse(req.body.newPassword);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
+    const newPassword = parsed.data;
     const user = db.getUserById(req.params.id);
     if (!user) {
       res.status(404).json({ error: 'Account not found' });
@@ -539,17 +554,17 @@ router.post('/admin/api/games/:id/end', adminAuthMiddleware, (req: Request, res:
 
 router.post('/admin/api/bans/ip', adminAuthMiddleware, (req: Request, res: Response) => {
   try {
-    const { ip } = req.body;
-    if (!ip || typeof ip !== 'string') {
-      res.status(400).json({ error: 'IP is required' });
+    const parsed = ipSchema.safeParse(req.body.ip);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
-    const result = game.banIp(ip.trim());
+    const result = game.banIp(parsed.data);
     if (!result.success) {
       res.status(400).json({ error: result.error });
       return;
     }
-    logger.audit('admin_ip_banned', `ip="${ip.trim()}" by admin`);
+    logger.audit('admin_ip_banned', `ip="${parsed.data}" by admin`);
     res.json({ success: true });
   } catch (err) {
     logger.error('Ban IP failed: ' + err);
@@ -582,7 +597,12 @@ router.delete('/admin/api/bans/player/:id', adminAuthMiddleware, (req: Request, 
 
 router.delete('/admin/api/bans/ip/:ip', adminAuthMiddleware, (req: Request, res: Response) => {
   try {
-    game.unbanIp(req.params.ip);
+    const parsed = ipSchema.safeParse(req.params.ip);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid IP address format' });
+      return;
+    }
+    game.unbanIp(parsed.data);
     logger.audit('admin_ip_unbanned', `ip="${req.params.ip}" by admin`);
     res.json({ success: true });
   } catch (err) {
@@ -605,7 +625,7 @@ function tailFile(filePath: string, lines: number): string[] {
 }
 
 router.get('/admin/api/logs', adminAuthMiddleware, (req: Request, res: Response) => {
-  const maxLines = Math.min(parseInt(req.query.lines as string) || 200, 5000);
+  const maxLines = Math.min(parseInt(req.query.lines as string, 10) || 200, 5000);
   const type = (req.query.type as string) || 'all';
   const today = new Date().toISOString().slice(0, 10);
   const result: Record<string, string[]> = {};
@@ -633,8 +653,8 @@ router.get('/admin/api/logs', adminAuthMiddleware, (req: Request, res: Response)
 
 router.get('/admin/api/leaderboard', adminAuthMiddleware, (_req: Request, res: Response) => {
   try {
-    const page = Math.max(1, parseInt(_req.query.page as string) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string) || 50));
+    const page = Math.max(1, parseInt(_req.query.page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string, 10) || 50));
     const offset = (page - 1) * limit;
     const result = db.getLeaderboard(limit, offset);
     res.json({ entries: result.rows, total: result.total, page, limit });
@@ -648,8 +668,8 @@ router.get('/admin/api/leaderboard', adminAuthMiddleware, (_req: Request, res: R
 
 router.get('/admin/api/archive', adminAuthMiddleware, (req: Request, res: Response) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
     const player = req.query.player as string | undefined;
     const status = req.query.status as string | undefined;
     const result = db.getArchivedGames(page, limit, player, status);
@@ -735,13 +755,13 @@ router.get('/admin/api/bot-games', adminAuthMiddleware, (_req: Request, res: Res
 
 router.post('/admin/api/broadcast', adminAuthMiddleware, (req: Request, res: Response) => {
   try {
-    const { message } = req.body;
-    if (!message || typeof message !== 'string' || !message.trim()) {
-      res.status(400).json({ error: 'Message is required' });
+    const parsed = broadcastMessageSchema.safeParse(req.body.message);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
-    const count = game.broadcastToAll({ type: 'admin_broadcast', message: message.trim(), timestamp: Date.now() });
-    logger.audit('admin_broadcast', `message="${message.trim()}" sent to ${count} players by admin`);
+    const count = game.broadcastToAll({ type: 'admin_broadcast', message: parsed.data, timestamp: Date.now() });
+    logger.audit('admin_broadcast', `message="${parsed.data}" sent to ${count} players by admin`);
     res.json({ success: true, recipientCount: count });
   } catch (err) {
     logger.error('Admin broadcast failed: ' + err);

@@ -20,7 +20,7 @@ export default function ArchivePage() {
   async function load() {
     setLoading(true);
     try {
-      const result = await api.getArchivedGames({ page, limit, player: filterPlayer || undefined });
+      const result = await api.getArchivedGames({ page, limit, player: filterPlayer.trim().slice(0, 100) || undefined });
       setGames(result.games);
       setTotal(result.total);
     } catch {

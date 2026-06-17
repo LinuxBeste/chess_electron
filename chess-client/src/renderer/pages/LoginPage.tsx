@@ -7,6 +7,7 @@ import { socketManager } from '../socket';
 import { getSetting } from '../settings';
 import { useNavigate } from 'react-router-dom';
 import { t } from '../translate';
+import { serverUrlSchema, passwordSchema } from '../validation';
 
 type Mode = 'quick' | 'signin' | 'register';
 
@@ -26,6 +27,7 @@ export default function LoginPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleServerUrlChange(url: string) {
+    if (url && !serverUrlSchema.safeParse(url).success) return;
     setServerUrl(url);
     setBaseUrl(url);
     const wsUrl = window.electronAPI?.wsUrl || url;
@@ -92,9 +94,12 @@ export default function LoginPage() {
       flashInput(inputRef.current);
       return;
     }
-    if (registerPassword.length < 4) {
-      store.toast(t('login.passwordTooShort'), 'error');
-      return;
+    if (registerPassword) {
+      const pwParsed = passwordSchema.safeParse(registerPassword);
+      if (!pwParsed.success) {
+        store.toast(pwParsed.error.issues[0].message, 'error');
+        return;
+      }
     }
     logger.info('Register attempt', { username: trimmed });
     setLoading(true);

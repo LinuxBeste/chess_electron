@@ -99,6 +99,7 @@ const Chat = memo(function Chat({ gameId }: ChatProps) {
           className="input"
           type="text"
           placeholder={t('chat.placeholder')}
+          maxLength={500}
           style={{ flex: 1, fontSize: 12 }}
           value={input}
           onChange={(e) => setInput(e.target.value)}

@@ -7,6 +7,12 @@ import * as db from './db';
 import logger from './logger';
 import fs from 'fs';
 import path from 'path';
+import { z } from 'zod';
+import {
+  usernameSchema, passwordSchema, displayNameSchema, squareSchema,
+  promotionSchema, tournamentNameSchema, friendRequestUsernameSchema,
+  joinCodeSchema,
+} from './validation';
 
 const router: ReturnType<typeof Router> = Router();
 
@@ -150,38 +156,23 @@ router.post('/auth/register', ipRateLimitMiddleware, (req: Request, res: Respons
     res.status(403).json({ error: 'Your IP has been banned' });
     return;
   }
-  const { username, password } = req.body;
-  if (!username || typeof username !== 'string' || username.trim().length === 0) {
-    res.status(400).json({ error: 'Username is required' });
+  const parsed = z.object({
+    username: usernameSchema,
+    password: passwordSchema.optional(),
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
-  const trimmed = username.trim();
-  if (trimmed.length < 2) {
-    res.status(400).json({ error: 'Username must be at least 2 characters' });
-    return;
-  }
-  if (trimmed.length > 30) {
-    res.status(400).json({ error: 'Username must be at most 30 characters' });
-    return;
-  }
-  if (password !== undefined && (typeof password !== 'string' || password.length < 8)) {
-    res.status(400).json({ error: 'Password must be at least 8 characters' });
-    return;
-  }
-  if (typeof password === 'string' && password.length > 128) {
-    res.status(400).json({ error: 'Password must be at most 128 characters' });
-    return;
-  }
-  const pwd = typeof password === 'string' ? password.trim() : undefined;
+  const { username, password } = parsed.data;
   try {
-    const result = game.registerPlayer(trimmed, pwd);
+    const result = game.registerPlayer(username, password);
     game.setPlayerIp(result.playerId, ip);
-    logger.audit('register', `username="${trimmed}" registered=${result.isRegistered} ip="${ip}"`);
+    logger.audit('register', `username="${username}" registered=${result.isRegistered} ip="${ip}"`);
     res.status(201).json({ playerId: result.playerId, token: result.token });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.error('Register error:', msg);
-    res.status(500).json({ error: 'Registration failed: ' + msg });
+    logger.error('Register error:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
 
@@ -241,40 +232,31 @@ router.get('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: R
 });
 
 router.put('/auth/me', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  const { displayName } = req.body;
-  if (!displayName || typeof displayName !== 'string' || displayName.trim().length === 0) {
-    res.status(400).json({ error: 'Display name is required' });
+  const parsed = displayNameSchema.safeParse(req.body.displayName);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
-  if (displayName.trim().length > 50) {
-    res.status(400).json({ error: 'Display name must be at most 50 characters' });
-    return;
-  }
-  const result = game.updateDisplayName(req.player.id, displayName.trim());
+  const result = game.updateDisplayName(req.player.id, parsed.data);
   if (!result.success) {
     res.status(400).json({ error: result.error });
     return;
   }
-  logger.info('Display name updated: playerId=' + req.player.id + ' displayName=' + displayName.trim());
-  res.json({ success: true, displayName: displayName.trim() });
+  logger.info('Display name updated: playerId=' + req.player.id + ' displayName=' + parsed.data);
+  res.json({ success: true, displayName: parsed.data });
 });
 
 router.put('/auth/me/password', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  const { currentPassword, newPassword } = req.body;
-  if (!currentPassword || typeof currentPassword !== 'string' || !newPassword || typeof newPassword !== 'string') {
-    res.status(400).json({ error: 'Current password and new password are required' });
+  const parsed = z.object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: passwordSchema,
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
-  const trimmedNew = newPassword.trim();
-  if (trimmedNew.length < 8) {
-    res.status(400).json({ error: 'New password must be at least 8 characters' });
-    return;
-  }
-  if (trimmedNew.length > 128) {
-    res.status(400).json({ error: 'New password must be at most 128 characters' });
-    return;
-  }
-  const result = game.changePassword(req.player.id, currentPassword.trim(), trimmedNew);
+  const { currentPassword, newPassword } = parsed.data;
+  const result = game.changePassword(req.player.id, currentPassword, newPassword);
   if (!result.success) {
     res.status(400).json({ error: result.error });
     return;
@@ -406,7 +388,7 @@ router.post('/games', authMiddleware, banCheckMiddleware, (req: Request, res: Re
 });
 
 router.post('/games/bot', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  const skillLevel = Math.max(1, Math.min(20, parseInt(req.body.skillLevel as string) || 1));
+  const skillLevel = Math.max(1, Math.min(20, parseInt(req.body.skillLevel as string, 10) || 1));
   const playerColor: 'white' | 'black' = req.body.playerColor === 'black' ? 'black' : 'white';
   try {
     const result = game.createBotGame(req.player.id, skillLevel, playerColor);
@@ -436,12 +418,12 @@ router.get('/games/active', globalGetLimiter, (_req: Request, res: Response) => 
 
 router.get('/games/archive', globalGetLimiter, (req: Request, res: Response) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
     const playerId = req.query.player as string | undefined;
     const status = req.query.status as string | undefined;
-    const fromDate = req.query.from ? parseInt(req.query.from as string) : undefined;
-    const toDate = req.query.to ? parseInt(req.query.to as string) : undefined;
+    const fromDate = req.query.from ? parseInt(req.query.from as string, 10) : undefined;
+    const toDate = req.query.to ? parseInt(req.query.to as string, 10) : undefined;
     const result = db.getArchivedGames(page, limit, playerId, status, fromDate, toDate);
     res.json({ games: result.rows, total: result.total, page, limit });
   } catch (err) {
@@ -503,21 +485,21 @@ router.post(
   banCheckMiddleware,
   rateLimitMiddleware,
   (req: Request, res: Response) => {
-    const { from, to, promotion } = req.body;
-    if (!from || !to) {
-      logger.info('Move failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' error=missing from/to');
-      res.status(400).json({ error: 'from and to are required' });
+    const parsed = z.object({
+      from: squareSchema,
+      to: squareSchema,
+      promotion: promotionSchema,
+    }).safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
-    if (typeof from !== 'string' || typeof to !== 'string' || !/^[a-h][1-8]$/i.test(from) || !/^[a-h][1-8]$/i.test(to)) {
-      res.status(400).json({ error: 'Invalid square format' });
-      return;
-    }
+    const { from, to, promotion } = parsed.data;
     const result = game.makeMove(
       req.params.gameId,
       req.player.id,
-      from as string,
-      to as string,
+      from,
+      to,
       promotion as PieceType | undefined,
     );
     if (!result.success) {
@@ -618,16 +600,12 @@ router.post(
       res.status(403).json({ error: 'Only registered users can send friend requests' });
       return;
     }
-    const { username } = req.body;
-    if (!username || typeof username !== 'string') {
-      res.status(400).json({ error: 'Username is required' });
+    const parsed = friendRequestUsernameSchema.safeParse(req.body.username);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
-    const trimmed = username.trim();
-    if (trimmed.length < 2 || trimmed.length > 30) {
-      res.status(400).json({ error: 'Username must be between 2 and 30 characters' });
-      return;
-    }
+    const trimmed = parsed.data;
     const targetUser = db.getUserByUsername(trimmed);
     if (!targetUser) {
       res.status(404).json({ error: 'User not found' });
@@ -800,8 +778,8 @@ router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, (req: Re
 
 router.get('/leaderboard', globalGetLimiter, (_req: Request, res: Response) => {
   try {
-    const page = Math.max(1, parseInt(_req.query.page as string) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string) || 50));
+    const page = Math.max(1, parseInt(_req.query.page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string, 10) || 50));
     const offset = (page - 1) * limit;
     const result = db.getLeaderboard(limit, offset);
     const entries = result.rows.map((r) => ({
@@ -838,17 +816,18 @@ router.post('/tournaments', authMiddleware, banCheckMiddleware, (req: Request, r
     res.status(403).json({ error: 'Only registered users can create tournaments' });
     return;
   }
-  const name = ((req.body.name as string) || '').trim();
-  if (!name) {
-    res.status(400).json({ error: 'Tournament name is required' });
+  const parsed = z.object({
+    name: tournamentNameSchema,
+    maxPlayers: z.union([z.string(), z.number()]).optional(),
+    isPrivate: z.boolean().optional(),
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
-  if (name.length > 100) {
-    res.status(400).json({ error: 'Tournament name must be at most 100 characters' });
-    return;
-  }
-  const maxPlayers = Math.max(2, Math.min(64, parseInt(req.body.maxPlayers as string) || 8));
-  const isPrivate = req.body.isPrivate === true;
+  const { name, maxPlayers: maxPlayersRaw, isPrivate } = parsed.data;
+  const maxPlayersStr = typeof maxPlayersRaw === 'number' ? String(maxPlayersRaw) : (maxPlayersRaw || '8');
+  const maxPlayers = Math.max(2, Math.min(64, parseInt(maxPlayersStr, 10) || 8));
   try {
     const t = db.createTournament(name, req.player.id, maxPlayers, isPrivate);
     db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, 0);
@@ -876,11 +855,12 @@ router.post('/tournaments/join-by-code', authMiddleware, banCheckMiddleware, (re
     res.status(403).json({ error: 'Only registered users can join tournaments' });
     return;
   }
-  const code = ((req.body.code as string) || '').trim().toUpperCase();
-  if (!code) {
-    res.status(400).json({ error: 'Join code is required' });
+  const parsed = joinCodeSchema.safeParse(req.body.code);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
+  const code = parsed.data;
   const t = db.getTournamentByJoinCode(code);
   if (!t) {
     res.status(404).json({ error: 'Invalid join code' });
@@ -1002,17 +982,19 @@ router.put('/tournaments/:id', authMiddleware, banCheckMiddleware, (req: Request
     res.status(400).json({ error: 'Cannot edit a started tournament' });
     return;
   }
-  const name = ((req.body.name as string) || '').trim();
-  if (!name) {
-    res.status(400).json({ error: 'Tournament name is required' });
+  const parsed = z.object({
+    name: tournamentNameSchema,
+    maxPlayers: z.union([z.string(), z.number()]).optional(),
+    isPrivate: z.boolean().optional(),
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
-  if (name.length > 100) {
-    res.status(400).json({ error: 'Tournament name must be at most 100 characters' });
-    return;
-  }
-  const maxPlayers = Math.max(2, Math.min(64, parseInt(req.body.maxPlayers as string) || t.max_players));
-  const isPrivate = req.body.isPrivate === true ? 1 : 0;
+  const { name, maxPlayers: maxPlayersRaw } = parsed.data;
+  const maxPlayersStr = typeof maxPlayersRaw === 'number' ? String(maxPlayersRaw) : (maxPlayersRaw || String(t.max_players));
+  const maxPlayers = Math.max(2, Math.min(64, parseInt(maxPlayersStr, 10) || t.max_players));
+  const isPrivate = parsed.data.isPrivate === true ? 1 : 0;
   try {
     db.updateTournamentDetails(t.id, name, maxPlayers, isPrivate);
     logger.info('Tournament updated: tournamentId=' + t.id);

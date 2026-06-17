@@ -21,6 +21,7 @@ import {
   avatarSrc,
 } from '../api';
 import { useStoreValue } from '../hooks/useStore';
+import { displayNameSchema } from '../validation';
 import { store } from '../store';
 import logger from '../logger';
 
@@ -905,10 +906,14 @@ function AccountTab() {
   }, [token]);
 
   async function handleSaveDisplayName() {
-    if (!displayName.trim()) return;
+    const parsed = displayNameSchema.safeParse(displayName);
+    if (!parsed.success) {
+      setDisplayNameError(parsed.error.issues[0].message);
+      return;
+    }
     setDisplayNameMsg('');
     setDisplayNameError('');
-    const newName = displayName.trim();
+    const newName = parsed.data;
     try {
       await apiUpdateDisplayName(newName);
       store.set('username', newName);

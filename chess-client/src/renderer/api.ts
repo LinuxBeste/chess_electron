@@ -246,7 +246,7 @@ export async function getArchivedGames(params: {
 
 export async function getArchivedGame(gameId: string): Promise<any> {
   logger.info('getArchivedGame called', { gameId });
-  return request('/games/archive/' + gameId);
+  return request('/games/archive/' + encodeURIComponent(gameId));
 }
 
 /* ─── Tournaments ─── */
@@ -263,11 +263,11 @@ export async function getTournaments(): Promise<any[]> {
 }
 
 export async function getTournament(id: string): Promise<any> {
-  return request('/tournaments/' + id);
+  return request('/tournaments/' + encodeURIComponent(id));
 }
 
 export async function joinTournament(id: string): Promise<any> {
-  return request('/tournaments/' + id + '/join', { method: 'POST' });
+  return request('/tournaments/' + encodeURIComponent(id) + '/join', { method: 'POST' });
 }
 
 export async function joinTournamentByCode(code: string): Promise<any> {
@@ -278,25 +278,25 @@ export async function joinTournamentByCode(code: string): Promise<any> {
 }
 
 export async function leaveTournament(id: string): Promise<any> {
-  return request('/tournaments/' + id + '/leave', { method: 'POST' });
+  return request('/tournaments/' + encodeURIComponent(id) + '/leave', { method: 'POST' });
 }
 
 export async function updateTournament(
   id: string,
   data: { name?: string; maxPlayers?: number; isPrivate?: boolean },
 ): Promise<any> {
-  return request('/tournaments/' + id, {
+  return request('/tournaments/' + encodeURIComponent(id), {
     method: 'PUT',
     body: JSON.stringify(data),
   });
 }
 
 export async function deleteTournament(id: string): Promise<any> {
-  return request('/tournaments/' + id, { method: 'DELETE' });
+  return request('/tournaments/' + encodeURIComponent(id), { method: 'DELETE' });
 }
 
 export async function startTournament(id: string): Promise<any> {
-  return request('/tournaments/' + id + '/start', { method: 'POST' });
+  return request('/tournaments/' + encodeURIComponent(id) + '/start', { method: 'POST' });
 }
 
 /* GET /health — no auth required.
@@ -438,7 +438,7 @@ export async function getGameList(): Promise<GameState[]> {
 export async function getGame(gameId: string): Promise<GameState> {
   logger.debug('getGame called: gameId=' + gameId);
   try {
-    const result = await request<GameState>(`/games/${gameId}`);
+    const result = await request<GameState>(`/games/${encodeURIComponent(gameId)}`);
     logger.debug('getGame ok: gameId=' + result.id);
     return result;
   } catch (err) {
@@ -453,7 +453,7 @@ export async function getGame(gameId: string): Promise<GameState> {
 export async function abortGame(gameId: string): Promise<{ success: boolean }> {
   logger.info('abortGame called: gameId=' + gameId);
   try {
-    const result = await request<{ success: boolean }>(`/games/${gameId}/abort`, { method: 'POST' });
+    const result = await request<{ success: boolean }>(`/games/${encodeURIComponent(gameId)}/abort`, { method: 'POST' });
     logger.info('abortGame ok: gameId=' + gameId);
     return result;
   } catch (err) {
@@ -469,7 +469,7 @@ export async function abortGame(gameId: string): Promise<{ success: boolean }> {
 export async function joinGame(gameId: string): Promise<GameState> {
   logger.info('joinGame called: gameId=' + gameId);
   try {
-    const result = await request<GameState>(`/games/${gameId}/join`, { method: 'POST' });
+    const result = await request<GameState>(`/games/${encodeURIComponent(gameId)}/join`, { method: 'POST' });
     logger.info('joinGame ok: gameId=' + result.id);
     return result;
   } catch (err) {
@@ -486,7 +486,7 @@ export async function joinGame(gameId: string): Promise<GameState> {
 export async function makeMove(gameId: string, from: string, to: string, promotion?: PieceType): Promise<GameState> {
   logger.info('makeMove called: gameId=' + gameId + ', from=' + from + ', to=' + to);
   try {
-    const result = await request<GameState>(`/games/${gameId}/move`, {
+    const result = await request<GameState>(`/games/${encodeURIComponent(gameId)}/move`, {
       method: 'POST',
       body: JSON.stringify({ from, to, ...(promotion ? { promotion } : {}) }),
     });
@@ -505,7 +505,7 @@ export async function makeMove(gameId: string, from: string, to: string, promoti
 export async function resignGame(gameId: string): Promise<GameState> {
   logger.info('resignGame called: gameId=' + gameId);
   try {
-    const result = await request<GameState>(`/games/${gameId}/resign`, { method: 'POST' });
+    const result = await request<GameState>(`/games/${encodeURIComponent(gameId)}/resign`, { method: 'POST' });
     logger.info('resignGame ok: gameId=' + result.id);
     return result;
   } catch (err) {
@@ -519,7 +519,7 @@ export async function resignGame(gameId: string): Promise<GameState> {
 export async function getPlayerGames(playerId: string): Promise<GameState[]> {
   logger.info('getPlayerGames called: playerId=' + playerId);
   try {
-    const result = await request<GameState[]>(`/players/${playerId}/games`);
+    const result = await request<GameState[]>(`/players/${encodeURIComponent(playerId)}/games`);
     logger.info('getPlayerGames ok: count=' + result.length);
     return result;
   } catch (err) {
@@ -535,7 +535,7 @@ export async function getPlayerGames(playerId: string): Promise<GameState[]> {
 export async function getLegalMoves(gameId: string): Promise<{ moves: LegalMoveHint[] }> {
   logger.debug('getLegalMoves called: gameId=' + gameId);
   try {
-    const result = await request<{ moves: LegalMoveHint[] }>(`/games/${gameId}/moves`);
+    const result = await request<{ moves: LegalMoveHint[] }>(`/games/${encodeURIComponent(gameId)}/moves`);
     logger.debug('getLegalMoves ok: gameId=' + gameId + ', movesCount=' + result.moves.length);
     return result;
   } catch (err) {
@@ -626,7 +626,7 @@ export async function getArchivedGamesForPlayer(
 export async function getPlayerProfile(playerId: string): Promise<PlayerProfile> {
   logger.info('getPlayerProfile called: playerId=' + playerId);
   try {
-    const result = await request<PlayerProfile>(`/players/${playerId}/profile`);
+    const result = await request<PlayerProfile>(`/players/${encodeURIComponent(playerId)}/profile`);
     logger.info('getPlayerProfile ok: playerId=' + result.id);
     return result;
   } catch (err) {
@@ -676,7 +676,7 @@ export async function getFriendRequests(): Promise<{
 export async function acceptFriendRequest(id: string): Promise<{ success: boolean }> {
   logger.info('acceptFriendRequest called: id=' + id);
   try {
-    const result = await request<{ success: boolean }>(`/friends/requests/${id}/accept`, { method: 'POST' });
+    const result = await request<{ success: boolean }>(`/friends/requests/${encodeURIComponent(id)}/accept`, { method: 'POST' });
     logger.info('acceptFriendRequest ok: id=' + id);
     return result;
   } catch (err) {
@@ -689,7 +689,7 @@ export async function acceptFriendRequest(id: string): Promise<{ success: boolea
 export async function declineFriendRequest(id: string): Promise<{ success: boolean }> {
   logger.info('declineFriendRequest called: id=' + id);
   try {
-    const result = await request<{ success: boolean }>(`/friends/requests/${id}/decline`, { method: 'POST' });
+    const result = await request<{ success: boolean }>(`/friends/requests/${encodeURIComponent(id)}/decline`, { method: 'POST' });
     logger.info('declineFriendRequest ok: id=' + id);
     return result;
   } catch (err) {
@@ -702,7 +702,7 @@ export async function declineFriendRequest(id: string): Promise<{ success: boole
 export async function cancelFriendRequest(id: string): Promise<{ success: boolean }> {
   logger.info('cancelFriendRequest called: id=' + id);
   try {
-    const result = await request<{ success: boolean }>(`/friends/requests/${id}/cancel`, { method: 'POST' });
+    const result = await request<{ success: boolean }>(`/friends/requests/${encodeURIComponent(id)}/cancel`, { method: 'POST' });
     logger.info('cancelFriendRequest ok: id=' + id);
     return result;
   } catch (err) {
@@ -715,7 +715,7 @@ export async function cancelFriendRequest(id: string): Promise<{ success: boolea
 export async function removeFriend(friendId: string): Promise<{ success: boolean }> {
   logger.info('removeFriend called: friendId=' + friendId);
   try {
-    const result = await request<{ success: boolean }>(`/friends/${friendId}`, { method: 'DELETE' });
+    const result = await request<{ success: boolean }>(`/friends/${encodeURIComponent(friendId)}`, { method: 'DELETE' });
     logger.info('removeFriend ok: friendId=' + friendId);
     return result;
   } catch (err) {
