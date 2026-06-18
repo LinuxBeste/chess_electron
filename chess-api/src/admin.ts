@@ -20,6 +20,37 @@ let ADMIN_PASSWORD_HASH: string;
 
 const ADMIN_TOKEN_TTL = parseInt(process.env.ADMIN_TOKEN_TTL ?? String(24 * 60 * 60 * 1000), 10);
 
+const ADMIN_LOGIN_MAX_ATTEMPTS = parseInt(process.env.ADMIN_LOGIN_MAX_ATTEMPTS ?? '5', 10);
+const ADMIN_LOGIN_LOCKOUT_MINUTES = parseInt(process.env.ADMIN_LOGIN_LOCKOUT_MINUTES ?? '15', 10);
+const adminLoginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+
+function checkAdminLoginLockout(username: string): { locked: boolean; remainingMs?: number } {
+  const entry = adminLoginAttempts.get(username);
+  if (!entry) return { locked: false };
+  if (entry.lockedUntil > 0 && Date.now() >= entry.lockedUntil) {
+    adminLoginAttempts.delete(username);
+    return { locked: false };
+  }
+  if (entry.lockedUntil > 0) {
+    return { locked: true, remainingMs: entry.lockedUntil - Date.now() };
+  }
+  return { locked: false };
+}
+
+function recordAdminFailedAttempt(username: string): void {
+  const entry = adminLoginAttempts.get(username) ?? { count: 0, lockedUntil: 0 };
+  entry.count++;
+  if (entry.count >= ADMIN_LOGIN_MAX_ATTEMPTS) {
+    entry.lockedUntil = Date.now() + ADMIN_LOGIN_LOCKOUT_MINUTES * 60 * 1000;
+    logger.warn('Admin login locked out: username="' + username + '" for ' + ADMIN_LOGIN_LOCKOUT_MINUTES + ' minutes');
+  }
+  adminLoginAttempts.set(username, entry);
+}
+
+function clearAdminLoginAttempts(username: string): void {
+  adminLoginAttempts.delete(username);
+}
+
 function initAdminCreds(): void {
   ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
   if (process.env.ADMIN_PASSWORD) {
@@ -78,11 +109,19 @@ router.post('/admin/api/login', ipRateLimitMiddleware, (req: Request, res: Respo
     return;
   }
   const { username, password } = parsed.data;
+  const lockout = checkAdminLoginLockout(username);
+  if (lockout.locked) {
+    logger.audit('admin_login_locked', `username="${username}" ip="${req.ip || ''}"`);
+    res.status(429).json({ error: 'Too many failed login attempts. Try again later.', remainingMs: lockout.remainingMs });
+    return;
+  }
   if (username !== ADMIN_USERNAME || !verifyPassword(password, ADMIN_PASSWORD_HASH)) {
+    recordAdminFailedAttempt(username);
     logger.audit('admin_login_failed', `username="${username}" ip="${req.ip || ''}"`);
     res.status(401).json({ error: 'Invalid admin credentials' });
     return;
   }
+  clearAdminLoginAttempts(username);
   const token = uuidv4();
   adminTokens.set(token, Date.now() + ADMIN_TOKEN_TTL);
   logger.audit('admin_login_ok', `username="${username}" ip="${req.ip || ''}"`);

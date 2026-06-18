@@ -51,6 +51,10 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 if (CORS_ORIGIN === '*') {
+  if (process.env.NODE_ENV === 'production') {
+    logger.error('CORS_ORIGIN is set to * in production — refusing to start. Set CORS_ORIGIN to a specific origin.');
+    process.exit(1);
+  }
   logger.warn('CORS origin is set to * — restrict this in production');
 }
 app.use(cors({ origin: CORS_ORIGIN, credentials: CORS_ORIGIN !== '*' }));
