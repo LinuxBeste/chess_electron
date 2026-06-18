@@ -670,11 +670,16 @@ router.get('/friends/requests', authMiddleware, banCheckMiddleware, (req: Reques
       outgoing.length,
   );
 
+  const allIds = new Set<string>();
+  for (const r of incoming) allIds.add(r.from_user_id);
+  for (const r of outgoing) allIds.add(r.to_user_id);
+  const usersById = db.getUsersByIds([...allIds]);
+
   const enrich = (rows: db.FriendRequestRow[], key: 'from_user_id' | 'to_user_id') =>
     rows.map((r) => {
       const pid = r[key];
       const p = game.getPlayerById(pid);
-      const u = db.getUserById(pid);
+      const u = usersById.get(pid);
       return {
         id: r.id,
         playerId: pid,

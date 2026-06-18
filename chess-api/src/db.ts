@@ -289,6 +289,19 @@ export function getUserById(id: string): DbUser | undefined {
   return user;
 }
 
+export function getUsersByIds(ids: string[]): Map<string, DbUser> {
+  if (ids.length === 0) return new Map();
+  const d = getDb();
+  const placeholders = ids.map(() => '?').join(',');
+  const rows = d.prepare('SELECT * FROM users WHERE id IN (' + placeholders + ')').all(...ids) as DbUser[];
+  const map = new Map<string, DbUser>();
+  for (const row of rows) {
+    map.set(row.id, row);
+  }
+  logger.debug('DB: getUsersByIds requested=' + ids.length + ' found=' + rows.length);
+  return map;
+}
+
 export function saveToken(token: string, userId: string): void {
   const d = getDb();
   d.prepare('INSERT INTO user_tokens (token, user_id, created_at) VALUES (?, ?, ?)').run(token, userId, Date.now());

@@ -821,22 +821,35 @@ function updateEloRatings(game: GameState, winner: Color | null): void {
 
 function recordGameResult(game: GameState, winner: Color | null): void {
   game.winner = winner;
+  const neededIds: string[] = [];
   const winnerId = winner ? game.players[winner] : null;
-  const user = winnerId ? db.getUserById(winnerId) : null;
-  if (user) {
-    db.addWin(user.id);
+  if (winnerId) {
+    neededIds.push(winnerId);
     const opponentId = winner === 'white' ? game.players.black : game.players.white;
-    if (opponentId) {
-      const opponent = db.getUserById(opponentId);
-      if (opponent) db.addLoss(opponent.id);
+    if (opponentId) neededIds.push(opponentId);
+  } else if (winner === null) {
+    if (game.players.white) neededIds.push(game.players.white);
+    if (game.players.black) neededIds.push(game.players.black);
+  }
+  const usersById = db.getUsersByIds(neededIds);
+
+  if (winnerId) {
+    const user = usersById.get(winnerId);
+    if (user) {
+      db.addWin(user.id);
+      const opponentId = winner === 'white' ? game.players.black : game.players.white;
+      if (opponentId) {
+        const opponent = usersById.get(opponentId);
+        if (opponent) db.addLoss(opponent.id);
+      }
     }
   } else if (winner === null) {
     if (game.players.white) {
-      const w = db.getUserById(game.players.white);
+      const w = usersById.get(game.players.white);
       if (w) db.addDraw(w.id);
     }
     if (game.players.black) {
-      const b = db.getUserById(game.players.black);
+      const b = usersById.get(game.players.black);
       if (b) db.addDraw(b.id);
     }
   }
