@@ -47,6 +47,7 @@ const uciHistory = new Map<string, string[]>();
 
 const wsConnections = new Map<string, Set<WebSocket>>();
 const spectatorConnections = new Map<string, Set<WebSocket>>();
+const playerGameIndex = new Map<string, Set<string>>();
 const playerIps = new Map<string, string>();
 const bannedPlayers = new Set<string>();
 const bannedIps = new Set<string>();
@@ -58,6 +59,28 @@ const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? 
 const WAITING_TTL_MS = parseInt(process.env.WAITING_TTL_MS ?? String(10 * 60 * 1000), 10);
 const rateLimitBuckets = new Map<string, number[]>();
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
+
+function addPlayerGameIndex(playerId: string, gameId: string): void {
+  let set = playerGameIndex.get(playerId);
+  if (!set) {
+    set = new Set();
+    playerGameIndex.set(playerId, set);
+  }
+  set.add(gameId);
+}
+
+function removePlayerGameIndex(gameId: string, playerId: string): void {
+  const set = playerGameIndex.get(playerId);
+  if (set) {
+    set.delete(gameId);
+    if (set.size === 0) playerGameIndex.delete(playerId);
+  }
+}
+
+function removeGameFromIndex(game: GameState): void {
+  if (game.players.white) removePlayerGameIndex(game.id, game.players.white);
+  if (game.players.black) removePlayerGameIndex(game.id, game.players.black);
+}
 
 function enrichNames(g: GameState): GameState {
   const whitePlayer = g.players.white ? players.get(g.players.white) : undefined;
@@ -344,11 +367,12 @@ function broadcastToGame(gameId: string, message: Record<string, unknown>): void
 }
 
 function countActiveGamesForPlayer(playerId: string): number {
+  const gameIds = playerGameIndex.get(playerId);
+  if (!gameIds) return 0;
   let count = 0;
-  for (const g of games.values()) {
-    if (g.status === 'active' && (g.players.white === playerId || g.players.black === playerId)) {
-      count++;
-    }
+  for (const gameId of gameIds) {
+    const g = games.get(gameId);
+    if (g && g.status === 'active') count++;
   }
   return count;
 }
@@ -396,6 +420,7 @@ export function createGame(
     halfMoveClock: 0,
   };
   games.set(id, game);
+  addPlayerGameIndex(playerId, id);
   logger.info(
     'Game created: gameId=' + id + ' white=' + playerId + ' visibility=' + visibility + ' spectateMode=' + spectateMode,
   );
@@ -444,6 +469,7 @@ export function createBotGame(
     halfMoveClock: 0,
   };
   games.set(id, game);
+  addPlayerGameIndex(playerId, id);
 
   engineManager
     .startInstance(id, skillLevel)
@@ -616,6 +642,7 @@ export function joinGame(gameId: string, playerId: string): { success: boolean; 
 
   game.players.black = playerId;
   game.status = 'active';
+  addPlayerGameIndex(playerId, gameId);
 
   logger.info('Game joined: gameId=' + gameId + ' white=' + game.players.white + ' black=' + playerId);
 
@@ -1078,14 +1105,16 @@ export function getLegalMovesForPlayer(
 }
 
 export function getPlayerGames(playerId: string): GameState[] {
-  const result = Array.from(games.values())
-    .filter((g) => {
-      const isPlayer = g.players.white === playerId || g.players.black === playerId;
-      const isFinished =
-        g.status === 'checkmate' || g.status === 'stalemate' || g.status === 'resigned' || g.status === 'draw';
-      return isPlayer && isFinished;
-    })
-    .map(enrichNames);
+  const gameIds = playerGameIndex.get(playerId);
+  if (!gameIds) return [];
+  const result: GameState[] = [];
+  for (const gameId of gameIds) {
+    const g = games.get(gameId);
+    if (!g) continue;
+    const isFinished =
+      g.status === 'checkmate' || g.status === 'stalemate' || g.status === 'resigned' || g.status === 'draw';
+    if (isFinished) result.push(enrichNames(g));
+  }
   logger.info('getPlayerGames: playerId=' + playerId + ' count=' + result.length);
   return result;
 }
@@ -1360,9 +1389,9 @@ export function endGame(gameId: string): { success: true } | { success: false; e
   g.status = 'draw';
   g.winner = null;
 
+  uciHistory.delete(g.id);
   if (isBotGame(g)) {
     engineManager.destroyInstance(g.id);
-    uciHistory.delete(g.id);
   }
 
   spectatorConnections.delete(g.id);
