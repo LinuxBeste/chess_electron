@@ -35,3 +35,7 @@ chess-api/data/
 chess-api/logs/
 
 FEATURES.md
+
+# Test coverage output
+coverage/
+**/coverage/
