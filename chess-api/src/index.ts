@@ -9,6 +9,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
 import routes from './routes';
 import adminRouter from './admin';
+import friendsRouter from './friends';
 import * as game from './game';
 import * as db from './db';
 import logger from './logger';
@@ -80,6 +81,7 @@ app.use('/avatars', express.static(avatarDir));
 const adminDir = path.join(path.resolve(__dirname, '..'), 'dist', 'admin');
 app.use('/admin', express.static(adminDir));
 app.use(adminRouter);
+app.use(friendsRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const msg = err instanceof Error ? err.message : String(err);
