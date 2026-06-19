@@ -5,7 +5,7 @@
  * game lifecycle rules.
  */
 
-import * as game from '../src/game';
+import * as game from '../src/game.js';
 import { describe, test, expect } from '@jest/globals';
 import type { WebSocket } from 'ws';
 

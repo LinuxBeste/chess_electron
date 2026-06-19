@@ -3,7 +3,7 @@
  * Coordinate system: board[rank][file] with rank 0 = rank 8 (black's home),
  * rank 7 = rank 1 (white's home). */
 
-import { Piece, Color, PieceType, Board, Move, CastlingRights, SerializedSquare } from './types';
+import { Piece, Color, PieceType, Board, Move, CastlingRights, SerializedSquare } from './types.js';
 
 export function squareToIndices(square: string): [number, number] {
   const file = square.charCodeAt(0) - 97;

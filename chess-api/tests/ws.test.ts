@@ -5,12 +5,12 @@
  * port so tests don't conflict with each other or the dev server.
  */
 
-import { createServer, app } from '../src/index';
+import { createServer, app } from '../src/index.js';
 import http from 'http';
 import { WebSocket } from 'ws';
 import supertest from 'supertest';
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
-import * as game from '../src/game';
+import * as game from '../src/game.js';
 
 const request = supertest(app);
 

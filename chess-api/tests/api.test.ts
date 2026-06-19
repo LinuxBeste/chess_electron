@@ -6,8 +6,8 @@
  */
 
 import supertest from 'supertest';
-import { app } from '../src/index';
-import * as game from '../src/game';
+import { app } from '../src/index.js';
+import * as game from '../src/game.js';
 import { describe, test, expect } from '@jest/globals';
 
 const request = supertest(app);

@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import logger, { audit, morganStream, cleanupOldLogs } from '../src/logger';
+import logger, { audit, morganStream, cleanupOldLogs } from '../src/logger.js';
 
 describe('logger', () => {
   test('error does not throw', () => {

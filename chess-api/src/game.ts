@@ -1,12 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocket } from 'ws';
-import { GameState, Color, PieceType } from './types';
-import type { GameStatus } from './types';
-import * as chess from './chess';
-import * as db from './db';
-import { engineManager } from './engine';
-import logger from './logger';
-import { players, BOT_PLAYER_ID } from './player';
+import { GameState, Color, PieceType } from './types.js';
+import type { GameStatus } from './types.js';
+import * as chess from './chess.js';
+import * as db from './db.js';
+import { engineManager } from './engine.js';
+import logger from './logger.js';
+import { players, BOT_PLAYER_ID } from './player.js';
 import {
   games,
   uciHistory,
@@ -27,10 +27,10 @@ import {
   sendToPlayer,
   sendToPlayerRaw,
   sendToSpectators,
-} from './state';
-import { updateEloRatings } from './elo';
-import { sendChatHistory } from './chat';
-import { loadPersistedBans } from './bans';
+} from './state.js';
+import { updateEloRatings } from './elo.js';
+import { sendChatHistory } from './chat.js';
+import { loadPersistedBans } from './bans.js';
 
 export {
   BOT_PLAYER_ID,
@@ -53,7 +53,7 @@ export {
   getPlayerById,
   getAllPlayers,
   loadPersistedUsers,
-} from './player';
+} from './player.js';
 
 export {
   isBanned,
@@ -64,11 +64,11 @@ export {
   getBannedPlayers,
   getBannedIps,
   loadPersistedBans,
-} from './bans';
+} from './bans.js';
 
-export { cleanupChatHistory, handleChatMessage, sendChatHistory } from './chat';
+export { cleanupChatHistory, handleChatMessage, sendChatHistory } from './chat.js';
 
-export { removeGameById, sendToPlayer } from './state';
+export { removeGameById, sendToPlayer } from './state.js';
 
 function enrichNames(g: GameState): GameState {
   const whitePlayer = g.players.white ? players.get(g.players.white) : undefined;

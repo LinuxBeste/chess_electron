@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'url';
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import path from 'path';
@@ -6,12 +7,14 @@ import fs from 'fs';
 import { execFileSync } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
-import * as game from './game';
-import * as db from './db';
-import logger from './logger';
-import { ipRateLimitMiddleware } from './routes';
-import { hashPassword, verifyPassword } from './game';
-import { passwordSchema, displayNameSchema, ipSchema, statsValueSchema, broadcastMessageSchema } from './validation';
+import * as game from './game.js';
+import * as db from './db.js';
+import logger from './logger.js';
+import { ipRateLimitMiddleware } from './routes.js';
+import { hashPassword, verifyPassword } from './game.js';
+import { passwordSchema, displayNameSchema, ipSchema, statsValueSchema, broadcastMessageSchema } from './validation.js';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router: ReturnType<typeof Router> = Router();
 

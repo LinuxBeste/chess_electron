@@ -1,4 +1,4 @@
-import { GameState } from './types';
+import { GameState } from './types.js';
 import { WebSocket } from 'ws';
 
 export const games = new Map<string, GameState>();

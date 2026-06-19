@@ -5,8 +5,8 @@
  * the chess module functions directly with synthetic board states.
  */
 
-import * as chess from '../src/chess';
-import { Board, Piece, CastlingRights, Move } from '../src/types';
+import * as chess from '../src/chess.js';
+import { Board, Piece, CastlingRights, Move } from '../src/types.js';
 import { describe, test, expect } from '@jest/globals';
 
 /**

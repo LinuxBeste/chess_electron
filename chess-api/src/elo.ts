@@ -1,6 +1,6 @@
-import * as db from './db';
-import logger from './logger';
-import type { Color, GameState } from './types';
+import * as db from './db.js';
+import logger from './logger.js';
+import type { Color, GameState } from './types.js';
 
 function calculateElo(ratingA: number, ratingB: number, scoreA: number): [number, number] {
   const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));

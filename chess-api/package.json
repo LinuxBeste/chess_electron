@@ -1,15 +1,16 @@
 {
   "name": "chess-api",
   "version": "1.0.0",
+  "type": "module",
   "description": "Multiplayer chess REST API with WebSocket support",
   "scripts": {
     "build": "cd admin-frontend && pnpm run build && cd .. && tsc",
     "start": "node dist/index.js",
     "start:dev": "bash start.sh --native",
     "start:docker": "bash start.sh",
-    "dev": "ts-node src/index.ts",
-    "dev:web": "PORT=25565 ts-node src/index.ts",
-    "test": "jest --forceExit --detectOpenHandles",
+    "dev": "ts-node --esm src/index.ts",
+    "dev:web": "PORT=25565 ts-node --esm src/index.ts",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --forceExit --detectOpenHandles",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

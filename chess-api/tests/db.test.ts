@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll } from '@jest/globals';
-import * as db from '../src/db';
+import * as db from '../src/db.js';
 
 /* Helper: create a test user and return its ID */
 function makeUser(tag: string): string {

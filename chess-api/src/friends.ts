@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
-import * as game from './game';
-import * as db from './db';
-import logger from './logger';
-import { friendRequestUsernameSchema } from './validation';
-import { authMiddleware, banCheckMiddleware, rateLimitMiddleware } from './routes';
+import * as game from './game.js';
+import * as db from './db.js';
+import logger from './logger.js';
+import { friendRequestUsernameSchema } from './validation.js';
+import { authMiddleware, banCheckMiddleware, rateLimitMiddleware } from './routes.js';
 
 const router: ReturnType<typeof Router> = Router();
 

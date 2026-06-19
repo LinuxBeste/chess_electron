@@ -24,11 +24,11 @@ const mockSpawn = jest.fn(() => ({
   on: mockOn,
 }));
 
-jest.mock('child_process', () => ({
-  spawn: () => mockSpawn(),
+jest.unstable_mockModule('child_process', () => ({
+  spawn: mockSpawn,
 }));
 
-import { engineManager } from '../src/engine';
+const { engineManager } = await import('../src/engine.js');
 
 describe('EngineManager', () => {
   beforeEach(() => {

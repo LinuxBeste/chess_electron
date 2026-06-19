@@ -1,6 +1,9 @@
+import { fileURLToPath } from 'url';
 import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
-import logger from './logger';
+import logger from './logger.js';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface EngineInstance {
   process: ChildProcess;

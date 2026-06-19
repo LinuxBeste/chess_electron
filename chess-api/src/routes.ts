@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
-import { PieceType } from './types';
-import * as game from './game';
-import * as db from './db';
-import logger from './logger';
+import { fileURLToPath } from 'url';
+import { PieceType } from './types.js';
+import * as game from './game.js';
+import * as db from './db.js';
+import logger from './logger.js';
 import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
@@ -16,7 +17,9 @@ import {
   promotionSchema,
   tournamentNameSchema,
   joinCodeSchema,
-} from './validation';
+} from './validation.js';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router: ReturnType<typeof Router> = Router();
 

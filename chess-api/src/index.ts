@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'url';
 import express, { Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -7,13 +8,15 @@ import fs from 'fs';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
-import routes from './routes';
-import adminRouter from './admin';
-import friendsRouter from './friends';
-import * as game from './game';
-import * as db from './db';
-import logger from './logger';
-import { cleanupIpRateBuckets } from './routes';
+import routes from './routes.js';
+import adminRouter from './admin.js';
+import friendsRouter from './friends.js';
+import * as game from './game.js';
+import * as db from './db.js';
+import logger from './logger.js';
+import { cleanupIpRateBuckets } from './routes.js';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const app: Express = express();
 

@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { Player } from './types';
-import * as db from './db';
-import logger from './logger';
+import { Player } from './types.js';
+import * as db from './db.js';
+import logger from './logger.js';
 
 export const players = new Map<string, Player>();
 export const tokenIndex = new Map<string, string>();

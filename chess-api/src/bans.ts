@@ -1,7 +1,15 @@
-import * as db from './db';
-import logger from './logger';
-import { players, playerIps } from './player';
-import { bannedPlayers, bannedIps, games, wsConnections, playerGameIndex, removeGameById, sendToPlayer } from './state';
+import * as db from './db.js';
+import logger from './logger.js';
+import { players, playerIps } from './player.js';
+import {
+  bannedPlayers,
+  bannedIps,
+  games,
+  wsConnections,
+  playerGameIndex,
+  removeGameById,
+  sendToPlayer,
+} from './state.js';
 
 export function isBanned(playerId: string, ip?: string): boolean {
   if (bannedPlayers.has(playerId)) return true;

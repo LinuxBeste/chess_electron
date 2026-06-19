@@ -1,8 +1,11 @@
+import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
-import logger from './logger';
+import logger from './logger.js';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'chess.db');
 

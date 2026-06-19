@@ -1,7 +1,7 @@
 import { WebSocket } from 'ws';
-import logger from './logger';
-import { players } from './player';
-import { chatHistory, games, spectatorConnections, sendToPlayer, sendToSpectators } from './state';
+import logger from './logger.js';
+import { players } from './player.js';
+import { chatHistory, games, spectatorConnections, sendToPlayer, sendToSpectators } from './state.js';
 
 export function cleanupChatHistory(gameId: string): void {
   chatHistory.delete(gameId);
