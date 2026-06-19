@@ -10,7 +10,7 @@
     "build:renderer": "vite build",
     "build:web": "NODE_ENV=production vite build",
     "build": "pnpm run build:main && pnpm run build:renderer",
-    "dev:web": "cd ../chess-api && PORT=25565 npx ts-node --esm src/index.ts & cd ../chess-client && wait-on tcp:localhost:25565 && NODE_ENV=development vite; kill %1 2>/dev/null",
+    "dev:web": "cd ../chess-api && PORT=25565 npx tsx src/index.ts & cd ../chess-client && wait-on tcp:localhost:25565 && NODE_ENV=development vite; kill %1 2>/dev/null",
     "start": "electron .",
     "dev": "pnpm run build && electron .",
     "typecheck": "tsc --noEmit",
