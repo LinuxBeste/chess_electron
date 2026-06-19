@@ -1,0 +1,45 @@
+import * as db from './db';
+import logger from './logger';
+import type { Color, GameState } from './types';
+
+function calculateElo(ratingA: number, ratingB: number, scoreA: number): [number, number] {
+  const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+  const expectedB = 1 - expectedA;
+  const k = 32;
+  return [Math.round(ratingA + k * (scoreA - expectedA)), Math.round(ratingB + k * (1 - scoreA - expectedB))];
+}
+
+export function updateEloRatings(game: GameState, winner: Color | null): void {
+  const whiteId = game.players.white;
+  const blackId = game.players.black;
+  if (!whiteId || !blackId) return;
+
+  const whiteUser = db.getUserById(whiteId);
+  const blackUser = db.getUserById(blackId);
+  if (!whiteUser || !blackUser) return;
+
+  let scoreWhite: number;
+  if (winner === 'white') scoreWhite = 1;
+  else if (winner === 'black') scoreWhite = 0;
+  else scoreWhite = 0.5;
+
+  const [newWhite, newBlack] = calculateElo(whiteUser.rating, blackUser.rating, scoreWhite);
+  db.updatePlayerRating(whiteId, newWhite);
+  db.updatePlayerRating(blackId, newBlack);
+  logger.info(
+    'Elo updated: gameId=' +
+      game.id +
+      ' white=' +
+      whiteId +
+      ' ' +
+      whiteUser.rating +
+      '->' +
+      newWhite +
+      ' black=' +
+      blackId +
+      ' ' +
+      blackUser.rating +
+      '->' +
+      newBlack,
+  );
+}

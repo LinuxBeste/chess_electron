@@ -6,7 +6,31 @@ import * as chess from './chess';
 import * as db from './db';
 import { engineManager } from './engine';
 import logger from './logger';
-import { players, playerIps, BOT_PLAYER_ID } from './player';
+import { players, BOT_PLAYER_ID } from './player';
+import {
+  games,
+  uciHistory,
+  wsConnections,
+  spectatorConnections,
+  playerGameIndex,
+  drawOffers,
+  rematchOffers,
+  rateLimitBuckets,
+  MAX_GAMES_PER_PLAYER,
+  RATE_LIMIT_WINDOW_MS,
+  RATE_LIMIT_MAX_REQUESTS,
+  WAITING_TTL_MS,
+  getSweepTimer,
+  setSweepTimer,
+  removeGameById,
+  addPlayerGameIndex,
+  sendToPlayer,
+  sendToPlayerRaw,
+  sendToSpectators,
+} from './state';
+import { updateEloRatings } from './elo';
+import { sendChatHistory } from './chat';
+import { loadPersistedBans } from './bans';
 
 export {
   BOT_PLAYER_ID,
@@ -31,34 +55,20 @@ export {
   loadPersistedUsers,
 } from './player';
 
-const games = new Map<string, GameState>();
+export {
+  isBanned,
+  banPlayer,
+  banIp,
+  unbanPlayer,
+  unbanIp,
+  getBannedPlayers,
+  getBannedIps,
+  loadPersistedBans,
+} from './bans';
 
-const uciHistory = new Map<string, string[]>();
+export { cleanupChatHistory, handleChatMessage, sendChatHistory } from './chat';
 
-const wsConnections = new Map<string, Set<WebSocket>>();
-const spectatorConnections = new Map<string, Set<WebSocket>>();
-const playerGameIndex = new Map<string, Set<string>>();
-const bannedPlayers = new Set<string>();
-const bannedIps = new Set<string>();
-const drawOffers = new Map<string, string>();
-
-const MAX_GAMES_PER_PLAYER = parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '20', 10);
-const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10);
-const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10);
-const WAITING_TTL_MS = parseInt(process.env.WAITING_TTL_MS ?? String(10 * 60 * 1000), 10);
-const rateLimitBuckets = new Map<string, number[]>();
-let sweepTimer: ReturnType<typeof setInterval> | null = null;
-
-function addPlayerGameIndex(playerId: string, gameId: string): void {
-  let set = playerGameIndex.get(playerId);
-  if (!set) {
-    set = new Set();
-    playerGameIndex.set(playerId, set);
-  }
-  set.add(gameId);
-}
-
-
+export { removeGameById, sendToPlayer } from './state';
 
 function enrichNames(g: GameState): GameState {
   const whitePlayer = g.players.white ? players.get(g.players.white) : undefined;
@@ -116,9 +126,12 @@ export function removeWSConnection(playerId: string, ws: WebSocket): void {
 export function cleanupPlayerWaitingGames(playerId: string): void {
   const conns = wsConnections.get(playerId);
   if (conns && conns.size > 0) return;
+  const gameIds = playerGameIndex.get(playerId);
+  if (!gameIds) return;
   const toDelete: string[] = [];
-  for (const [id, g] of games) {
-    if (g.status === 'waiting' && g.players.white === playerId) {
+  for (const id of gameIds) {
+    const g = games.get(id);
+    if (g && g.status === 'waiting' && g.players.white === playerId) {
       toDelete.push(id);
     }
   }
@@ -127,25 +140,6 @@ export function cleanupPlayerWaitingGames(playerId: string): void {
   }
   if (toDelete.length > 0) {
     logger.info('Cleaned up waiting games: playerId=' + playerId + ' count=' + toDelete.length);
-  }
-}
-
-export function removeGameById(id: string): void {
-  games.delete(id);
-  chatHistory.delete(id);
-}
-
-export function sendToPlayer(playerId: string, message: Record<string, unknown>): void {
-  sendToPlayerRaw(playerId, JSON.stringify(message));
-}
-
-export function sendToPlayerRaw(playerId: string, data: string): void {
-  const conns = wsConnections.get(playerId);
-  if (!conns) return;
-  for (const ws of conns) {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(data);
-    }
   }
 }
 
@@ -173,17 +167,6 @@ export function removeSpectator(gameId: string, ws: WebSocket): void {
   spectatorConnections.get(gameId)?.delete(ws);
   broadcastSpectatorCount(gameId);
   logger.info('Spectator removed: gameId=' + gameId);
-}
-
-function sendToSpectators(gameId: string, dataOrMessage: Record<string, unknown> | string): void {
-  const conns = spectatorConnections.get(gameId);
-  if (!conns) return;
-  const data = typeof dataOrMessage === 'string' ? dataOrMessage : JSON.stringify(dataOrMessage);
-  for (const ws of conns) {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(data);
-    }
-  }
 }
 
 function broadcastSpectatorCount(gameId: string): void {
@@ -666,48 +649,6 @@ export function resignGame(gameId: string, playerId: string): { success: boolean
   return { success: true, state: enrichNames(game) };
 }
 
-function calculateElo(ratingA: number, ratingB: number, scoreA: number): [number, number] {
-  const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
-  const expectedB = 1 - expectedA;
-  const k = 32;
-  return [Math.round(ratingA + k * (scoreA - expectedA)), Math.round(ratingB + k * (1 - scoreA - expectedB))];
-}
-
-function updateEloRatings(game: GameState, winner: Color | null): void {
-  const whiteId = game.players.white;
-  const blackId = game.players.black;
-  if (!whiteId || !blackId) return;
-
-  const whiteUser = db.getUserById(whiteId);
-  const blackUser = db.getUserById(blackId);
-  if (!whiteUser || !blackUser) return;
-
-  let scoreWhite: number;
-  if (winner === 'white') scoreWhite = 1;
-  else if (winner === 'black') scoreWhite = 0;
-  else scoreWhite = 0.5;
-
-  const [newWhite, newBlack] = calculateElo(whiteUser.rating, blackUser.rating, scoreWhite);
-  db.updatePlayerRating(whiteId, newWhite);
-  db.updatePlayerRating(blackId, newBlack);
-  logger.info(
-    'Elo updated: gameId=' +
-      game.id +
-      ' white=' +
-      whiteId +
-      ' ' +
-      whiteUser.rating +
-      '->' +
-      newWhite +
-      ' black=' +
-      blackId +
-      ' ' +
-      blackUser.rating +
-      '->' +
-      newBlack,
-  );
-}
-
 function recordGameResult(game: GameState, winner: Color | null): void {
   game.winner = winner;
   const neededIds: string[] = [];
@@ -860,8 +801,6 @@ export function declineDraw(gameId: string, playerId: string): boolean {
   return true;
 }
 
-const rematchOffers = new Map<string, string>();
-
 export function offerRematch(gameId: string, playerId: string): boolean {
   const game = games.get(gameId);
   if (!game) return false;
@@ -998,158 +937,8 @@ export function getPlayerStats(playerId: string): { wins: number; losses: number
   return stats;
 }
 
-const chatHistory = new Map<string, { playerId: string; username: string; text: string; timestamp: number }[]>();
-
-export function cleanupChatHistory(gameId: string): void {
-  chatHistory.delete(gameId);
-}
-
 function removeGame(gameId: string): void {
   removeGameById(gameId);
-}
-
-export function handleChatMessage(gameId: string, playerId: string, text: string, ws: WebSocket): void {
-  if (!text) return;
-  if (text.length > 500) text = text.slice(0, 500);
-  const player = players.get(playerId);
-  if (!player) return;
-  const game = games.get(gameId);
-  if (!game) return;
-
-  const isPlayer = game.players.white === playerId || game.players.black === playerId;
-  const isSpectating = spectatorConnections.get(gameId)?.has(ws);
-  if (!isPlayer && !isSpectating) return;
-
-  if (!chatHistory.has(gameId)) chatHistory.set(gameId, []);
-  const displayName = player.displayName;
-  const history = chatHistory.get(gameId)!;
-  history.push({ playerId, username: displayName, text, timestamp: Date.now() });
-  if (history.length > 50) history.shift();
-
-  const message: Record<string, unknown> = {
-    type: 'chat_message',
-    gameId,
-    playerId,
-    username: displayName,
-    text,
-    timestamp: Date.now(),
-  };
-
-  const { white, black } = game.players;
-  if (white) sendToPlayer(white, message);
-  if (black) sendToPlayer(black, message);
-  sendToSpectators(gameId, message);
-}
-
-export function sendChatHistory(gameId: string, ws: WebSocket): void {
-  const history = chatHistory.get(gameId);
-  if (!history || history.length === 0) {
-    ws.send(JSON.stringify({ type: 'chat_history', gameId, messages: [] }));
-    return;
-  }
-  ws.send(JSON.stringify({ type: 'chat_history', gameId, messages: history }));
-  logger.info('Chat history sent: gameId=' + gameId + ' count=' + history.length);
-}
-
-/* ─── Ban system ─── */
-
-export function isBanned(playerId: string, ip?: string): boolean {
-  if (bannedPlayers.has(playerId)) return true;
-  if (ip && bannedIps.has(ip)) return true;
-  const trackedIp = playerIps.get(playerId);
-  if (trackedIp && bannedIps.has(trackedIp)) return true;
-  return false;
-}
-
-export function banPlayer(playerId: string): { success: true } | { success: false; error: string } {
-  const player = players.get(playerId);
-  if (!player) return { success: false, error: 'Player not found' };
-  if (bannedPlayers.has(playerId)) return { success: false, error: 'Player already banned' };
-
-  bannedPlayers.add(playerId);
-  db.saveBan(playerId, playerId, null);
-
-  const conns = wsConnections.get(playerId);
-  if (conns) {
-    for (const ws of conns) {
-      ws.close(4001, 'Banned');
-    }
-    wsConnections.delete(playerId);
-  }
-
-  for (const [gameId, g] of games) {
-    if (g.players.white === playerId || g.players.black === playerId) {
-      if (g.status === 'waiting') {
-        removeGameById(gameId);
-      } else if (g.status === 'active') {
-        g.status = 'resigned';
-        g.winner = g.players.white === playerId ? 'black' : 'white';
-        const winnerId = g.players.white === playerId ? g.players.black : g.players.white;
-        if (winnerId) {
-          sendToPlayer(winnerId, { type: 'game_over', reason: 'opponent_banned', gameId });
-        }
-      }
-    }
-  }
-
-  logger.info('Player banned: playerId=' + playerId);
-  return { success: true };
-}
-
-export function banIp(ip: string): { success: true } | { success: false; error: string } {
-  if (!ip) return { success: false, error: 'IP is required' };
-  if (bannedIps.has(ip)) return { success: false, error: 'IP already banned' };
-
-  bannedIps.add(ip);
-  db.saveBan(`ip:${ip}`, null, ip);
-  logger.info('IP banned: ip=' + ip);
-
-  for (const [playerId, trackedIp] of playerIps) {
-    if (trackedIp === ip) {
-      const conns = wsConnections.get(playerId);
-      if (conns) {
-        for (const ws of conns) {
-          ws.close(4001, 'Banned');
-        }
-        wsConnections.delete(playerId);
-      }
-    }
-  }
-
-  return { success: true };
-}
-
-export function unbanPlayer(playerId: string): void {
-  bannedPlayers.delete(playerId);
-  db.deleteBanById(playerId);
-  logger.info('Player unbanned: playerId=' + playerId);
-}
-
-export function unbanIp(ip: string): void {
-  bannedIps.delete(ip);
-  db.deleteBanById(`ip:${ip}`);
-  logger.info('IP unbanned: ip=' + ip);
-}
-
-export function getBannedPlayers(): string[] {
-  const list = Array.from(bannedPlayers);
-  logger.info('getBannedPlayers: count=' + list.length);
-  return list;
-}
-
-export function getBannedIps(): string[] {
-  const list = Array.from(bannedIps);
-  logger.info('getBannedIps: count=' + list.length);
-  return list;
-}
-
-export function loadPersistedBans(): void {
-  const allBans = db.loadAllBans();
-  for (const b of allBans) {
-    if (b.player_id) bannedPlayers.add(b.player_id);
-    if (b.ip) bannedIps.add(b.ip);
-  }
-  logger.info('Persisted bans loaded: playerBans=' + bannedPlayers.size + ' ipBans=' + bannedIps.size);
 }
 
 /* ─── Admin kick / end-game ─── */
@@ -1166,9 +955,13 @@ export function kickPlayer(playerId: string): { success: true } | { success: fal
     wsConnections.delete(playerId);
   }
 
-  for (const [gameId, g] of games) {
-    if (g.status === 'waiting' && g.players.white === playerId) {
-      removeGame(gameId);
+  const gameIds = playerGameIndex.get(playerId);
+  if (gameIds) {
+    for (const gameId of gameIds) {
+      const g = games.get(gameId);
+      if (g && g.status === 'waiting' && g.players.white === playerId) {
+        removeGame(gameId);
+      }
     }
   }
   broadcastGameListUpdate();
@@ -1238,10 +1031,11 @@ export interface FriendInfo {
 }
 
 export function getPlayerCurrentGameId(playerId: string): string | null {
-  for (const [id, g] of games) {
-    if (g.status === 'active' && (g.players.white === playerId || g.players.black === playerId)) {
-      return id;
-    }
+  const gameIds = playerGameIndex.get(playerId);
+  if (!gameIds) return null;
+  for (const id of gameIds) {
+    const g = games.get(id);
+    if (g && g.status === 'active') return id;
   }
   return null;
 }
@@ -1398,15 +1192,16 @@ export function sweepStaleWaitingGames(): number {
 
 export function startWaitingGameSweep(): void {
   if (WAITING_TTL_MS <= 0) return;
-  if (sweepTimer) return;
-  sweepTimer = setInterval(sweepStaleWaitingGames, Math.max(WAITING_TTL_MS / 2, 10_000));
+  if (getSweepTimer()) return;
+  setSweepTimer(setInterval(sweepStaleWaitingGames, Math.max(WAITING_TTL_MS / 2, 10_000)));
   logger.info('Waiting game sweep started (interval=' + Math.max(WAITING_TTL_MS / 2, 10_000) + 'ms)');
 }
 
 export function stopWaitingGameSweep(): void {
-  if (sweepTimer) {
-    clearInterval(sweepTimer);
-    sweepTimer = null;
+  const timer = getSweepTimer();
+  if (timer) {
+    clearInterval(timer);
+    setSweepTimer(null);
     logger.info('Waiting game sweep stopped');
   }
 }

@@ -244,7 +244,21 @@ describe('db — completed games', () => {
   test('saveCompletedGame and getArchivedGames', () => {
     const w = makeUser('arch_w');
     const b = makeUser('arch_b');
-    db.saveCompletedGame('game-arch-1', w, b, 'White Display', 'Black Display', 'white', 'resign', '1-0', null, 'e4 e5', '', null, 'blitz');
+    db.saveCompletedGame(
+      'game-arch-1',
+      w,
+      b,
+      'White Display',
+      'Black Display',
+      'white',
+      'resign',
+      '1-0',
+      null,
+      'e4 e5',
+      '',
+      null,
+      'blitz',
+    );
     const games = db.getArchivedGames(1, 10);
     expect(games.rows.length).toBeGreaterThanOrEqual(1);
     expect(games.rows.some((g) => g.id === 'game-arch-1')).toBe(true);
@@ -253,7 +267,21 @@ describe('db — completed games', () => {
   test('getArchivedGame returns specific game', () => {
     const w = makeUser('arch2_w');
     const b = makeUser('arch2_b');
-    db.saveCompletedGame('game-arch-2', w, b, 'White 2', 'Black 2', 'black', 'checkmate', '0-1', 'checkmate', 'e4 e5', '', null, 'blitz');
+    db.saveCompletedGame(
+      'game-arch-2',
+      w,
+      b,
+      'White 2',
+      'Black 2',
+      'black',
+      'checkmate',
+      '0-1',
+      'checkmate',
+      'e4 e5',
+      '',
+      null,
+      'blitz',
+    );
     const game = db.getArchivedGame('game-arch-2');
     expect(game).toBeDefined();
     expect(game!.result).toBe('0-1');

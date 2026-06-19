@@ -112,7 +112,9 @@ router.post('/admin/api/login', ipRateLimitMiddleware, (req: Request, res: Respo
   const lockout = checkAdminLoginLockout(username);
   if (lockout.locked) {
     logger.audit('admin_login_locked', `username="${username}" ip="${req.ip || ''}"`);
-    res.status(429).json({ error: 'Too many failed login attempts. Try again later.', remainingMs: lockout.remainingMs });
+    res
+      .status(429)
+      .json({ error: 'Too many failed login attempts. Try again later.', remainingMs: lockout.remainingMs });
     return;
   }
   if (username !== ADMIN_USERNAME || !verifyPassword(password, ADMIN_PASSWORD_HASH)) {
