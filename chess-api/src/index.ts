@@ -158,7 +158,23 @@ export function createServer(): http.Server {
 
     let spectatingGameId: string | null = null;
 
+    /* ---- WS rate limiting ---- */
+    const WS_RATE_LIMIT = parseInt(process.env.WS_RATE_LIMIT_PER_SEC ?? '10', 10);
+    const wsMessageTimes: number[] = [];
+    function isWsRateLimited(): boolean {
+      const now = Date.now();
+      while (wsMessageTimes.length > 0 && wsMessageTimes[0] < now - 1000) wsMessageTimes.shift();
+      if (wsMessageTimes.length >= WS_RATE_LIMIT) return true;
+      wsMessageTimes.push(now);
+      return false;
+    }
+
     ws.on('message', (raw: Buffer) => {
+      if (isWsRateLimited()) {
+        logger.warn('WS rate limited: playerId=' + player.id);
+        ws.send(JSON.stringify({ type: 'error', error: 'Rate limited — slow down' }));
+        return;
+      }
       try {
         const msg = JSON.parse(raw.toString());
         if (msg.type === 'spectate' && typeof msg.gameId === 'string') {

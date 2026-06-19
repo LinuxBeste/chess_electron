@@ -58,13 +58,6 @@ function addPlayerGameIndex(playerId: string, gameId: string): void {
   set.add(gameId);
 }
 
-function _removePlayerGameIndex(gameId: string, playerId: string): void {
-  const set = playerGameIndex.get(playerId);
-  if (set) {
-    set.delete(gameId);
-    if (set.size === 0) playerGameIndex.delete(playerId);
-  }
-}
 
 
 function enrichNames(g: GameState): GameState {

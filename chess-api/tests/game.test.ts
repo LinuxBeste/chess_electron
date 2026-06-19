@@ -1057,3 +1057,118 @@ describe('chat messages extended', () => {
     expect(() => game.handleChatMessage(g.id, outsider, 'should be ignored', ws)).not.toThrow();
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  Additional untested functions                                        */
+/* ------------------------------------------------------------------ */
+
+describe('abortGame', () => {
+  test('abortGame succeeds for waiting game host', () => {
+    const host = registerPlayer('abort_host');
+    const g = game.createGame(host);
+    const result = game.abortGame(g.id, host);
+    expect(result.success).toBe(true);
+    /* abortGame removes the game from the map */
+    expect(game.getGame(g.id)).toBeNull();
+  });
+
+  test('abortGame fails for non-host', () => {
+    const host = registerPlayer('abort_host2');
+    const outsider = registerPlayer('abort_out');
+    const g = game.createGame(host);
+    const result = game.abortGame(g.id, outsider);
+    expect(result.success).toBe(false);
+  });
+
+  test('abortGame fails for active game', () => {
+    const host = registerPlayer('abort_host3');
+    const joiner = registerPlayer('abort_join3');
+    const g = game.createGame(host);
+    game.joinGame(g.id, joiner);
+    const result = game.abortGame(g.id, host);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('getPlayerStats', () => {
+  test('getPlayerStats returns null for anonymous player', () => {
+    const pid = registerPlayer('pstats_anon');
+    expect(game.getPlayerStats(pid)).toBeNull();
+  });
+
+  test('getPlayerStats returns null for unknown player', () => {
+    expect(game.getPlayerStats('no-such-id')).toBeNull();
+  });
+});
+
+describe('ban system', () => {
+  test('isBanned returns false for unregistered player', () => {
+    expect(game.isBanned('nonexistent')).toBe(false);
+  });
+
+  test('banPlayer and isBanned round-trip', () => {
+    const pid = registerPlayer('ban_target');
+    const result = game.banPlayer(pid);
+    expect(result.success).toBe(true);
+    expect(game.isBanned(pid)).toBe(true);
+  });
+
+  test('unbanPlayer clears ban', () => {
+    const pid = registerPlayer('unban_target');
+    game.banPlayer(pid);
+    game.unbanPlayer(pid);
+    expect(game.isBanned(pid)).toBe(false);
+  });
+
+  test('banIp and isBanned by IP', () => {
+    game.banIp('10.0.0.99');
+    expect(game.isBanned('whatever', '10.0.0.99')).toBe(true);
+  });
+
+  test('unbanIp clears IP ban', () => {
+    game.banIp('10.0.0.100');
+    game.unbanIp('10.0.0.100');
+    expect(game.isBanned('whatever', '10.0.0.100')).toBe(false);
+  });
+
+  test('getBannedPlayers / getBannedIps return arrays', () => {
+    const pid = registerPlayer('ban_list_target');
+    game.banPlayer(pid);
+    game.banIp('10.0.0.101');
+    expect(Array.isArray(game.getBannedPlayers())).toBe(true);
+    expect(Array.isArray(game.getBannedIps())).toBe(true);
+  });
+});
+
+describe('kickPlayer', () => {
+  test('kickPlayer returns error for non-existent player', () => {
+    const result = game.kickPlayer('no-such-id');
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('endGame', () => {
+  test('endGame fails for non-existent game', () => {
+    const result = game.endGame('no-such-game');
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('getAllGames / getOnlinePlayerIds', () => {
+  test('getAllGames returns array', () => {
+    const all = game.getAllGames();
+    expect(Array.isArray(all)).toBe(true);
+  });
+
+  test('getOnlinePlayerIds returns Set', () => {
+    const set = game.getOnlinePlayerIds();
+    expect(set instanceof Set).toBe(true);
+  });
+});
+
+describe('sweepStaleWaitingGames', () => {
+  test('sweepStaleWaitingGames returns count', () => {
+    const count = game.sweepStaleWaitingGames();
+    expect(typeof count).toBe('number');
+  });
+});
