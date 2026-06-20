@@ -27,8 +27,8 @@ export default function LoginPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleServerUrlChange(url: string) {
-    if (url && !serverUrlSchema.safeParse(url).success) return;
     setServerUrl(url);
+    if (!url || !serverUrlSchema.safeParse(url).success) return;
     setBaseUrl(url);
     const wsUrl = window.electronAPI?.wsUrl || url;
     socketManager.setServerUrl(wsUrl);
