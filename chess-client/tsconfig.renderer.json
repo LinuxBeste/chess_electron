@@ -1,7 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "noEmit": false
-  },
-  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx", "src/types.ts", "../../chess-api/src/**/*.ts"]
-}
