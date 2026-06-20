@@ -84,6 +84,9 @@ app.use('/avatars', express.static(avatarDir));
 const adminDir = path.join(path.resolve(__dirname, '..'), 'dist', 'admin');
 app.use('/admin', express.static(adminDir));
 app.use(adminRouter);
+app.get('/admin/*', (_req, res) => {
+  res.sendFile(path.join(adminDir, 'index.html'));
+});
 app.use(friendsRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
