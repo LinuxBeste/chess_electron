@@ -316,7 +316,12 @@ export default function GamePage() {
     logger.info('WS game_over received', { gameId: msg.gameId, status: msg.status, winner: msg.winner });
     setBoard(deserializeBoard(msg.board));
     setLastMove(msg.lastMove);
-    const updated = { ...gameRef.current, status: msg.status as GameStatus, winner: msg.winner || null };
+    const updated = {
+      ...gameRef.current,
+      status: msg.status as GameStatus,
+      winner: msg.winner || null,
+      reason: msg.reason,
+    };
     setGame(updated);
     store.set('currentGame', updated);
     if (getSetting('soundEnabled')) playGameOverSound();

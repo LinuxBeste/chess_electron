@@ -13,6 +13,7 @@ import logger from './logger.js';
 import { ipRateLimitMiddleware } from './routes.js';
 import { hashPassword, verifyPassword } from './game.js';
 import { passwordSchema, displayNameSchema, ipSchema, statsValueSchema, broadcastMessageSchema } from './validation.js';
+import { isWeakPassword as checkWeakPassword } from './password-strength.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -57,14 +58,15 @@ function clearAdminLoginAttempts(username: string): void {
 function initAdminCreds(): void {
   ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
   if (process.env.ADMIN_PASSWORD) {
+    if (checkWeakPassword(process.env.ADMIN_PASSWORD, 2)) {
+      logger.warn('ADMIN_PASSWORD is weak — use at least 8 characters and avoid common passwords');
+    }
     ADMIN_PASSWORD_HASH = hashPassword(process.env.ADMIN_PASSWORD);
-    logger.info('ADMIN_PASSWORD has been set from ENV. No random password was generated.');
+    logger.info('ADMIN_PASSWORD has been set from ENV.');
   } else {
-    const password = crypto.randomBytes(24).toString('hex');
-    logger.warn('No ADMIN_PASSWORD set. A random password was generated for this session and will be logged.');
-    logger.warn('ADMIN_PASSWORD for this session: ' + password);
+    ADMIN_PASSWORD_HASH = hashPassword(crypto.randomBytes(24).toString('hex'));
+    logger.warn('No ADMIN_PASSWORD set. A random password was generated for this session.');
     logger.warn('Set ADMIN_PASSWORD env var to use a custom password.');
-    ADMIN_PASSWORD_HASH = hashPassword(password);
   }
 }
 

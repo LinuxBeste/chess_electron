@@ -199,13 +199,17 @@ router.post('/auth/login', ipRateLimitMiddleware, (req: Request, res: Response) 
     res.status(403).json({ error: 'Your IP has been banned' });
     return;
   }
-  const { username, password } = req.body;
-  if (!username || typeof username !== 'string' || !password || typeof password !== 'string') {
-    res.status(400).json({ error: 'Username and password are required' });
+  const parsed = z
+    .object({
+      username: usernameSchema,
+      password: z.string().min(1, 'Password is required'),
+    })
+    .safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
-  const trimmed = username.trim();
-  const pwd = password.trim();
+  const { username: trimmed, password: pwd } = parsed.data;
   const lockout = game.checkLoginLockout(trimmed);
   if (lockout.locked) {
     const minutes = Math.ceil(lockout.remainingMs! / 60000);
@@ -272,6 +276,12 @@ router.put('/auth/me/password', authMiddleware, banCheckMiddleware, (req: Reques
     res.status(400).json({ error: result.error });
     return;
   }
+  /* Invalidate all other tokens, keep current session alive */
+  const currentToken = req.headers.authorization!.slice(7);
+  for (const t of req.player.tokens) {
+    if (t !== currentToken) game.deleteToken(t);
+  }
+  req.player.tokens = [currentToken];
   logger.audit('password_changed', `playerId="${req.player.id}"`);
   res.json({ success: true });
 });

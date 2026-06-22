@@ -48,6 +48,7 @@ export interface GameState {
   spectateCode?: string;
   halfMoveClock: number;
   aiSkillLevel?: number;
+  reason?: string;
 }
 
 export interface Player {

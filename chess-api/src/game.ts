@@ -48,6 +48,7 @@ export {
   updateDisplayName,
   changePassword,
   deleteAccount,
+  deleteToken,
   setPlayerIp,
   getPlayerIp,
   getPlayerById,
@@ -327,6 +328,7 @@ export function createBotGame(
     .catch((err) => {
       logger.error('Failed to start bot engine for game ' + id, err);
       game.status = 'draw';
+      game.reason = 'Engine error — game cancelled';
       broadcastToGame(id, {
         type: 'game_over',
         gameId: id,
@@ -335,7 +337,7 @@ export function createBotGame(
         lastMove: game.lastMove,
         status: 'draw',
         result: 'draw',
-        reason: 'Engine error — game cancelled',
+        reason: game.reason,
       });
       spectatorConnections.delete(id);
       broadcastGameListUpdate();
@@ -418,7 +420,7 @@ async function triggerBotMove(gameId: string): Promise<void> {
     status: newStatus,
     ...(newStatus === 'checkmate' ? { result: 'checkmate', reason: `${winner} wins by checkmate`, winner } : {}),
     ...(newStatus === 'stalemate' ? { result: 'stalemate', reason: 'Draw by stalemate' } : {}),
-    ...(newStatus === 'draw' ? { result: 'draw', reason: 'Draw by 50-move rule' } : {}),
+    ...(newStatus === 'draw' ? { result: 'draw', reason: game.reason ?? 'Draw by 50-move rule' } : {}),
   });
 
   if (isTerminal) {
@@ -595,8 +597,9 @@ export function makeMove(
     message.result = 'stalemate';
     message.reason = 'Draw by stalemate';
   } else if (newStatus === 'draw') {
+    game.reason = 'Draw by 50-move rule';
     message.result = 'draw';
-    message.reason = 'Draw by 50-move rule';
+    message.reason = game.reason;
   }
 
   broadcastToGame(gameId, message);
@@ -694,8 +697,9 @@ function recordGameResult(game: GameState, winner: Color | null): void {
         : game.status === 'resigned'
           ? 'resigned'
           : 'draw';
-  const reason =
-    result === 'checkmate'
+  const reason = game.reason
+    ? game.reason
+    : result === 'checkmate'
       ? winner === 'white'
         ? 'White wins by checkmate'
         : 'Black wins by checkmate'
@@ -761,6 +765,7 @@ export function acceptDraw(gameId: string, playerId: string): { success: boolean
 
   game.status = 'draw';
   game.winner = null;
+  game.reason = 'Draw by agreement';
   drawOffers.delete(gameId);
 
   recordGameResult(game, null);
@@ -773,7 +778,7 @@ export function acceptDraw(gameId: string, playerId: string): { success: boolean
     lastMove: game.lastMove,
     status: 'draw',
     result: 'draw',
-    reason: 'Draw by agreement',
+    reason: game.reason,
   });
   broadcastGameListUpdate();
 
@@ -979,6 +984,7 @@ export function endGame(gameId: string): { success: true } | { success: false; e
 
   g.status = 'draw';
   g.winner = null;
+  g.reason = 'Ended by admin';
 
   uciHistory.delete(g.id);
   if (isBotGame(g)) {
@@ -987,7 +993,7 @@ export function endGame(gameId: string): { success: true } | { success: false; e
 
   spectatorConnections.delete(g.id);
 
-  const message = { type: 'game_over', reason: 'admin_ended', gameId };
+  const message = { type: 'game_over', reason: g.reason, result: 'draw', status: 'draw', gameId };
   if (g.players.white) sendToPlayer(g.players.white, message);
   if (g.players.black) sendToPlayer(g.players.black, message);
   sendToSpectators(gameId, message);

@@ -6,7 +6,10 @@ import logger from './logger.js';
 
 export const players = new Map<string, Player>();
 export const tokenIndex = new Map<string, string>();
+export const tokenExpiry = new Map<string, number>();
 export const playerIps = new Map<string, string>();
+
+const PLAYER_TOKEN_TTL = parseInt(process.env.PLAYER_TOKEN_TTL ?? String(7 * 24 * 60 * 60 * 1000), 10);
 
 const LOGIN_MAX_ATTEMPTS = parseInt(process.env.LOGIN_MAX_ATTEMPTS ?? '5', 10);
 const LOGIN_LOCKOUT_MINUTES = parseInt(process.env.LOGIN_LOCKOUT_MINUTES ?? '15', 10);
@@ -83,11 +86,11 @@ export function registerPlayer(
     db.saveToken(token, playerId);
     const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: true };
     players.set(playerId, player);
-    tokenIndex.set(token, playerId);
+    setToken(token, playerId);
   } else {
     const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: false };
     players.set(playerId, player);
-    tokenIndex.set(token, playerId);
+    setToken(token, playerId);
   }
   logger.info('Player registered: playerId=' + playerId + ' username="' + username + '" registered=' + isRegistered);
   return { playerId, token, isRegistered, displayName: username };
@@ -109,7 +112,7 @@ export function loginPlayer(
   const existing = players.get(user.id);
   if (existing) {
     existing.tokens.push(token);
-    tokenIndex.set(token, user.id);
+    setToken(token, user.id);
   } else {
     const player: Player = {
       id: user.id,
@@ -119,13 +122,29 @@ export function loginPlayer(
       isRegistered: true,
     };
     players.set(user.id, player);
-    tokenIndex.set(token, user.id);
+    setToken(token, user.id);
   }
   logger.info('Player login: playerId=' + user.id + ' username="' + user.username + '"');
   return { success: true, playerId: user.id, token, displayName: user.display_name };
 }
 
+function setToken(token: string, playerId: string): void {
+  tokenIndex.set(token, playerId);
+  tokenExpiry.set(token, Date.now() + PLAYER_TOKEN_TTL);
+}
+
+export function deleteToken(token: string): void {
+  tokenIndex.delete(token);
+  tokenExpiry.delete(token);
+}
+
 export function authenticatePlayer(token: string): Player | null {
+  const expiry = tokenExpiry.get(token);
+  if (expiry && expiry <= Date.now()) {
+    deleteToken(token);
+    logger.info('Auth failed: token expired');
+    return null;
+  }
   const playerId = tokenIndex.get(token);
   if (!playerId) {
     logger.info('Auth failed: token not found');
@@ -148,7 +167,7 @@ export function addToken(playerId: string): string | null {
   }
   const token = uuidv4();
   player.tokens.push(token);
-  tokenIndex.set(token, playerId);
+  setToken(token, playerId);
   logger.info('Token added: playerId=' + playerId);
   return token;
 }
@@ -156,7 +175,7 @@ export function addToken(playerId: string): string | null {
 export function logoutPlayer(token: string): boolean {
   const playerId = tokenIndex.get(token);
   if (!playerId) return false;
-  tokenIndex.delete(token);
+  deleteToken(token);
   const player = players.get(playerId);
   if (player) {
     player.tokens = player.tokens.filter((t) => t !== token);
@@ -209,7 +228,7 @@ export function deleteAccount(playerId: string): { success: true } | { success: 
     return { success: false, error: 'Only registered users can delete their account' };
 
   for (const token of player.tokens) {
-    tokenIndex.delete(token);
+    deleteToken(token);
   }
   db.deleteUserTokens(playerId);
   db.deleteUserRecord(playerId);
@@ -259,13 +278,21 @@ export function loadPersistedUsers(): void {
     const player = players.get(t.user_id);
     if (player) {
       player.tokens.push(t.token);
-      tokenIndex.set(t.token, t.user_id);
+      setToken(t.token, t.user_id);
     }
   }
   logger.info('Persisted users loaded: users=' + allUsers.length + ' tokens=' + allTokens.length);
 }
 
+export function cleanupExpiredTokens(): void {
+  const now = Date.now();
+  for (const [token, expiry] of tokenExpiry) {
+    if (expiry <= now) deleteToken(token);
+  }
+}
+
 const isTestEnv = typeof process.env.JEST_WORKER_ID !== 'undefined' || process.env.NODE_ENV === 'test';
 if (!isTestEnv) {
   loadPersistedUsers();
+  setInterval(cleanupExpiredTokens, Math.min(PLAYER_TOKEN_TTL, 300000));
 }

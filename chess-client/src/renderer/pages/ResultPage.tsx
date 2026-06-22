@@ -56,19 +56,30 @@ export default function ResultPage() {
       outcomeText = t('result.draw');
     }
 
-    switch (game.status) {
-      case 'checkmate':
-        reasonText = t('result.byCheckmate');
-        break;
-      case 'resigned':
-        reasonText = won ? t('result.byResignation') : t('result.opponentResigned');
-        break;
-      case 'stalemate':
-        reasonText = t('result.byStalemate');
-        break;
-      case 'draw':
-        reasonText = t('result.by50MoveRule');
-        break;
+    if (game.reason) {
+      const reasonMap: Record<string, string> = {
+        'Draw by agreement': t('result.byAgreement'),
+        'Draw by 50-move rule': t('result.by50MoveRule'),
+        'Draw by stalemate': t('result.byStalemate'),
+        'Engine error — game cancelled': t('result.byEngineError'),
+        'Ended by admin': t('result.byAdminAction'),
+      };
+      reasonText = reasonMap[game.reason] || game.reason;
+    } else {
+      switch (game.status) {
+        case 'checkmate':
+          reasonText = t('result.byCheckmate');
+          break;
+        case 'resigned':
+          reasonText = won ? t('result.byResignation') : t('result.opponentResigned');
+          break;
+        case 'stalemate':
+          reasonText = t('result.byStalemate');
+          break;
+        case 'draw':
+          reasonText = t('result.by50MoveRule');
+          break;
+      }
     }
   }
 

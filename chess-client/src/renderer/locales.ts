@@ -186,6 +186,9 @@ export type TranslationKeys = {
     opponentResigned: string;
     byStalemate: string;
     by50MoveRule: string;
+    byAgreement: string;
+    byEngineError: string;
+    byAdminAction: string;
     review: string;
     rematch: string;
     creating: string;
@@ -693,6 +696,9 @@ export const en: TranslationKeys = {
     opponentResigned: 'opponent resigned',
     byStalemate: 'by stalemate',
     by50MoveRule: 'by 50-move rule',
+    byAgreement: 'by agreement',
+    byEngineError: 'engine error — game cancelled',
+    byAdminAction: 'ended by admin',
     review: 'Review Game',
     rematch: 'Rematch',
     creating: 'Creating...',
@@ -1201,6 +1207,9 @@ export const de: TranslationKeys = {
     opponentResigned: 'Gegner gab auf',
     byStalemate: 'durch Patt',
     by50MoveRule: 'durch 50-Züge-Regel',
+    byAgreement: 'durch Vereinbarung',
+    byEngineError: 'Fehler — Spiel abgebrochen',
+    byAdminAction: 'durch Admin beendet',
     review: 'Rückblick',
     rematch: 'Revanche',
     creating: 'Erstelle...',

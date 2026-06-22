@@ -1,16 +1,21 @@
 import { z } from 'zod';
+import { isWeakPassword } from './password-strength.js';
 
 export const usernameSchema = z
   .string()
   .trim()
   .min(2, 'Username must be at least 2 characters')
-  .max(30, 'Username must be at most 30 characters');
+  .max(30, 'Username must be at most 30 characters')
+  .regex(/^[a-zA-Z0-9_-]+$/, 'Username may only contain letters, digits, hyphens, and underscores');
 
 export const passwordSchema = z
   .string()
   .trim()
   .min(8, 'Password must be at least 8 characters')
-  .max(128, 'Password must be at most 128 characters');
+  .max(128, 'Password must be at most 128 characters')
+  .refine((pw) => !isWeakPassword(pw, 1), {
+    message: 'Password is too weak — choose a longer or less common password',
+  });
 
 export const displayNameSchema = z
   .string()
@@ -34,7 +39,10 @@ export const tournamentNameSchema = z
 export const ipSchema = z
   .string()
   .trim()
-  .regex(/^(\d{1,3}\.){3}\d{1,3}$|^[0-9a-f:]+$/i, 'Invalid IP address format');
+  .regex(
+    /^(\d{1,3}\.){3}\d{1,3}$|^(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}$|^(?:[0-9a-f]{1,4}:){1,7}:$|^(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}$|^(?:[0-9a-f]{1,4}:){1,5}(?::[0-9a-f]{1,4}){1,2}$|^(?:[0-9a-f]{1,4}:){1,4}(?::[0-9a-f]{1,4}){1,3}$|^(?:[0-9a-f]{1,4}:){1,3}(?::[0-9a-f]{1,4}){1,4}$|^(?:[0-9a-f]{1,4}:){1,2}(?::[0-9a-f]{1,4}){1,5}$|^[0-9a-f]{1,4}:(?::[0-9a-f]{1,4}){1,6}$|^:(?::[0-9a-f]{1,4}){1,7}$/i,
+    'Invalid IP address format',
+  );
 
 export function pageSchema(defaultVal = 1) {
   return z
