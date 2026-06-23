@@ -142,12 +142,12 @@ router.post('/admin/api/logout', adminAuthMiddleware, (req: Request, res: Respon
   res.json({ success: true });
 });
 
-router.get('/admin/api/stats', adminAuthMiddleware, (_req: Request, res: Response) => {
+router.get('/admin/api/stats', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
     const { gamesActive, playersOnline } = game.getStats();
     const allPlayers = game.getAllPlayers();
     const registeredUsers = allPlayers.filter((p) => p.isRegistered).length;
-    const totalUsers = db.loadAllUsers().length;
+    const totalUsers = (await db.loadAllUsers()).length;
     logger.info(
       'Admin stats: gamesActive=' +
         gamesActive +
@@ -359,9 +359,9 @@ router.get('/admin/api/system/processes', adminAuthMiddleware, (_req: Request, r
   }
 });
 
-router.get('/admin/api/games', adminAuthMiddleware, (_req: Request, res: Response) => {
+router.get('/admin/api/games', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
-    const allGames = game.getAllGames();
+    const allGames = await game.getAllGames();
     const list = allGames.map((g) => ({
       id: g.id,
       status: g.status,
@@ -402,9 +402,9 @@ router.get('/admin/api/players', adminAuthMiddleware, (_req: Request, res: Respo
   }
 });
 
-router.get('/admin/api/accounts', adminAuthMiddleware, (_req: Request, res: Response) => {
+router.get('/admin/api/accounts', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
-    const users = db.loadAllUsers();
+    const users = await db.loadAllUsers();
     const list = users.map((u) => ({
       id: u.id,
       username: u.username,
@@ -423,10 +423,10 @@ router.get('/admin/api/accounts', adminAuthMiddleware, (_req: Request, res: Resp
   }
 });
 
-router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: Response) => {
+router.put('/admin/api/accounts/:id', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const { username, displayName, wins, losses, draws } = req.body;
-    const user = db.getUserById(req.params.id);
+    const user = await db.getUserById(req.params.id);
     if (!user) {
       res.status(404).json({ error: 'Account not found' });
       return;
@@ -446,12 +446,12 @@ router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: R
         res.status(400).json({ error: 'Username must be at most 30 characters' });
         return;
       }
-      const existing = db.getUserByUsername(trimmed);
+      const existing = await db.getUserByUsername(trimmed);
       if (existing && existing.id !== req.params.id) {
         res.status(409).json({ error: 'Username is already taken' });
         return;
       }
-      db.updateUsername(req.params.id, trimmed);
+      await db.updateUsername(req.params.id, trimmed);
       const player = game.getAllPlayers().find((p) => p.id === req.params.id);
       if (player) player.username = trimmed;
     }
@@ -462,7 +462,7 @@ router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: R
         res.status(400).json({ error: parsed.error.issues[0].message });
         return;
       }
-      db.updateUserDisplayName(req.params.id, parsed.data);
+      await db.updateUserDisplayName(req.params.id, parsed.data);
       const player = game.getAllPlayers().find((p) => p.id === req.params.id);
       if (player) player.displayName = parsed.data;
     }
@@ -482,7 +482,7 @@ router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: R
         res.status(400).json({ error: statsParsed.error.issues[0].message });
         return;
       }
-      db.updateUserStats(req.params.id, newWins, newLosses, newDraws);
+      await db.updateUserStats(req.params.id, newWins, newLosses, newDraws);
     }
 
     logger.audit('admin_account_updated', `account="${req.params.id}" by admin`);
@@ -493,8 +493,8 @@ router.put('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: R
   }
 });
 
-router.delete('/admin/api/accounts/:id/avatar', adminAuthMiddleware, (req: Request, res: Response) => {
-  const user = db.getUserById(req.params.id);
+router.delete('/admin/api/accounts/:id/avatar', adminAuthMiddleware, async (req: Request, res: Response) => {
+  const user = await db.getUserById(req.params.id);
   if (!user) {
     res.status(404).json({ error: 'Account not found' });
     return;
@@ -507,12 +507,12 @@ router.delete('/admin/api/accounts/:id/avatar', adminAuthMiddleware, (req: Reque
       /* ok */
     }
   }
-  db.updateUserAvatar(req.params.id, null);
+  await db.updateUserAvatar(req.params.id, null);
   logger.audit('admin_avatar_cleared', `account="${req.params.id}" by admin`);
   res.json({ success: true });
 });
 
-router.post('/admin/api/accounts/:id/reset-password', adminAuthMiddleware, (req: Request, res: Response) => {
+router.post('/admin/api/accounts/:id/reset-password', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const parsed = passwordSchema.safeParse(req.body.newPassword);
     if (!parsed.success) {
@@ -520,14 +520,14 @@ router.post('/admin/api/accounts/:id/reset-password', adminAuthMiddleware, (req:
       return;
     }
     const newPassword = parsed.data;
-    const user = db.getUserById(req.params.id);
+    const user = await db.getUserById(req.params.id);
     if (!user) {
       res.status(404).json({ error: 'Account not found' });
       return;
     }
     const salt = crypto.randomBytes(16).toString('hex');
     const key = crypto.pbkdf2Sync(newPassword, salt, 100000, 64, 'sha512').toString('hex');
-    db.updateUserPasswordHash(req.params.id, `${salt}:${key}`);
+    await db.updateUserPasswordHash(req.params.id, `${salt}:${key}`);
     logger.audit('admin_password_reset', `account="${req.params.id}" by admin`);
     res.json({ success: true });
   } catch (err) {
@@ -536,15 +536,15 @@ router.post('/admin/api/accounts/:id/reset-password', adminAuthMiddleware, (req:
   }
 });
 
-router.delete('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res: Response) => {
+router.delete('/admin/api/accounts/:id', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
-    const user = db.getUserById(req.params.id);
+    const user = await db.getUserById(req.params.id);
     if (!user) {
       res.status(404).json({ error: 'Account not found' });
       return;
     }
-    db.deleteUserTokens(req.params.id);
-    db.deleteUserRecord(req.params.id);
+    await db.deleteUserTokens(req.params.id);
+    await db.deleteUserRecord(req.params.id);
     logger.audit('admin_account_deleted', `account="${req.params.id}" by admin`);
     res.json({ success: true });
   } catch (err) {
@@ -555,9 +555,9 @@ router.delete('/admin/api/accounts/:id', adminAuthMiddleware, (req: Request, res
 
 /* ─── Admin bans, kicks, end-game ─── */
 
-router.post('/admin/api/players/:id/ban', adminAuthMiddleware, (req: Request, res: Response) => {
+router.post('/admin/api/players/:id/ban', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
-    const result = game.banPlayer(req.params.id);
+    const result = await game.banPlayer(req.params.id);
     if (!result.success) {
       res.status(400).json({ error: result.error });
       return;
@@ -600,14 +600,14 @@ router.post('/admin/api/games/:id/end', adminAuthMiddleware, (req: Request, res:
   }
 });
 
-router.post('/admin/api/bans/ip', adminAuthMiddleware, (req: Request, res: Response) => {
+router.post('/admin/api/bans/ip', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const parsed = ipSchema.safeParse(req.body.ip);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
-    const result = game.banIp(parsed.data);
+    const result = await game.banIp(parsed.data);
     if (!result.success) {
       res.status(400).json({ error: result.error });
       return;
@@ -632,9 +632,9 @@ router.get('/admin/api/bans', adminAuthMiddleware, (_req: Request, res: Response
   }
 });
 
-router.delete('/admin/api/bans/player/:id', adminAuthMiddleware, (req: Request, res: Response) => {
+router.delete('/admin/api/bans/player/:id', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
-    game.unbanPlayer(req.params.id);
+    await game.unbanPlayer(req.params.id);
     logger.audit('admin_player_unbanned', `player="${req.params.id}" by admin`);
     res.json({ success: true });
   } catch (err) {
@@ -643,14 +643,14 @@ router.delete('/admin/api/bans/player/:id', adminAuthMiddleware, (req: Request, 
   }
 });
 
-router.delete('/admin/api/bans/ip/:ip', adminAuthMiddleware, (req: Request, res: Response) => {
+router.delete('/admin/api/bans/ip/:ip', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const parsed = ipSchema.safeParse(req.params.ip);
     if (!parsed.success) {
       res.status(400).json({ error: 'Invalid IP address format' });
       return;
     }
-    game.unbanIp(parsed.data);
+    await game.unbanIp(parsed.data);
     logger.audit('admin_ip_unbanned', `ip="${req.params.ip}" by admin`);
     res.json({ success: true });
   } catch (err) {
@@ -699,12 +699,12 @@ router.get('/admin/api/logs', adminAuthMiddleware, (req: Request, res: Response)
 
 /* ─── Admin: Leaderboard ─── */
 
-router.get('/admin/api/leaderboard', adminAuthMiddleware, (_req: Request, res: Response) => {
+router.get('/admin/api/leaderboard', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
     const page = Math.max(1, parseInt(_req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string, 10) || 50));
     const offset = (page - 1) * limit;
-    const result = db.getLeaderboard(limit, offset);
+    const result = await db.getLeaderboard(limit, offset);
     res.json({ entries: result.rows, total: result.total, page, limit });
   } catch (err) {
     logger.error('Admin leaderboard query failed: ' + err);
@@ -714,13 +714,13 @@ router.get('/admin/api/leaderboard', adminAuthMiddleware, (_req: Request, res: R
 
 /* ─── Admin: Game Archive ─── */
 
-router.get('/admin/api/archive', adminAuthMiddleware, (req: Request, res: Response) => {
+router.get('/admin/api/archive', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
     const player = req.query.player as string | undefined;
     const status = req.query.status as string | undefined;
-    const result = db.getArchivedGames(page, limit, player, status);
+    const result = await db.getArchivedGames(page, limit, player, status);
     res.json({ games: result.rows, total: result.total, page, limit });
   } catch (err) {
     logger.error('Admin archive query failed: ' + err);
@@ -730,10 +730,11 @@ router.get('/admin/api/archive', adminAuthMiddleware, (req: Request, res: Respon
 
 /* ─── Admin: Tournaments ─── */
 
-router.get('/admin/api/tournaments', adminAuthMiddleware, (_req: Request, res: Response) => {
+router.get('/admin/api/tournaments', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
-    const ts = db.getTournaments();
-    const enriched = ts.map((t) => ({ ...t, participantCount: db.getParticipantCount((t as { id: string }).id) }));
+    const ts = await db.getTournaments();
+    const participantCounts = await Promise.all(ts.map((t) => db.getParticipantCount((t as { id: string }).id)));
+    const enriched = ts.map((t, i) => ({ ...t, participantCount: participantCounts[i] }));
     res.json(enriched);
   } catch (err) {
     logger.error('Admin tournaments query failed: ' + err);
@@ -741,15 +742,15 @@ router.get('/admin/api/tournaments', adminAuthMiddleware, (_req: Request, res: R
   }
 });
 
-router.get('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, res: Response) => {
+router.get('/admin/api/tournaments/:id', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
-    const t = db.getTournament(req.params.id);
+    const t = await db.getTournament(req.params.id);
     if (!t) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
-    const participants = db.getTournamentParticipants(req.params.id);
-    const matches = db.getTournamentMatches(req.params.id);
+    const participants = await db.getTournamentParticipants(req.params.id);
+    const matches = await db.getTournamentMatches(req.params.id);
     res.json({ ...t, participants, matches, participantCount: participants.length });
   } catch (err) {
     logger.error('Admin tournament detail query failed: ' + err);
@@ -757,17 +758,14 @@ router.get('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, res
   }
 });
 
-router.delete('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, res: Response) => {
+router.delete('/admin/api/tournaments/:id', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
-    const t = db.getTournament(req.params.id);
+    const t = await db.getTournament(req.params.id);
     if (!t) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
-    const d = db.getDb();
-    d.prepare('DELETE FROM tournament_matches WHERE tournament_id = ?').run(req.params.id);
-    d.prepare('DELETE FROM tournament_participants WHERE tournament_id = ?').run(req.params.id);
-    d.prepare('DELETE FROM tournaments WHERE id = ?').run(req.params.id);
+    await db.deleteTournament(req.params.id);
     logger.audit('admin_tournament_deleted', `tournament="${req.params.id}" by admin`);
     res.json({ success: true });
   } catch (err) {
@@ -778,9 +776,9 @@ router.delete('/admin/api/tournaments/:id', adminAuthMiddleware, (req: Request, 
 
 /* ─── Admin: Bot Games stats ─── */
 
-router.get('/admin/api/bot-games', adminAuthMiddleware, (_req: Request, res: Response) => {
+router.get('/admin/api/bot-games', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
-    const allGames = game.getAllGames();
+    const allGames = await game.getAllGames();
     const botGames = allGames.filter((g) => game.isBotGame(g));
     res.json({
       total: botGames.length,

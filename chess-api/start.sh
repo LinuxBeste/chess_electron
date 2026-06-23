@@ -7,6 +7,7 @@ cd "$SCRIPT_DIR"
 PORT="${PORT:-25565}"
 TUNNEL="${TUNNEL:-}"
 CLIENT_ENV_FILE="../chess-client/.env"
+COMPOSE_PROFILE=""
 
 usage() {
   cat <<EOF
@@ -17,14 +18,14 @@ Start the chess-api server.
 Options:
   --native, -n        Run natively (npm run dev) instead of Docker
   --tunnel <tool>     Expose via tunnel (cloudflared | ngrok)
-  --port <num>        Local port for native mode (default: 3000)
+  --port <num>        Local port (default: $PORT)
   --no-client-env     Skip updating chess-client/.env with tunnel URL
   --help, -h          Show this help
 
 Examples:
-  $0                              # Docker (API internal, cloudflared in stack)
+  $0                              # Docker on port $PORT, no tunnel
   $0 --native                     # npm run dev on port $PORT
-  $0 --tunnel cloudflared          # Docker + extract cloudflared URL
+  $0 --tunnel cloudflared          # Docker + cloudflared tunnel
   $0 --native --tunnel ngrok       # Native + ngrok tunnel
 EOF
   exit 0
@@ -43,6 +44,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 export PORT
+
+if [[ -n "$TUNNEL" ]]; then
+  COMPOSE_PROFILE="--profile tunnel"
+fi
 
 write_client_env() {
   local url="$1"
@@ -80,7 +85,7 @@ start_tunnel() {
         tunnel_url=$(grep -oP 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' "$tmpfile" 2>/dev/null | head -1 || true)
         rm -f "$tmpfile"
       else
-        echo "Waiting for cloudflared container URL (from docker compose) ..."
+        echo "Waiting for cloudflared container URL ..."
         for i in $(seq 1 10); do
           tunnel_url=$(docker compose logs cloudflared 2>/dev/null | grep -oP 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' | head -1 || true)
           if [[ -n "$tunnel_url" ]]; then
@@ -104,7 +109,7 @@ start_tunnel() {
     if $UPDATE_CLIENT_ENV; then
       write_client_env "$tunnel_url"
     fi
-    echo "Start the client normally — it will use the tunnel URL."
+    echo "Access remotely via: $tunnel_url"
     echo "To restore localhost URL, run: cp $CLIENT_ENV_FILE.bak $CLIENT_ENV_FILE 2>/dev/null; rm -f $CLIENT_ENV_FILE"
   else
     echo "Warning: Could not detect tunnel URL. Client env not updated." >&2
@@ -114,7 +119,7 @@ start_tunnel() {
 cleanup() {
   echo
   echo "Shutting down ..."
-  docker compose down 2>/dev/null || true
+  docker compose $COMPOSE_PROFILE down 2>/dev/null || true
 }
 
 stop_docker() {
@@ -128,12 +133,20 @@ if [[ "${MODE:-docker}" == "native" ]]; then
     echo "Building first ..."
     npm run build
   fi
-  start_tunnel "$PORT"
+  if [[ -n "$TUNNEL" ]]; then
+    start_tunnel "$PORT"
+  fi
   exec npm start
 else
-  echo "Starting chess-api in Docker (internal-only, cloudflared in stack) ..."
-  docker compose up --build -d
-  start_tunnel "$PORT"
+  if [[ -n "$TUNNEL" ]]; then
+    echo "Starting chess-api in Docker with $TUNNEL tunnel ..."
+  else
+    echo "Starting chess-api in Docker on http://localhost:$PORT ..."
+  fi
+  docker compose $COMPOSE_PROFILE up --build -d
+  if [[ -n "$TUNNEL" ]]; then
+    start_tunnel "$PORT"
+  fi
   echo
   echo "Press q to stop and remove containers"
   while true; do

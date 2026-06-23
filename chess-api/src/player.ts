@@ -73,17 +73,17 @@ export function verifyPassword(password: string, stored: string): boolean {
 
 export const BOT_PLAYER_ID = '_bot_';
 
-export function registerPlayer(
+export async function registerPlayer(
   username: string,
   password?: string,
-): { playerId: string; token: string; isRegistered: boolean; displayName: string } {
+): Promise<{ playerId: string; token: string; isRegistered: boolean; displayName: string }> {
   const playerId = uuidv4();
   const token = uuidv4();
   const isRegistered = !!password;
   if (password) {
     const hash = hashPassword(password);
-    db.createUser(playerId, username, hash, username);
-    db.saveToken(token, playerId);
+    await db.createUser(playerId, username, hash, username);
+    await db.saveToken(token, playerId);
     const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: true };
     players.set(playerId, player);
     setToken(token, playerId);
@@ -96,11 +96,11 @@ export function registerPlayer(
   return { playerId, token, isRegistered, displayName: username };
 }
 
-export function loginPlayer(
+export async function loginPlayer(
   username: string,
   password: string,
-): { success: false; error: string } | { success: true; playerId: string; token: string; displayName: string } {
-  const user = db.getUserByUsername(username);
+): Promise<{ success: false; error: string } | { success: true; playerId: string; token: string; displayName: string }> {
+  const user = await db.getUserByUsername(username);
   if (!user || !user.password_hash) {
     return { success: false, error: 'Invalid username or password' };
   }
@@ -108,7 +108,7 @@ export function loginPlayer(
     return { success: false, error: 'Invalid username or password' };
   }
   const token = uuidv4();
-  db.saveToken(token, user.id);
+  await db.saveToken(token, user.id);
   const existing = players.get(user.id);
   if (existing) {
     existing.tokens.push(token);
@@ -172,7 +172,7 @@ export function addToken(playerId: string): string | null {
   return token;
 }
 
-export function logoutPlayer(token: string): boolean {
+export async function logoutPlayer(token: string): Promise<boolean> {
   const playerId = tokenIndex.get(token);
   if (!playerId) return false;
   deleteToken(token);
@@ -180,58 +180,58 @@ export function logoutPlayer(token: string): boolean {
   if (player) {
     player.tokens = player.tokens.filter((t) => t !== token);
   }
-  db.deleteToken(token);
+  await db.deleteToken(token);
   logger.info('Player logged out: playerId=' + playerId);
   return true;
 }
 
-export function updateDisplayName(
+export async function updateDisplayName(
   playerId: string,
   displayName: string,
-): { success: true } | { success: false; error: string } {
+): Promise<{ success: true } | { success: false; error: string }> {
   const player = players.get(playerId);
   if (!player) return { success: false, error: 'Player not found' };
   if (!displayName || displayName.trim().length === 0) return { success: false, error: 'Display name is required' };
 
   player.displayName = displayName.trim();
   if (player.isRegistered) {
-    db.updateUserDisplayName(playerId, displayName.trim());
+    await db.updateUserDisplayName(playerId, displayName.trim());
   }
   logger.info('Display name updated: playerId=' + playerId + ' displayName=' + displayName.trim());
   return { success: true };
 }
 
-export function changePassword(
+export async function changePassword(
   playerId: string,
   currentPassword: string,
   newPassword: string,
-): { success: true } | { success: false; error: string } {
+): Promise<{ success: true } | { success: false; error: string }> {
   const player = players.get(playerId);
   if (!player || !player.isRegistered) return { success: false, error: 'Only registered users can change password' };
   if (!currentPassword || !newPassword) return { success: false, error: 'Current and new password are required' };
   if (newPassword.length < 8) return { success: false, error: 'New password must be at least 8 characters' };
 
-  const user = db.getUserById(playerId);
+  const user = await db.getUserById(playerId);
   if (!user || !user.password_hash) return { success: false, error: 'Account not found' };
   if (!verifyPassword(currentPassword, user.password_hash))
     return { success: false, error: 'Current password is incorrect' };
 
   const hash = hashPassword(newPassword);
-  db.updateUserPasswordHash(playerId, hash);
+  await db.updateUserPasswordHash(playerId, hash);
   logger.info('Password changed: playerId=' + playerId);
   return { success: true };
 }
 
-export function deleteAccount(playerId: string): { success: true } | { success: false; error: string } {
+export async function deleteAccount(playerId: string): Promise<{ success: true } | { success: false; error: string }> {
   const player = players.get(playerId);
   if (!player || !player.isRegistered)
     return { success: false, error: 'Only registered users can delete their account' };
 
-  for (const token of player.tokens) {
-    deleteToken(token);
+  for (const t of player.tokens) {
+    deleteToken(t);
   }
-  db.deleteUserTokens(playerId);
-  db.deleteUserRecord(playerId);
+  await db.deleteUserTokens(playerId);
+  await db.deleteUserRecord(playerId);
   players.delete(playerId);
 
   logger.info('Account deleted: playerId=' + playerId);
@@ -261,8 +261,8 @@ export function getAllPlayers(): Player[] {
   return result;
 }
 
-export function loadPersistedUsers(): void {
-  const allUsers = db.loadAllUsers();
+export async function loadPersistedUsers(): Promise<void> {
+  const allUsers = await db.loadAllUsers();
   for (const u of allUsers) {
     const player: Player = {
       id: u.id,
@@ -273,7 +273,7 @@ export function loadPersistedUsers(): void {
     };
     players.set(u.id, player);
   }
-  const allTokens = db.loadAllTokens();
+  const allTokens = await db.loadAllTokens();
   for (const t of allTokens) {
     const player = players.get(t.user_id);
     if (player) {
@@ -293,6 +293,6 @@ export function cleanupExpiredTokens(): void {
 
 const isTestEnv = typeof process.env.JEST_WORKER_ID !== 'undefined' || process.env.NODE_ENV === 'test';
 if (!isTestEnv) {
-  loadPersistedUsers();
+  loadPersistedUsers().catch((err) => logger.error('Failed to load persisted users:', err));
   setInterval(cleanupExpiredTokens, Math.min(PLAYER_TOKEN_TTL, 300000));
 }

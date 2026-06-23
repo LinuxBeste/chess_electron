@@ -206,13 +206,13 @@ export function createServer(): http.Server {
         } else if (msg.type === 'offer_draw' && typeof msg.gameId === 'string') {
           game.offerDraw(msg.gameId as string, player.id);
         } else if (msg.type === 'accept_draw' && typeof msg.gameId === 'string') {
-          game.acceptDraw(msg.gameId as string, player.id);
+          game.acceptDraw(msg.gameId as string, player.id).catch(() => {});
         } else if (msg.type === 'decline_draw' && typeof msg.gameId === 'string') {
           game.declineDraw(msg.gameId as string, player.id);
         } else if (msg.type === 'rematch_offer' && typeof msg.gameId === 'string') {
           game.offerRematch(msg.gameId as string, player.id);
         } else if (msg.type === 'rematch_accept' && typeof msg.gameId === 'string') {
-          game.acceptRematch(msg.gameId as string, player.id);
+          game.acceptRematch(msg.gameId as string, player.id).catch(() => {});
         } else if (msg.type === 'challenge' && typeof msg.toPlayerId === 'string' && typeof msg.gameId === 'string') {
           game.sendToPlayer(msg.toPlayerId as string, {
             type: 'challenge',
@@ -316,26 +316,20 @@ if (!isTestEnv) {
     }
   }, 86400000);
   setInterval(() => {
-    try {
-      db.cleanupExpiredTokens();
-    } catch (e) {
+    db.cleanupExpiredTokens().catch((e) => {
       logger.error('cleanupExpiredTokens failed: ' + e);
-    }
+    });
   }, 3600000);
 
   const DB_BACKUP_INTERVAL_MS = parseInt(process.env.DB_BACKUP_INTERVAL_MS ?? String(6 * 3600000), 10);
   if (DB_BACKUP_INTERVAL_MS > 0) {
-    try {
-      db.createBackup();
-    } catch (e) {
+    db.createBackup().catch((e) => {
       logger.error('Initial DB backup failed: ' + e);
-    }
+    });
     setInterval(() => {
-      try {
-        db.createBackup();
-      } catch (e) {
+      db.createBackup().catch((e) => {
         logger.error('DB backup failed: ' + e);
-      }
+      });
     }, DB_BACKUP_INTERVAL_MS);
   }
 
@@ -348,10 +342,15 @@ if (!isTestEnv) {
     process.exit(1);
   });
 
-  server.listen(PORT, () => {
-    logger.info('Chess API server listening on port ' + PORT);
-    logger.info('CORS origin: ' + CORS_ORIGIN);
-    logger.info('WS heartbeat interval: ' + WS_HEARTBEAT_INTERVAL + 'ms');
+  db.initDb().then(() => {
+    server.listen(PORT, () => {
+      logger.info('Chess API server listening on port ' + PORT);
+      logger.info('CORS origin: ' + CORS_ORIGIN);
+      logger.info('WS heartbeat interval: ' + WS_HEARTBEAT_INTERVAL + 'ms');
+    });
+  }).catch((e) => {
+    logger.error('DB init failed: ' + e);
+    process.exit(1);
   });
 
   function shutdown(signal: string): void {
@@ -363,7 +362,7 @@ if (!isTestEnv) {
       if (wss) {
         wss.clients.forEach((client) => client.close(1001, 'Server shutting down'));
       }
-      if (typeof db.closeDb === 'function') db.closeDb();
+      if (typeof db.closeDb === 'function') db.closeDb().catch(() => {});
       logger.info('Shutdown complete');
       process.exit(0);
     });

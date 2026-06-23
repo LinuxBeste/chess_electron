@@ -1,250 +1,251 @@
-import { describe, test, expect, beforeAll } from '@jest/globals';
-import * as db from '../src/db.js';
+import { describe, test, expect, beforeAll } from '@jest/globals'
+import * as db from '../src/db.js'
 
 /* Helper: create a test user and return its ID */
-function makeUser(tag: string): string {
-  const id = 'db-test-' + tag + '-' + Date.now();
-  db.createUser(id, tag + '_user', null, tag + ' Display');
-  return id;
+async function makeUser(tag: string): Promise<string> {
+  const id = 'db-test-' + tag + '-' + Date.now()
+  await db.createUser(id, tag + '_user', null, tag + ' Display')
+  return id
 }
 
 describe('db — users', () => {
-  test('createUser and getUserById round-trip', () => {
-    const id = makeUser('roundtrip');
-    const user = db.getUserById(id);
-    expect(user).toBeDefined();
-    expect(user!.username).toBe('roundtrip_user');
-    expect(user!.display_name).toBe('roundtrip Display');
-  });
+  test('createUser and getUserById round-trip', async () => {
+    const id = await makeUser('roundtrip')
+    const user = await db.getUserById(id)
+    expect(user).toBeDefined()
+    expect(user!.username).toBe('roundtrip_user')
+    expect(user!.display_name).toBe('roundtrip Display')
+  })
 
-  test('getUserByUsername returns correct user', () => {
-    const id = makeUser('byusername');
-    const user = db.getUserByUsername('byusername_user');
-    expect(user).toBeDefined();
-    expect(user!.id).toBe(id);
-  });
+  test('getUserByUsername returns correct user', async () => {
+    const id = await makeUser('byusername')
+    const user = await db.getUserByUsername('byusername_user')
+    expect(user).toBeDefined()
+    expect(user!.id).toBe(id)
+  })
 
-  test('getUserById returns undefined for non-existent', () => {
-    expect(db.getUserById('no-such-id')).toBeUndefined();
-  });
+  test('getUserById returns undefined for non-existent', async () => {
+    expect(await db.getUserById('no-such-id')).toBeUndefined()
+  })
 
-  test('getUsersByIds batch loads users', () => {
-    const id1 = makeUser('batch1');
-    const id2 = makeUser('batch2');
-    const map = db.getUsersByIds([id1, id2, 'nonexistent']);
-    expect(map.size).toBe(2);
-    expect(map.get(id1)).toBeDefined();
-    expect(map.get(id2)).toBeDefined();
-    expect(map.has('nonexistent')).toBe(false);
-  });
+  test('getUsersByIds batch loads users', async () => {
+    const id1 = await makeUser('batch1')
+    const id2 = await makeUser('batch2')
+    const map = await db.getUsersByIds([id1, id2, 'nonexistent'])
+    expect(map.size).toBe(2)
+    expect(map.get(id1)).toBeDefined()
+    expect(map.get(id2)).toBeDefined()
+    expect(map.has('nonexistent')).toBe(false)
+  })
 
-  test('updateUserDisplayName changes display name', () => {
-    const id = makeUser('dispname');
-    db.updateUserDisplayName(id, 'New Display');
-    const user = db.getUserById(id);
-    expect(user!.display_name).toBe('New Display');
-  });
+  test('updateUserDisplayName changes display name', async () => {
+    const id = await makeUser('dispname')
+    await db.updateUserDisplayName(id, 'New Display')
+    const user = await db.getUserById(id)
+    expect(user!.display_name).toBe('New Display')
+  })
 
-  test('updateUsername changes username', () => {
-    const id = makeUser('rename');
-    db.updateUsername(id, 'renamed_user');
-    const user = db.getUserById(id);
-    expect(user!.username).toBe('renamed_user');
-  });
+  test('updateUsername changes username', async () => {
+    const id = await makeUser('rename')
+    await db.updateUsername(id, 'renamed_user')
+    const user = await db.getUserById(id)
+    expect(user!.username).toBe('renamed_user')
+  })
 
-  test('updateUserAvatar sets avatar URL', () => {
-    const id = makeUser('avatar');
-    db.updateUserAvatar(id, '/avatars/test.png');
-    const user = db.getUserById(id);
-    expect(user!.avatar_url).toBe('/avatars/test.png');
-  });
+  test('updateUserAvatar sets avatar URL', async () => {
+    const id = await makeUser('avatar')
+    await db.updateUserAvatar(id, '/avatars/test.png')
+    const user = await db.getUserById(id)
+    expect(user!.avatar_url).toBe('/avatars/test.png')
+  })
 
-  test('updateUserAvatar clears avatar URL', () => {
-    const id = makeUser('avatarclr');
-    db.updateUserAvatar(id, '/avatars/test.png');
-    db.updateUserAvatar(id, null);
-    const user = db.getUserById(id);
-    expect(user!.avatar_url).toBeNull();
-  });
+  test('updateUserAvatar clears avatar URL', async () => {
+    const id = await makeUser('avatarclr')
+    await db.updateUserAvatar(id, '/avatars/test.png')
+    await db.updateUserAvatar(id, null)
+    const user = await db.getUserById(id)
+    expect(user!.avatar_url).toBeNull()
+  })
 
-  test('updateUserPasswordHash sets password hash', () => {
-    const id = makeUser('password');
-    db.updateUserPasswordHash(id, 'abc123hash');
-    const user = db.getUserById(id);
-    expect(user!.password_hash).toBe('abc123hash');
-  });
+  test('updateUserPasswordHash sets password hash', async () => {
+    const id = await makeUser('password')
+    await db.updateUserPasswordHash(id, 'abc123hash')
+    const user = await db.getUserById(id)
+    expect(user!.password_hash).toBe('abc123hash')
+  })
 
-  test('deleteUserRecord removes user', () => {
-    const id = makeUser('delete');
-    db.deleteUserRecord(id);
-    expect(db.getUserById(id)).toBeUndefined();
-  });
+  test('deleteUserRecord removes user', async () => {
+    const id = await makeUser('delete')
+    await db.deleteUserRecord(id)
+    expect(await db.getUserById(id)).toBeUndefined()
+  })
 
-  test('deleteUserTokens removes all tokens for user', () => {
-    const id = makeUser('deltok');
-    db.saveToken('token-1', id);
-    db.saveToken('token-2', id);
-    db.deleteUserTokens(id);
-    expect(db.getUserIdByToken('token-1')).toBeUndefined();
-    expect(db.getUserIdByToken('token-2')).toBeUndefined();
-  });
-});
+  test('deleteUserTokens removes all tokens for user', async () => {
+    const id = await makeUser('deltok')
+    await db.saveToken('token-1', id)
+    await db.saveToken('token-2', id)
+    await db.deleteUserTokens(id)
+    expect(await db.getUserIdByToken('token-1')).toBeUndefined()
+    expect(await db.getUserIdByToken('token-2')).toBeUndefined()
+  })
+})
 
 describe('db — tokens', () => {
-  test('saveToken and getUserIdByToken round-trip', () => {
-    const id = makeUser('tokenrt');
-    db.saveToken('test-token-val', id);
-    expect(db.getUserIdByToken('test-token-val')).toBe(id);
-  });
+  test('saveToken and getUserIdByToken round-trip', async () => {
+    const id = await makeUser('tokenrt')
+    await db.saveToken('test-token-val', id)
+    expect(await db.getUserIdByToken('test-token-val')).toBe(id)
+  })
 
-  test('deleteToken removes token', () => {
-    const id = makeUser('tokendel');
-    db.saveToken('del-token', id);
-    db.deleteToken('del-token');
-    expect(db.getUserIdByToken('del-token')).toBeUndefined();
-  });
+  test('deleteToken removes token', async () => {
+    const id = await makeUser('tokendel')
+    await db.saveToken('del-token', id)
+    await db.deleteToken('del-token')
+    expect(await db.getUserIdByToken('del-token')).toBeUndefined()
+  })
 
   test('cleanupExpiredTokens removes old tokens', async () => {
-    const id = makeUser('tokenclean');
-    db.saveToken('old-token', id);
+    const id = await makeUser('tokenclean')
+    await db.saveToken('old-token', id)
     /* Wait briefly so the token's created_at is in the past */
-    await new Promise((r) => setTimeout(r, 10));
-    const removed = db.cleanupExpiredTokens(0);
-    expect(removed).toBeGreaterThanOrEqual(1);
-    expect(db.getUserIdByToken('old-token')).toBeUndefined();
-  });
-});
+    await new Promise((r) => setTimeout(r, 10))
+    const removed = await db.cleanupExpiredTokens(0)
+    expect(removed).toBeGreaterThanOrEqual(1)
+    expect(await db.getUserIdByToken('old-token')).toBeUndefined()
+  })
+})
 
 describe('db — bans', () => {
-  test('saveBan and loadAllBans round-trip', () => {
-    db.saveBan('ban-1', 'player-1', null);
-    db.saveBan('ban-2', null, '1.2.3.4');
-    const bans = db.loadAllBans();
-    expect(bans.some((b) => b.id === 'ban-1')).toBe(true);
-    expect(bans.some((b) => b.id === 'ban-2')).toBe(true);
-  });
+  test('saveBan and loadAllBans round-trip', async () => {
+    await db.saveBan('ban-1', 'player-1', null)
+    await db.saveBan('ban-2', null, '1.2.3.4')
+    const bans = await db.loadAllBans()
+    expect(bans.some((b) => b.id === 'ban-1')).toBe(true)
+    expect(bans.some((b) => b.id === 'ban-2')).toBe(true)
+  })
 
-  test('deleteBanById removes ban', () => {
-    db.saveBan('ban-del', 'player-del', null);
-    db.deleteBanById('ban-del');
-    const bans = db.loadAllBans();
-    expect(bans.some((b) => b.id === 'ban-del')).toBe(false);
-  });
-});
+  test('deleteBanById removes ban', async () => {
+    await db.saveBan('ban-del', 'player-del', null)
+    await db.deleteBanById('ban-del')
+    const bans = await db.loadAllBans()
+    expect(bans.some((b) => b.id === 'ban-del')).toBe(false)
+  })
+})
 
 describe('db — stats', () => {
-  test('addWin / addLoss / addDraw update user table', () => {
-    const id = makeUser('stats');
-    db.addWin(id);
-    db.addLoss(id);
-    db.addDraw(id);
-    const user = db.getUserById(id);
-    expect(user!.wins).toBe(1);
-    expect(user!.losses).toBe(1);
-    expect(user!.draws).toBe(1);
-  });
+  test('addWin / addLoss / addDraw update user table', async () => {
+    const id = await makeUser('stats')
+    await db.addWin(id)
+    await db.addLoss(id)
+    await db.addDraw(id)
+    const user = await db.getUserById(id)
+    expect(user!.wins).toBe(1)
+    expect(user!.losses).toBe(1)
+    expect(user!.draws).toBe(1)
+  })
 
-  test('updatePlayerRating sets rating', () => {
-    const id = makeUser('rating');
-    db.updatePlayerRating(id, 1500);
-    const rating = db.getPlayerRating(id);
-    expect(rating).toBe(1500);
-  });
+  test('updatePlayerRating sets rating', async () => {
+    const id = await makeUser('rating')
+    await db.updatePlayerRating(id, 1500)
+    const rating = await db.getPlayerRating(id)
+    expect(rating).toBe(1500)
+  })
 
-  test('updateWinLossDraw handles win/loss/draw', () => {
-    const id = makeUser('wld');
-    db.updateWinLossDraw(id, 'win');
-    db.updateWinLossDraw(id, 'loss');
-    db.updateWinLossDraw(id, 'draw');
-    const user = db.getUserById(id);
-    expect(user!.wins).toBeGreaterThanOrEqual(1);
-    expect(user!.losses).toBeGreaterThanOrEqual(1);
-    expect(user!.draws).toBeGreaterThanOrEqual(1);
-  });
+  test('updateWinLossDraw handles win/loss/draw', async () => {
+    const id = await makeUser('wld')
+    await db.updateWinLossDraw(id, 'win')
+    await db.updateWinLossDraw(id, 'loss')
+    await db.updateWinLossDraw(id, 'draw')
+    const user = await db.getUserById(id)
+    expect(user!.wins).toBeGreaterThanOrEqual(1)
+    expect(user!.losses).toBeGreaterThanOrEqual(1)
+    expect(user!.draws).toBeGreaterThanOrEqual(1)
+  })
 
-  test('updateUserStats sets exact values', () => {
-    const id = makeUser('exact');
-    db.updateUserStats(id, 5, 3, 1);
-    const user = db.getUserById(id);
-    expect(user!.wins).toBe(5);
-    expect(user!.losses).toBe(3);
-    expect(user!.draws).toBe(1);
-  });
+  test('updateUserStats sets exact values', async () => {
+    const id = await makeUser('exact')
+    await db.updateUserStats(id, 5, 3, 1)
+    const user = await db.getUserById(id)
+    expect(user!.wins).toBe(5)
+    expect(user!.losses).toBe(3)
+    expect(user!.draws).toBe(1)
+  })
 
-  test('getPlayerWinLossDraw counts from completed_games', () => {
-    const w = makeUser('pwl_w');
-    const b = makeUser('pwl_b');
-    db.saveCompletedGame('pwl-game-1', w, b, 'W', 'B', 'white', 'resign', '1-0', null, 'e4', '', null, 'blitz');
-    const stats = db.getPlayerWinLossDraw(w);
-    expect(stats.wins).toBe(1);
-    expect(stats.losses).toBe(0);
-  });
-});
+  test('getPlayerWinLossDraw counts from completed_games', async () => {
+    const w = await makeUser('pwl_w')
+    const b = await makeUser('pwl_b')
+    await db.saveCompletedGame('pwl-game-1', w, b, 'W', 'B', 'white', 'resign', '1-0', null, 'e4', '', null, 'blitz')
+    const stats = await db.getPlayerWinLossDraw(w)
+    expect(stats.wins).toBe(1)
+    expect(stats.losses).toBe(0)
+  })
+})
 
 describe('db — friends', () => {
-  test('createFriendRequest and getFriendRequest', () => {
-    const from = makeUser('freq_from');
-    const to = makeUser('freq_to');
-    const reqId = db.createFriendRequest(from, to);
-    const req = db.getFriendRequest(reqId);
-    expect(req).toBeDefined();
-    expect(req!.from_user_id).toBe(from);
-    expect(req!.to_user_id).toBe(to);
-  });
+  test('createFriendRequest and getFriendRequest', async () => {
+    const from = await makeUser('freq_from')
+    const to = await makeUser('freq_to')
+    const reqId = await db.createFriendRequest(from, to)
+    const req = await db.getFriendRequest(reqId)
+    expect(req).toBeDefined()
+    expect(req!.from_user_id).toBe(from)
+    expect(req!.to_user_id).toBe(to)
+  })
 
-  test('hasPendingRequest detects existing request', () => {
-    const from = makeUser('pend_from');
-    const to = makeUser('pend_to');
-    db.createFriendRequest(from, to);
-    expect(db.hasPendingRequest(from, to)).toBe(true);
+  test('hasPendingRequest detects existing request', async () => {
+    const from = await makeUser('pend_from')
+    const to = await makeUser('pend_to')
+    await db.createFriendRequest(from, to)
+    expect(await db.hasPendingRequest(from, to)).toBe(true)
     /* hasPendingRequest checks both directions */
-    expect(db.hasPendingRequest(to, from)).toBe(true);
-  });
+    expect(await db.hasPendingRequest(to, from)).toBe(true)
+  })
 
-  test('addFriendRelationship and getFriendIds', () => {
-    const a = makeUser('friend_a');
-    const b = makeUser('friend_b');
-    db.addFriendRelationship(a, b);
-    const friends = db.getFriendIds(a);
-    expect(friends).toContain(b);
-  });
+  test('addFriendRelationship and getFriendIds', async () => {
+    const a = await makeUser('friend_a')
+    const b = await makeUser('friend_b')
+    await db.addFriendRelationship(a, b)
+    const friends = await db.getFriendIds(a)
+    expect(friends).toContain(b)
+  })
 
-  test('removeFriendRelationship removes friend', () => {
-    const a = makeUser('unfr_a');
-    const b = makeUser('unfr_b');
-    db.addFriendRelationship(a, b);
-    db.removeFriendRelationship(a, b);
-    const friends = db.getFriendIds(a);
-    expect(friends).not.toContain(b);
-  });
+  test('removeFriendRelationship removes friend', async () => {
+    const a = await makeUser('unfr_a')
+    const b = await makeUser('unfr_b')
+    await db.addFriendRelationship(a, b)
+    await db.removeFriendRelationship(a, b)
+    const friends = await db.getFriendIds(a)
+    expect(friends).not.toContain(b)
+  })
 
-  test('areFriends returns true for friends', () => {
-    const a = makeUser('aref_a');
-    const b = makeUser('aref_b');
-    db.addFriendRelationship(a, b);
-    expect(db.areFriends(a, b)).toBe(true);
-    expect(db.areFriends(b, a)).toBe(true);
-    expect(db.areFriends(a, makeUser('aref_c'))).toBe(false);
-  });
+  test('areFriends returns true for friends', async () => {
+    const a = await makeUser('aref_a')
+    const b = await makeUser('aref_b')
+    await db.addFriendRelationship(a, b)
+    expect(await db.areFriends(a, b)).toBe(true)
+    expect(await db.areFriends(b, a)).toBe(true)
+    const aref_c = await makeUser('aref_c')
+    expect(await db.areFriends(a, aref_c)).toBe(false)
+  })
 
-  test('getFriendStatus returns correct statuses', () => {
-    const a = makeUser('fstat_a');
-    const b = makeUser('fstat_b');
-    const c = makeUser('fstat_c');
-    db.addFriendRelationship(a, b);
-    expect(db.getFriendStatus(a, b)).toBe('friends');
-    expect(db.getFriendStatus(b, c)).toBe('none');
-    db.createFriendRequest(c, a);
-    expect(db.getFriendStatus(a, c)).toBe('incoming');
-    expect(db.getFriendStatus(c, a)).toBe('outgoing');
-  });
-});
+  test('getFriendStatus returns correct statuses', async () => {
+    const a = await makeUser('fstat_a')
+    const b = await makeUser('fstat_b')
+    const c = await makeUser('fstat_c')
+    await db.addFriendRelationship(a, b)
+    expect(await db.getFriendStatus(a, b)).toBe('friends')
+    expect(await db.getFriendStatus(b, c)).toBe('none')
+    await db.createFriendRequest(c, a)
+    expect(await db.getFriendStatus(a, c)).toBe('incoming')
+    expect(await db.getFriendStatus(c, a)).toBe('outgoing')
+  })
+})
 
 describe('db — completed games', () => {
-  test('saveCompletedGame and getArchivedGames', () => {
-    const w = makeUser('arch_w');
-    const b = makeUser('arch_b');
-    db.saveCompletedGame(
+  test('saveCompletedGame and getArchivedGames', async () => {
+    const w = await makeUser('arch_w')
+    const b = await makeUser('arch_b')
+    await db.saveCompletedGame(
       'game-arch-1',
       w,
       b,
@@ -258,16 +259,16 @@ describe('db — completed games', () => {
       '',
       null,
       'blitz',
-    );
-    const games = db.getArchivedGames(1, 10);
-    expect(games.rows.length).toBeGreaterThanOrEqual(1);
-    expect(games.rows.some((g) => g.id === 'game-arch-1')).toBe(true);
-  });
+    )
+    const games = await db.getArchivedGames(1, 10)
+    expect(games.rows.length).toBeGreaterThanOrEqual(1)
+    expect(games.rows.some((g) => g.id === 'game-arch-1')).toBe(true)
+  })
 
-  test('getArchivedGame returns specific game', () => {
-    const w = makeUser('arch2_w');
-    const b = makeUser('arch2_b');
-    db.saveCompletedGame(
+  test('getArchivedGame returns specific game', async () => {
+    const w = await makeUser('arch2_w')
+    const b = await makeUser('arch2_b')
+    await db.saveCompletedGame(
       'game-arch-2',
       w,
       b,
@@ -281,90 +282,90 @@ describe('db — completed games', () => {
       '',
       null,
       'blitz',
-    );
-    const game = db.getArchivedGame('game-arch-2');
-    expect(game).toBeDefined();
-    expect(game!.result).toBe('0-1');
-  });
+    )
+    const game = await db.getArchivedGame('game-arch-2')
+    expect(game).toBeDefined()
+    expect(game!.result).toBe('0-1')
+  })
 
-  test('deleteArchivedGame removes game', () => {
-    const w = makeUser('arch3_w');
-    const b = makeUser('arch3_b');
-    db.saveCompletedGame('game-arch-3', w, b, 'White 3', 'Black 3', null, 'draw', '½-½', null, '', '', null, 'blitz');
-    db.deleteArchivedGame('game-arch-3');
-    expect(db.getArchivedGame('game-arch-3')).toBeUndefined();
-  });
-});
+  test('deleteArchivedGame removes game', async () => {
+    const w = await makeUser('arch3_w')
+    const b = await makeUser('arch3_b')
+    await db.saveCompletedGame('game-arch-3', w, b, 'White 3', 'Black 3', null, 'draw', '½-½', null, '', '', null, 'blitz')
+    await db.deleteArchivedGame('game-arch-3')
+    expect(await db.getArchivedGame('game-arch-3')).toBeUndefined()
+  })
+})
 
 describe('db — tournaments', () => {
-  test('createTournament and getTournament', () => {
-    const creator = makeUser('tourn_c');
-    const { id } = db.createTournament('test-tourn', creator, 8, false);
-    const t = db.getTournament(id);
-    expect(t).toBeDefined();
-    expect(t!.name).toBe('test-tourn');
-  });
+  test('createTournament and getTournament', async () => {
+    const creator = await makeUser('tourn_c')
+    const { id } = await db.createTournament('test-tourn', creator, 8, false)
+    const t = await db.getTournament(id)
+    expect(t).toBeDefined()
+    expect(t!.name).toBe('test-tourn')
+  })
 
-  test('getPublicTournaments returns public tournaments', () => {
-    const creator = makeUser('tourn_pub');
-    const { id } = db.createTournament('pub-tourn', creator, 4, false);
-    const list = db.getPublicTournaments();
-    expect(list.some((t) => t.id === id)).toBe(true);
-  });
+  test('getPublicTournaments returns public tournaments', async () => {
+    const creator = await makeUser('tourn_pub')
+    const { id } = await db.createTournament('pub-tourn', creator, 4, false)
+    const list = await db.getPublicTournaments()
+    expect(list.some((t) => t.id === id)).toBe(true)
+  })
 
-  test('addTournamentParticipant and getParticipantCount', () => {
-    const creator = makeUser('tp_creator');
-    const p1 = makeUser('tp_p1');
-    const { id } = db.createTournament('tp-tourn', creator, 8, false);
-    const u1 = db.getUserById(p1);
-    db.addTournamentParticipant(id, p1, u1!.display_name, 1);
-    expect(db.getParticipantCount(id)).toBe(1);
-    expect(db.isTournamentParticipant(id, p1)).toBe(true);
-    expect(db.isTournamentParticipant(id, 'nobody')).toBe(false);
-  });
+  test('addTournamentParticipant and getParticipantCount', async () => {
+    const creator = await makeUser('tp_creator')
+    const p1 = await makeUser('tp_p1')
+    const { id } = await db.createTournament('tp-tourn', creator, 8, false)
+    const u1 = await db.getUserById(p1)
+    await db.addTournamentParticipant(id, p1, u1!.display_name, 1)
+    expect(await db.getParticipantCount(id)).toBe(1)
+    expect(await db.isTournamentParticipant(id, p1)).toBe(true)
+    expect(await db.isTournamentParticipant(id, 'nobody')).toBe(false)
+  })
 
-  test('removeTournamentParticipant removes player', () => {
-    const creator = makeUser('tp2_creator');
-    const p = makeUser('tp2_p');
-    const { id } = db.createTournament('tp2-tourn', creator, 8, false);
-    const up = db.getUserById(p);
-    db.addTournamentParticipant(id, p, up!.display_name, 1);
-    db.removeTournamentParticipant(id, p);
-    expect(db.isTournamentParticipant(id, p)).toBe(false);
-  });
+  test('removeTournamentParticipant removes player', async () => {
+    const creator = await makeUser('tp2_creator')
+    const p = await makeUser('tp2_p')
+    const { id } = await db.createTournament('tp2-tourn', creator, 8, false)
+    const up = await db.getUserById(p)
+    await db.addTournamentParticipant(id, p, up!.display_name, 1)
+    await db.removeTournamentParticipant(id, p)
+    expect(await db.isTournamentParticipant(id, p)).toBe(false)
+  })
 
-  test('updateTournamentStatus changes status', () => {
-    const creator = makeUser('tstat_c');
-    const { id } = db.createTournament('tstat-tourn', creator, 4, false);
-    db.updateTournamentStatus(id, 'started');
-    const t = db.getTournament(id);
-    expect(t!.status).toBe('started');
-  });
+  test('updateTournamentStatus changes status', async () => {
+    const creator = await makeUser('tstat_c')
+    const { id } = await db.createTournament('tstat-tourn', creator, 4, false)
+    await db.updateTournamentStatus(id, 'started')
+    const t = await db.getTournament(id)
+    expect(t!.status).toBe('started')
+  })
 
-  test('deleteTournament removes tournament', () => {
-    const creator = makeUser('tdel_c');
-    const { id } = db.createTournament('tdel-tourn', creator, 4, false);
-    db.deleteTournament(id);
-    expect(db.getTournament(id)).toBeUndefined();
-  });
-});
+  test('deleteTournament removes tournament', async () => {
+    const creator = await makeUser('tdel_c')
+    const { id } = await db.createTournament('tdel-tourn', creator, 4, false)
+    await db.deleteTournament(id)
+    expect(await db.getTournament(id)).toBeUndefined()
+  })
+})
 
 describe('db — migrations and utilities', () => {
-  test('getDb returns a database instance', () => {
-    const d = db.getDb();
-    expect(d).toBeDefined();
-    expect(typeof d.prepare).toBe('function');
-  });
+  test('getDb returns a database pool', () => {
+    const d = db.getDb()
+    expect(d).toBeDefined()
+    expect(typeof d.query).toBe('function')
+  })
 
-  test('loadAllUsers returns all users', () => {
-    const users = db.loadAllUsers();
-    expect(Array.isArray(users)).toBe(true);
-  });
+  test('loadAllUsers returns all users', async () => {
+    const users = await db.loadAllUsers()
+    expect(Array.isArray(users)).toBe(true)
+  })
 
-  test('leaderboard returns ordered results', () => {
-    const id = makeUser('lb_user');
-    db.updatePlayerRating(id, 2000);
-    const lb = db.getLeaderboard(10, 0);
-    expect(lb.rows.length).toBeGreaterThanOrEqual(1);
-  });
-});
+  test('leaderboard returns ordered results', async () => {
+    const id = await makeUser('lb_user')
+    await db.updatePlayerRating(id, 2000)
+    const lb = await db.getLeaderboard(10, 0)
+    expect(lb.rows.length).toBeGreaterThanOrEqual(1)
+  })
+})

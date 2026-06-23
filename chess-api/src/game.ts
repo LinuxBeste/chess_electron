@@ -71,17 +71,17 @@ export { cleanupChatHistory, handleChatMessage, sendChatHistory } from './chat.j
 
 export { removeGameById, sendToPlayer } from './state.js';
 
-function enrichNames(g: GameState): GameState {
+async function enrichNames(g: GameState): Promise<GameState> {
   const whitePlayer = g.players.white ? players.get(g.players.white) : undefined;
   const blackPlayer = g.players.black ? players.get(g.players.black) : undefined;
   let whiteAvatarUrl: string | undefined;
   let blackAvatarUrl: string | undefined;
   if (whitePlayer?.isRegistered) {
-    const user = db.getUserById(whitePlayer.id);
+    const user = await db.getUserById(whitePlayer.id);
     if (user?.avatar_url) whiteAvatarUrl = user.avatar_url;
   }
   if (blackPlayer?.isRegistered) {
-    const user = db.getUserById(blackPlayer.id);
+    const user = await db.getUserById(blackPlayer.id);
     if (user?.avatar_url) blackAvatarUrl = user.avatar_url;
   }
   return {
@@ -108,7 +108,7 @@ export function registerWSConnection(playerId: string, ws: WebSocket): void {
   }
   wsConnections.get(playerId)!.add(ws);
   if (wasOffline) {
-    notifyFriendsOnline(playerId);
+    notifyFriendsOnline(playerId).catch(() => {});
     notifyOpponentReconnected(playerId);
   }
   logger.info('WS connected: playerId=' + playerId);
@@ -118,7 +118,7 @@ export function removeWSConnection(playerId: string, ws: WebSocket): void {
   wsConnections.get(playerId)?.delete(ws);
   const isNowOffline = !wsConnections.has(playerId) || wsConnections.get(playerId)!.size === 0;
   if (isNowOffline && players.has(playerId)) {
-    notifyFriendsOffline(playerId);
+    notifyFriendsOffline(playerId).catch(() => {});
     notifyOpponentDisconnected(playerId);
   }
   logger.info('WS disconnected: playerId=' + playerId);
@@ -182,16 +182,20 @@ function broadcastSpectatorCount(gameId: string): void {
   sendToSpectators(gameId, message);
 }
 
-function broadcastGameListUpdate(): void {
-  const openGames = Array.from(games.values())
-    .filter((g) => g.status === 'waiting' && g.visibility === 'public')
-    .map(enrichNames)
-    .map(sanitizeForClient);
-  const activeGames = Array.from(games.values())
-    .filter((g) => g.status === 'active')
-    .map(enrichNames)
-    .map(sanitizeForClient);
-  const message = { type: 'game_list_update', openGames, activeGames };
+async function broadcastGameListUpdate(): Promise<void> {
+  const openGames = await Promise.all(
+    Array.from(games.values())
+      .filter((g) => g.status === 'waiting' && g.visibility === 'public')
+      .map(enrichNames),
+  );
+  const openSanitized = openGames.map(sanitizeForClient);
+  const activeGames = await Promise.all(
+    Array.from(games.values())
+      .filter((g) => g.status === 'active')
+      .map(enrichNames),
+  );
+  const activeSanitized = activeGames.map(sanitizeForClient);
+  const message = { type: 'game_list_update', openGames: openSanitized, activeGames: activeSanitized };
   const data = JSON.stringify(message);
   for (const conns of wsConnections.values()) {
     for (const ws of conns) {
@@ -237,11 +241,11 @@ export function checkRateLimit(playerId: string): boolean {
   return true;
 }
 
-export function createGame(
+export async function createGame(
   playerId: string,
   visibility: 'public' | 'private' = 'public',
   spectateMode: 'public' | 'code' = 'public',
-): GameState {
+): Promise<GameState> {
   const id = uuidv4();
   const spectateCode = spectateMode === 'code' ? uuidv4() : undefined;
   const game: GameState = {
@@ -270,15 +274,15 @@ export function createGame(
   logger.info(
     'Game created: gameId=' + id + ' white=' + playerId + ' visibility=' + visibility + ' spectateMode=' + spectateMode,
   );
-  broadcastGameListUpdate();
-  return enrichNames(game);
+  await broadcastGameListUpdate();
+  return await enrichNames(game);
 }
 
-export function createBotGame(
+export async function createBotGame(
   playerId: string,
   skillLevel: number,
   playerColor: Color = 'white',
-): { success: true; game: GameState } | { success: false; error: string } {
+): Promise<{ success: true; game: GameState } | { success: false; error: string }> {
   if (engineManager.activeCount >= engineManager.maxConcurrentEngines) {
     logger.warn(
       'Bot game rejected: engine limit reached (' +
@@ -325,7 +329,7 @@ export function createBotGame(
         triggerBotMove(id);
       }
     })
-    .catch((err) => {
+    .catch(async (err) => {
       logger.error('Failed to start bot engine for game ' + id, err);
       game.status = 'draw';
       game.reason = 'Engine error — game cancelled';
@@ -340,14 +344,14 @@ export function createBotGame(
         reason: game.reason,
       });
       spectatorConnections.delete(id);
-      broadcastGameListUpdate();
+      await broadcastGameListUpdate();
     });
 
   logger.info(
     'Bot game created: gameId=' + id + ' player=' + playerId + ' color=' + playerColor + ' skill=' + skillLevel,
   );
-  broadcastGameListUpdate();
-  return { success: true, game: enrichNames(game) };
+  await broadcastGameListUpdate();
+  return { success: true, game: await enrichNames(game) };
 }
 
 async function triggerBotMove(gameId: string): Promise<void> {
@@ -424,8 +428,8 @@ async function triggerBotMove(gameId: string): Promise<void> {
   });
 
   if (isTerminal) {
-    recordGameResult(game, winner);
-    broadcastGameListUpdate();
+    await recordGameResult(game, winner);
+    await broadcastGameListUpdate();
   }
   logger.info('Bot move: gameId=' + gameId + ' move=' + notation + ' status=' + newStatus);
 }
@@ -434,32 +438,30 @@ export function isBotGame(game: GameState): boolean {
   return game.players.white === BOT_PLAYER_ID || game.players.black === BOT_PLAYER_ID;
 }
 
-export function getActiveGames(): GameState[] {
-  const result = Array.from(games.values())
-    .filter((g) => g.status === 'active')
-    .map(enrichNames)
-    .map(sanitizeForClient);
-  logger.info('getActiveGames: count=' + result.length);
-  return result;
+export async function getActiveGames(): Promise<GameState[]> {
+  const gamesList = Array.from(games.values()).filter((g) => g.status === 'active');
+  const result = await Promise.all(gamesList.map(enrichNames));
+  const sanitized = result.map(sanitizeForClient);
+  logger.info('getActiveGames: count=' + sanitized.length);
+  return sanitized;
 }
 
-export function getOpenGames(): GameState[] {
-  const result = Array.from(games.values())
-    .filter((g) => g.status === 'waiting' && g.visibility === 'public')
-    .map(enrichNames)
-    .map(sanitizeForClient);
-  logger.info('getOpenGames: count=' + result.length);
-  return result;
+export async function getOpenGames(): Promise<GameState[]> {
+  const gamesList = Array.from(games.values()).filter((g) => g.status === 'waiting' && g.visibility === 'public');
+  const result = await Promise.all(gamesList.map(enrichNames));
+  const sanitized = result.map(sanitizeForClient);
+  logger.info('getOpenGames: count=' + sanitized.length);
+  return sanitized;
 }
 
-export function getGame(gameId: string): GameState | null {
+export async function getGame(gameId: string): Promise<GameState | null> {
   const g = games.get(gameId);
   if (g) {
     logger.info('getGame: gameId=' + gameId + ' status=' + g.status);
   } else {
     logger.info('getGame: gameId=' + gameId + ' not found');
   }
-  return g ? sanitizeForClient(enrichNames(g)) : null;
+  return g ? sanitizeForClient(await enrichNames(g)) : null;
 }
 
 export function abortGame(gameId: string, playerId: string): { success: boolean; error?: string } {
@@ -478,7 +480,7 @@ export function abortGame(gameId: string, playerId: string): { success: boolean;
   return { success: true };
 }
 
-export function joinGame(gameId: string, playerId: string): { success: boolean; error?: string; game?: GameState } {
+export async function joinGame(gameId: string, playerId: string): Promise<{ success: boolean; error?: string; game?: GameState }> {
   const game = games.get(gameId);
   if (!game) return { success: false, error: 'Game not found' };
   if (game.status !== 'waiting') return { success: false, error: 'Game is not open for joining' };
@@ -493,23 +495,23 @@ export function joinGame(gameId: string, playerId: string): { success: boolean; 
 
   logger.info('Game joined: gameId=' + gameId + ' white=' + game.players.white + ' black=' + playerId);
 
-  const enriched = enrichNames(game);
+  const enriched = await enrichNames(game);
   broadcastToGame(gameId, {
     type: 'game_started',
     gameId,
     game: enriched,
   });
-  broadcastGameListUpdate();
+  await broadcastGameListUpdate();
   return { success: true, game: enriched };
 }
 
-export function makeMove(
+export async function makeMove(
   gameId: string,
   playerId: string,
   from: string,
   to: string,
   promotion?: PieceType,
-): { success: boolean; error?: string; state?: GameState } {
+): Promise<{ success: boolean; error?: string; state?: GameState }> {
   const game = games.get(gameId);
   if (!game) return { success: false, error: 'Game not found' };
   if (game.status !== 'active') return { success: false, error: 'Game is not active' };
@@ -605,8 +607,8 @@ export function makeMove(
   broadcastToGame(gameId, message);
 
   if (isTerminal) {
-    recordGameResult(game, winner);
-    broadcastGameListUpdate();
+    await recordGameResult(game, winner);
+    await broadcastGameListUpdate();
   } else if (isBotGame(game)) {
     setTimeout(() => {
       triggerBotMove(gameId);
@@ -615,10 +617,10 @@ export function makeMove(
 
   const moveLog = notation || from + '-' + to;
   logger.info('Move: gameId=' + gameId + ' player=' + playerId + ' move=' + moveLog + ' status=' + newStatus);
-  return { success: true, state: enrichNames(game) };
+  return { success: true, state: await enrichNames(game) };
 }
 
-export function resignGame(gameId: string, playerId: string): { success: boolean; error?: string; state?: GameState } {
+export async function resignGame(gameId: string, playerId: string): Promise<{ success: boolean; error?: string; state?: GameState }> {
   const game = games.get(gameId);
   if (!game) return { success: false, error: 'Game not found' };
 
@@ -644,15 +646,15 @@ export function resignGame(gameId: string, playerId: string): { success: boolean
     winner,
   });
 
-  recordGameResult(game, winner === 'white' ? 'white' : winner === 'black' ? 'black' : null);
+  await recordGameResult(game, winner === 'white' ? 'white' : winner === 'black' ? 'black' : null);
   if (isBotGame(game)) engineManager.destroyInstance(gameId);
-  broadcastGameListUpdate();
+  await broadcastGameListUpdate();
 
   logger.info('Resign: gameId=' + gameId + ' player=' + playerId + ' winner=' + winner);
-  return { success: true, state: enrichNames(game) };
+  return { success: true, state: await enrichNames(game) };
 }
 
-function recordGameResult(game: GameState, winner: Color | null): void {
+async function recordGameResult(game: GameState, winner: Color | null): Promise<void> {
   game.winner = winner;
   const neededIds: string[] = [];
   const winnerId = winner ? game.players[winner] : null;
@@ -664,29 +666,29 @@ function recordGameResult(game: GameState, winner: Color | null): void {
     if (game.players.white) neededIds.push(game.players.white);
     if (game.players.black) neededIds.push(game.players.black);
   }
-  const usersById = db.getUsersByIds(neededIds);
+  const usersById = await db.getUsersByIds(neededIds);
 
   if (winnerId) {
     const user = usersById.get(winnerId);
     if (user) {
-      db.addWin(user.id);
+      await db.addWin(user.id);
       const opponentId = winner === 'white' ? game.players.black : game.players.white;
       if (opponentId) {
         const opponent = usersById.get(opponentId);
-        if (opponent) db.addLoss(opponent.id);
+        if (opponent) await db.addLoss(opponent.id);
       }
     }
   } else if (winner === null) {
     if (game.players.white) {
       const w = usersById.get(game.players.white);
-      if (w) db.addDraw(w.id);
+      if (w) await db.addDraw(w.id);
     }
     if (game.players.black) {
       const b = usersById.get(game.players.black);
-      if (b) db.addDraw(b.id);
+      if (b) await db.addDraw(b.id);
     }
   }
-  updateEloRatings(game, winner);
+  await updateEloRatings(game, winner);
   spectatorConnections.delete(game.id);
 
   const result =
@@ -710,8 +712,8 @@ function recordGameResult(game: GameState, winner: Color | null): void {
             ? 'Black resigned'
             : 'White resigned'
           : 'Draw by agreement';
-  const g = enrichNames(game);
-  db.saveCompletedGame(
+  const g = await enrichNames(game);
+  await db.saveCompletedGame(
     game.id,
     game.players.white || null,
     game.players.black || null,
@@ -749,7 +751,7 @@ export function offerDraw(gameId: string, playerId: string): boolean {
   return true;
 }
 
-export function acceptDraw(gameId: string, playerId: string): { success: boolean; error?: string } {
+export async function acceptDraw(gameId: string, playerId: string): Promise<{ success: boolean; error?: string }> {
   const offererId = drawOffers.get(gameId);
   if (!offererId) return { success: false, error: 'No pending draw offer' };
   if (offererId === playerId) return { success: false, error: 'Cannot accept your own draw offer' };
@@ -768,7 +770,7 @@ export function acceptDraw(gameId: string, playerId: string): { success: boolean
   game.reason = 'Draw by agreement';
   drawOffers.delete(gameId);
 
-  recordGameResult(game, null);
+  await recordGameResult(game, null);
 
   broadcastToGame(gameId, {
     type: 'game_over',
@@ -780,7 +782,7 @@ export function acceptDraw(gameId: string, playerId: string): { success: boolean
     result: 'draw',
     reason: game.reason,
   });
-  broadcastGameListUpdate();
+  await broadcastGameListUpdate();
 
   logger.info('Draw accepted: gameId=' + gameId + ' by playerId=' + playerId);
   return { success: true };
@@ -824,10 +826,10 @@ export function offerRematch(gameId: string, playerId: string): boolean {
   return true;
 }
 
-export function acceptRematch(
+export async function acceptRematch(
   gameId: string,
   playerId: string,
-): { success: boolean; error?: string; newGameId?: string } {
+): Promise<{ success: boolean; error?: string; newGameId?: string }> {
   const offererId = rematchOffers.get(gameId);
   if (!offererId) return { success: false, error: 'No pending rematch offer' };
   if (offererId === playerId) return { success: false, error: 'Cannot accept your own rematch offer' };
@@ -868,9 +870,9 @@ export function acceptRematch(
   };
   games.set(newId, newGame);
   rematchOffers.delete(gameId);
-  broadcastGameListUpdate();
+  await broadcastGameListUpdate();
 
-  const enriched = enrichNames(newGame);
+  const enriched = await enrichNames(newGame);
   broadcastToGame(newId, { type: 'game_started', gameId: newId, game: enriched });
 
   const redirectMsg = { type: 'rematch_accepted', gameId, newGameId: newId };
@@ -910,7 +912,7 @@ export function getLegalMovesForPlayer(
   return { success: true, moves: legalMoves.map((m) => ({ from: m.from, to: m.to })) };
 }
 
-export function getPlayerGames(playerId: string): GameState[] {
+export async function getPlayerGames(playerId: string): Promise<GameState[]> {
   const gameIds = playerGameIndex.get(playerId);
   if (!gameIds) return [];
   const result: GameState[] = [];
@@ -919,14 +921,14 @@ export function getPlayerGames(playerId: string): GameState[] {
     if (!g) continue;
     const isFinished =
       g.status === 'checkmate' || g.status === 'stalemate' || g.status === 'resigned' || g.status === 'draw';
-    if (isFinished) result.push(enrichNames(g));
+    if (isFinished) result.push(await enrichNames(g));
   }
   logger.info('getPlayerGames: playerId=' + playerId + ' count=' + result.length);
   return result;
 }
 
-export function getPlayerStats(playerId: string): { wins: number; losses: number; draws: number } | null {
-  const user = db.getUserById(playerId);
+export async function getPlayerStats(playerId: string): Promise<{ wins: number; losses: number; draws: number } | null> {
+  const user = await db.getUserById(playerId);
   if (!user) return null;
   const stats = { wins: user.wins, losses: user.losses, draws: user.draws };
   logger.info(
@@ -1003,8 +1005,8 @@ export function endGame(gameId: string): { success: true } | { success: false; e
   return { success: true };
 }
 
-export function getAllGames(): GameState[] {
-  const result = Array.from(games.values()).map(enrichNames);
+export async function getAllGames(): Promise<GameState[]> {
+  const result = await Promise.all(Array.from(games.values()).map(enrichNames));
   logger.info('getAllGames: count=' + result.length);
   return result;
 }
@@ -1046,18 +1048,18 @@ export function getPlayerCurrentGameId(playerId: string): string | null {
   return null;
 }
 
-function sendToFriends(playerId: string, message: Record<string, unknown>): void {
-  const friendIds = db.getFriendIds(playerId);
+async function sendToFriends(playerId: string, message: Record<string, unknown>): Promise<void> {
+  const friendIds = await db.getFriendIds(playerId);
   for (const fid of friendIds) {
     sendToPlayer(fid, message);
   }
 }
 
-function notifyFriendsOnline(playerId: string): void {
+async function notifyFriendsOnline(playerId: string): Promise<void> {
   const player = players.get(playerId);
   if (!player) return;
   const currentGameId = getPlayerCurrentGameId(playerId);
-  sendToFriends(playerId, {
+  await sendToFriends(playerId, {
     type: 'friend_online',
     playerId,
     username: player.username,
@@ -1066,9 +1068,9 @@ function notifyFriendsOnline(playerId: string): void {
   });
 }
 
-function notifyFriendsOffline(playerId: string): void {
+async function notifyFriendsOffline(playerId: string): Promise<void> {
   const player = players.get(playerId);
-  sendToFriends(playerId, {
+  await sendToFriends(playerId, {
     type: 'friend_offline',
     playerId,
     username: player?.username ?? '?',
@@ -1158,11 +1160,12 @@ export function broadcastToAll(message: Record<string, unknown>): number {
   return count;
 }
 
-export function getFriendList(playerId: string): FriendInfo[] {
-  const friendIds = db.getFriendIds(playerId);
+export async function getFriendList(playerId: string): Promise<FriendInfo[]> {
+  const friendIds = await db.getFriendIds(playerId);
+  const usersById = friendIds.length > 0 ? await db.getUsersByIds(friendIds) : new Map();
   const result = friendIds.map((fid) => {
     const player = players.get(fid);
-    const user = db.getUserById(fid);
+    const user = usersById.get(fid);
     return {
       playerId: fid,
       username: player?.username ?? user?.username ?? '?',
@@ -1227,6 +1230,6 @@ export function killAllEngines(): void {
 
 const isTestEnv = typeof process.env.JEST_WORKER_ID !== 'undefined' || process.env.NODE_ENV === 'test';
 if (!isTestEnv) {
-  loadPersistedBans();
+  loadPersistedBans().catch((err) => logger.error('Failed to load persisted bans:', err));
   startWaitingGameSweep();
 }

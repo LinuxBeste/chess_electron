@@ -19,13 +19,13 @@ export function isBanned(playerId: string, ip?: string): boolean {
   return false;
 }
 
-export function banPlayer(playerId: string): { success: true } | { success: false; error: string } {
+export async function banPlayer(playerId: string): Promise<{ success: true } | { success: false; error: string }> {
   const player = players.get(playerId);
   if (!player) return { success: false, error: 'Player not found' };
   if (bannedPlayers.has(playerId)) return { success: false, error: 'Player already banned' };
 
   bannedPlayers.add(playerId);
-  db.saveBan(playerId, playerId, null);
+  await db.saveBan(playerId, playerId, null);
 
   const conns = wsConnections.get(playerId);
   if (conns) {
@@ -57,12 +57,12 @@ export function banPlayer(playerId: string): { success: true } | { success: fals
   return { success: true };
 }
 
-export function banIp(ip: string): { success: true } | { success: false; error: string } {
+export async function banIp(ip: string): Promise<{ success: true } | { success: false; error: string }> {
   if (!ip) return { success: false, error: 'IP is required' };
   if (bannedIps.has(ip)) return { success: false, error: 'IP already banned' };
 
   bannedIps.add(ip);
-  db.saveBan(`ip:${ip}`, null, ip);
+  await db.saveBan(`ip:${ip}`, null, ip);
   logger.info('IP banned: ip=' + ip);
 
   for (const [playerId, trackedIp] of playerIps) {
@@ -80,15 +80,15 @@ export function banIp(ip: string): { success: true } | { success: false; error: 
   return { success: true };
 }
 
-export function unbanPlayer(playerId: string): void {
+export async function unbanPlayer(playerId: string): Promise<void> {
   bannedPlayers.delete(playerId);
-  db.deleteBanById(playerId);
+  await db.deleteBanById(playerId);
   logger.info('Player unbanned: playerId=' + playerId);
 }
 
-export function unbanIp(ip: string): void {
+export async function unbanIp(ip: string): Promise<void> {
   bannedIps.delete(ip);
-  db.deleteBanById(`ip:${ip}`);
+  await db.deleteBanById(`ip:${ip}`);
   logger.info('IP unbanned: ip=' + ip);
 }
 
@@ -104,8 +104,8 @@ export function getBannedIps(): string[] {
   return list;
 }
 
-export function loadPersistedBans(): void {
-  const allBans = db.loadAllBans();
+export async function loadPersistedBans(): Promise<void> {
+  const allBans = await db.loadAllBans();
   for (const b of allBans) {
     if (b.player_id) bannedPlayers.add(b.player_id);
     if (b.ip) bannedIps.add(b.ip);

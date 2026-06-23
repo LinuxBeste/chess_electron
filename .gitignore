@@ -31,6 +31,9 @@ package-lock.json
 # SQLite database (auto-generated at runtime)
 chess-api/data/
 
+# Temporary seed script (not part of the project)
+chess-api/seed-test-accounts.mjs
+
 # Log files (auto-generated at runtime)
 chess-api/logs/
 

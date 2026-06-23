@@ -9,13 +9,12 @@ function calculateElo(ratingA: number, ratingB: number, scoreA: number): [number
   return [Math.round(ratingA + k * (scoreA - expectedA)), Math.round(ratingB + k * (1 - scoreA - expectedB))];
 }
 
-export function updateEloRatings(game: GameState, winner: Color | null): void {
+export async function updateEloRatings(game: GameState, winner: Color | null): Promise<void> {
   const whiteId = game.players.white;
   const blackId = game.players.black;
   if (!whiteId || !blackId) return;
 
-  const whiteUser = db.getUserById(whiteId);
-  const blackUser = db.getUserById(blackId);
+  const [whiteUser, blackUser] = await Promise.all([db.getUserById(whiteId), db.getUserById(blackId)]);
   if (!whiteUser || !blackUser) return;
 
   let scoreWhite: number;
@@ -24,8 +23,7 @@ export function updateEloRatings(game: GameState, winner: Color | null): void {
   else scoreWhite = 0.5;
 
   const [newWhite, newBlack] = calculateElo(whiteUser.rating, blackUser.rating, scoreWhite);
-  db.updatePlayerRating(whiteId, newWhite);
-  db.updatePlayerRating(blackId, newBlack);
+  await Promise.all([db.updatePlayerRating(whiteId, newWhite), db.updatePlayerRating(blackId, newBlack)]);
   logger.info(
     'Elo updated: gameId=' +
       game.id +
