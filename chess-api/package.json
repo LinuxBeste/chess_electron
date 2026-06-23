@@ -10,7 +10,7 @@
     "start:docker": "bash start.sh",
     "dev": "tsx src/index.ts",
     "dev:web": "PORT=25565 tsx src/index.ts",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --forceExit --detectOpenHandles --runInBand",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --forceExit --runInBand",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
