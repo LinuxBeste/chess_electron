@@ -123,34 +123,39 @@ router.post('/friends/requests/:id/accept', authMiddleware, banCheckMiddleware, 
   }
 });
 
-router.post('/friends/requests/:id/decline', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
-  if (!req.player.isRegistered) {
-    res.status(403).json({ error: 'Only registered users can decline friend requests' });
-    return;
-  }
-  const fr = await db.getFriendRequest(req.params.id);
-  if (!fr) {
-    res.status(404).json({ error: 'Friend request not found' });
-    return;
-  }
-  if (fr.to_user_id !== req.player.id) {
-    res.status(403).json({ error: 'Not your friend request to decline' });
-    return;
-  }
-  if (fr.status !== 'pending') {
-    res.status(400).json({ error: 'Friend request is no longer pending' });
-    return;
-  }
-  try {
-    await db.updateFriendRequestStatus(fr.id, 'declined');
-    game.broadcastFriendRequestDeclined(req.player.id, fr.from_user_id);
-    logger.info('Friend request declined: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
-    res.json({ success: true });
-  } catch (err) {
-    logger.error('Friend request decline failed: ' + err);
-    res.status(500).json({ error: 'Failed to decline friend request' });
-  }
-});
+router.post(
+  '/friends/requests/:id/decline',
+  authMiddleware,
+  banCheckMiddleware,
+  async (req: Request, res: Response) => {
+    if (!req.player.isRegistered) {
+      res.status(403).json({ error: 'Only registered users can decline friend requests' });
+      return;
+    }
+    const fr = await db.getFriendRequest(req.params.id);
+    if (!fr) {
+      res.status(404).json({ error: 'Friend request not found' });
+      return;
+    }
+    if (fr.to_user_id !== req.player.id) {
+      res.status(403).json({ error: 'Not your friend request to decline' });
+      return;
+    }
+    if (fr.status !== 'pending') {
+      res.status(400).json({ error: 'Friend request is no longer pending' });
+      return;
+    }
+    try {
+      await db.updateFriendRequestStatus(fr.id, 'declined');
+      game.broadcastFriendRequestDeclined(req.player.id, fr.from_user_id);
+      logger.info('Friend request declined: from=' + fr.from_user_id + ' to=' + fr.to_user_id);
+      res.json({ success: true });
+    } catch (err) {
+      logger.error('Friend request decline failed: ' + err);
+      res.status(500).json({ error: 'Failed to decline friend request' });
+    }
+  },
+);
 
 router.post('/friends/requests/:id/cancel', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
   if (!req.player.isRegistered) {

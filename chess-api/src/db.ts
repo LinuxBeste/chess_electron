@@ -14,6 +14,9 @@ const pool = new pg.Pool({
   connectionTimeoutMillis: 5000,
 });
 
+pg.types.setTypeParser(pg.types.builtins.INT8, (val: string) => parseInt(val, 10));
+pg.types.setTypeParser(pg.types.builtins.NUMERIC, (val: string) => parseFloat(val));
+
 pool.on('error', (err) => {
   logger.error('Unexpected PostgreSQL pool error:', err);
 });
@@ -138,6 +141,13 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_tournament_matches_tournament ON tournament_matches(tournament_id);
     `,
   },
+  {
+    version: 2,
+    sql: `
+      ALTER TABLE completed_games ALTER COLUMN move_history TYPE TEXT;
+      ALTER TABLE completed_games ALTER COLUMN board_history TYPE TEXT;
+    `,
+  },
 ];
 
 let migrated = false;
@@ -231,7 +241,12 @@ interface TournamentMatchRow {
   status: string;
 }
 
-export async function createUser(id: string, username: string, passwordHash: string | null, displayName: string): Promise<void> {
+export async function createUser(
+  id: string,
+  username: string,
+  passwordHash: string | null,
+  displayName: string,
+): Promise<void> {
   await pool.query(
     'INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES ($1, $2, $3, $4, $5)',
     [id, username, passwordHash, displayName, Date.now()],
@@ -266,7 +281,11 @@ export async function getUsersByIds(ids: string[]): Promise<Map<string, DbUser>>
 }
 
 export async function saveToken(token: string, userId: string): Promise<void> {
-  await pool.query('INSERT INTO user_tokens (token, user_id, created_at) VALUES ($1, $2, $3)', [token, userId, Date.now()]);
+  await pool.query('INSERT INTO user_tokens (token, user_id, created_at) VALUES ($1, $2, $3)', [
+    token,
+    userId,
+    Date.now(),
+  ]);
   logger.debug('DB: token saved userId=' + userId);
 }
 
@@ -298,7 +317,9 @@ export async function createBackup(): Promise<string | null> {
     const { execFile } = await import('child_process');
     const { promisify } = await import('util');
     const execFileAsync = promisify(execFile);
-    await execFileAsync('pg_dump', ['--dbname=' + process.env.DATABASE_URL!, '-Fc', '-f', backupPath], { timeout: 60000 });
+    await execFileAsync('pg_dump', ['--dbname=' + process.env.DATABASE_URL!, '-Fc', '-f', backupPath], {
+      timeout: 60000,
+    });
     logger.info('DB backup created: ' + backupPath);
 
     const cutoff = Date.now() - 7 * 86400000;
@@ -449,7 +470,10 @@ export async function getPendingOutgoingRequests(userId: string): Promise<Friend
   return rows as FriendRequestRow[];
 }
 
-export async function getFriendStatus(authUserId: string, otherUserId: string): Promise<'none' | 'friends' | 'incoming' | 'outgoing'> {
+export async function getFriendStatus(
+  authUserId: string,
+  otherUserId: string,
+): Promise<'none' | 'friends' | 'incoming' | 'outgoing'> {
   if (await areFriends(authUserId, otherUserId)) return 'friends';
   const incoming = await pool.query(
     'SELECT 1 FROM friend_requests WHERE from_user_id = $1 AND to_user_id = $2 AND status = $3',
@@ -481,22 +505,26 @@ export async function updateFriendRequestStatus(id: string, status: string): Pro
 
 export async function addFriendRelationship(userId: string, friendId: string): Promise<void> {
   const now = Date.now();
-  await pool.query(
-    'INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-    [userId, friendId, now],
-  );
-  await pool.query(
-    'INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-    [friendId, userId, now],
-  );
+  await pool.query('INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [
+    userId,
+    friendId,
+    now,
+  ]);
+  await pool.query('INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [
+    friendId,
+    userId,
+    now,
+  ]);
   logger.debug('DB: friend relationship added user1=' + userId + ' user2=' + friendId);
 }
 
 export async function removeFriendRelationship(userId: string, friendId: string): Promise<void> {
-  await pool.query(
-    'DELETE FROM friends WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $3 AND friend_id = $4)',
-    [userId, friendId, friendId, userId],
-  );
+  await pool.query('DELETE FROM friends WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $3 AND friend_id = $4)', [
+    userId,
+    friendId,
+    friendId,
+    userId,
+  ]);
   logger.debug('DB: friend relationship removed user1=' + userId + ' user2=' + friendId);
 }
 
@@ -531,16 +559,19 @@ export async function getLeaderboard(
     'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users ORDER BY rating DESC LIMIT $1 OFFSET $2',
     [limit, offset],
   );
-  return { rows: rows as {
-    id: string;
-    username: string;
-    display_name: string;
-    avatar_url: string | null;
-    rating: number;
-    wins: number;
-    losses: number;
-    draws: number;
-  }[], total };
+  return {
+    rows: rows as {
+      id: string;
+      username: string;
+      display_name: string;
+      avatar_url: string | null;
+      rating: number;
+      wins: number;
+      losses: number;
+      draws: number;
+    }[],
+    total,
+  };
 }
 
 export async function getPlayerRating(userId: string): Promise<number> {
@@ -577,7 +608,7 @@ export async function saveCompletedGame(
   timeControl: string,
 ): Promise<void> {
   await pool.query(
-    'INSERT INTO completed_games (id, white_player_id, black_player_id, white_display_name, black_display_name, winner, status, result, reason, move_history, board_history, pgn, played_at, time_control) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12, $13, $14)',
+    'INSERT INTO completed_games (id, white_player_id, black_player_id, white_display_name, black_display_name, winner, status, result, reason, move_history, board_history, pgn, played_at, time_control) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
     [
       id,
       whitePlayerId,
@@ -635,7 +666,12 @@ export async function getArchivedGames(
   const total = (countRows[0] as { c: number }).c;
   const offset = (page - 1) * limit;
   const { rows } = await pool.query(
-    'SELECT * FROM completed_games' + where + ' ORDER BY played_at DESC LIMIT $' + (paramIdx + 1) + ' OFFSET $' + (paramIdx + 2),
+    'SELECT * FROM completed_games' +
+      where +
+      ' ORDER BY played_at DESC LIMIT $' +
+      (paramIdx + 1) +
+      ' OFFSET $' +
+      (paramIdx + 2),
     [...params, limit, offset],
   );
   return { rows: rows as CompletedGameRow[], total };
@@ -711,10 +747,7 @@ export async function getPublicTournaments(status?: string): Promise<TournamentR
 
 export async function getTournaments(status?: string): Promise<TournamentRow[]> {
   if (status) {
-    const { rows } = await pool.query(
-      'SELECT * FROM tournaments WHERE status = $1 ORDER BY created_at DESC',
-      [status],
-    );
+    const { rows } = await pool.query('SELECT * FROM tournaments WHERE status = $1 ORDER BY created_at DESC', [status]);
     return rows as TournamentRow[];
   }
   const { rows } = await pool.query('SELECT * FROM tournaments ORDER BY created_at DESC');
@@ -722,10 +755,9 @@ export async function getTournaments(status?: string): Promise<TournamentRow[]> 
 }
 
 export async function getTournamentParticipants(tournamentId: string): Promise<TournamentParticipantRow[]> {
-  const { rows } = await pool.query(
-    'SELECT * FROM tournament_participants WHERE tournament_id = $1 ORDER BY seed',
-    [tournamentId],
-  );
+  const { rows } = await pool.query('SELECT * FROM tournament_participants WHERE tournament_id = $1 ORDER BY seed', [
+    tournamentId,
+  ]);
   return rows as TournamentParticipantRow[];
 }
 
@@ -742,10 +774,10 @@ export async function addTournamentParticipant(
 }
 
 export async function removeTournamentParticipant(tournamentId: string, playerId: string): Promise<void> {
-  await pool.query(
-    'DELETE FROM tournament_participants WHERE tournament_id = $1 AND player_id = $2',
-    [tournamentId, playerId],
-  );
+  await pool.query('DELETE FROM tournament_participants WHERE tournament_id = $1 AND player_id = $2', [
+    tournamentId,
+    playerId,
+  ]);
 }
 
 export async function isTournamentParticipant(tournamentId: string, playerId: string): Promise<boolean> {
@@ -757,10 +789,9 @@ export async function isTournamentParticipant(tournamentId: string, playerId: st
 }
 
 export async function getParticipantCount(tournamentId: string): Promise<number> {
-  const { rows } = await pool.query(
-    'SELECT COUNT(*) as c FROM tournament_participants WHERE tournament_id = $1',
-    [tournamentId],
-  );
+  const { rows } = await pool.query('SELECT COUNT(*) as c FROM tournament_participants WHERE tournament_id = $1', [
+    tournamentId,
+  ]);
   return (rows[0] as { c: number }).c;
 }
 
@@ -809,11 +840,18 @@ export async function updateTournamentStatus(
   await pool.query('UPDATE tournaments SET ' + updates.join(', ') + ' WHERE id = $' + idx, params);
 }
 
-export async function updateTournamentDetails(id: string, name: string, maxPlayers: number, isPrivate: number): Promise<void> {
-  await pool.query(
-    'UPDATE tournaments SET name = $1, max_players = $2, is_private = $3 WHERE id = $4',
-    [name, maxPlayers, isPrivate === 1 ? true : false, id],
-  );
+export async function updateTournamentDetails(
+  id: string,
+  name: string,
+  maxPlayers: number,
+  isPrivate: number,
+): Promise<void> {
+  await pool.query('UPDATE tournaments SET name = $1, max_players = $2, is_private = $3 WHERE id = $4', [
+    name,
+    maxPlayers,
+    isPrivate === 1 ? true : false,
+    id,
+  ]);
 }
 
 export async function deleteTournament(id: string): Promise<void> {
@@ -830,16 +868,15 @@ export async function getTournamentMatches(tournamentId: string): Promise<Tourna
   return rows as TournamentMatchRow[];
 }
 
-export async function getPlayerTournamentStats(playerId: string): Promise<{ total: number; wins: number; currentId: string | null }> {
+export async function getPlayerTournamentStats(
+  playerId: string,
+): Promise<{ total: number; wins: number; currentId: string | null }> {
   const { rows: totalRows } = await pool.query(
     'SELECT COUNT(*) as c FROM tournament_participants WHERE player_id = $1',
     [playerId],
   );
   const total = (totalRows[0] as { c: number }).c;
-  const { rows: winsRows } = await pool.query(
-    'SELECT COUNT(*) as c FROM tournaments WHERE winner_id = $1',
-    [playerId],
-  );
+  const { rows: winsRows } = await pool.query('SELECT COUNT(*) as c FROM tournaments WHERE winner_id = $1', [playerId]);
   const wins = (winsRows[0] as { c: number }).c;
   const { rows: currentRows } = await pool.query(
     `SELECT t.id FROM tournament_participants tp
@@ -867,11 +904,18 @@ export async function createTournamentMatch(
   return id;
 }
 
-export async function updateTournamentMatch(id: string, gameId: string, winnerId: string | null, status: string): Promise<void> {
-  await pool.query(
-    'UPDATE tournament_matches SET game_id = $1, winner_id = $2, status = $3 WHERE id = $4',
-    [gameId, winnerId, status, id],
-  );
+export async function updateTournamentMatch(
+  id: string,
+  gameId: string,
+  winnerId: string | null,
+  status: string,
+): Promise<void> {
+  await pool.query('UPDATE tournament_matches SET game_id = $1, winner_id = $2, status = $3 WHERE id = $4', [
+    gameId,
+    winnerId,
+    status,
+    id,
+  ]);
 }
 
 export async function areFriends(userId: string, friendId: string): Promise<boolean> {

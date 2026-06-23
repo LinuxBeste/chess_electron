@@ -481,8 +481,8 @@ router.get('/games/archive/:gameId', globalGetLimiter, async (req: Request, res:
   }
 });
 
-router.get('/games/:gameId', globalGetLimiter, (req: Request, res: Response) => {
-  const g = game.getGame(req.params.gameId);
+router.get('/games/:gameId', globalGetLimiter, async (req: Request, res: Response) => {
+  const g = await game.getGame(req.params.gameId);
   if (!g) {
     logger.info('GET /games/' + req.params.gameId + ': not found');
     res.status(404).json({ error: 'Game not found' });

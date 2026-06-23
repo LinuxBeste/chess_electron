@@ -480,7 +480,10 @@ export function abortGame(gameId: string, playerId: string): { success: boolean;
   return { success: true };
 }
 
-export async function joinGame(gameId: string, playerId: string): Promise<{ success: boolean; error?: string; game?: GameState }> {
+export async function joinGame(
+  gameId: string,
+  playerId: string,
+): Promise<{ success: boolean; error?: string; game?: GameState }> {
   const game = games.get(gameId);
   if (!game) return { success: false, error: 'Game not found' };
   if (game.status !== 'waiting') return { success: false, error: 'Game is not open for joining' };
@@ -620,7 +623,10 @@ export async function makeMove(
   return { success: true, state: await enrichNames(game) };
 }
 
-export async function resignGame(gameId: string, playerId: string): Promise<{ success: boolean; error?: string; state?: GameState }> {
+export async function resignGame(
+  gameId: string,
+  playerId: string,
+): Promise<{ success: boolean; error?: string; state?: GameState }> {
   const game = games.get(gameId);
   if (!game) return { success: false, error: 'Game not found' };
 
@@ -927,7 +933,9 @@ export async function getPlayerGames(playerId: string): Promise<GameState[]> {
   return result;
 }
 
-export async function getPlayerStats(playerId: string): Promise<{ wins: number; losses: number; draws: number } | null> {
+export async function getPlayerStats(
+  playerId: string,
+): Promise<{ wins: number; losses: number; draws: number } | null> {
   const user = await db.getUserById(playerId);
   if (!user) return null;
   const stats = { wins: user.wins, losses: user.losses, draws: user.draws };

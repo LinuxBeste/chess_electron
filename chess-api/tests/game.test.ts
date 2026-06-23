@@ -717,12 +717,12 @@ describe('logoutPlayer', () => {
   test('returns true for a valid token and invalidates it', async () => {
     const { playerId, token } = await game.registerPlayer('logout_user');
     expect(game.authenticatePlayer(token)).not.toBeNull();
-    expect(game.logoutPlayer(token)).toBe(true);
+    await expect(game.logoutPlayer(token)).resolves.toBe(true);
     expect(game.authenticatePlayer(token)).toBeNull();
   });
 
-  test('returns false for an invalid token', () => {
-    expect(game.logoutPlayer('no-such-token')).toBe(false);
+  test('returns false for an invalid token', async () => {
+    await expect(game.logoutPlayer('no-such-token')).resolves.toBe(false);
   });
 });
 

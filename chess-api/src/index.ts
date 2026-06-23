@@ -342,16 +342,18 @@ if (!isTestEnv) {
     process.exit(1);
   });
 
-  db.initDb().then(() => {
-    server.listen(PORT, () => {
-      logger.info('Chess API server listening on port ' + PORT);
-      logger.info('CORS origin: ' + CORS_ORIGIN);
-      logger.info('WS heartbeat interval: ' + WS_HEARTBEAT_INTERVAL + 'ms');
+  db.initDb()
+    .then(() => {
+      server.listen(PORT, () => {
+        logger.info('Chess API server listening on port ' + PORT);
+        logger.info('CORS origin: ' + CORS_ORIGIN);
+        logger.info('WS heartbeat interval: ' + WS_HEARTBEAT_INTERVAL + 'ms');
+      });
+    })
+    .catch((e) => {
+      logger.error('DB init failed: ' + e);
+      process.exit(1);
     });
-  }).catch((e) => {
-    logger.error('DB init failed: ' + e);
-    process.exit(1);
-  });
 
   function shutdown(signal: string): void {
     logger.info('Received ' + signal + ' — shutting down gracefully...');

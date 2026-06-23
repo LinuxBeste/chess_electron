@@ -99,7 +99,9 @@ export async function registerPlayer(
 export async function loginPlayer(
   username: string,
   password: string,
-): Promise<{ success: false; error: string } | { success: true; playerId: string; token: string; displayName: string }> {
+): Promise<
+  { success: false; error: string } | { success: true; playerId: string; token: string; displayName: string }
+> {
   const user = await db.getUserByUsername(username);
   if (!user || !user.password_hash) {
     return { success: false, error: 'Invalid username or password' };

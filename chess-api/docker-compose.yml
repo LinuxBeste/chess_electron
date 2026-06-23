@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     volumes:
       - chess-pg-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: chess
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-chess}
