@@ -190,8 +190,12 @@ jobs:
     needs: docker
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
+    strategy:
+      matrix:
+        environment:
+          - ${{ inputs.environment }}
     environment:
-      name: ${{ inputs.environment }}
+      name: ${{ matrix.environment }}
       url: ${{ vars.DEPLOY_URL || 'https://chess.example.com' }}
     steps:
       - name: Deploy via SSH
