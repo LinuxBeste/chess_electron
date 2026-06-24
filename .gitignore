@@ -42,3 +42,6 @@ FEATURES.md
 # Test coverage output
 coverage/
 **/coverage/
+
+# CD workflow (replaced by separate build+release workflows)
+.github/workflows/cd.yml
