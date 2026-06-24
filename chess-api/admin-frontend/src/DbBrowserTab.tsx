@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Database, RotateCcw, Play, Terminal, Table, Copy, ChevronUp, ChevronDown, Clock } from 'lucide-react';
+import { RotateCcw, Play, Terminal, Table, Copy, ChevronUp, ChevronDown, Clock } from 'lucide-react';
 import { api, DbTableInfo, DbQueryResult } from './api';
 
 export default function DbBrowserTab() {

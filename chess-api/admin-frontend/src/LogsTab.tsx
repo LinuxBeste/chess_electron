@@ -204,7 +204,7 @@ export default function LogsTab() {
                 : 'bg-[#1a1a1a] border-[#333] text-[#888] hover:text-[#ccc]'
             }`}
           >
-            {level.replace(/[\[\]]/g, '')}
+            {level.replace(/[[\]]/g, '')}
           </button>
         ))}
         {quickFilter && (

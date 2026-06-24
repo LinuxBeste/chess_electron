@@ -22,7 +22,6 @@ function toAlgebraic(move: string): string {
   if (move.length < 4) return move;
   const piece = move[0];
   const pieceChar = pieceMap[piece] || '';
-  const file = move[1];
   const rank = move[2];
   const destFile = move[3];
   if (piece >= 'A' && piece <= 'Z') {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Swords, Flag, RotateCcw, CheckSquare, Square, ExternalLink } from 'lucide-react';
 import { api, GameRow } from './api';
 import { useToast } from './Toast';
@@ -33,7 +33,7 @@ export default function GamesTab() {
   const [bulkEnding, setBulkEnding] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortAsc, setSortAsc] = useState(false);
-  const [now, setNow] = useState(Date.now());
+  const [, setNow] = useState(Date.now());
   const { addToast } = useToast();
   const [page, setPage] = useState(1);
   const pageSize = 30;

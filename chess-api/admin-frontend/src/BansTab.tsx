@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ShieldOff, ShieldBan, Trash2, RotateCcw, Plus, Clock, Copy, CheckSquare, Square } from 'lucide-react';
-import { api, BanEntry, BanList } from './api';
+import { api, BanList } from './api';
 import SearchBar from './SearchBar';
 import { useToast } from './Toast';
 

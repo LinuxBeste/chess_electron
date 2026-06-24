@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Settings, Edit3, X, Check, RotateCcw } from 'lucide-react';
+import { Settings, Edit3, Check, RotateCcw } from 'lucide-react';
 import { api, ServerConfig } from './api';
 import { useToast } from './Toast';
 
@@ -112,7 +112,6 @@ export default function ConfigTab() {
           <table className="w-full text-sm">
             <tbody>
               {editableFields.map((field) => {
-                const k = field.key as keyof ServerConfig;
                 const src = config._sources?.[field.key];
                 return (
                   <tr key={field.key} className="border-b border-[#2a2a2a]">

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { HeartPulse, RotateCcw, Database, Server, Gamepad2, Clock, TrendingUp } from 'lucide-react';
+import { HeartPulse, RotateCcw, Database, Server, Gamepad2, TrendingUp } from 'lucide-react';
 import { api, HealthStatus } from './api';
 
 function fmtBytes(bytes: number): string {
