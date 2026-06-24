@@ -145,7 +145,7 @@ export default function ConfigTab() {
                         </div>
                       ) : (
                         <span className="font-mono text-[#e0e0e0]">
-                          {String((config as Record<string, string | number>)[field.key])}
+                          {String(config[field.key as keyof ServerConfig] ?? '')}
                         </span>
                       )}
                     </td>

@@ -6,7 +6,7 @@ interface TabCtx {
 
 const Ctx = createContext<TabCtx>({ navigateToTab: () => {} });
 
-export const useNavigateTab = () => useContext(Ctx);
+export const useNavigateTab = () => useContext(Ctx).navigateToTab;
 
 export function TabProvider({
   children,

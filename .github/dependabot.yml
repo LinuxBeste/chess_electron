@@ -1,0 +1,70 @@
+version: 2
+updates:
+  - package-ecosystem: pnpm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 10
+    groups:
+      eslint:
+        patterns:
+          - '@eslint/*'
+          - 'eslint*'
+          - 'typescript-eslint'
+      react:
+        patterns:
+          - 'react*'
+          - '@types/react*'
+    labels:
+      - dependencies
+
+  - package-ecosystem: npm
+    directory: /chess-api
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - api
+
+  - package-ecosystem: npm
+    directory: /chess-api/admin-frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - admin-frontend
+
+  - package-ecosystem: npm
+    directory: /chess-client
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - client
+
+  - package-ecosystem: npm
+    directory: /website
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - website
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - ci

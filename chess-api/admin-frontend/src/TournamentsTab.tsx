@@ -292,7 +292,7 @@ export default function TournamentsTab() {
         if (!cancelled) setDetail(d);
       })
       .catch((e) => {
-        if (!cancelled) addToast(e instanceof Error ? err.message : String(e), 'error');
+        if (!cancelled) addToast(e instanceof Error ? e.message : String(e), 'error');
       });
   }
 

@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+# Husky hooks must retain executable bit
+.husky/* linguist-language=shell
+
+# Binary files
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary

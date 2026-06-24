@@ -215,7 +215,7 @@ export interface GameReplayResponse {
   white: string;
   black: string;
   moves: string[];
-  boardHistory: string[][];
+  boardHistory: string[];
   winner: string | null;
   result: string;
   createdAt: number;

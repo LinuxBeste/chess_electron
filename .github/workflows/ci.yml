@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PNPM_CACHE_FOLDER: .pnpm-store
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -21,6 +28,14 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PNPM_CACHE_FOLDER }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - run: pnpm install --frozen-lockfile
 
@@ -45,6 +60,14 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PNPM_CACHE_FOLDER }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
       - name: Setup PostgreSQL
         run: |
           sudo apt-get update -qq
@@ -57,13 +80,35 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm typecheck
-      - run: pnpm test
+      - run: pnpm test -- --coverage
       - run: pnpm build
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: chess-api-coverage
+          path: chess-api/coverage/
+          retention-days: 7
+
+      - name: Check admin-frontend
+        run: |
+          pnpm exec eslint chess-api/admin-frontend/src/
+          pnpm exec tsc --noEmit -p chess-api/admin-frontend/tsconfig.json
+          pnpm exec prettier --check chess-api/admin-frontend/src/
 
       - name: Copy lockfile for Docker context
         run: cp ../pnpm-lock.yaml .
 
       - uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
 
       - name: Build Docker image
         uses: docker/build-push-action@v6
@@ -71,6 +116,8 @@ jobs:
           context: chess-api
           push: false
           tags: chess-api:ci
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
 
   client:
     runs-on: ubuntu-latest
@@ -90,11 +137,27 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PNPM_CACHE_FOLDER }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm typecheck
-      - run: pnpm test
+      - run: pnpm test -- --coverage
       - run: pnpm build
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: chess-client-coverage
+          path: chess-client/coverage/
+          retention-days: 7
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
