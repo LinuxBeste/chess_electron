@@ -208,10 +208,14 @@ export default function TournamentsTab() {
 
   useEffect(load, []);
 
+  let detailCancel: (() => void) | null = null;
   function loadDetail(id: string) {
+    if (detailCancel) detailCancel();
+    let cancelled = false;
+    detailCancel = () => { cancelled = true; };
     api<TournamentDetail>('/tournaments/' + id)
-      .then(setDetail)
-      .catch((e) => addToast(e instanceof Error ? e.message : String(e), 'error'));
+      .then((d) => { if (!cancelled) setDetail(d); })
+      .catch((e) => { if (!cancelled) addToast(e instanceof Error ? err.message : String(e), 'error'); });
   }
 
   const filtered = (query

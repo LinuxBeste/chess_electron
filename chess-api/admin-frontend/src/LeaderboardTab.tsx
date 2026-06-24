@@ -31,14 +31,16 @@ export default function LeaderboardTab() {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [minGames, setMinGames] = useState('');
-  const [sortKey, setSortKey] = useState('rank');
-  const [sortAsc, setSortAsc] = useState(true);
+  const [sortKey, setSortKey] = useState('rating');
+  const [sortAsc, setSortAsc] = useState(false);
   const navigate = useNavigateTab();
 
   function load() {
     let path = '/leaderboard?page=' + page + '&limit=' + limit;
     const mg = parseInt(minGames, 10);
     if (mg > 0) path += '&minGames=' + mg;
+    const sortParam = sortKey === 'rank' ? 'rating' : sortKey;
+    path += '&sortKey=' + sortParam + '&sortAsc=' + sortAsc;
     api<{ entries: LeaderboardEntry[]; total: number }>(path)
       .then((d) => {
         setEntries(d.entries);
@@ -47,7 +49,7 @@ export default function LeaderboardTab() {
       .catch((e) => setError(e.message));
   }
 
-  useEffect(load, [page, limit, minGames]);
+  useEffect(load, [page, limit, minGames, sortKey, sortAsc]);
 
   const filtered = query
     ? entries.filter(
@@ -56,17 +58,6 @@ export default function LeaderboardTab() {
           e.displayName?.toLowerCase().includes(query.toLowerCase()),
       )
     : entries;
-
-  const sorted = [...filtered].sort((a, b) => {
-    const dir = sortAsc ? 1 : -1;
-    if (sortKey === 'rank') return (a.rank - b.rank) * dir;
-    if (sortKey === 'rating') return (a.rating - b.rating) * dir;
-    if (sortKey === 'wins') return (a.wins - b.wins) * dir;
-    if (sortKey === 'games') return ((a.wins + a.losses + a.draws) - (b.wins + b.losses + b.draws)) * dir;
-    const va = String(a[sortKey as keyof typeof a] || '').toLowerCase();
-    const vb = String(b[sortKey as keyof typeof b] || '').toLowerCase();
-    return va.localeCompare(vb) * dir;
-  });
 
   const totalPages = Math.ceil(total / limit);
 
@@ -125,7 +116,7 @@ export default function LeaderboardTab() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sorted.map((e) => {
+                    {filtered.map((e) => {
                       const totalGames = e.wins + e.losses + e.draws;
                       const winPct = totalGames > 0 ? ((e.wins / totalGames) * 100).toFixed(1) : '—';
                       const change = ratingChange(e);

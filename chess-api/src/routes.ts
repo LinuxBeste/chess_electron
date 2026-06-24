@@ -99,6 +99,34 @@ export function clearIpRateBuckets(): void {
   ipRateBuckets.clear();
 }
 
+const regBuckets = new Map<string, number[]>();
+const REG_WINDOW_MS = 60 * 60 * 1000;
+const REG_MAX = process.env.NODE_ENV === 'test' ? Infinity : 5;
+
+export function cleanupRegBuckets(): void {
+  const cutoff = Date.now() - REG_WINDOW_MS;
+  for (const [ip, timestamps] of regBuckets) {
+    const filtered = timestamps.filter((t) => t > cutoff);
+    if (filtered.length === 0) regBuckets.delete(ip);
+    else regBuckets.set(ip, filtered);
+  }
+}
+
+function regRateLimit(req: Request, res: Response, next: () => void): void {
+  const now = Date.now();
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const windowStart = now - REG_WINDOW_MS;
+  let timestamps = regBuckets.get(ip) ?? [];
+  timestamps = timestamps.filter((t) => t > windowStart);
+  if (timestamps.length >= REG_MAX) {
+    res.status(429).json({ error: 'Too many registrations from this IP. Try again later.' });
+    return;
+  }
+  timestamps.push(now);
+  regBuckets.set(ip, timestamps);
+  next();
+}
+
 export function authMiddleware(req: Request, res: Response, next: () => void): void {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
@@ -157,7 +185,7 @@ router.get('/health', healthLimiter, (_req: Request, res: Response) => {
   res.json({ status: 'ok', uptime: process.uptime(), gamesActive, playersOnline });
 });
 
-router.post('/auth/register', ipRateLimitMiddleware, async (req: Request, res: Response) => {
+router.post('/auth/register', ipRateLimitMiddleware, regRateLimit, async (req: Request, res: Response) => {
   const ip = req.ip || req.socket.remoteAddress || '';
   if (game.isBanned('', ip)) {
     res.status(403).json({ error: 'Your IP has been banned' });

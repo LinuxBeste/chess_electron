@@ -9,7 +9,7 @@ export const tokenIndex = new Map<string, string>();
 export const tokenExpiry = new Map<string, number>();
 export const playerIps = new Map<string, string>();
 
-const PLAYER_TOKEN_TTL = parseInt(process.env.PLAYER_TOKEN_TTL ?? String(7 * 24 * 60 * 60 * 1000), 10);
+const PLAYER_TOKEN_TTL = parseInt(process.env.PLAYER_TOKEN_TTL ?? String(24 * 60 * 60 * 1000), 10);
 
 const LOGIN_MAX_ATTEMPTS = parseInt(process.env.LOGIN_MAX_ATTEMPTS ?? '5', 10);
 const LOGIN_LOCKOUT_MINUTES = parseInt(process.env.LOGIN_LOCKOUT_MINUTES ?? '15', 10);
@@ -232,8 +232,11 @@ export async function deleteAccount(playerId: string): Promise<{ success: true }
   for (const t of player.tokens) {
     deleteToken(t);
   }
-  await db.deleteUserTokens(playerId);
-  await db.deleteUserRecord(playerId);
+  await db.transaction(async (client) => {
+    await client.query('DELETE FROM user_tokens WHERE user_id = $1', [playerId]);
+    await client.query('DELETE FROM completed_games WHERE white_player_id = $1 OR black_player_id = $1', [playerId]);
+    await client.query('DELETE FROM users WHERE id = $1', [playerId]);
+  });
   players.delete(playerId);
 
   logger.info('Account deleted: playerId=' + playerId);
@@ -290,6 +293,13 @@ export function cleanupExpiredTokens(): void {
   const now = Date.now();
   for (const [token, expiry] of tokenExpiry) {
     if (expiry <= now) deleteToken(token);
+  }
+  const activePlayerIds = new Set(tokenIndex.values());
+  for (const [playerId, _player] of players) {
+    if (!activePlayerIds.has(playerId)) {
+      players.delete(playerId);
+      playerIps.delete(playerId);
+    }
   }
 }
 

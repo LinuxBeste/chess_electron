@@ -85,9 +85,11 @@ function UserGamesModal({ userId, username, onClose }: { userId: string; usernam
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     api<UserGamesResponse>('/accounts/' + userId + '/games')
-      .then(setData)
-      .catch((e) => setError(e.message));
+      .then((d) => { if (!cancelled) setData(d); })
+      .catch((e) => { if (!cancelled) setError(e.message); });
+    return () => { cancelled = true; };
   }, [userId]);
 
   return (

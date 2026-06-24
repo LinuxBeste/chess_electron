@@ -23,11 +23,13 @@ import {
   getSweepTimer,
   setSweepTimer,
   removeGameById,
+  gameCompletedAt,
   addPlayerGameIndex,
   sendToPlayer,
   sendToPlayerRaw,
   sendToSpectators,
 } from './state.js';
+import { COMPLETED_GAME_TTL_MS } from './state.js';
 import { updateEloRatings } from './elo.js';
 import { sendChatHistory } from './chat.js';
 import { loadPersistedBans } from './bans.js';
@@ -739,6 +741,7 @@ async function recordGameResult(game: GameState, winner: Color | null): Promise<
     engineManager.destroyInstance(game.id);
   }
   logger.info('Game result recorded: gameId=' + game.id + ' winner=' + winner);
+  gameCompletedAt.set(game.id, Date.now());
 }
 
 /* ─── Draw offer system ─── */
@@ -1190,11 +1193,18 @@ export async function getFriendList(playerId: string): Promise<FriendInfo[]> {
 /* ─── Periodic sweep of stale waiting games ─── */
 
 export function sweepStaleWaitingGames(): number {
-  if (WAITING_TTL_MS <= 0) return 0;
-  const cutoff = Date.now() - WAITING_TTL_MS;
   const toDelete: string[] = [];
-  for (const [id, g] of games) {
-    if (g.status === 'waiting' && g.createdAt < cutoff) {
+  if (WAITING_TTL_MS > 0) {
+    const cutoff = Date.now() - WAITING_TTL_MS;
+    for (const [id, g] of games) {
+      if (g.status === 'waiting' && g.createdAt < cutoff) {
+        toDelete.push(id);
+      }
+    }
+  }
+  const completedCutoff = Date.now() - COMPLETED_GAME_TTL_MS;
+  for (const [id, completedAt] of gameCompletedAt) {
+    if (completedAt < completedCutoff) {
       toDelete.push(id);
     }
   }
@@ -1202,7 +1212,7 @@ export function sweepStaleWaitingGames(): number {
     removeGameById(id);
   }
   if (toDelete.length > 0) {
-    logger.info('Swept stale waiting games: count=' + toDelete.length);
+    logger.info('Swept stale games: count=' + toDelete.length);
   }
   return toDelete.length;
 }

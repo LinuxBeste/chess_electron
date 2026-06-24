@@ -173,9 +173,10 @@ router.get('/admin/api/stats', adminAuthMiddleware, async (_req: Request, res: R
     res.json({ gamesActive, playersOnline, registeredUsers, totalUsers });
   } catch (err) {
     logger.error('Stats error:', err);
-    res.status(500).json({ error: String(err) });
+    res.status(500).json({ error: 'Failed to load stats' });
   }
 });
+
 
 /* ─── Live metrics (delta-tracked CPU/net/disk) ─── */
 
@@ -738,8 +739,10 @@ router.get('/admin/api/leaderboard', adminAuthMiddleware, async (_req: Request, 
     const page = Math.max(1, parseInt(_req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string, 10) || 50));
     const minGames = Math.max(0, parseInt(_req.query.minGames as string, 10) || 0);
+    const sortKey = (typeof _req.query.sortKey === 'string' && ['rating', 'wins', 'username'].includes(_req.query.sortKey)) ? _req.query.sortKey : 'rating';
+    const sortAsc = _req.query.sortAsc === 'true';
     const offset = (page - 1) * limit;
-    const result = await db.getLeaderboard(limit, offset, minGames);
+    const result = await db.getLeaderboard(limit, offset, minGames, sortKey, sortAsc);
     res.json({ entries: result.rows, total: result.total, page, limit });
   } catch (err) {
     logger.error('Admin leaderboard query failed: ' + err);
@@ -757,7 +760,9 @@ router.get('/admin/api/archive', adminAuthMiddleware, async (req: Request, res: 
     const status = req.query.status as string | undefined;
     const fromDate = req.query.fromDate ? parseInt(req.query.fromDate as string, 10) : undefined;
     const toDate = req.query.toDate ? parseInt(req.query.toDate as string, 10) : undefined;
-    const result = await db.getArchivedGames(page, limit, player, status, fromDate, toDate);
+    const sortKey = (typeof req.query.sortKey === 'string' && ['played_at', 'white_display_name', 'black_display_name'].includes(req.query.sortKey)) ? req.query.sortKey : 'played_at';
+    const sortAsc = req.query.sortAsc === 'true';
+    const result = await db.getArchivedGames(page, limit, player, status, fromDate, toDate, sortKey, sortAsc);
     res.json({ games: result.rows, total: result.total, page, limit });
   } catch (err) {
     logger.error('Admin archive query failed: ' + err);
@@ -1127,7 +1132,7 @@ router.get('/admin/api/health', adminAuthMiddleware, async (_req: Request, res: 
     logger.error('Admin health check failed: ' + err);
     res.status(500).json({
       status: 'error',
-      error: String(err),
+      error: 'Health check failed',
       database: { connected: false },
       timestamp: Date.now(),
     });
@@ -1184,12 +1189,13 @@ router.post('/admin/api/db/query', adminAuthMiddleware, async (req: Request, res
       return;
     }
     const sql = parsed.data.sql.trim();
-    const upper = sql.toUpperCase();
+    const stripped = sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    const upper = stripped.toUpperCase();
     if (!upper.startsWith('SELECT') && !upper.startsWith('EXPLAIN') && !upper.startsWith('WITH')) {
       res.status(403).json({ error: 'Only SELECT queries are allowed' });
       return;
     }
-    if (/(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE)\s/i.test(sql)) {
+    if (/(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE)\s/i.test(stripped)) {
       res.status(403).json({ error: 'Write queries are not allowed' });
       return;
     }
@@ -1206,7 +1212,7 @@ router.post('/admin/api/db/query', adminAuthMiddleware, async (req: Request, res
     });
   } catch (err) {
     logger.error('Admin DB query failed: ' + err);
-    res.status(500).json({ error: String(err) });
+    res.status(500).json({ error: 'Query execution failed' });
   }
 });
 

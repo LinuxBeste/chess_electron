@@ -67,7 +67,7 @@ export default function OverviewTab() {
   const [procSortAsc, setProcSortAsc] = useState(false);
 
   function load() {
-    Promise.all([api<Stats>('/stats'), api<SystemStats>('/system'), api<ProcessRow[]>('/system/processes')])
+    return Promise.all([api<Stats>('/stats'), api<SystemStats>('/system'), api<ProcessRow[]>('/system/processes')])
       .then(([s, sy, p]) => {
         setStats(s);
         setSys(sy);
@@ -79,9 +79,13 @@ export default function OverviewTab() {
   }
 
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 30000);
-    return () => clearInterval(interval);
+    let cancelled = false;
+    async function poll() {
+      await load();
+      if (!cancelled) setTimeout(poll, 30000);
+    }
+    poll();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {

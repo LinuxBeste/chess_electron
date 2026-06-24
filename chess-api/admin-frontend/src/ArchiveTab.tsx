@@ -49,6 +49,8 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
     if (statusFilter) path += '&status=' + encodeURIComponent(statusFilter);
     if (fromDate) path += '&fromDate=' + encodeURIComponent(fromDate);
     if (toDate) path += '&toDate=' + encodeURIComponent(toDate);
+    const sortParam = sortKey === 'date' ? 'played_at' : sortKey === 'white' ? 'white_display_name' : 'black_display_name';
+    path += '&sortKey=' + sortParam + '&sortAsc=' + sortAsc;
     api<{ games: ArchiveGame[]; total: number }>(path)
       .then((d) => {
         setGames(d.games);
@@ -59,7 +61,7 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
 
   useEffect(() => { if (initialPlayer) setPlayer(initialPlayer); }, [initialPlayer]);
 
-  useEffect(load, [page, limit, player, statusFilter, fromDate, toDate]);
+  useEffect(load, [page, limit, player, statusFilter, fromDate, toDate, sortKey, sortAsc]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -108,15 +110,7 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
         </div>
 
         <div className="p-4">
-          {(() => {
-          const sortedGames = [...games].sort((a, b) => {
-            const dir = sortAsc ? 1 : -1;
-            if (sortKey === 'date') return (a.played_at - b.played_at) * dir;
-            if (sortKey === 'white') return (a.white_display_name || a.white_player_id).localeCompare(b.white_display_name || b.white_player_id) * dir;
-            if (sortKey === 'black') return (a.black_display_name || a.black_player_id).localeCompare(b.black_display_name || b.black_player_id) * dir;
-            return 0;
-          });
-          return games.length === 0 ? (
+          {games.length === 0 ? (
             <p className="text-[#666] text-center py-8">No archived games found.</p>
           ) : (
             <>
@@ -134,7 +128,7 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedGames.map((g) => (
+                    {games.map((g) => (
                       <tr key={g.id} className="border-b border-[#222] last:border-0 hover:bg-[#222]">
                         <td className="px-4 py-2.5 font-mono">
                           <button onClick={() => navigate('replay', { gameId: g.id })}
@@ -187,8 +181,7 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
 
               <Pagination page={page} totalPages={totalPages} onChange={setPage} />
             </>
-          );
-        })()}
+          )}
         </div>
       </div>
     </div>

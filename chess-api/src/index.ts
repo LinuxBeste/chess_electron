@@ -14,7 +14,7 @@ import friendsRouter from './friends.js';
 import * as game from './game.js';
 import * as db from './db.js';
 import logger from './logger.js';
-import { cleanupIpRateBuckets } from './routes.js';
+import { cleanupIpRateBuckets, cleanupRegBuckets } from './routes.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -288,14 +288,17 @@ process.on('uncaughtException', (err: Error) => {
 const isTestEnv = typeof process.env.JEST_WORKER_ID !== 'undefined' || process.env.NODE_ENV === 'test';
 if (!isTestEnv) {
   const server = createServer();
-  setInterval(() => {
+  const timers: ReturnType<typeof setInterval>[] = [];
+
+  timers.push(setInterval(() => {
     try {
       cleanupIpRateBuckets();
+      cleanupRegBuckets();
     } catch (e) {
       logger.error('cleanupIpRateBuckets failed: ' + e);
     }
-  }, 60000);
-  setInterval(() => {
+  }, 60000));
+  timers.push(setInterval(() => {
     try {
       game.cleanupRateLimitBuckets();
     } catch (e) {
@@ -306,31 +309,31 @@ if (!isTestEnv) {
     } catch (e) {
       logger.error('cleanupLoginAttempts failed: ' + e);
     }
-  }, 60000);
+  }, 60000));
   logger.cleanupOldLogs();
-  setInterval(() => {
+  timers.push(setInterval(() => {
     try {
       logger.cleanupOldLogs();
     } catch (e) {
       logger.error('cleanupOldLogs failed: ' + e);
     }
-  }, 86400000);
-  setInterval(() => {
+  }, 86400000));
+  timers.push(setInterval(() => {
     db.cleanupExpiredTokens().catch((e) => {
       logger.error('cleanupExpiredTokens failed: ' + e);
     });
-  }, 3600000);
+  }, 3600000));
 
   const DB_BACKUP_INTERVAL_MS = parseInt(process.env.DB_BACKUP_INTERVAL_MS ?? String(6 * 3600000), 10);
   if (DB_BACKUP_INTERVAL_MS > 0) {
     db.createBackup().catch((e) => {
       logger.error('Initial DB backup failed: ' + e);
     });
-    setInterval(() => {
+    timers.push(setInterval(() => {
       db.createBackup().catch((e) => {
         logger.error('DB backup failed: ' + e);
       });
-    }, DB_BACKUP_INTERVAL_MS);
+    }, DB_BACKUP_INTERVAL_MS));
   }
 
   server.on('error', (err: NodeJS.ErrnoException) => {
@@ -357,6 +360,7 @@ if (!isTestEnv) {
 
   function shutdown(signal: string): void {
     logger.info('Received ' + signal + ' — shutting down gracefully...');
+    for (const timer of timers) clearInterval(timer);
     game.killAllEngines();
     server.close(() => {
       logger.info('HTTP server closed');

@@ -26,9 +26,13 @@ export function setSweepTimer(timer: ReturnType<typeof setInterval> | null): voi
   _sweepTimer = timer;
 }
 
+export const COMPLETED_GAME_TTL_MS = 5 * 60 * 1000; // 5 minutes
+export const gameCompletedAt = new Map<string, number>();
+
 export function removeGameById(id: string): void {
   games.delete(id);
   chatHistory.delete(id);
+  gameCompletedAt.delete(id);
 }
 
 export function addPlayerGameIndex(playerId: string, gameId: string): void {

@@ -54,7 +54,7 @@ export default function BansTab() {
       setNewIp('');
       load();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : String(err));
+      addToast(err instanceof Error ? err.message : String(err), 'error');
     } finally { setActionId(null); }
   }
 
@@ -63,7 +63,7 @@ export default function BansTab() {
     try {
       await api('/bans/player/' + encodeURIComponent(id), { method: 'DELETE' });
       load();
-    } catch (err: unknown) { alert(err instanceof Error ? err.message : String(err));
+    } catch (err: unknown) { addToast(err instanceof Error ? err.message : String(err), 'error');
     } finally { setActionId(null); }
   }
 
@@ -72,7 +72,7 @@ export default function BansTab() {
     try {
       await api('/bans/ip/' + encodeURIComponent(ip), { method: 'DELETE' });
       load();
-    } catch (err: unknown) { alert(err instanceof Error ? err.message : String(err));
+    } catch (err: unknown) { addToast(err instanceof Error ? err.message : String(err), 'error');
     } finally { setActionId(null); }
   }
 
@@ -178,7 +178,7 @@ export default function BansTab() {
           ) : (
             <ul className="space-y-1">
               {filteredPlayers.map((b) => {
-                const pid = b.id!;
+                const pid = b.id ?? '';
                 return (
                   <li key={pid} className="flex items-center justify-between px-3 py-2 bg-[#222] rounded text-xs">
                     <div className="flex items-center gap-2 min-w-0">
@@ -223,7 +223,7 @@ export default function BansTab() {
           ) : (
             <ul className="space-y-1">
               {filteredIps.map((b) => {
-                const ip = b.ip!;
+                const ip = b.ip ?? '';
                 return (
                   <li key={ip} className="flex items-center justify-between px-3 py-2 bg-[#222] rounded text-xs">
                     <div className="flex items-center gap-2 min-w-0">

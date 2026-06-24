@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Settings, Edit3, X, Check, RotateCcw } from 'lucide-react';
 import { api, ServerConfig } from './api';
+import { useToast } from './Toast';
 
 const DEFAULTS: Record<string, string> = {
   maxGamesPerPlayer: '20',
@@ -15,6 +16,7 @@ export default function ConfigTab() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Partial<Record<string, string>>>({});
   const [saved, setSaved] = useState(false);
+  const { addToast } = useToast();
 
   useEffect(() => {
     api<ServerConfig>('/config')
@@ -43,7 +45,12 @@ export default function ConfigTab() {
     if (draft.rateLimitMaxRequests) envVars.push('RATE_LIMIT_MAX_REQUESTS=' + draft.rateLimitMaxRequests);
     if (draft.waitingTtl) envVars.push('WAITING_TTL_MINUTES=' + draft.waitingTtl);
     const configStr = envVars.join('\n');
-    await navigator.clipboard.writeText(configStr);
+    try {
+      await navigator.clipboard.writeText(configStr);
+    } catch {
+      addToast('Failed to copy to clipboard', 'error');
+      return;
+    }
     setEditing(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -112,7 +119,7 @@ export default function ConfigTab() {
                     <td className="px-4 py-3 text-xs">
                       {editing ? (
                         <div className="flex items-center gap-1">
-                          <input value={draft[field.key] || ''} onChange={(e) => setDraft({ ...draft, [field.key]: e.target.value })}
+                          <input value={draft[field.key] || ''} onChange={(e) => setDraft((prev) => ({ ...prev, [field.key]: e.target.value }))}
                             className="flex-1 px-2 py-1 bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" />
                           <button onClick={() => handleReset(field.key)}
                             className="p-1 text-[#888] hover:text-[#ccc]"

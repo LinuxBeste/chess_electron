@@ -38,6 +38,21 @@ export function setConnectionString(url: string): void {
   process.env.DATABASE_URL = url;
 }
 
+export async function transaction<T>(fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 const MIGRATIONS: { version: number; sql: string }[] = [
   {
     version: 1,
@@ -159,6 +174,17 @@ const MIGRATIONS: { version: number; sql: string }[] = [
     sql: `
       ALTER TABLE completed_games ALTER COLUMN move_history TYPE TEXT;
       ALTER TABLE completed_games ALTER COLUMN board_history TYPE TEXT;
+    `,
+  },
+  {
+    version: 3,
+    sql: `
+      CREATE INDEX IF NOT EXISTS idx_bans_player_id ON bans(player_id);
+      CREATE INDEX IF NOT EXISTS idx_bans_ip ON bans(ip);
+      CREATE INDEX IF NOT EXISTS idx_users_rating ON users(rating);
+      CREATE INDEX IF NOT EXISTS idx_tournaments_join_code ON tournaments(join_code);
+      CREATE INDEX IF NOT EXISTS idx_tournament_participants_player ON tournament_participants(player_id);
+      CREATE INDEX IF NOT EXISTS idx_user_tokens_created_at ON user_tokens(created_at);
     `,
   },
 ];
@@ -517,18 +543,20 @@ export async function updateFriendRequestStatus(id: string, status: string): Pro
 }
 
 export async function addFriendRelationship(userId: string, friendId: string): Promise<void> {
-  const now = Date.now();
-  await getPool().query('INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [
-    userId,
-    friendId,
-    now,
-  ]);
-  await getPool().query('INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [
-    friendId,
-    userId,
-    now,
-  ]);
-  logger.debug('DB: friend relationship added user1=' + userId + ' user2=' + friendId);
+  return transaction(async (client) => {
+    const now = Date.now();
+    await client.query('INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [
+      userId,
+      friendId,
+      now,
+    ]);
+    await client.query('INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [
+      friendId,
+      userId,
+      now,
+    ]);
+    logger.debug('DB: friend relationship added user1=' + userId + ' user2=' + friendId);
+  });
 }
 
 export async function removeFriendRelationship(userId: string, friendId: string): Promise<void> {
@@ -554,6 +582,8 @@ export async function getLeaderboard(
   limit: number,
   offset: number,
   minGames = 0,
+  sortKey = 'rating',
+  sortAsc = false,
 ): Promise<{
   rows: {
     id: string;
@@ -578,10 +608,13 @@ export async function getLeaderboard(
   const where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
   const { rows: countRows } = await getPool().query('SELECT COUNT(*) as c FROM users' + where, params);
   const total = (countRows[0] as { c: number }).c;
+  const allowedSort = ['rating', 'wins', 'username', 'display_name'];
+  const orderCol = allowedSort.includes(sortKey) ? sortKey : 'rating';
+  const orderDir = sortAsc ? 'ASC' : 'DESC';
   const { rows } = await getPool().query(
     'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users' +
       where +
-      ' ORDER BY rating DESC LIMIT $' +
+      ' ORDER BY ' + orderCol + ' ' + orderDir + ' LIMIT $' +
       (paramIdx + 1) +
       ' OFFSET $' +
       (paramIdx + 2),
@@ -664,6 +697,8 @@ export async function getArchivedGames(
   status?: string,
   fromDate?: number,
   toDate?: number,
+  sortKey = 'played_at',
+  sortAsc = false,
 ): Promise<{ rows: CompletedGameRow[]; total: number }> {
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -693,10 +728,13 @@ export async function getArchivedGames(
   const { rows: countRows } = await getPool().query('SELECT COUNT(*) as c FROM completed_games' + where, params);
   const total = (countRows[0] as { c: number }).c;
   const offset = (page - 1) * limit;
+  const allowedSort = ['played_at', 'white_display_name', 'black_display_name'];
+  const orderCol = allowedSort.includes(sortKey) ? sortKey : 'played_at';
+  const orderDir = sortAsc ? 'ASC' : 'DESC';
   const { rows } = await getPool().query(
     'SELECT * FROM completed_games' +
       where +
-      ' ORDER BY played_at DESC LIMIT $' +
+      ' ORDER BY ' + orderCol + ' ' + orderDir + ' LIMIT $' +
       (paramIdx + 1) +
       ' OFFSET $' +
       (paramIdx + 2),
@@ -883,9 +921,11 @@ export async function updateTournamentDetails(
 }
 
 export async function deleteTournament(id: string): Promise<void> {
-  await getPool().query('DELETE FROM tournament_participants WHERE tournament_id = $1', [id]);
-  await getPool().query('DELETE FROM tournament_matches WHERE tournament_id = $1', [id]);
-  await getPool().query('DELETE FROM tournaments WHERE id = $1', [id]);
+  return transaction(async (client) => {
+    await client.query('DELETE FROM tournament_participants WHERE tournament_id = $1', [id]);
+    await client.query('DELETE FROM tournament_matches WHERE tournament_id = $1', [id]);
+    await client.query('DELETE FROM tournaments WHERE id = $1', [id]);
+  });
 }
 
 export async function getTournamentMatches(tournamentId: string): Promise<TournamentMatchRow[]> {
