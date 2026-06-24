@@ -53,6 +53,8 @@ export interface PlayerRow {
   online: boolean;
   tokens: number;
   ip: string | null;
+  registeredAt: number | null;
+  currentGameId: string | undefined;
 }
 
 export interface AccountRow {
@@ -64,11 +66,18 @@ export interface AccountRow {
   wins: number;
   losses: number;
   draws: number;
+  rating: number;
+}
+
+export interface BanEntry {
+  id?: string;
+  ip?: string;
+  bannedAt: number;
 }
 
 export interface BanList {
-  players: string[];
-  ips: string[];
+  players: BanEntry[];
+  ips: BanEntry[];
 }
 
 export interface SystemMetricsSample {
@@ -125,4 +134,106 @@ export interface ProcessRow {
   mem: number;
   rss: number;
   command: string;
+}
+
+export interface UserGamesResponse {
+  active: {
+    id: string;
+    status: string;
+    white: string;
+    black: string;
+    turn: string;
+    moves: number;
+    createdAt: number;
+  }[];
+  completed: {
+    id: string;
+    white: string;
+    black: string;
+    winner: string | null;
+    status: string;
+    playedAt: number;
+    pgn: string | null;
+  }[];
+  totalCompleted: number;
+}
+
+export interface ImpersonateResponse {
+  token: string;
+  userId: string;
+  username: string;
+}
+
+export interface AccountCreate {
+  username: string;
+  password: string;
+  displayName?: string;
+}
+
+export interface WsConnectionInfo {
+  totalPlayerConnections: number;
+  totalSpectatorConnections: number;
+  connectedPlayers: number;
+  spectatedGames: number;
+  players: { playerId: string; username: string; connectionCount: number }[];
+  spectators: { gameId: string; connectionCount: number }[];
+  disconnectEvents: number;
+}
+
+export interface HealthStatus {
+  status: string;
+  database: { connected: boolean; latencyMs?: number };
+  server: {
+    uptime: number;
+    nodeVersion: string;
+    pid: number;
+    memory: { rss: number; heapUsed: number; heapTotal: number };
+  };
+  game: { activeGames: number; onlinePlayers: number };
+  timestamp: number;
+}
+
+export interface DbTableInfo {
+  tables: { name: string; estimatedRows: number }[];
+}
+
+export interface DbQueryResult {
+  columns: string[];
+  rows: string[][];
+  totalRows: number;
+  elapsedMs: number;
+}
+
+export interface AuditResponse {
+  entries: string[];
+  total: number;
+}
+
+export interface GameReplayResponse {
+  id: string;
+  status: string;
+  white: string;
+  black: string;
+  moves: string[];
+  boardHistory: string[][];
+  winner: string | null;
+  result: string;
+  createdAt: number;
+}
+
+export interface LogFileInfo {
+  name: string;
+  size: number;
+}
+
+export interface ServerConfig {
+  maxGamesPerPlayer: number;
+  rateLimitWindowMs: number;
+  rateLimitMaxRequests: number;
+  waitingTtl: number;
+  adminUsername: string;
+  dbPath: string;
+  nodeVersion: string;
+  platform: string;
+  _sources?: Record<string, 'env' | 'default'>;
 }

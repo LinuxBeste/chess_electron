@@ -7,22 +7,35 @@ import logger from './logger.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://chess:chess@localhost:5432/chess',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
+let _pool: pg.Pool | null = null;
 
-pg.types.setTypeParser(pg.types.builtins.INT8, (val: string) => parseInt(val, 10));
-pg.types.setTypeParser(pg.types.builtins.NUMERIC, (val: string) => parseFloat(val));
-
-pool.on('error', (err) => {
-  logger.error('Unexpected PostgreSQL pool error:', err);
-});
+function getPool(): pg.Pool {
+  if (!_pool) {
+    _pool = new pg.Pool({
+      connectionString: process.env.DATABASE_URL || 'postgresql://chess:chess@localhost:5432/chess',
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    });
+    pg.types.setTypeParser(pg.types.builtins.INT8, (val: string) => parseInt(val, 10));
+    pg.types.setTypeParser(pg.types.builtins.NUMERIC, (val: string) => parseFloat(val));
+    _pool.on('error', (err) => {
+      logger.error('Unexpected PostgreSQL pool error:', err);
+    });
+  }
+  return _pool;
+}
 
 export function getDb(): pg.Pool {
-  return pool;
+  return getPool();
+}
+
+export function setConnectionString(url: string): void {
+  if (_pool) {
+    _pool.end();
+    _pool = null;
+  }
+  process.env.DATABASE_URL = url;
 }
 
 const MIGRATIONS: { version: number; sql: string }[] = [
@@ -154,17 +167,17 @@ let migrated = false;
 
 async function migrate(): Promise<void> {
   if (migrated) return;
-  await pool.query(`
+  await getPool().query(`
     CREATE TABLE IF NOT EXISTS _migrations (
       version INTEGER PRIMARY KEY,
       applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
   for (const m of MIGRATIONS) {
-    const { rows } = await pool.query('SELECT 1 FROM _migrations WHERE version = $1', [m.version]);
+    const { rows } = await getPool().query('SELECT 1 FROM _migrations WHERE version = $1', [m.version]);
     if (rows.length === 0) {
-      await pool.query(m.sql);
-      await pool.query('INSERT INTO _migrations (version) VALUES ($1)', [m.version]);
+      await getPool().query(m.sql);
+      await getPool().query('INSERT INTO _migrations (version) VALUES ($1)', [m.version]);
       logger.info('DB migration applied: version=' + m.version);
     }
   }
@@ -247,7 +260,7 @@ export async function createUser(
   passwordHash: string | null,
   displayName: string,
 ): Promise<void> {
-  await pool.query(
+  await getPool().query(
     'INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES ($1, $2, $3, $4, $5)',
     [id, username, passwordHash, displayName, Date.now()],
   );
@@ -255,14 +268,14 @@ export async function createUser(
 }
 
 export async function getUserByUsername(username: string): Promise<DbUser | undefined> {
-  const { rows } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+  const { rows } = await getPool().query('SELECT * FROM users WHERE username = $1', [username]);
   const user = rows[0] as DbUser | undefined;
   logger.debug('DB: getUserByUsername username=' + username + (user ? ' found' : ' not found'));
   return user;
 }
 
 export async function getUserById(id: string): Promise<DbUser | undefined> {
-  const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+  const { rows } = await getPool().query('SELECT * FROM users WHERE id = $1', [id]);
   const user = rows[0] as DbUser | undefined;
   logger.debug('DB: getUserById id=' + id + (user ? ' found' : ' not found'));
   return user;
@@ -271,7 +284,7 @@ export async function getUserById(id: string): Promise<DbUser | undefined> {
 export async function getUsersByIds(ids: string[]): Promise<Map<string, DbUser>> {
   if (ids.length === 0) return new Map();
   const placeholders = ids.map((_, i) => '$' + (i + 1)).join(',');
-  const { rows } = await pool.query('SELECT * FROM users WHERE id IN (' + placeholders + ')', ids);
+  const { rows } = await getPool().query('SELECT * FROM users WHERE id IN (' + placeholders + ')', ids);
   const map = new Map<string, DbUser>();
   for (const row of rows as DbUser[]) {
     map.set(row.id, row);
@@ -281,7 +294,7 @@ export async function getUsersByIds(ids: string[]): Promise<Map<string, DbUser>>
 }
 
 export async function saveToken(token: string, userId: string): Promise<void> {
-  await pool.query('INSERT INTO user_tokens (token, user_id, created_at) VALUES ($1, $2, $3)', [
+  await getPool().query('INSERT INTO user_tokens (token, user_id, created_at) VALUES ($1, $2, $3)', [
     token,
     userId,
     Date.now(),
@@ -290,20 +303,20 @@ export async function saveToken(token: string, userId: string): Promise<void> {
 }
 
 export async function getUserIdByToken(token: string): Promise<string | undefined> {
-  const { rows } = await pool.query('SELECT user_id FROM user_tokens WHERE token = $1', [token]);
+  const { rows } = await getPool().query('SELECT user_id FROM user_tokens WHERE token = $1', [token]);
   const row = rows[0] as { user_id: string } | undefined;
   logger.debug('DB: getUserIdByToken ' + (row ? 'found userId=' + row.user_id : 'not found'));
   return row?.user_id;
 }
 
 export async function deleteToken(token: string): Promise<void> {
-  await pool.query('DELETE FROM user_tokens WHERE token = $1', [token]);
+  await getPool().query('DELETE FROM user_tokens WHERE token = $1', [token]);
   logger.debug('DB: token deleted');
 }
 
 export async function cleanupExpiredTokens(maxAgeMs = 30 * 86400000): Promise<number> {
   const cutoff = Date.now() - maxAgeMs;
-  const { rowCount } = await pool.query('DELETE FROM user_tokens WHERE created_at < $1', [cutoff]);
+  const { rowCount } = await getPool().query('DELETE FROM user_tokens WHERE created_at < $1', [cutoff]);
   if (rowCount && rowCount > 0) logger.info('DB: cleaned up ' + rowCount + ' expired tokens');
   return rowCount ?? 0;
 }
@@ -341,85 +354,85 @@ export async function createBackup(): Promise<string | null> {
 }
 
 export async function addWin(userId: string): Promise<void> {
-  await pool.query('UPDATE users SET wins = wins + 1 WHERE id = $1', [userId]);
+  await getPool().query('UPDATE users SET wins = wins + 1 WHERE id = $1', [userId]);
   logger.debug('DB: addWin userId=' + userId);
 }
 
 export async function addLoss(userId: string): Promise<void> {
-  await pool.query('UPDATE users SET losses = losses + 1 WHERE id = $1', [userId]);
+  await getPool().query('UPDATE users SET losses = losses + 1 WHERE id = $1', [userId]);
   logger.debug('DB: addLoss userId=' + userId);
 }
 
 export async function addDraw(userId: string): Promise<void> {
-  await pool.query('UPDATE users SET draws = draws + 1 WHERE id = $1', [userId]);
+  await getPool().query('UPDATE users SET draws = draws + 1 WHERE id = $1', [userId]);
   logger.debug('DB: addDraw userId=' + userId);
 }
 
 export async function loadAllUsers(): Promise<DbUser[]> {
-  const { rows } = await pool.query('SELECT * FROM users');
+  const { rows } = await getPool().query('SELECT * FROM users');
   logger.debug('DB: loadAllUsers count=' + rows.length);
   return rows as DbUser[];
 }
 
 export async function loadAllTokens(): Promise<{ token: string; user_id: string }[]> {
-  const { rows } = await pool.query('SELECT token, user_id FROM user_tokens');
+  const { rows } = await getPool().query('SELECT token, user_id FROM user_tokens');
   logger.debug('DB: loadAllTokens count=' + rows.length);
   return rows as { token: string; user_id: string }[];
 }
 
 export async function updateUserAvatar(id: string, url: string | null): Promise<void> {
-  await pool.query('UPDATE users SET avatar_url = $1 WHERE id = $2', [url, id]);
+  await getPool().query('UPDATE users SET avatar_url = $1 WHERE id = $2', [url, id]);
   logger.debug('DB: avatar updated id=' + id + ' url=' + url);
 }
 
 export async function updateUsername(id: string, username: string): Promise<void> {
-  await pool.query('UPDATE users SET username = $1 WHERE id = $2', [username, id]);
+  await getPool().query('UPDATE users SET username = $1 WHERE id = $2', [username, id]);
   logger.debug('DB: username updated id=' + id + ' username=' + username);
 }
 
 export async function updateUserStats(id: string, wins: number, losses: number, draws: number): Promise<void> {
-  await pool.query('UPDATE users SET wins = $1, losses = $2, draws = $3 WHERE id = $4', [wins, losses, draws, id]);
+  await getPool().query('UPDATE users SET wins = $1, losses = $2, draws = $3 WHERE id = $4', [wins, losses, draws, id]);
   logger.debug('DB: stats updated id=' + id + ' w=' + wins + ' l=' + losses + ' d=' + draws);
 }
 
 export async function updateUserDisplayName(id: string, displayName: string): Promise<void> {
-  await pool.query('UPDATE users SET display_name = $1 WHERE id = $2', [displayName, id]);
+  await getPool().query('UPDATE users SET display_name = $1 WHERE id = $2', [displayName, id]);
   logger.debug('DB: displayName updated id=' + id + ' name=' + displayName);
 }
 
 export async function updateUserPasswordHash(id: string, passwordHash: string): Promise<void> {
-  await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
+  await getPool().query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
   logger.debug('DB: password hash updated id=' + id);
 }
 
 export async function deleteUserTokens(id: string): Promise<void> {
-  await pool.query('DELETE FROM user_tokens WHERE user_id = $1', [id]);
+  await getPool().query('DELETE FROM user_tokens WHERE user_id = $1', [id]);
   logger.debug('DB: tokens deleted userId=' + id);
 }
 
 export async function deleteUserRecord(id: string): Promise<void> {
-  await pool.query('DELETE FROM users WHERE id = $1', [id]);
+  await getPool().query('DELETE FROM users WHERE id = $1', [id]);
   logger.debug('DB: user record deleted id=' + id);
 }
 
 /* ─── Bans ─── */
 
 export async function saveBan(id: string, playerId: string | null, ip: string | null): Promise<void> {
-  await pool.query(
+  await getPool().query(
     'INSERT INTO bans (id, player_id, ip, banned_at) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET player_id = $2, ip = $3, banned_at = $4',
     [id, playerId, ip, Date.now()],
   );
   logger.debug('DB: ban saved id=' + id + ' playerId=' + playerId + ' ip=' + ip);
 }
 
-export async function loadAllBans(): Promise<{ id: string; player_id: string | null; ip: string | null }[]> {
-  const { rows } = await pool.query('SELECT id, player_id, ip FROM bans');
+export async function loadAllBans(): Promise<{ id: string; player_id: string | null; ip: string | null; banned_at: number }[]> {
+  const { rows } = await getPool().query('SELECT id, player_id, ip, banned_at FROM bans');
   logger.debug('DB: loadAllBans count=' + rows.length);
-  return rows as { id: string; player_id: string | null; ip: string | null }[];
+  return rows as { id: string; player_id: string | null; ip: string | null; banned_at: number }[];
 }
 
 export async function deleteBanById(id: string): Promise<void> {
-  await pool.query('DELETE FROM bans WHERE id = $1', [id]);
+  await getPool().query('DELETE FROM bans WHERE id = $1', [id]);
   logger.debug('DB: ban deleted id=' + id);
 }
 
@@ -437,7 +450,7 @@ export interface FriendRequestRow {
 export async function createFriendRequest(fromUserId: string, toUserId: string): Promise<string> {
   const id = crypto.randomUUID();
   const now = Date.now();
-  await pool.query(
+  await getPool().query(
     'INSERT INTO friend_requests (id, from_user_id, to_user_id, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
     [id, fromUserId, toUserId, 'pending', now, now],
   );
@@ -446,14 +459,14 @@ export async function createFriendRequest(fromUserId: string, toUserId: string):
 }
 
 export async function getFriendRequest(id: string): Promise<FriendRequestRow | undefined> {
-  const { rows } = await pool.query('SELECT * FROM friend_requests WHERE id = $1', [id]);
+  const { rows } = await getPool().query('SELECT * FROM friend_requests WHERE id = $1', [id]);
   const fr = rows[0] as FriendRequestRow | undefined;
   logger.debug('DB: getFriendRequest id=' + id + (fr ? ' found' : ' not found'));
   return fr;
 }
 
 export async function getPendingIncomingRequests(userId: string): Promise<FriendRequestRow[]> {
-  const { rows } = await pool.query(
+  const { rows } = await getPool().query(
     'SELECT * FROM friend_requests WHERE to_user_id = $1 AND status = $2 ORDER BY created_at DESC',
     [userId, 'pending'],
   );
@@ -462,7 +475,7 @@ export async function getPendingIncomingRequests(userId: string): Promise<Friend
 }
 
 export async function getPendingOutgoingRequests(userId: string): Promise<FriendRequestRow[]> {
-  const { rows } = await pool.query(
+  const { rows } = await getPool().query(
     'SELECT * FROM friend_requests WHERE from_user_id = $1 AND status = $2 ORDER BY created_at DESC',
     [userId, 'pending'],
   );
@@ -475,12 +488,12 @@ export async function getFriendStatus(
   otherUserId: string,
 ): Promise<'none' | 'friends' | 'incoming' | 'outgoing'> {
   if (await areFriends(authUserId, otherUserId)) return 'friends';
-  const incoming = await pool.query(
+  const incoming = await getPool().query(
     'SELECT 1 FROM friend_requests WHERE from_user_id = $1 AND to_user_id = $2 AND status = $3',
     [otherUserId, authUserId, 'pending'],
   );
   if (incoming.rows.length > 0) return 'incoming';
-  const outgoing = await pool.query(
+  const outgoing = await getPool().query(
     'SELECT 1 FROM friend_requests WHERE from_user_id = $1 AND to_user_id = $2 AND status = $3',
     [authUserId, otherUserId, 'pending'],
   );
@@ -489,7 +502,7 @@ export async function getFriendStatus(
 }
 
 export async function hasPendingRequest(fromUserId: string, toUserId: string): Promise<boolean> {
-  const { rows } = await pool.query(
+  const { rows } = await getPool().query(
     'SELECT 1 FROM friend_requests WHERE ((from_user_id = $1 AND to_user_id = $2) OR (from_user_id = $3 AND to_user_id = $4)) AND status = $5',
     [fromUserId, toUserId, toUserId, fromUserId, 'pending'],
   );
@@ -499,18 +512,18 @@ export async function hasPendingRequest(fromUserId: string, toUserId: string): P
 }
 
 export async function updateFriendRequestStatus(id: string, status: string): Promise<void> {
-  await pool.query('UPDATE friend_requests SET status = $1, updated_at = $2 WHERE id = $3', [status, Date.now(), id]);
+  await getPool().query('UPDATE friend_requests SET status = $1, updated_at = $2 WHERE id = $3', [status, Date.now(), id]);
   logger.debug('DB: friend request status updated id=' + id + ' status=' + status);
 }
 
 export async function addFriendRelationship(userId: string, friendId: string): Promise<void> {
   const now = Date.now();
-  await pool.query('INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [
+  await getPool().query('INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [
     userId,
     friendId,
     now,
   ]);
-  await pool.query('INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [
+  await getPool().query('INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [
     friendId,
     userId,
     now,
@@ -519,7 +532,7 @@ export async function addFriendRelationship(userId: string, friendId: string): P
 }
 
 export async function removeFriendRelationship(userId: string, friendId: string): Promise<void> {
-  await pool.query('DELETE FROM friends WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $3 AND friend_id = $4)', [
+  await getPool().query('DELETE FROM friends WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $3 AND friend_id = $4)', [
     userId,
     friendId,
     friendId,
@@ -529,7 +542,7 @@ export async function removeFriendRelationship(userId: string, friendId: string)
 }
 
 export async function getFriendIds(userId: string): Promise<string[]> {
-  const { rows } = await pool.query('SELECT friend_id FROM friends WHERE user_id = $1', [userId]);
+  const { rows } = await getPool().query('SELECT friend_id FROM friends WHERE user_id = $1', [userId]);
   const ids = (rows as { friend_id: string }[]).map((r) => r.friend_id);
   logger.debug('DB: getFriendIds userId=' + userId + ' count=' + ids.length);
   return ids;
@@ -540,6 +553,7 @@ export async function getFriendIds(userId: string): Promise<string[]> {
 export async function getLeaderboard(
   limit: number,
   offset: number,
+  minGames = 0,
 ): Promise<{
   rows: {
     id: string;
@@ -553,11 +567,25 @@ export async function getLeaderboard(
   }[];
   total: number;
 }> {
-  const { rows: countRows } = await pool.query('SELECT COUNT(*) as c FROM users');
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let paramIdx = 0;
+  if (minGames > 0) {
+    paramIdx++;
+    conditions.push('(wins + losses + draws) >= $' + paramIdx);
+    params.push(minGames);
+  }
+  const where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+  const { rows: countRows } = await getPool().query('SELECT COUNT(*) as c FROM users' + where, params);
   const total = (countRows[0] as { c: number }).c;
-  const { rows } = await pool.query(
-    'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users ORDER BY rating DESC LIMIT $1 OFFSET $2',
-    [limit, offset],
+  const { rows } = await getPool().query(
+    'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users' +
+      where +
+      ' ORDER BY rating DESC LIMIT $' +
+      (paramIdx + 1) +
+      ' OFFSET $' +
+      (paramIdx + 2),
+    [...params, limit, offset],
   );
   return {
     rows: rows as {
@@ -575,19 +603,19 @@ export async function getLeaderboard(
 }
 
 export async function getPlayerRating(userId: string): Promise<number> {
-  const { rows } = await pool.query('SELECT rating FROM users WHERE id = $1', [userId]);
+  const { rows } = await getPool().query('SELECT rating FROM users WHERE id = $1', [userId]);
   const row = rows[0] as { rating: number } | undefined;
   return row?.rating ?? 1200;
 }
 
 export async function updatePlayerRating(userId: string, rating: number): Promise<void> {
-  await pool.query('UPDATE users SET rating = $1 WHERE id = $2', [rating, userId]);
+  await getPool().query('UPDATE users SET rating = $1 WHERE id = $2', [rating, userId]);
 }
 
 export async function updateWinLossDraw(userId: string, result: 'win' | 'loss' | 'draw'): Promise<void> {
-  if (result === 'win') await pool.query('UPDATE users SET wins = wins + 1 WHERE id = $1', [userId]);
-  else if (result === 'loss') await pool.query('UPDATE users SET losses = losses + 1 WHERE id = $1', [userId]);
-  else await pool.query('UPDATE users SET draws = draws + 1 WHERE id = $1', [userId]);
+  if (result === 'win') await getPool().query('UPDATE users SET wins = wins + 1 WHERE id = $1', [userId]);
+  else if (result === 'loss') await getPool().query('UPDATE users SET losses = losses + 1 WHERE id = $1', [userId]);
+  else await getPool().query('UPDATE users SET draws = draws + 1 WHERE id = $1', [userId]);
 }
 
 /* ─── Game Archive ─── */
@@ -607,7 +635,7 @@ export async function saveCompletedGame(
   pgn: string | null,
   timeControl: string,
 ): Promise<void> {
-  await pool.query(
+  await getPool().query(
     'INSERT INTO completed_games (id, white_player_id, black_player_id, white_display_name, black_display_name, winner, status, result, reason, move_history, board_history, pgn, played_at, time_control) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
     [
       id,
@@ -662,10 +690,10 @@ export async function getArchivedGames(
     params.push(toDate);
   }
   const where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
-  const { rows: countRows } = await pool.query('SELECT COUNT(*) as c FROM completed_games' + where, params);
+  const { rows: countRows } = await getPool().query('SELECT COUNT(*) as c FROM completed_games' + where, params);
   const total = (countRows[0] as { c: number }).c;
   const offset = (page - 1) * limit;
-  const { rows } = await pool.query(
+  const { rows } = await getPool().query(
     'SELECT * FROM completed_games' +
       where +
       ' ORDER BY played_at DESC LIMIT $' +
@@ -678,16 +706,16 @@ export async function getArchivedGames(
 }
 
 export async function getArchivedGame(id: string): Promise<CompletedGameRow | undefined> {
-  const { rows } = await pool.query('SELECT * FROM completed_games WHERE id = $1', [id]);
+  const { rows } = await getPool().query('SELECT * FROM completed_games WHERE id = $1', [id]);
   return rows[0] as CompletedGameRow | undefined;
 }
 
 export async function deleteArchivedGame(id: string): Promise<void> {
-  await pool.query('DELETE FROM completed_games WHERE id = $1', [id]);
+  await getPool().query('DELETE FROM completed_games WHERE id = $1', [id]);
 }
 
 export async function getPlayerWinLossDraw(playerId: string): Promise<{ wins: number; losses: number; draws: number }> {
-  const { rows } = await pool.query(
+  const { rows } = await getPool().query(
     `SELECT
       COUNT(*) FILTER (WHERE (white_player_id = $1 AND winner = 'white') OR (black_player_id = $2 AND winner = 'black')) AS wins,
       COUNT(*) FILTER (WHERE winner IS NULL) AS draws,
@@ -703,7 +731,7 @@ export async function getPlayerWinLossDraw(playerId: string): Promise<{ wins: nu
 /* ─── Cancel friend request ─── */
 
 export async function deleteFriendRequest(id: string): Promise<void> {
-  await pool.query('DELETE FROM friend_requests WHERE id = $1 AND status = $2', [id, 'pending']);
+  await getPool().query('DELETE FROM friend_requests WHERE id = $1 AND status = $2', [id, 'pending']);
 }
 
 /* ─── Tournaments ─── */
@@ -716,7 +744,7 @@ export async function createTournament(
 ): Promise<{ id: string; joinCode?: string }> {
   const id = crypto.randomUUID();
   const joinCode = isPrivate ? crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase() : undefined;
-  await pool.query(
+  await getPool().query(
     'INSERT INTO tournaments (id, name, status, created_by, max_players, is_private, join_code, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
     [id, name, 'waiting', createdBy, maxPlayers, isPrivate ?? false, joinCode, Date.now()],
   );
@@ -724,38 +752,38 @@ export async function createTournament(
 }
 
 export async function getTournament(id: string): Promise<TournamentRow | undefined> {
-  const { rows } = await pool.query('SELECT * FROM tournaments WHERE id = $1', [id]);
+  const { rows } = await getPool().query('SELECT * FROM tournaments WHERE id = $1', [id]);
   return rows[0] as TournamentRow | undefined;
 }
 
 export async function getTournamentByJoinCode(code: string): Promise<TournamentRow | undefined> {
-  const { rows } = await pool.query('SELECT * FROM tournaments WHERE join_code = $1', [code]);
+  const { rows } = await getPool().query('SELECT * FROM tournaments WHERE join_code = $1', [code]);
   return rows[0] as TournamentRow | undefined;
 }
 
 export async function getPublicTournaments(status?: string): Promise<TournamentRow[]> {
   if (status) {
-    const { rows } = await pool.query(
+    const { rows } = await getPool().query(
       'SELECT * FROM tournaments WHERE status = $1 AND is_private = false ORDER BY created_at DESC',
       [status],
     );
     return rows as TournamentRow[];
   }
-  const { rows } = await pool.query('SELECT * FROM tournaments WHERE is_private = false ORDER BY created_at DESC');
+  const { rows } = await getPool().query('SELECT * FROM tournaments WHERE is_private = false ORDER BY created_at DESC');
   return rows as TournamentRow[];
 }
 
 export async function getTournaments(status?: string): Promise<TournamentRow[]> {
   if (status) {
-    const { rows } = await pool.query('SELECT * FROM tournaments WHERE status = $1 ORDER BY created_at DESC', [status]);
+    const { rows } = await getPool().query('SELECT * FROM tournaments WHERE status = $1 ORDER BY created_at DESC', [status]);
     return rows as TournamentRow[];
   }
-  const { rows } = await pool.query('SELECT * FROM tournaments ORDER BY created_at DESC');
+  const { rows } = await getPool().query('SELECT * FROM tournaments ORDER BY created_at DESC');
   return rows as TournamentRow[];
 }
 
 export async function getTournamentParticipants(tournamentId: string): Promise<TournamentParticipantRow[]> {
-  const { rows } = await pool.query('SELECT * FROM tournament_participants WHERE tournament_id = $1 ORDER BY seed', [
+  const { rows } = await getPool().query('SELECT * FROM tournament_participants WHERE tournament_id = $1 ORDER BY seed', [
     tournamentId,
   ]);
   return rows as TournamentParticipantRow[];
@@ -767,21 +795,21 @@ export async function addTournamentParticipant(
   displayName: string,
   seed: number,
 ): Promise<void> {
-  await pool.query(
+  await getPool().query(
     'INSERT INTO tournament_participants (id, tournament_id, player_id, display_name, seed, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
     [crypto.randomUUID(), tournamentId, playerId, displayName, seed, Date.now()],
   );
 }
 
 export async function removeTournamentParticipant(tournamentId: string, playerId: string): Promise<void> {
-  await pool.query('DELETE FROM tournament_participants WHERE tournament_id = $1 AND player_id = $2', [
+  await getPool().query('DELETE FROM tournament_participants WHERE tournament_id = $1 AND player_id = $2', [
     tournamentId,
     playerId,
   ]);
 }
 
 export async function isTournamentParticipant(tournamentId: string, playerId: string): Promise<boolean> {
-  const { rows } = await pool.query(
+  const { rows } = await getPool().query(
     'SELECT 1 FROM tournament_participants WHERE tournament_id = $1 AND player_id = $2',
     [tournamentId, playerId],
   );
@@ -789,14 +817,14 @@ export async function isTournamentParticipant(tournamentId: string, playerId: st
 }
 
 export async function getParticipantCount(tournamentId: string): Promise<number> {
-  const { rows } = await pool.query('SELECT COUNT(*) as c FROM tournament_participants WHERE tournament_id = $1', [
+  const { rows } = await getPool().query('SELECT COUNT(*) as c FROM tournament_participants WHERE tournament_id = $1', [
     tournamentId,
   ]);
   return (rows[0] as { c: number }).c;
 }
 
 export async function getPublicTournamentsWithCounts(): Promise<Record<string, unknown>[]> {
-  const { rows } = await pool.query(
+  const { rows } = await getPool().query(
     `SELECT t.*, COUNT(tp.id) AS "participantCount"
      FROM tournaments t
      LEFT JOIN tournament_participants tp ON tp.tournament_id = t.id
@@ -837,7 +865,7 @@ export async function updateTournamentStatus(
   }
   idx++;
   params.push(id);
-  await pool.query('UPDATE tournaments SET ' + updates.join(', ') + ' WHERE id = $' + idx, params);
+  await getPool().query('UPDATE tournaments SET ' + updates.join(', ') + ' WHERE id = $' + idx, params);
 }
 
 export async function updateTournamentDetails(
@@ -846,7 +874,7 @@ export async function updateTournamentDetails(
   maxPlayers: number,
   isPrivate: number,
 ): Promise<void> {
-  await pool.query('UPDATE tournaments SET name = $1, max_players = $2, is_private = $3 WHERE id = $4', [
+  await getPool().query('UPDATE tournaments SET name = $1, max_players = $2, is_private = $3 WHERE id = $4', [
     name,
     maxPlayers,
     isPrivate === 1 ? true : false,
@@ -855,13 +883,13 @@ export async function updateTournamentDetails(
 }
 
 export async function deleteTournament(id: string): Promise<void> {
-  await pool.query('DELETE FROM tournament_participants WHERE tournament_id = $1', [id]);
-  await pool.query('DELETE FROM tournament_matches WHERE tournament_id = $1', [id]);
-  await pool.query('DELETE FROM tournaments WHERE id = $1', [id]);
+  await getPool().query('DELETE FROM tournament_participants WHERE tournament_id = $1', [id]);
+  await getPool().query('DELETE FROM tournament_matches WHERE tournament_id = $1', [id]);
+  await getPool().query('DELETE FROM tournaments WHERE id = $1', [id]);
 }
 
 export async function getTournamentMatches(tournamentId: string): Promise<TournamentMatchRow[]> {
-  const { rows } = await pool.query(
+  const { rows } = await getPool().query(
     'SELECT * FROM tournament_matches WHERE tournament_id = $1 ORDER BY round, position',
     [tournamentId],
   );
@@ -871,14 +899,14 @@ export async function getTournamentMatches(tournamentId: string): Promise<Tourna
 export async function getPlayerTournamentStats(
   playerId: string,
 ): Promise<{ total: number; wins: number; currentId: string | null }> {
-  const { rows: totalRows } = await pool.query(
+  const { rows: totalRows } = await getPool().query(
     'SELECT COUNT(*) as c FROM tournament_participants WHERE player_id = $1',
     [playerId],
   );
   const total = (totalRows[0] as { c: number }).c;
-  const { rows: winsRows } = await pool.query('SELECT COUNT(*) as c FROM tournaments WHERE winner_id = $1', [playerId]);
+  const { rows: winsRows } = await getPool().query('SELECT COUNT(*) as c FROM tournaments WHERE winner_id = $1', [playerId]);
   const wins = (winsRows[0] as { c: number }).c;
-  const { rows: currentRows } = await pool.query(
+  const { rows: currentRows } = await getPool().query(
     `SELECT t.id FROM tournament_participants tp
      JOIN tournaments t ON t.id = tp.tournament_id
      WHERE tp.player_id = $1 AND t.status = 'active'
@@ -897,7 +925,7 @@ export async function createTournamentMatch(
   blackPlayerId: string | null,
 ): Promise<string> {
   const id = crypto.randomUUID();
-  await pool.query(
+  await getPool().query(
     'INSERT INTO tournament_matches (id, tournament_id, round, position, white_player_id, black_player_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7)',
     [id, tournamentId, round, position, whitePlayerId, blackPlayerId, 'pending'],
   );
@@ -910,7 +938,7 @@ export async function updateTournamentMatch(
   winnerId: string | null,
   status: string,
 ): Promise<void> {
-  await pool.query('UPDATE tournament_matches SET game_id = $1, winner_id = $2, status = $3 WHERE id = $4', [
+  await getPool().query('UPDATE tournament_matches SET game_id = $1, winner_id = $2, status = $3 WHERE id = $4', [
     gameId,
     winnerId,
     status,
@@ -919,7 +947,7 @@ export async function updateTournamentMatch(
 }
 
 export async function areFriends(userId: string, friendId: string): Promise<boolean> {
-  const { rows } = await pool.query('SELECT 1 FROM friends WHERE user_id = $1 AND friend_id = $2', [userId, friendId]);
+  const { rows } = await getPool().query('SELECT 1 FROM friends WHERE user_id = $1 AND friend_id = $2', [userId, friendId]);
   const result = rows.length > 0;
   logger.debug('DB: areFriends user1=' + userId + ' user2=' + friendId + ' =' + result);
   return result;
@@ -927,7 +955,7 @@ export async function areFriends(userId: string, friendId: string): Promise<bool
 
 export async function closeDb(): Promise<void> {
   try {
-    await pool.end();
+    await getPool().end();
     logger.info('DB connection pool closed');
   } catch (err) {
     logger.error('Error closing DB pool:', err);

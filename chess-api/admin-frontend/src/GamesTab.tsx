@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Swords, Flag, RotateCcw, CheckSquare, Square } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Swords, Flag, RotateCcw, CheckSquare, Square, ExternalLink } from 'lucide-react';
 import { api, GameRow } from './api';
 import { useToast } from './Toast';
 import SearchBar from './SearchBar';
 import Pagination from './Pagination';
+import { useNavigateTab } from './TabContext';
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-900 text-green-400',
@@ -14,6 +15,15 @@ const statusColors: Record<string, string> = {
   draw: 'bg-gray-800 text-gray-400',
 };
 
+type SortKey = 'status' | 'white' | 'black' | 'moves' | 'createdAt';
+
+function elapsed(createdAt: number): string {
+  const diff = Math.floor((Date.now() - createdAt) / 1000);
+  const m = Math.floor(diff / 60);
+  const s = diff % 60;
+  return `${m}m ${s}s`;
+}
+
 export default function GamesTab() {
   const [games, setGames] = useState<GameRow[]>([]);
   const [error, setError] = useState('');
@@ -21,9 +31,13 @@ export default function GamesTab() {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkEnding, setBulkEnding] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>('createdAt');
+  const [sortAsc, setSortAsc] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const { addToast } = useToast();
   const [page, setPage] = useState(1);
   const pageSize = 30;
+  const navigate = useNavigateTab();
 
   function load() {
     api<GameRow[]>('/games')
@@ -33,14 +47,37 @@ export default function GamesTab() {
 
   useEffect(load, []);
 
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortKey(key);
+      setSortAsc(true);
+    }
+  }
+
   const filtered = query
     ? games.filter((g) =>
         [g.id, g.white, g.black, g.status, g.winner].some((v) => v && v.toLowerCase().includes(query.toLowerCase())),
       )
     : games;
 
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const sorted = [...filtered].sort((a, b) => {
+    const dir = sortAsc ? 1 : -1;
+    if (sortKey === 'createdAt') return (a.createdAt - b.createdAt) * dir;
+    if (sortKey === 'moves') return (a.moves - b.moves) * dir;
+    const va = String(a[sortKey] || '').toLowerCase();
+    const vb = String(b[sortKey] || '').toLowerCase();
+    return va.localeCompare(vb) * dir;
+  });
+
+  const totalPages = Math.ceil(sorted.length / pageSize);
+  const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
 
   function toggleAll() {
     if (selected.size === paginated.filter((g) => g.status === 'active' || g.status === 'waiting').length) {
@@ -75,8 +112,7 @@ export default function GamesTab() {
     if (selected.size === 0) return;
     if (!confirm('End ' + selected.size + ' selected game(s)? They will be marked as draws.')) return;
     setBulkEnding(true);
-    let ok = 0,
-      fail = 0;
+    let ok = 0, fail = 0;
     for (const id of selected) {
       try {
         await api('/games/' + id + '/end', { method: 'POST' });
@@ -91,6 +127,14 @@ export default function GamesTab() {
     load();
   }
 
+  function SortHeader({ k, label }: { k: SortKey; label: string }) {
+    return (
+      <th className="text-left px-4 py-2.5 cursor-pointer hover:text-[#ccc] select-none" onClick={() => toggleSort(k)}>
+        {label} {sortKey === k ? (sortAsc ? '▲' : '▼') : ''}
+      </th>
+    );
+  }
+
   if (error) return <p className="text-red-500 text-sm">{error}</p>;
 
   return (
@@ -101,13 +145,10 @@ export default function GamesTab() {
             <h2 className="text-sm font-semibold text-[#e0e0e0] flex items-center gap-2">
               <Swords size={16} className="text-orange-400" />
               Active Games
+              <span className="text-xs font-normal text-[#666]">({games.length})</span>
             </h2>
             <div className="w-64">
-              <SearchBar
-                value={query}
-                onChange={setQuery}
-                placeholder="Search games by ID, player, status, winner..."
-              />
+              <SearchBar value={query} onChange={setQuery} placeholder="Search games by ID, player, status, winner..." />
             </div>
           </div>
         </div>
@@ -116,20 +157,12 @@ export default function GamesTab() {
           {selected.size > 0 && (
             <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-[#222] rounded-lg text-sm">
               <span className="text-[#888]">{selected.size} selected</span>
-              <button
-                onClick={handleBulkEnd}
-                disabled={bulkEnding}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-40"
-              >
+              <button onClick={handleBulkEnd} disabled={bulkEnding}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-40">
                 {bulkEnding ? <RotateCcw size={12} className="animate-spin" /> : <Flag size={12} />}
                 End Selected
               </button>
-              <button
-                onClick={() => setSelected(new Set())}
-                className="px-2 py-1 text-xs text-[#888] hover:text-[#ccc]"
-              >
-                Clear
-              </button>
+              <button onClick={() => setSelected(new Set())} className="px-2 py-1 text-xs text-[#888] hover:text-[#ccc]">Clear</button>
             </div>
           )}
 
@@ -143,28 +176,26 @@ export default function GamesTab() {
                     <tr className="text-[#888] uppercase text-xs tracking-wider border-b border-[#2a2a2a]">
                       <th className="text-center px-2 py-2.5 w-8">
                         <button onClick={toggleAll} className="text-[#888] hover:text-[#ccc]">
-                          {selected.size ===
-                            paginated.filter((g) => g.status === 'active' || g.status === 'waiting').length &&
+                          {selected.size === paginated.filter((g) => g.status === 'active' || g.status === 'waiting').length &&
                           paginated.some((g) => g.status === 'active' || g.status === 'waiting') ? (
                             <CheckSquare size={14} />
-                          ) : (
-                            <Square size={14} />
-                          )}
+                          ) : <Square size={14} />}
                         </button>
                       </th>
+                      <SortHeader k="status" label="Status" />
                       <th className="text-left px-4 py-2.5">ID</th>
-                      <th className="text-left px-4 py-2.5">Status</th>
-                      <th className="text-left px-4 py-2.5">White</th>
-                      <th className="text-left px-4 py-2.5">Black</th>
+                      <SortHeader k="white" label="White" />
+                      <SortHeader k="black" label="Black" />
                       <th className="text-left px-4 py-2.5">Turn</th>
-                      <th className="text-left px-4 py-2.5">Moves</th>
+                      <SortHeader k="moves" label="Moves" />
+                      <th className="text-left px-4 py-2.5">Elapsed</th>
                       <th className="text-left px-4 py-2.5">Winner</th>
                       <th className="text-left px-4 py-2.5">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginated.map((g) => (
-                      <tr key={g.id} className="border-b border-[#222] last:border-0 hover:bg-[#222]">
+                      <tr key={g.id} className={`border-b border-[#222] last:border-0 hover:bg-[#222] ${g.status === 'active' ? 'bg-green-900/10' : ''}`}>
                         <td className="px-2 py-2.5 text-center">
                           {(g.status === 'active' || g.status === 'waiting') && (
                             <button onClick={() => toggleOne(g.id)} className="text-[#888] hover:text-[#ccc]">
@@ -172,26 +203,29 @@ export default function GamesTab() {
                             </button>
                           )}
                         </td>
-                        <td className="px-4 py-2.5 font-mono">{g.id.slice(0, 8)}&hellip;</td>
                         <td className="px-4 py-2.5">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${statusColors[g.status] || 'bg-gray-800 text-gray-400'}`}
-                          >
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${statusColors[g.status] || 'bg-gray-800 text-gray-400'}`}>
                             {g.status}
                           </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <button onClick={() => navigate('replay', { gameId: g.id })}
+                            className="font-mono text-[#4a9eff] hover:underline flex items-center gap-1">
+                            {g.id.slice(0, 8)}… <ExternalLink size={10} />
+                          </button>
                         </td>
                         <td className="px-4 py-2.5">{g.white}</td>
                         <td className="px-4 py-2.5">{g.black}</td>
                         <td className="px-4 py-2.5 capitalize">{g.turn}</td>
                         <td className="px-4 py-2.5">{g.moves}</td>
-                        <td className="px-4 py-2.5">{g.winner || '\u2014'}</td>
+                        <td className="px-4 py-2.5 text-xs text-[#888]">
+                          {g.status === 'active' || g.status === 'waiting' ? elapsed(g.createdAt) : '—'}
+                        </td>
+                        <td className="px-4 py-2.5">{g.winner || '—'}</td>
                         <td className="px-4 py-2.5">
                           {(g.status === 'active' || g.status === 'waiting') && (
-                            <button
-                              onClick={() => handleEndGame(g.id)}
-                              disabled={ending === g.id}
-                              className="flex items-center gap-1 px-2.5 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50"
-                            >
+                            <button onClick={() => handleEndGame(g.id)} disabled={ending === g.id}
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50">
                               {ending === g.id ? <RotateCcw size={12} className="animate-spin" /> : <Flag size={12} />}
                               End
                             </button>

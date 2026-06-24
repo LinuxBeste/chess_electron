@@ -14,6 +14,18 @@ import { ipRateLimitMiddleware } from './routes.js';
 import { hashPassword, verifyPassword } from './game.js';
 import { passwordSchema, displayNameSchema, ipSchema, statsValueSchema, broadcastMessageSchema } from './validation.js';
 import { isWeakPassword as checkWeakPassword } from './password-strength.js';
+import { wsConnections, spectatorConnections, playerGameIndex } from './state.js';
+
+const dbLatencyHistory: number[] = [];
+const MAX_LATENCY_SAMPLES = 60;
+
+let prevWsTotalConnections = 0;
+let wsDisconnectEvents = 0;
+setInterval(() => {
+  const now = Array.from(wsConnections.values()).reduce((s, set) => s + set.size, 0);
+  if (now < prevWsTotalConnections) wsDisconnectEvents += prevWsTotalConnections - now;
+  prevWsTotalConnections = now;
+}, 5000);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -381,19 +393,27 @@ router.get('/admin/api/games', adminAuthMiddleware, async (_req: Request, res: R
   }
 });
 
-router.get('/admin/api/players', adminAuthMiddleware, (_req: Request, res: Response) => {
+router.get('/admin/api/players', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
     const allPlayers = game.getAllPlayers();
     const onlineIds = game.getOnlinePlayerIds();
-    const list = allPlayers.map((p) => ({
-      id: p.id,
-      username: p.username,
-      displayName: p.displayName,
-      isRegistered: p.isRegistered,
-      online: onlineIds.has(p.id),
-      tokens: p.tokens.length,
-      ip: game.getPlayerIp(p.id) || null,
-    }));
+    const registeredUsers = await db.loadAllUsers().catch(() => []);
+    const regMap = new Map(registeredUsers.map((u) => [u.id, u.created_at]));
+    const list = allPlayers.map((p) => {
+      const gameIdSet = playerGameIndex.get(p.id);
+      const currentGameId = gameIdSet && gameIdSet.size > 0 ? Array.from(gameIdSet)[0] : undefined;
+      return {
+        id: p.id,
+        username: p.username,
+        displayName: p.displayName,
+        isRegistered: p.isRegistered,
+        online: onlineIds.has(p.id),
+        tokens: p.tokens.length,
+        ip: game.getPlayerIp(p.id) || null,
+        registeredAt: p.isRegistered ? (regMap.get(p.id) ?? null) : null,
+        currentGameId,
+      };
+    });
     logger.info('Admin players listed: count=' + list.length + ' online=' + onlineIds.size);
     res.json(list);
   } catch (err) {
@@ -414,6 +434,7 @@ router.get('/admin/api/accounts', adminAuthMiddleware, async (_req: Request, res
       wins: u.wins,
       losses: u.losses,
       draws: u.draws,
+      rating: u.rating,
     }));
     logger.info('Admin accounts listed: count=' + list.length);
     res.json(list);
@@ -425,11 +446,18 @@ router.get('/admin/api/accounts', adminAuthMiddleware, async (_req: Request, res
 
 router.put('/admin/api/accounts/:id', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
-    const { username, displayName, wins, losses, draws } = req.body;
+    const { username, displayName, wins, losses, draws, rating } = req.body;
     const user = await db.getUserById(req.params.id);
     if (!user) {
       res.status(404).json({ error: 'Account not found' });
       return;
+    }
+
+    if (rating !== undefined) {
+      const r = parseInt(rating, 10);
+      if (!isNaN(r) && r >= 0 && r <= 4000) {
+        await db.updatePlayerRating(req.params.id, r);
+      }
     }
 
     if (username !== undefined) {
@@ -620,10 +648,11 @@ router.post('/admin/api/bans/ip', adminAuthMiddleware, async (req: Request, res:
   }
 });
 
-router.get('/admin/api/bans', adminAuthMiddleware, (_req: Request, res: Response) => {
+router.get('/admin/api/bans', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
-    const players = game.getBannedPlayers();
-    const ips = game.getBannedIps();
+    const allBans = await db.loadAllBans();
+    const players = allBans.filter((b) => b.player_id).map((b) => ({ id: b.player_id!, bannedAt: b.banned_at }));
+    const ips = allBans.filter((b) => b.ip).map((b) => ({ ip: b.ip!, bannedAt: b.banned_at }));
     logger.info('Admin bans listed: players=' + players.length + ' ips=' + ips.length);
     res.json({ players, ips });
   } catch (err) {
@@ -682,13 +711,18 @@ router.get('/admin/api/logs', adminAuthMiddleware, (req: Request, res: Response)
   if (type === 'all' || type === 'audit') result.audit = tailFile(path.join(LOG_DIR, `audit-${today}.log`), maxLines);
   if (type === 'all' || type === 'http') result.http = tailFile(path.join(LOG_DIR, `http-${today}.log`), maxLines);
 
-  let logFiles: string[] = [];
+  let logFiles: { name: string; size: number }[] = [];
   try {
     logFiles = fs
       .readdirSync(LOG_DIR)
       .filter((f) => f.endsWith('.log'))
       .sort()
-      .reverse();
+      .reverse()
+      .map((f) => {
+        let size = 0;
+        try { size = fs.statSync(path.join(LOG_DIR, f)).size; } catch { /* ok */ }
+        return { name: f, size };
+      });
   } catch {
     /* ok */
   }
@@ -703,8 +737,9 @@ router.get('/admin/api/leaderboard', adminAuthMiddleware, async (_req: Request, 
   try {
     const page = Math.max(1, parseInt(_req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string, 10) || 50));
+    const minGames = Math.max(0, parseInt(_req.query.minGames as string, 10) || 0);
     const offset = (page - 1) * limit;
-    const result = await db.getLeaderboard(limit, offset);
+    const result = await db.getLeaderboard(limit, offset, minGames);
     res.json({ entries: result.rows, total: result.total, page, limit });
   } catch (err) {
     logger.error('Admin leaderboard query failed: ' + err);
@@ -720,7 +755,9 @@ router.get('/admin/api/archive', adminAuthMiddleware, async (req: Request, res: 
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
     const player = req.query.player as string | undefined;
     const status = req.query.status as string | undefined;
-    const result = await db.getArchivedGames(page, limit, player, status);
+    const fromDate = req.query.fromDate ? parseInt(req.query.fromDate as string, 10) : undefined;
+    const toDate = req.query.toDate ? parseInt(req.query.toDate as string, 10) : undefined;
+    const result = await db.getArchivedGames(page, limit, player, status, fromDate, toDate);
     res.json({ games: result.rows, total: result.total, page, limit });
   } catch (err) {
     logger.error('Admin archive query failed: ' + err);
@@ -774,6 +811,28 @@ router.delete('/admin/api/tournaments/:id', adminAuthMiddleware, async (req: Req
   }
 });
 
+/* ─── Admin: Tournament Notify All Participants ─── */
+
+router.post('/admin/api/tournaments/:id/notify', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const t = await db.getTournament(req.params.id);
+    if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
+    const parsed = z.object({ message: z.string().min(1).max(500) }).safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: parsed.error.issues[0].message }); return; }
+    const participants = await db.getTournamentParticipants(req.params.id);
+    let sent = 0;
+    for (const _p of participants) {
+      const count = game.broadcastToAll({ type: 'tournament_notification', tournamentId: req.params.id, message: parsed.data.message, timestamp: Date.now() });
+      sent += count;
+    }
+    logger.audit('admin_tournament_notified', `tournament="${req.params.id}" message="${parsed.data.message}" by admin`);
+    res.json({ success: true, sentCount: sent, participantCount: participants.length });
+  } catch (err) {
+    logger.error('Admin tournament notify failed: ' + err);
+    res.status(500).json({ error: 'Failed to notify tournament participants' });
+  }
+});
+
 /* ─── Admin: Bot Games stats ─── */
 
 router.get('/admin/api/bot-games', adminAuthMiddleware, async (_req: Request, res: Response) => {
@@ -818,6 +877,9 @@ router.post('/admin/api/broadcast', adminAuthMiddleware, (req: Request, res: Res
 /* ─── Admin: Server config ─── */
 
 router.get('/admin/api/config', adminAuthMiddleware, (_req: Request, res: Response) => {
+  function source(key: string, _def: string): 'env' | 'default' {
+    return process.env[key] !== undefined ? 'env' : 'default';
+  }
   res.json({
     maxGamesPerPlayer: parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '20', 10),
     rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10),
@@ -827,7 +889,325 @@ router.get('/admin/api/config', adminAuthMiddleware, (_req: Request, res: Respon
     dbPath: process.env.DB_PATH || 'data/chess.db',
     nodeVersion: process.version,
     platform: process.platform,
+    _sources: {
+      maxGamesPerPlayer: source('MAX_GAMES_PER_PLAYER', '20'),
+      rateLimitWindowMs: source('RATE_LIMIT_WINDOW_MS', '60000'),
+      rateLimitMaxRequests: source('RATE_LIMIT_MAX_REQUESTS', '100'),
+      waitingTtl: source('WAITING_TTL_MINUTES', '10'),
+      dbPath: source('DB_PATH', 'data/chess.db'),
+    },
   });
+});
+
+/* ─── Admin: Create Account ─── */
+
+router.post('/admin/api/accounts', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const parsed = z
+      .object({
+        username: z.string().min(2).max(30),
+        password: z.string().min(4),
+        displayName: z.string().min(1).max(50).optional(),
+      })
+      .safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const { username, password, displayName } = parsed.data;
+    const existing = await db.getUserByUsername(username);
+    if (existing) {
+      res.status(409).json({ error: 'Username already exists' });
+      return;
+    }
+    const id = uuidv4();
+    const salt = crypto.randomBytes(16).toString('hex');
+    const key = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+    await db.createUser(id, username, `${salt}:${key}`, displayName || username);
+    logger.audit('admin_account_created', `account="${id}" username="${username}" by admin`);
+    res.json({ success: true, id });
+  } catch (err) {
+    logger.error('Admin create account failed: ' + err);
+    res.status(500).json({ error: 'Failed to create account' });
+  }
+});
+
+/* ─── Admin: View User's Games ─── */
+
+router.get('/admin/api/accounts/:id/games', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = await db.getUserById(req.params.id);
+    if (!user) {
+      res.status(404).json({ error: 'Account not found' });
+      return;
+    }
+    const activeGames = await game.getPlayerGames(req.params.id);
+    const archiveResult = await db.getArchivedGames(1, 100, req.params.id);
+    const completedGames = archiveResult.rows.map((g) => ({
+      id: g.id,
+      white: g.white_display_name || g.white_player_id,
+      black: g.black_display_name || g.black_player_id,
+      winner: g.winner,
+      status: g.status,
+      playedAt: g.played_at,
+      pgn: g.pgn,
+    }));
+    res.json({
+      active: activeGames.map((g) => ({
+        id: g.id,
+        status: g.status,
+        white: g.whiteName || g.players.white || '—',
+        black: g.blackName || g.players.black || '—',
+        turn: g.turn,
+        moves: g.moveHistory.length,
+        createdAt: g.createdAt,
+      })),
+      completed: completedGames,
+      totalCompleted: archiveResult.total,
+    });
+  } catch (err) {
+    logger.error('Admin user games query failed: ' + err);
+    res.status(500).json({ error: 'Failed to load user games' });
+  }
+});
+
+/* ─── Admin: Impersonate User ─── */
+
+router.post('/admin/api/accounts/:id/impersonate', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = await db.getUserById(req.params.id);
+    if (!user) {
+      res.status(404).json({ error: 'Account not found' });
+      return;
+    }
+    const token = game.addToken(req.params.id);
+    if (!token) {
+      res.status(400).json({ error: 'User is not currently logged in' });
+      return;
+    }
+    logger.audit('admin_impersonate', `account="${req.params.id}" by admin`);
+    res.json({ token, userId: req.params.id, username: user.username });
+  } catch (err) {
+    logger.error('Admin impersonate failed: ' + err);
+    res.status(500).json({ error: 'Failed to impersonate user' });
+  }
+});
+
+/* ─── Admin: Tournament Edit ─── */
+
+router.put('/admin/api/tournaments/:id', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const t = await db.getTournament(req.params.id);
+    if (!t) {
+      res.status(404).json({ error: 'Tournament not found' });
+      return;
+    }
+    const parsed = z
+      .object({
+        name: z.string().min(1).max(100).optional(),
+        maxPlayers: z.number().int().min(2).max(256).optional(),
+        status: z.enum(['waiting', 'running', 'completed']).optional(),
+      })
+      .safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const { name, maxPlayers, status } = parsed.data;
+    if (name !== undefined || maxPlayers !== undefined) {
+      await db.updateTournamentDetails(
+        req.params.id,
+        name || t.name,
+        maxPlayers || t.max_players,
+        t.is_private ? 1 : 0,
+      );
+    }
+    if (status !== undefined) {
+      await db.updateTournamentStatus(req.params.id, status);
+    }
+    logger.audit('admin_tournament_updated', `tournament="${req.params.id}" by admin`);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Admin tournament update failed: ' + err);
+    res.status(500).json({ error: 'Failed to update tournament' });
+  }
+});
+
+/* ─── Admin: Tournament Force Start ─── */
+
+router.post('/admin/api/tournaments/:id/force-start', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const t = await db.getTournament(req.params.id);
+    if (!t) {
+      res.status(404).json({ error: 'Tournament not found' });
+      return;
+    }
+    if (t.status !== 'waiting') {
+      res.status(400).json({ error: 'Tournament is not in waiting status' });
+      return;
+    }
+    await db.updateTournamentStatus(req.params.id, 'running', Date.now());
+    logger.audit('admin_tournament_force_started', `tournament="${req.params.id}" by admin`);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Admin tournament force start failed: ' + err);
+    res.status(500).json({ error: 'Failed to force start tournament' });
+  }
+});
+
+/* ─── Admin: WebSocket Monitor ─── */
+
+router.get('/admin/api/ws', adminAuthMiddleware, (_req: Request, res: Response) => {
+  try {
+    const playerConnections: { playerId: string; username: string; connectionCount: number }[] = [];
+    for (const [playerId, sockets] of wsConnections) {
+      if (sockets.size > 0) {
+        const player = game.getAllPlayers().find((p) => p.id === playerId);
+        playerConnections.push({
+          playerId,
+          username: player?.username || player?.displayName || playerId.slice(0, 8),
+          connectionCount: sockets.size,
+        });
+      }
+    }
+    const spectatorConnectionsList: { gameId: string; connectionCount: number }[] = [];
+    for (const [gameId, sockets] of spectatorConnections) {
+      if (sockets.size > 0) {
+        spectatorConnectionsList.push({ gameId, connectionCount: sockets.size });
+      }
+    }
+    const totalPlayerConns = playerConnections.reduce((sum, p) => sum + p.connectionCount, 0);
+    const totalSpecConns = spectatorConnectionsList.reduce((sum, s) => sum + s.connectionCount, 0);
+    logger.info('Admin WS monitor: players=' + playerConnections.length + ' specs=' + spectatorConnectionsList.length);
+    res.json({
+      totalPlayerConnections: totalPlayerConns,
+      totalSpectatorConnections: totalSpecConns,
+      connectedPlayers: playerConnections.length,
+      spectatedGames: spectatorConnectionsList.length,
+      players: playerConnections,
+      spectators: spectatorConnectionsList,
+      disconnectEvents: wsDisconnectEvents,
+    });
+  } catch (err) {
+    logger.error('Admin WS monitor failed: ' + err);
+    res.status(500).json({ error: 'Failed to get WS info' });
+  }
+});
+
+/* ─── Admin: Health Check ─── */
+
+router.get('/admin/api/health', adminAuthMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const pool = db.getDb();
+    const dbStart = Date.now();
+    await pool.query('SELECT 1');
+    const dbLatency = Date.now() - dbStart;
+    const { gamesActive, playersOnline } = game.getStats();
+    const memUsage = process.memoryUsage();
+    res.json({
+      status: 'ok',
+      database: { connected: true, latencyMs: dbLatency },
+      server: {
+        uptime: process.uptime(),
+        nodeVersion: process.version,
+        pid: process.pid,
+        memory: {
+          rss: memUsage.rss,
+          heapUsed: memUsage.heapUsed,
+          heapTotal: memUsage.heapTotal,
+        },
+      },
+      game: {
+        activeGames: gamesActive,
+        onlinePlayers: playersOnline,
+      },
+      timestamp: Date.now(),
+    });
+  } catch (err) {
+    logger.error('Admin health check failed: ' + err);
+    res.status(500).json({
+      status: 'error',
+      error: String(err),
+      database: { connected: false },
+      timestamp: Date.now(),
+    });
+  }
+});
+
+/* ─── Admin: Health History (DB latency) ─── */
+
+router.get('/admin/api/health/history', adminAuthMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const pool = db.getDb();
+    const start = Date.now();
+    await pool.query('SELECT 1');
+    const latency = Date.now() - start;
+    dbLatencyHistory.push(latency);
+    if (dbLatencyHistory.length > MAX_LATENCY_SAMPLES) dbLatencyHistory.shift();
+    res.json({ history: dbLatencyHistory });
+  } catch (err) {
+    logger.error('Admin health history failed: ' + err);
+    res.status(500).json({ error: 'Failed to get health history' });
+  }
+});
+
+/* ─── Admin: Database Browser - List Tables ─── */
+
+router.get('/admin/api/db/tables', adminAuthMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const pool = db.getDb();
+    const { rows } = await pool.query(`
+      SELECT 
+        table_name,
+        (SELECT reltuples::bigint FROM pg_class WHERE oid = (quote_ident(table_name))::regclass) as row_count
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      ORDER BY table_name
+    `);
+    res.json({ tables: rows.map((r: { table_name: string; row_count: number | null }) => ({
+      name: r.table_name,
+      estimatedRows: r.row_count || 0,
+    })) });
+  } catch (err) {
+    logger.error('Admin DB tables query failed: ' + err);
+    res.status(500).json({ error: 'Failed to list tables' });
+  }
+});
+
+/* ─── Admin: Database Browser - Execute Query ─── */
+
+router.post('/admin/api/db/query', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const parsed = z.object({ sql: z.string().min(1).max(5000) }).safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const sql = parsed.data.sql.trim();
+    const upper = sql.toUpperCase();
+    if (!upper.startsWith('SELECT') && !upper.startsWith('EXPLAIN') && !upper.startsWith('WITH')) {
+      res.status(403).json({ error: 'Only SELECT queries are allowed' });
+      return;
+    }
+    if (/(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE)\s/i.test(sql)) {
+      res.status(403).json({ error: 'Write queries are not allowed' });
+      return;
+    }
+    const pool = db.getDb();
+    const startTime = Date.now();
+    const { rows, fields } = await pool.query({ text: sql, rowMode: 'array' });
+    const elapsed = Date.now() - startTime;
+    const columnNames = fields ? fields.map((f: { name: string }) => f.name) : [];
+    res.json({
+      columns: columnNames,
+      rows: rows.slice(0, 500),
+      totalRows: rows.length,
+      elapsedMs: elapsed,
+    });
+  } catch (err) {
+    logger.error('Admin DB query failed: ' + err);
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 export default router;

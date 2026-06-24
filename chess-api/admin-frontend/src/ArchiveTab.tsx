@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Archive } from 'lucide-react';
+import { Archive, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { api } from './api';
 import Pagination from './Pagination';
 import SearchBar from './SearchBar';
+import { useNavigateTab } from './TabContext';
 
 interface ArchiveGame {
   id: string;
@@ -16,7 +17,18 @@ interface ArchiveGame {
   pgn: string | null;
 }
 
-export default function ArchiveTab() {
+function fmtDuration(playedAt: number): string {
+  const diff = Math.floor((Date.now() - playedAt) / 1000);
+  const d = Math.floor(diff / 86400);
+  const h = Math.floor((diff % 86400) / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  if (d > 0) return `${d}d ago`;
+  if (h > 0) return `${h}h ago`;
+  if (m > 0) return `${m}m ago`;
+  return 'Just now';
+}
+
+export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }) {
   const [games, setGames] = useState<ArchiveGame[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -24,11 +36,19 @@ export default function ArchiveTab() {
   const [error, setError] = useState('');
   const [player, setPlayer] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [expandedPgn, setExpandedPgn] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState('date');
+  const [sortAsc, setSortAsc] = useState(false);
+  const navigate = useNavigateTab();
 
   function load() {
     let path = '/archive?page=' + page + '&limit=' + limit;
     if (player) path += '&player=' + encodeURIComponent(player);
     if (statusFilter) path += '&status=' + encodeURIComponent(statusFilter);
+    if (fromDate) path += '&fromDate=' + encodeURIComponent(fromDate);
+    if (toDate) path += '&toDate=' + encodeURIComponent(toDate);
     api<{ games: ArchiveGame[]; total: number }>(path)
       .then((d) => {
         setGames(d.games);
@@ -37,7 +57,9 @@ export default function ArchiveTab() {
       .catch((e) => setError(e.message));
   }
 
-  useEffect(load, [page, limit, player, statusFilter]);
+  useEffect(() => { if (initialPlayer) setPlayer(initialPlayer); }, [initialPlayer]);
+
+  useEffect(load, [page, limit, player, statusFilter, fromDate, toDate]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -56,18 +78,26 @@ export default function ArchiveTab() {
             Game Archive
             <span className="text-xs font-normal text-[#666]">({total} games)</span>
           </h2>
-          <div className="flex gap-2">
-            <div className="w-44">
-              <SearchBar value={player} onChange={setPlayer} placeholder="Filter by player ID..." />
+          <div className="flex gap-2 items-center">
+            <input type="date" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
+              className="px-2 py-1.5 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" />
+            <span className="text-xs text-[#555]">to</span>
+            <input type="date" value={toDate} onChange={(e) => { setToDate(e.target.value); setPage(1); }}
+              className="px-2 py-1.5 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" />
+            <div className="w-48">
+              <SearchBar value={player} onChange={setPlayer} placeholder="Filter by player..."
+                sortOptions={[
+                  { key: 'date', label: 'Date' },
+                  { key: 'white', label: 'White' },
+                  { key: 'black', label: 'Black' },
+                ]}
+                sortKey={sortKey}
+                sortAsc={sortAsc}
+                onSortChange={(k, a) => { setSortKey(k); setSortAsc(a); }}
+              />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPage(1);
-              }}
-              className="px-3 py-2 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
-            >
+            <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+              className="px-3 py-2 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]">
               <option value="">All results</option>
               <option value="checkmate">Checkmate</option>
               <option value="resigned">Resigned</option>
@@ -78,7 +108,15 @@ export default function ArchiveTab() {
         </div>
 
         <div className="p-4">
-          {games.length === 0 ? (
+          {(() => {
+          const sortedGames = [...games].sort((a, b) => {
+            const dir = sortAsc ? 1 : -1;
+            if (sortKey === 'date') return (a.played_at - b.played_at) * dir;
+            if (sortKey === 'white') return (a.white_display_name || a.white_player_id).localeCompare(b.white_display_name || b.white_player_id) * dir;
+            if (sortKey === 'black') return (a.black_display_name || a.black_player_id).localeCompare(b.black_display_name || b.black_player_id) * dir;
+            return 0;
+          });
+          return games.length === 0 ? (
             <p className="text-[#666] text-center py-8">No archived games found.</p>
           ) : (
             <>
@@ -91,13 +129,19 @@ export default function ArchiveTab() {
                       <th className="text-left px-4 py-2.5">Black</th>
                       <th className="text-center px-3 py-2.5">Result</th>
                       <th className="text-left px-3 py-2.5">Date</th>
+                      <th className="text-left px-3 py-2.5">Duration</th>
                       <th className="text-center px-3 py-2.5">PGN</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {games.map((g) => (
+                    {sortedGames.map((g) => (
                       <tr key={g.id} className="border-b border-[#222] last:border-0 hover:bg-[#222]">
-                        <td className="px-4 py-2.5 font-mono">{g.id.slice(0, 8)}&hellip;</td>
+                        <td className="px-4 py-2.5 font-mono">
+                          <button onClick={() => navigate('replay', { gameId: g.id })}
+                            className="text-[#4a9eff] hover:underline flex items-center gap-1">
+                            {g.id.slice(0, 8)}… <ExternalLink size={10} />
+                          </button>
+                        </td>
                         <td className="px-4 py-2.5">{g.white_display_name || g.white_player_id.slice(0, 8)}</td>
                         <td className="px-4 py-2.5">{g.black_display_name || g.black_player_id.slice(0, 8)}</td>
                         <td className="px-3 py-2.5 text-center">
@@ -106,20 +150,23 @@ export default function ArchiveTab() {
                           ) : g.winner === g.black_player_id ? (
                             <span className="text-green-400 font-semibold">0-1</span>
                           ) : (
-                            <span className="text-yellow-400 font-semibold">&frac12;-&frac12;</span>
+                            <span className="text-yellow-400 font-semibold">½-½</span>
                           )}
                         </td>
                         <td className="px-3 py-2.5 text-xs text-[#888]">{fmtDate(g.played_at)}</td>
+                        <td className="px-3 py-2.5 text-xs text-[#888]">{fmtDuration(g.played_at)}</td>
                         <td className="px-3 py-2.5 text-center">
                           {g.pgn ? (
-                            <button
-                              onClick={() => navigator.clipboard.writeText(g.pgn!)}
-                              className="text-xs text-[#4a9eff] hover:underline"
-                            >
-                              Copy
-                            </button>
+                            <div className="flex items-center justify-center gap-1">
+                              <button onClick={() => navigator.clipboard.writeText(g.pgn!)}
+                                className="text-xs text-[#4a9eff] hover:underline">Copy</button>
+                              <button onClick={() => setExpandedPgn(expandedPgn === g.id ? null : g.id)}
+                                className="text-[#888] hover:text-[#ccc]">
+                                {expandedPgn === g.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                              </button>
+                            </div>
                           ) : (
-                            <span className="text-xs text-[#555]">&mdash;</span>
+                            <span className="text-xs text-[#555]">—</span>
                           )}
                         </td>
                       </tr>
@@ -127,9 +174,21 @@ export default function ArchiveTab() {
                   </tbody>
                 </table>
               </div>
+
+              {expandedPgn && (() => {
+                const g = games.find((x) => x.id === expandedPgn);
+                if (!g || !g.pgn) return null;
+                return (
+                  <div className="mt-3 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg p-4">
+                    <pre className="text-xs font-mono text-[#ccc] whitespace-pre-wrap">{g.pgn}</pre>
+                  </div>
+                );
+              })()}
+
               <Pagination page={page} totalPages={totalPages} onChange={setPage} />
             </>
-          )}
+          );
+        })()}
         </div>
       </div>
     </div>

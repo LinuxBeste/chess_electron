@@ -1797,3 +1797,352 @@ describe('Admin API — bot games & tournaments', () => {
     await request.delete('/admin/api/tournaments/non-existent').set('Authorization', adminAuth).expect(404);
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  New Admin API Endpoints                                              */
+/* ------------------------------------------------------------------ */
+
+describe('Admin API — create account', () => {
+  let adminAuth: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
+    adminAuth = `Bearer ${res.body.token}`;
+  });
+
+  test('POST /admin/api/accounts creates a new account', async () => {
+    const res = await request
+      .post('/admin/api/accounts')
+      .set('Authorization', adminAuth)
+      .send({ username: 'admin_created', password: 'pass1234', displayName: 'Admin Created' })
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body).toHaveProperty('id');
+
+    const list = await request.get('/admin/api/accounts').set('Authorization', adminAuth).expect(200);
+    expect(list.body.some((a: { username: string }) => a.username === 'admin_created')).toBe(true);
+  });
+
+  test('POST /admin/api/accounts rejects duplicate username', async () => {
+    await request
+      .post('/admin/api/accounts')
+      .set('Authorization', adminAuth)
+      .send({ username: 'admin_created', password: 'pass1234' })
+      .expect(409);
+  });
+
+  test('POST /admin/api/accounts rejects short password', async () => {
+    await request
+      .post('/admin/api/accounts')
+      .set('Authorization', adminAuth)
+      .send({ username: 'admin_pw', password: 'ab' })
+      .expect(400);
+  });
+
+  test('POST /admin/api/accounts rejects short username', async () => {
+    await request
+      .post('/admin/api/accounts')
+      .set('Authorization', adminAuth)
+      .send({ username: 'x', password: 'pass1234' })
+      .expect(400);
+  });
+
+  test('POST /admin/api/accounts rejects missing password', async () => {
+    await request
+      .post('/admin/api/accounts')
+      .set('Authorization', adminAuth)
+      .send({ username: 'admin_nopw' })
+      .expect(400);
+  });
+
+  test('POST /admin/api/accounts rejects missing auth', async () => {
+    await request.post('/admin/api/accounts').send({ username: 'x', password: 'pass1234' }).expect(401);
+  });
+});
+
+describe('Admin API — user games', () => {
+  let adminAuth: string;
+  let playerAuth: string;
+  let playerId: string;
+
+  beforeAll(async () => {
+    const aRes = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
+    adminAuth = `Bearer ${aRes.body.token}`;
+    const pRes = await request.post('/auth/register').send({ username: 'adm_ug', password: 'test1234' }).expect(201);
+    playerAuth = `Bearer ${pRes.body.token}`;
+    playerId = pRes.body.playerId;
+  });
+
+  test('GET /admin/api/accounts/:id/games returns empty for new player', async () => {
+    const res = await request.get(`/admin/api/accounts/${playerId}/games`).set('Authorization', adminAuth).expect(200);
+    expect(res.body).toHaveProperty('active');
+    expect(res.body).toHaveProperty('completed');
+    expect(Array.isArray(res.body.active)).toBe(true);
+    expect(Array.isArray(res.body.completed)).toBe(true);
+  });
+
+  test('GET /admin/api/accounts/:id/games returns 404 for non-existent', async () => {
+    await request.get('/admin/api/accounts/non-existent/games').set('Authorization', adminAuth).expect(404);
+  });
+
+  test('GET /admin/api/accounts/:id/games requires auth', async () => {
+    await request.get(`/admin/api/accounts/${playerId}/games`).expect(401);
+  });
+});
+
+describe('Admin API — impersonate', () => {
+  let adminAuth: string;
+  let playerId: string;
+
+  beforeAll(async () => {
+    const aRes = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
+    adminAuth = `Bearer ${aRes.body.token}`;
+    const pRes = await request.post('/auth/register').send({ username: 'adm_imp', password: 'test1234' }).expect(201);
+    playerId = pRes.body.playerId;
+  });
+
+  test('POST /admin/api/accounts/:id/impersonate returns a token', async () => {
+    const res = await request
+      .post(`/admin/api/accounts/${playerId}/impersonate`)
+      .set('Authorization', adminAuth)
+      .expect(200);
+    expect(res.body).toHaveProperty('token');
+    expect(res.body).toHaveProperty('userId', playerId);
+    expect(res.body).toHaveProperty('username');
+    expect(typeof res.body.token).toBe('string');
+
+    const me = await request.get('/auth/me').set('Authorization', `Bearer ${res.body.token}`).expect(200);
+    expect(me.body.id).toBe(playerId);
+  });
+
+  test('POST /admin/api/accounts/:id/impersonate returns 404 for non-existent', async () => {
+    await request.post('/admin/api/accounts/non-existent/impersonate').set('Authorization', adminAuth).expect(404);
+  });
+
+  test('POST /admin/api/accounts/:id/impersonate requires auth', async () => {
+    await request.post(`/admin/api/accounts/${playerId}/impersonate`).expect(401);
+  });
+});
+
+describe('Admin API — tournament edit & force start', () => {
+  let adminAuth: string;
+  let playerAuth: string;
+  let tournamentId: string;
+
+  beforeAll(async () => {
+    const aRes = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
+    adminAuth = `Bearer ${aRes.body.token}`;
+    const pRes = await request.post('/auth/register').send({ username: 'adm_tedit', password: 'test1234' }).expect(201);
+    playerAuth = `Bearer ${pRes.body.token}`;
+    const tRes = await request
+      .post('/tournaments')
+      .set('Authorization', playerAuth)
+      .send({ name: 'Admin Edit Test', maxPlayers: 8 })
+      .expect(201);
+    tournamentId = tRes.body.id;
+  });
+
+  test('PUT /admin/api/tournaments/:id edits name and maxPlayers', async () => {
+    await request
+      .put(`/admin/api/tournaments/${tournamentId}`)
+      .set('Authorization', adminAuth)
+      .send({ name: 'Admin Edited', maxPlayers: 16 })
+      .expect(200);
+
+    const detail = await request
+      .get(`/admin/api/tournaments/${tournamentId}`)
+      .set('Authorization', adminAuth)
+      .expect(200);
+    expect(detail.body.name).toBe('Admin Edited');
+    expect(detail.body.max_players).toBe(16);
+  });
+
+  test('PUT /admin/api/tournaments/:id edits status', async () => {
+    await request
+      .put(`/admin/api/tournaments/${tournamentId}`)
+      .set('Authorization', adminAuth)
+      .send({ status: 'completed' })
+      .expect(200);
+
+    const detail = await request
+      .get(`/admin/api/tournaments/${tournamentId}`)
+      .set('Authorization', adminAuth)
+      .expect(200);
+    expect(detail.body.status).toBe('completed');
+  });
+
+  test('PUT /admin/api/tournaments/:id returns 404 for non-existent', async () => {
+    await request
+      .put('/admin/api/tournaments/non-existent')
+      .set('Authorization', adminAuth)
+      .send({ name: 'X' })
+      .expect(404);
+  });
+
+  test('POST /admin/api/tournaments/:id/force-start force starts a waiting tournament', async () => {
+    const tRes = await request
+      .post('/tournaments')
+      .set('Authorization', playerAuth)
+      .send({ name: 'Force Start Me', maxPlayers: 4 })
+      .expect(201);
+    const id = tRes.body.id;
+
+    const res = await request
+      .post(`/admin/api/tournaments/${id}/force-start`)
+      .set('Authorization', adminAuth)
+      .expect(200);
+    expect(res.body.success).toBe(true);
+
+    const detail = await request.get(`/admin/api/tournaments/${id}`).set('Authorization', adminAuth).expect(200);
+    expect(detail.body.status).toBe('running');
+  });
+
+  test('POST /admin/api/tournaments/:id/force-start rejects non-waiting tournament', async () => {
+    const tRes = await request
+      .post('/tournaments')
+      .set('Authorization', playerAuth)
+      .send({ name: 'Already Running', maxPlayers: 4 })
+      .expect(201);
+    const id = tRes.body.id;
+
+    const joinerRes = await request
+      .post('/auth/register')
+      .send({ username: 'adm_ts_join_' + Date.now(), password: 'test1234' })
+      .expect(201);
+    const joinerAuth = `Bearer ${joinerRes.body.token}`;
+
+    await request.post(`/tournaments/${id}/join`).set('Authorization', joinerAuth).expect(200);
+    await request.post(`/tournaments/${id}/start`).set('Authorization', playerAuth).expect(200);
+
+    await request.post(`/admin/api/tournaments/${id}/force-start`).set('Authorization', adminAuth).expect(400);
+  });
+
+  test('POST /admin/api/tournaments/:id/force-start returns 404 for non-existent', async () => {
+    await request.post('/admin/api/tournaments/non-existent/force-start').set('Authorization', adminAuth).expect(404);
+  });
+});
+
+describe('Admin API — WS monitor', () => {
+  let adminAuth: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
+    adminAuth = `Bearer ${res.body.token}`;
+  });
+
+  test('GET /admin/api/ws returns connection info', async () => {
+    const res = await request.get('/admin/api/ws').set('Authorization', adminAuth).expect(200);
+    expect(res.body).toHaveProperty('totalPlayerConnections');
+    expect(res.body).toHaveProperty('totalSpectatorConnections');
+    expect(res.body).toHaveProperty('connectedPlayers');
+    expect(res.body).toHaveProperty('spectatedGames');
+    expect(res.body).toHaveProperty('players');
+    expect(res.body).toHaveProperty('spectators');
+    expect(typeof res.body.totalPlayerConnections).toBe('number');
+    expect(typeof res.body.connectedPlayers).toBe('number');
+    expect(Array.isArray(res.body.players)).toBe(true);
+    expect(Array.isArray(res.body.spectators)).toBe(true);
+  });
+
+  test('GET /admin/api/ws requires auth', async () => {
+    await request.get('/admin/api/ws').expect(401);
+  });
+});
+
+describe('Admin API — health check', () => {
+  let adminAuth: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
+    adminAuth = `Bearer ${res.body.token}`;
+  });
+
+  test('GET /admin/api/health returns health status', async () => {
+    const res = await request.get('/admin/api/health').set('Authorization', adminAuth).expect(200);
+    expect(res.body).toHaveProperty('status', 'ok');
+    expect(res.body).toHaveProperty('database');
+    expect(res.body.database).toHaveProperty('connected', true);
+    expect(res.body.database).toHaveProperty('latencyMs');
+    expect(typeof res.body.database.latencyMs).toBe('number');
+    expect(res.body).toHaveProperty('server');
+    expect(res.body.server).toHaveProperty('uptime');
+    expect(res.body.server).toHaveProperty('nodeVersion');
+    expect(res.body.server).toHaveProperty('pid');
+    expect(res.body.server).toHaveProperty('memory');
+    expect(res.body).toHaveProperty('game');
+    expect(res.body.game).toHaveProperty('activeGames');
+    expect(res.body.game).toHaveProperty('onlinePlayers');
+    expect(res.body).toHaveProperty('timestamp');
+  });
+
+  test('GET /admin/api/health requires auth', async () => {
+    await request.get('/admin/api/health').expect(401);
+  });
+});
+
+describe('Admin API — DB browser (tables & query)', () => {
+  let adminAuth: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' });
+    adminAuth = `Bearer ${res.body.token}`;
+  });
+
+  test('GET /admin/api/db/tables returns table list', async () => {
+    const res = await request.get('/admin/api/db/tables').set('Authorization', adminAuth).expect(200);
+    expect(res.body).toHaveProperty('tables');
+    expect(Array.isArray(res.body.tables)).toBe(true);
+    expect(res.body.tables.length).toBeGreaterThan(0);
+    for (const t of res.body.tables) {
+      expect(t).toHaveProperty('name');
+      expect(t).toHaveProperty('estimatedRows');
+      expect(typeof t.name).toBe('string');
+    }
+    expect(res.body.tables.some((t: { name: string }) => t.name === 'users')).toBe(true);
+  });
+
+  test('POST /admin/api/db/query runs SELECT and returns results', async () => {
+    const res = await request
+      .post('/admin/api/db/query')
+      .set('Authorization', adminAuth)
+      .send({ sql: 'SELECT * FROM users LIMIT 5' })
+      .expect(200);
+    expect(res.body).toHaveProperty('columns');
+    expect(res.body).toHaveProperty('rows');
+    expect(res.body).toHaveProperty('totalRows');
+    expect(res.body).toHaveProperty('elapsedMs');
+    expect(Array.isArray(res.body.columns)).toBe(true);
+    expect(Array.isArray(res.body.rows)).toBe(true);
+    expect(res.body.columns.length).toBeGreaterThan(0);
+  });
+
+  test('POST /admin/api/db/query rejects write queries', async () => {
+    await request
+      .post('/admin/api/db/query')
+      .set('Authorization', adminAuth)
+      .send({ sql: 'DELETE FROM users' })
+      .expect(403);
+    await request
+      .post('/admin/api/db/query')
+      .set('Authorization', adminAuth)
+      .send({ sql: 'INSERT INTO users (id) VALUES (\'x\')' })
+      .expect(403);
+    await request
+      .post('/admin/api/db/query')
+      .set('Authorization', adminAuth)
+      .send({ sql: 'DROP TABLE users' })
+      .expect(403);
+  });
+
+  test('POST /admin/api/db/query rejects empty sql', async () => {
+    await request.post('/admin/api/db/query').set('Authorization', adminAuth).send({ sql: '' }).expect(400);
+  });
+
+  test('POST /admin/api/db/query requires auth', async () => {
+    await request.post('/admin/api/db/query').send({ sql: 'SELECT 1' }).expect(401);
+  });
+
+  test('GET /admin/api/db/tables requires auth', async () => {
+    await request.get('/admin/api/db/tables').expect(401);
+  });
+});

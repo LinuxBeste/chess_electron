@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Trophy } from 'lucide-react';
+import { Trophy, Filter } from 'lucide-react';
 import { api } from './api';
 import Pagination from './Pagination';
 import SearchBar from './SearchBar';
+import { useNavigateTab } from './TabContext';
 
 interface LeaderboardEntry {
   rank: number;
@@ -15,6 +16,13 @@ interface LeaderboardEntry {
   draws: number;
 }
 
+function ratingChange(entry: LeaderboardEntry): number | null {
+  const total = entry.wins + entry.losses + entry.draws;
+  if (total < 10) return null;
+  const expected = entry.wins / total;
+  return Math.round((expected - 0.5) * 100);
+}
+
 export default function LeaderboardTab() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [total, setTotal] = useState(0);
@@ -22,9 +30,16 @@ export default function LeaderboardTab() {
   const [limit] = useState(20);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [minGames, setMinGames] = useState('');
+  const [sortKey, setSortKey] = useState('rank');
+  const [sortAsc, setSortAsc] = useState(true);
+  const navigate = useNavigateTab();
 
   function load() {
-    api<{ entries: LeaderboardEntry[]; total: number }>('/leaderboard?page=' + page + '&limit=' + limit)
+    let path = '/leaderboard?page=' + page + '&limit=' + limit;
+    const mg = parseInt(minGames, 10);
+    if (mg > 0) path += '&minGames=' + mg;
+    api<{ entries: LeaderboardEntry[]; total: number }>(path)
       .then((d) => {
         setEntries(d.entries);
         setTotal(d.total);
@@ -32,7 +47,7 @@ export default function LeaderboardTab() {
       .catch((e) => setError(e.message));
   }
 
-  useEffect(load, [page, limit]);
+  useEffect(load, [page, limit, minGames]);
 
   const filtered = query
     ? entries.filter(
@@ -41,6 +56,17 @@ export default function LeaderboardTab() {
           e.displayName?.toLowerCase().includes(query.toLowerCase()),
       )
     : entries;
+
+  const sorted = [...filtered].sort((a, b) => {
+    const dir = sortAsc ? 1 : -1;
+    if (sortKey === 'rank') return (a.rank - b.rank) * dir;
+    if (sortKey === 'rating') return (a.rating - b.rating) * dir;
+    if (sortKey === 'wins') return (a.wins - b.wins) * dir;
+    if (sortKey === 'games') return ((a.wins + a.losses + a.draws) - (b.wins + b.losses + b.draws)) * dir;
+    const va = String(a[sortKey as keyof typeof a] || '').toLowerCase();
+    const vb = String(b[sortKey as keyof typeof b] || '').toLowerCase();
+    return va.localeCompare(vb) * dir;
+  });
 
   const totalPages = Math.ceil(total / limit);
 
@@ -55,8 +81,27 @@ export default function LeaderboardTab() {
             Leaderboard
             <span className="text-xs font-normal text-[#666]">({total} players)</span>
           </h2>
-          <div className="w-56">
-            <SearchBar value={query} onChange={setQuery} placeholder="Filter by name..." />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Filter size={12} className="text-[#555]" />
+              <input type="number" min={0} value={minGames} onChange={(e) => { setMinGames(e.target.value); setPage(1); }}
+                placeholder="Min games"
+                className="w-20 px-2 py-1.5 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#e0e0e0] placeholder-[#555] focus:outline-none focus:border-[#4a9eff]" />
+            </div>
+            <div className="w-64">
+              <SearchBar value={query} onChange={setQuery} placeholder="Filter by name..."
+                sortOptions={[
+                  { key: 'rank', label: 'Rank' },
+                  { key: 'rating', label: 'Rating' },
+                  { key: 'wins', label: 'Wins' },
+                  { key: 'games', label: 'Games' },
+                  { key: 'username', label: 'Name' },
+                ]}
+                sortKey={sortKey}
+                sortAsc={sortAsc}
+                onSortChange={(k, a) => { setSortKey(k); setSortAsc(a); }}
+              />
+            </div>
           </div>
         </div>
 
@@ -72,6 +117,7 @@ export default function LeaderboardTab() {
                       <th className="text-center px-3 py-2.5 w-12">#</th>
                       <th className="text-left px-4 py-2.5">Player</th>
                       <th className="text-center px-3 py-2.5">Rating</th>
+                      <th className="text-center px-3 py-2.5">±</th>
                       <th className="text-center px-3 py-2.5">W</th>
                       <th className="text-center px-3 py-2.5">L</th>
                       <th className="text-center px-3 py-2.5">D</th>
@@ -79,25 +125,26 @@ export default function LeaderboardTab() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((e) => {
+                    {sorted.map((e) => {
                       const totalGames = e.wins + e.losses + e.draws;
                       const winPct = totalGames > 0 ? ((e.wins / totalGames) * 100).toFixed(1) : '—';
+                      const change = ratingChange(e);
                       const rankColor =
-                        e.rank === 1
-                          ? 'text-yellow-400'
-                          : e.rank === 2
-                            ? 'text-gray-300'
-                            : e.rank === 3
-                              ? 'text-amber-600'
-                              : 'text-[#666]';
+                        e.rank === 1 ? 'text-yellow-400' : e.rank === 2 ? 'text-gray-300' : e.rank === 3 ? 'text-amber-600' : 'text-[#666]';
                       return (
-                        <tr key={e.id} className="border-b border-[#222] last:border-0 hover:bg-[#222]">
+                        <tr key={e.id} className="border-b border-[#222] last:border-0 hover:bg-[#222] cursor-pointer"
+                          onClick={() => navigate('accounts')}>
                           <td className={`px-3 py-2.5 text-center font-bold ${rankColor}`}>{e.rank}</td>
                           <td className="px-4 py-2.5">
                             <div className="font-medium text-[#e0e0e0]">{e.displayName || e.username}</div>
                             {e.username && e.displayName && <div className="text-xs text-[#666]">@{e.username}</div>}
                           </td>
                           <td className="px-3 py-2.5 text-center font-semibold text-[#4a9eff]">{e.rating}</td>
+                          <td className={`px-3 py-2.5 text-center text-xs font-mono ${
+                            change === null ? 'text-[#555]' : change > 0 ? 'text-green-400' : 'text-red-400'
+                          }`}>
+                            {change === null ? '—' : change > 0 ? `+${change}` : change}
+                          </td>
                           <td className="px-3 py-2.5 text-center text-green-400">{e.wins}</td>
                           <td className="px-3 py-2.5 text-center text-red-400">{e.losses}</td>
                           <td className="px-3 py-2.5 text-center text-gray-400">{e.draws}</td>

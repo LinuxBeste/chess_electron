@@ -1,10 +1,25 @@
-import { useEffect, useState, useRef } from 'react';
-import { FileText, RotateCcw, Download } from 'lucide-react';
-import { api } from './api';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import { FileText, RotateCcw, Download, Search, Copy } from 'lucide-react';
+import { api, LogFileInfo } from './api';
 
 interface LogResponse {
   logs: Record<string, string[]>;
-  files: string[];
+  files: LogFileInfo[];
+}
+
+function highlightText(text: string, query: string): React.ReactNode {
+  if (!query) return text;
+  const lower = text.toLowerCase();
+  const q = query.toLowerCase();
+  const idx = lower.indexOf(q);
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span className="bg-yellow-500/30 text-yellow-200 rounded px-0.5">{text.slice(idx, idx + q.length)}</span>
+      {text.slice(idx + q.length)}
+    </>
+  );
 }
 
 export default function LogsTab() {
@@ -13,7 +28,10 @@ export default function LogsTab() {
   const [type, setType] = useState('all');
   const [lines, setLines] = useState(200);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [quickFilter, setQuickFilter] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const preRef = useRef<HTMLPreElement>(null);
 
   function load() {
     api<LogResponse>('/logs?type=' + type + '&lines=' + lines)
@@ -21,9 +39,7 @@ export default function LogsTab() {
       .catch((e) => setError(e.message));
   }
 
-  useEffect(() => {
-    load();
-  }, [type, lines]);
+  useEffect(() => { load(); }, [type, lines]);
 
   useEffect(() => {
     if (autoRefresh) {
@@ -32,115 +48,151 @@ export default function LogsTab() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [autoRefresh]);
 
-  function handleDownload(filename: string) {
-    const section = filename.startsWith('audit') ? 'audit' : filename.startsWith('http') ? 'http' : 'app';
+  useEffect(() => {
+    if (preRef.current) {
+      preRef.current.scrollTop = preRef.current.scrollHeight;
+    }
+  }, [data]);
+
+  function handleDownload(file: LogFileInfo) {
+    const section = file.name.startsWith('audit') ? 'audit' : file.name.startsWith('http') ? 'http' : 'app';
     const logLines = data?.logs[section];
     if (!logLines) return;
     const blob = new Blob([logLines.join('\n')], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename;
+    a.download = file.name;
     a.click();
     URL.revokeObjectURL(url);
   }
 
+  function handleCopyAll() {
+    const all: string[] = [];
+    if (filteredLogs?.app) all.push(...filteredLogs.app);
+    if (filteredLogs?.audit) all.push(...filteredLogs.audit);
+    if (filteredLogs?.http) all.push(...filteredLogs.http);
+    navigator.clipboard.writeText(all.join('\n'));
+  }
+
+  function fmtSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    return (bytes / 1024).toFixed(1) + ' KB';
+  }
+
+  const filteredLogs = useMemo(() => {
+    if (!data?.logs) return null;
+    const result: Record<string, string[]> = {};
+    for (const [key, lines] of Object.entries(data.logs)) {
+      let filtered = lines;
+      if (searchQuery) {
+        filtered = filtered.filter((l) => l.toLowerCase().includes(searchQuery.toLowerCase()));
+      }
+      if (quickFilter) {
+        filtered = filtered.filter((l) => l.includes(quickFilter));
+      }
+      result[key] = filtered;
+    }
+    return result;
+  }, [data, searchQuery, quickFilter]);
+
+  const levelFilters = ['[ERROR]', '[WARN]', '[INFO]', '[DEBUG]'];
+
   if (error) return <p className="text-red-500 text-sm">{error}</p>;
 
-  const hasApp = data?.logs?.app && data.logs.app.length > 0;
-  const hasAudit = data?.logs?.audit && data.logs.audit.length > 0;
-  const hasHttp = data?.logs?.http && data.logs.http.length > 0;
+  const hasApp = filteredLogs?.app && filteredLogs.app.length > 0;
+  const hasAudit = filteredLogs?.audit && filteredLogs.audit.length > 0;
+  const hasHttp = filteredLogs?.http && filteredLogs.http.length > 0;
 
   return (
     <div>
-      {/* Controls */}
       <div className="flex flex-wrap gap-3 items-center mb-4">
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className="px-3 py-1.5 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
-        >
+        <select value={type} onChange={(e) => setType(e.target.value)}
+          className="px-3 py-1.5 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]">
           <option value="all">All logs</option>
           <option value="app">App logs</option>
           <option value="audit">Audit logs</option>
           <option value="http">HTTP logs</option>
         </select>
 
-        <select
-          value={lines}
-          onChange={(e) => setLines(Number(e.target.value))}
-          className="px-3 py-1.5 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
-        >
+        <select value={lines} onChange={(e) => setLines(Number(e.target.value))}
+          className="px-3 py-1.5 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]">
           <option value={100}>100 lines</option>
           <option value={200}>200 lines</option>
           <option value={500}>500 lines</option>
           <option value={1000}>1000 lines</option>
         </select>
 
-        <button
-          onClick={load}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]"
-        >
-          <RotateCcw size={14} />
-          Refresh
+        <div className="relative flex-1 max-w-xs">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#555]" />
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search in logs..."
+            className="w-full pl-8 pr-3 py-1.5 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] placeholder-[#555] focus:outline-none focus:border-[#4a9eff]" />
+        </div>
+
+        <button onClick={load}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
+          <RotateCcw size={14} /> Refresh
+        </button>
+
+        <button onClick={handleCopyAll}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
+          <Copy size={14} /> Copy All
         </button>
 
         <label className="flex items-center gap-1.5 text-sm text-[#aaa] cursor-pointer">
-          <input
-            type="checkbox"
-            checked={autoRefresh}
-            onChange={(e) => setAutoRefresh(e.target.checked)}
-            className="accent-[#4a9eff]"
-          />
+          <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="accent-[#4a9eff]" />
           Auto-refresh (5s)
         </label>
 
         <span className="text-xs text-[#555] ml-auto">
-          {hasApp && data!.logs.app!.length + ' app lines'}
-          {hasAudit && (hasApp ? ' · ' : '') + data!.logs.audit!.length + ' audit lines'}
-          {hasHttp && (hasApp || hasAudit ? ' · ' : '') + data!.logs.http!.length + ' http lines'}
+          {hasApp && filteredLogs!.app!.length + ' app lines'}
+          {hasAudit && (hasApp ? ' · ' : '') + filteredLogs!.audit!.length + ' audit lines'}
+          {hasHttp && (hasApp || hasAudit ? ' · ' : '') + filteredLogs!.http!.length + ' http lines'}
         </span>
       </div>
 
-      {/* Log files list */}
       {data?.files && data.files.length > 0 && (
-        <div className="mb-4">
-          <h3 className="text-xs font-semibold text-[#888] uppercase tracking-wider mb-2">Available log files</h3>
-          <div className="flex flex-wrap gap-2">
-            {data.files.map((f) => (
-              <button
-                key={f}
-                onClick={() => handleDownload(f)}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#888] hover:text-[#ccc] hover:border-[#555]"
-              >
-                <FileText size={12} />
-                {f}
-                <Download size={10} className="ml-1" />
-              </button>
-            ))}
-          </div>
+        <div className="mb-2 flex flex-wrap gap-1">
+          {data.files.map((f) => (
+            <button key={f.name} onClick={() => handleDownload(f)}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#888] hover:text-[#ccc] hover:border-[#555]">
+              <FileText size={12} /> {f.name} <span className="text-[#555]">({fmtSize(f.size)})</span> <Download size={10} />
+            </button>
+          ))}
         </div>
       )}
 
-      {/* Log content */}
+      <div className="mb-3 flex gap-1.5">
+        {levelFilters.map((level) => (
+          <button key={level} onClick={() => setQuickFilter(quickFilter === level ? null : level)}
+            className={`px-2 py-0.5 text-[10px] rounded-full font-mono border ${
+              quickFilter === level
+                ? 'bg-[#4a9eff] border-[#4a9eff] text-white'
+                : 'bg-[#1a1a1a] border-[#333] text-[#888] hover:text-[#ccc]'
+            }`}>
+            {level.replace(/[\[\]]/g, '')}
+          </button>
+        ))}
+        {quickFilter && (
+          <button onClick={() => setQuickFilter(null)} className="text-[10px] text-[#555] hover:text-[#888]">Clear</button>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 gap-4">
-        {hasApp && <LogSection title="App Logs" lines={data!.logs.app!} />}
-        {hasAudit && <LogSection title="Audit Logs" lines={data!.logs.audit!} highlight />}
-        {hasHttp && <LogSection title="HTTP Logs" lines={data!.logs.http!} />}
+        {hasApp && <LogSection title="App Logs" lines={filteredLogs!.app!} searchQuery={searchQuery} />}
+        {hasAudit && <LogSection title="Audit Logs" lines={filteredLogs!.audit!} highlight searchQuery={searchQuery} />}
+        {hasHttp && <LogSection title="HTTP Logs" lines={filteredLogs!.http!} searchQuery={searchQuery} />}
         {!hasApp && !hasAudit && !hasHttp && <p className="text-xs text-[#666]">No log entries found for today.</p>}
       </div>
     </div>
   );
 }
 
-function LogSection({ title, lines, highlight }: { title: string; lines: string[]; highlight?: boolean }) {
-  const preRef = useRef<HTMLPreElement>(null);
-
+function LogSection({ title, lines, highlight, searchQuery }: { title: string; lines: string[]; highlight?: boolean; searchQuery?: string }) {
   function colorize(line: string): string {
     if (line.includes('[ERROR]')) return 'text-red-400';
     if (line.includes('[WARN]')) return 'text-yellow-400';
@@ -156,14 +208,10 @@ function LogSection({ title, lines, highlight }: { title: string; lines: string[
         <h3 className={`text-sm font-semibold ${highlight ? 'text-purple-400' : 'text-[#e0e0e0]'}`}>{title}</h3>
         <span className="text-xs text-[#555]">{lines.length} lines</span>
       </div>
-      <pre
-        ref={preRef}
-        className="p-4 text-xs font-mono leading-relaxed overflow-auto max-h-[500px]"
-        style={{ scrollBehavior: 'smooth' }}
-      >
+      <pre className="p-4 text-xs font-mono leading-relaxed overflow-auto max-h-[500px]">
         {lines.map((line, i) => (
           <div key={i} className={colorize(line)}>
-            {line}
+            {searchQuery ? highlightText(line, searchQuery) : line}
           </div>
         ))}
       </pre>

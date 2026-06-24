@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bot } from 'lucide-react';
+import { Bot, ExternalLink, Clock } from 'lucide-react';
 import { api } from './api';
 
 interface BotGameInfo {
@@ -31,18 +31,34 @@ export default function BotGamesTab() {
   if (error) return <p className="text-red-500 text-sm">{error}</p>;
   if (!data) return <p className="text-[#666] text-center py-12">Loading...</p>;
 
+  const completedGames = data.games.filter((g) => g.status !== 'active');
+  const avgDuration = completedGames.length > 0
+    ? completedGames.reduce((sum, g) => sum + g.moves, 0) / completedGames.length
+    : 0;
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-[#2a2a2a]">
-          <h2 className="text-sm font-semibold text-[#e0e0e0] flex items-center gap-2">
-            <Bot size={16} className="text-green-400" />
-            Bot Games
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[#e0e0e0] flex items-center gap-2">
+              <Bot size={16} className="text-green-400" />
+              Bot Games
+            </h2>
+            <a
+              href="/"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#4a9eff] border border-[#4a9eff] rounded-lg hover:bg-[#4a9eff] hover:text-white"
+            >
+              <ExternalLink size={14} />
+              Play against bot
+            </a>
+          </div>
         </div>
 
         <div className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
             <div className="bg-[#222] border border-[#333] rounded-lg p-5 text-center">
               <div className="text-3xl font-bold text-[#4a9eff]">{data.total}</div>
               <div className="text-xs text-[#888] mt-1">Total Bot Games</div>
@@ -54,6 +70,12 @@ export default function BotGamesTab() {
             <div className="bg-[#222] border border-[#333] rounded-lg p-5 text-center">
               <div className="text-3xl font-bold text-yellow-400">{data.total - data.active}</div>
               <div className="text-xs text-[#888] mt-1">Completed</div>
+            </div>
+            <div className="bg-[#222] border border-[#333] rounded-lg p-5 text-center">
+              <div className="text-3xl font-bold text-purple-400">{avgDuration > 0 ? avgDuration.toFixed(0) : '—'}</div>
+              <div className="text-xs text-[#888] mt-1 flex items-center justify-center gap-1">
+                <Clock size={10} /> Avg Moves
+              </div>
             </div>
           </div>
 

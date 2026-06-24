@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Send } from 'lucide-react';
 import { api, AccountRow } from './api';
 
 interface Props {
@@ -14,6 +14,7 @@ export default function AccountEditModal({ account, onClose, onSaved }: Props) {
   const [wins, setWins] = useState(String(account.wins));
   const [losses, setLosses] = useState(String(account.losses));
   const [draws, setDraws] = useState(String(account.draws));
+  const [rating, setRating] = useState(String(account.rating || 0));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -33,15 +34,14 @@ export default function AccountEditModal({ account, onClose, onSaved }: Props) {
           wins: parseInt(wins, 10) || 0,
           losses: parseInt(losses, 10) || 0,
           draws: parseInt(draws, 10) || 0,
+          rating: parseInt(rating, 10) || 0,
         }),
       });
       onSaved();
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   async function handleClearAvatar() {
@@ -49,159 +49,84 @@ export default function AccountEditModal({ account, onClose, onSaved }: Props) {
     try {
       await api('/accounts/' + account.id + '/avatar', { method: 'DELETE' });
       onSaved();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); }
   }
 
-  const inputStyle = {
-    width: '100%',
-    padding: '6px 10px',
-    borderRadius: 4,
-    border: '1px solid #333',
-    background: '#111',
-    color: '#e0e0e0',
-    fontSize: 13,
-    outline: 'none',
-    boxSizing: 'border-box' as const,
-  };
+  async function handleTestNotification() {
+    try {
+      await api('/accounts/' + account.id + '/test-notification', { method: 'POST' });
+      alert('Test notification sent.');
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); }
+  }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.7)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100,
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        style={{
-          background: '#1a1a1a',
-          border: '1px solid #2a2a2a',
-          borderRadius: 12,
-          padding: 24,
-          width: 400,
-          maxWidth: '90vw',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#e0e0e0', margin: 0 }}>Edit Account</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>
-            <X size={18} />
-          </button>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-100"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 w-[420px] max-w-[90vw] max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="text-sm font-semibold text-[#e0e0e0]">Edit Account</h2>
+          <button onClick={onClose} className="text-[#888] hover:text-[#ccc]"><X size={18} /></button>
         </div>
 
-        {error && <p style={{ color: '#f44336', fontSize: 12, marginBottom: 12 }}>{error}</p>}
+        {error && <p className="text-red-400 text-xs mb-3">{error}</p>}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Avatar preview */}
+        <div className="flex flex-col gap-3.5">
           {account.avatarUrl && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <img
-                src={account.avatarUrl}
-                alt="Avatar"
-                style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }}
-              />
-              <button
-                onClick={handleClearAvatar}
-                style={{
-                  background: 'none',
-                  border: '1px solid #555',
-                  color: '#ccc',
-                  padding: '4px 10px',
-                  borderRadius: 4,
-                  fontSize: 11,
-                  cursor: 'pointer',
-                }}
-              >
+            <div className="flex items-center gap-3">
+              <img src={account.avatarUrl} alt="Avatar" className="w-12 h-12 rounded-full object-cover" />
+              <button onClick={handleClearAvatar}
+                className="px-2.5 py-1 text-xs border border-[#555] text-[#ccc] rounded hover:bg-[#333]">
                 Clear Avatar
               </button>
             </div>
           )}
 
           <div>
-            <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 4 }}>Username</label>
-            <input style={inputStyle} value={username} onChange={(e) => setUsername(e.target.value)} />
+            <label className="text-xs text-[#888] block mb-1">Username</label>
+            <input className="w-full px-2.5 py-1.5 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" value={username} onChange={(e) => setUsername(e.target.value)} />
           </div>
-
           <div>
-            <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 4 }}>Display Name</label>
-            <input style={inputStyle} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            <label className="text-xs text-[#888] block mb-1">Display Name</label>
+            <input className="w-full px-2.5 py-1.5 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
           </div>
-
-          <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 4 }}>Wins</label>
-              <input type="number" min={0} style={inputStyle} value={wins} onChange={(e) => setWins(e.target.value)} />
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="text-xs text-[#888] block mb-1">Wins</label>
+              <input type="number" min={0} className="w-full px-2.5 py-1.5 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" value={wins} onChange={(e) => setWins(e.target.value)} />
             </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 4 }}>Losses</label>
-              <input
-                type="number"
-                min={0}
-                style={inputStyle}
-                value={losses}
-                onChange={(e) => setLosses(e.target.value)}
-              />
+            <div className="flex-1">
+              <label className="text-xs text-[#888] block mb-1">Losses</label>
+              <input type="number" min={0} className="w-full px-2.5 py-1.5 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" value={losses} onChange={(e) => setLosses(e.target.value)} />
             </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 4 }}>Draws</label>
-              <input
-                type="number"
-                min={0}
-                style={inputStyle}
-                value={draws}
-                onChange={(e) => setDraws(e.target.value)}
-              />
+            <div className="flex-1">
+              <label className="text-xs text-[#888] block mb-1">Draws</label>
+              <input type="number" min={0} className="w-full px-2.5 py-1.5 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" value={draws} onChange={(e) => setDraws(e.target.value)} />
             </div>
           </div>
+          <div>
+            <label className="text-xs text-[#888] block mb-1">Rating</label>
+            <input type="number" min={0} className="w-full px-2.5 py-1.5 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" value={rating} onChange={(e) => setRating(e.target.value)} />
+          </div>
 
-          <div style={{ fontSize: 11, color: '#555', marginTop: 4 }}>
-            ID: <span className="font-mono">{account.id}</span> &mdash; Created:{' '}
-            {new Date(account.createdAt).toLocaleDateString()}
+          <div className="flex items-center gap-2 px-3 py-2 bg-[#222] rounded-lg text-xs text-[#555]">
+            <span>ID: <span className="font-mono text-[#888]">{account.id}</span></span>
+            <span className="text-[#333]">|</span>
+            <span>Created: {new Date(account.createdAt).toLocaleDateString()}</span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: '1px solid #333',
-              color: '#aaa',
-              padding: '6px 16px',
-              borderRadius: 6,
-              fontSize: 13,
-              cursor: 'pointer',
-            }}
-          >
-            Cancel
+        <div className="flex gap-2 justify-between mt-5">
+          <button onClick={handleTestNotification}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
+            <Send size={12} /> Test Notification
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{
-              background: '#4a9eff',
-              border: 'none',
-              color: '#fff',
-              padding: '6px 16px',
-              borderRadius: 6,
-              fontSize: 13,
-              cursor: 'pointer',
-              opacity: saving ? 0.6 : 1,
-            }}
-          >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-3 py-1.5 text-xs bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">Cancel</button>
+            <button onClick={handleSave} disabled={saving}
+              className="px-3 py-1.5 text-xs bg-[#4a9eff] text-white rounded-lg hover:bg-[#3a8eef] disabled:opacity-60">
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
