@@ -92,6 +92,7 @@ jobs:
           retention-days: 7
 
       - name: Check admin-frontend
+        working-directory: ./
         run: |
           pnpm exec eslint chess-api/admin-frontend/src/
           pnpm exec tsc --noEmit -p chess-api/admin-frontend/tsconfig.json
