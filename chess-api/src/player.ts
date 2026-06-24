@@ -71,6 +71,35 @@ export function verifyPassword(password: string, stored: string): boolean {
   }
 }
 
+export function hashPasswordAsync(password: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const salt = crypto.randomBytes(16).toString('hex');
+    crypto.pbkdf2(password, salt, 100000, 64, 'sha512', (err, key) => {
+      if (err) reject(err);
+      else resolve(`${salt}:${key.toString('hex')}`);
+    });
+  });
+}
+
+export function verifyPasswordAsync(password: string, stored: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const parts = stored.split(':');
+    if (parts.length < 2) return resolve(false);
+    const [salt, key] = parts;
+    if (!salt || !key) return resolve(false);
+    crypto.pbkdf2(password, salt, 100000, 64, 'sha512', (err, check) => {
+      if (err) return reject(err);
+      const checkHex = check.toString('hex');
+      if (key.length !== checkHex.length) return resolve(false);
+      try {
+        resolve(crypto.timingSafeEqual(Buffer.from(key), Buffer.from(checkHex)));
+      } catch {
+        resolve(false);
+      }
+    });
+  });
+}
+
 export const BOT_PLAYER_ID = '_bot_';
 
 export async function registerPlayer(
@@ -81,7 +110,7 @@ export async function registerPlayer(
   const token = uuidv4();
   const isRegistered = !!password;
   if (password) {
-    const hash = hashPassword(password);
+    const hash = await hashPasswordAsync(password);
     await db.createUser(playerId, username, hash, username);
     await db.saveToken(token, playerId);
     const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: true };
@@ -106,7 +135,7 @@ export async function loginPlayer(
   if (!user || !user.password_hash) {
     return { success: false, error: 'Invalid username or password' };
   }
-  if (!verifyPassword(password, user.password_hash)) {
+  if (!(await verifyPasswordAsync(password, user.password_hash))) {
     return { success: false, error: 'Invalid username or password' };
   }
   const token = uuidv4();
@@ -215,10 +244,10 @@ export async function changePassword(
 
   const user = await db.getUserById(playerId);
   if (!user || !user.password_hash) return { success: false, error: 'Account not found' };
-  if (!verifyPassword(currentPassword, user.password_hash))
+  if (!(await verifyPasswordAsync(currentPassword, user.password_hash)))
     return { success: false, error: 'Current password is incorrect' };
 
-  const hash = hashPassword(newPassword);
+  const hash = await hashPasswordAsync(newPassword);
   await db.updateUserPasswordHash(playerId, hash);
   logger.info('Password changed: playerId=' + playerId);
   return { success: true };

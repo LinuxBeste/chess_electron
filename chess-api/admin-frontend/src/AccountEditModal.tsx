@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Send } from 'lucide-react';
 import { api, AccountRow } from './api';
+import { useToast } from './Toast';
 
 interface Props {
   account: AccountRow;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function AccountEditModal({ account, onClose, onSaved }: Props) {
+  const { addToast } = useToast();
   const [username, setUsername] = useState(account.username);
   const [displayName, setDisplayName] = useState(account.displayName);
   const [wins, setWins] = useState(String(account.wins));
@@ -55,7 +57,7 @@ export default function AccountEditModal({ account, onClose, onSaved }: Props) {
   async function handleTestNotification() {
     try {
       await api('/accounts/' + account.id + '/test-notification', { method: 'POST' });
-      alert('Test notification sent.');
+      addToast('Test notification sent.', 'success');
     } catch (err: unknown) { setError(err instanceof Error ? err.message : String(err)); }
   }
 

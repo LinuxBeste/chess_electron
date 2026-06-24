@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Key, Trash2, Plus, Eye, UserCheck, X, Download, SearchX, CheckSquare, Square } from 'lucide-react';
 import { api, AccountRow, UserGamesResponse, ImpersonateResponse } from './api';
+import { useToast } from './Toast';
 import SearchBar from './SearchBar';
 import AccountEditModal from './AccountEditModal';
 
@@ -142,6 +143,7 @@ function UserGamesModal({ userId, username, onClose }: { userId: string; usernam
 type SortKey = 'username' | 'displayName' | 'wins' | 'rating' | 'createdAt';
 
 export default function AccountsTab() {
+  const { addToast } = useToast();
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
@@ -200,7 +202,7 @@ export default function AccountsTab() {
       try { await api('/accounts/' + id, { method: 'DELETE' }); ok++; }
       catch { fail++; }
     }
-    alert(`Deleted ${ok} account(s)` + (fail ? `, ${fail} failed` : ''));
+    addToast(`Deleted ${ok} account(s)` + (fail ? `, ${fail} failed` : ''), fail ? 'error' : 'success');
     setSelected(new Set());
     setDeleting(false);
     load();
@@ -221,23 +223,23 @@ export default function AccountsTab() {
     if (!pw || pw.length < 4) return;
     try {
       await api('/accounts/' + id + '/reset-password', { method: 'POST', body: JSON.stringify({ newPassword: pw }) });
-      alert('Password reset.');
+      addToast('Password reset.', 'success');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : String(err));
+      addToast(err instanceof Error ? err.message : String(err), 'error');
     }
   }
 
   async function handleDelete(id: string, username: string) {
     if (!confirm(`Delete ${username}? This cannot be undone.`)) return;
     try { await api('/accounts/' + id, { method: 'DELETE' }); load(); }
-    catch (err: unknown) { alert(err instanceof Error ? err.message : String(err)); }
+    catch (err: unknown) { addToast(err instanceof Error ? err.message : String(err), 'error'); }
   }
 
   async function handleImpersonate(id: string) {
     try {
       const result = await api<ImpersonateResponse>('/accounts/' + id + '/impersonate', { method: 'POST' });
-      alert('Impersonation token: ' + result.token + '\n\nUser ID: ' + result.userId + '\nUsername: ' + result.username + '\n\nUse this token to authenticate API requests as this user.');
-    } catch (err: unknown) { alert(err instanceof Error ? err.message : String(err)); }
+      addToast('Impersonation token generated for ' + result.username, 'success');
+    } catch (err: unknown) { addToast(err instanceof Error ? err.message : String(err), 'error'); }
   }
 
   const totalStats = accounts.reduce((acc, a) => ({

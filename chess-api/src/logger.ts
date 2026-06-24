@@ -8,6 +8,9 @@ const LOG_DIR = path.join(__dirname, '..', 'logs');
 const LOG_RETENTION_DAYS = 30;
 const isTest = process.env.NODE_ENV === 'test' || typeof process.env.JEST_WORKER_ID !== 'undefined';
 
+const streams = new Map<string, fs.WriteStream>();
+let currentDateTag = '';
+
 function dateTag(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -16,29 +19,38 @@ function timestamp(): string {
   return new Date().toISOString();
 }
 
-function ensureDir(dir: string): void {
-  if (!isTest) fs.mkdirSync(dir, { recursive: true });
+function getStream(file: string): fs.WriteStream {
+  const tag = dateTag();
+  if (currentDateTag !== tag) {
+    closeAllStreams();
+    currentDateTag = tag;
+  }
+  const key = file + '|' + tag;
+  let s = streams.get(key);
+  if (!s) {
+    if (!isTest) {
+      try {
+        fs.mkdirSync(LOG_DIR, { recursive: true });
+      } catch { /* noop */ }
+    }
+    const filePath = path.join(LOG_DIR, file.replace('{date}', tag));
+    s = fs.createWriteStream(filePath, { flags: 'a' });
+    streams.set(key, s);
+  }
+  return s;
+}
+
+function closeAllStreams(): void {
+  for (const s of streams.values()) {
+    try { s.end(); } catch { /* noop */ }
+  }
+  streams.clear();
 }
 
 function appendLine(file: string, line: string): void {
   if (isTest) return;
-  try {
-    ensureDir(LOG_DIR);
-    const filePath = path.join(LOG_DIR, file);
-    const fd = fs.openSync(filePath, 'a');
-    try {
-      fs.writeSync(fd, line + '\n');
-      fs.fsyncSync(fd);
-    } finally {
-      fs.closeSync(fd);
-    }
-  } catch (err) {
-    try {
-      console.error(`[LOGGER] Failed to write to ${file}:`, err);
-    } catch {
-      /* noop */
-    }
-  }
+  const s = getStream(file);
+  s.write(line + '\n');
 }
 
 type LogLevel = 'error' | 'warn' | 'info' | 'debug';
@@ -70,14 +82,14 @@ function log(level: LogLevel, message: string, ...args: unknown[]): void {
   if (!isTest) {
     console.log(`${CONSOLE_COLORS[level]}[${level.toUpperCase()}]${CONSOLE_RESET} ${line}`);
   }
-  appendLine(`app-${dateTag()}.log`, `[${ts}] [${level.toUpperCase()}] ${line}`);
+  appendLine(`app-{date}.log`, `[${ts}] [${level.toUpperCase()}] ${line}`);
 }
 
 export function audit(action: string, detail: string): void {
   const ts = timestamp();
   const line = `[AUDIT] ${action} — ${detail}`;
   if (!isTest) console.log(`\x1b[35m${line}\x1b[0m`);
-  appendLine(`audit-${dateTag()}.log`, `[${ts}] ${line}`);
+  appendLine(`audit-{date}.log`, `[${ts}] ${line}`);
 }
 
 export function morganStream(): { write: (msg: string) => void } {
@@ -85,7 +97,7 @@ export function morganStream(): { write: (msg: string) => void } {
     write: (msg: string) => {
       const trimmed = msg.trim();
       if (!trimmed) return;
-      appendLine(`http-${dateTag()}.log`, `[${timestamp()}] ${trimmed}`);
+      appendLine(`http-{date}.log`, `[${timestamp()}] ${trimmed}`);
     },
   };
 }
@@ -93,15 +105,25 @@ export function morganStream(): { write: (msg: string) => void } {
 export function cleanupOldLogs(): void {
   if (isTest) return;
   try {
-    ensureDir(LOG_DIR);
+    fs.mkdirSync(LOG_DIR, { recursive: true });
     const cutoff = Date.now() - LOG_RETENTION_DAYS * 86400000;
-    const files = fs.readdirSync(LOG_DIR);
+    let files: string[];
+    try {
+      files = fs.readdirSync(LOG_DIR);
+    } catch {
+      return;
+    }
     for (const file of files) {
       if (!/\.log$/.test(file)) continue;
       const filePath = path.join(LOG_DIR, file);
-      const stat = fs.statSync(filePath);
+      let stat: fs.Stats;
+      try {
+        stat = fs.statSync(filePath);
+      } catch {
+        continue;
+      }
       if (stat.isFile() && stat.mtimeMs < cutoff) {
-        fs.unlinkSync(filePath);
+        try { fs.unlinkSync(filePath); } catch { /* noop */ }
       }
     }
   } catch {

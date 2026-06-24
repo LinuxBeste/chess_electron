@@ -42,7 +42,9 @@ export {
   logoutPlayer,
   addToken,
   hashPassword,
+  hashPasswordAsync,
   verifyPassword,
+  verifyPasswordAsync,
   checkLoginLockout,
   recordFailedAttempt,
   clearLoginAttempts,
@@ -78,13 +80,19 @@ async function enrichNames(g: GameState): Promise<GameState> {
   const blackPlayer = g.players.black ? players.get(g.players.black) : undefined;
   let whiteAvatarUrl: string | undefined;
   let blackAvatarUrl: string | undefined;
-  if (whitePlayer?.isRegistered) {
-    const user = await db.getUserById(whitePlayer.id);
-    if (user?.avatar_url) whiteAvatarUrl = user.avatar_url;
-  }
-  if (blackPlayer?.isRegistered) {
-    const user = await db.getUserById(blackPlayer.id);
-    if (user?.avatar_url) blackAvatarUrl = user.avatar_url;
+  const ids: string[] = [];
+  if (whitePlayer?.isRegistered) ids.push(whitePlayer.id);
+  if (blackPlayer?.isRegistered) ids.push(blackPlayer.id);
+  if (ids.length > 0) {
+    const usersById = await db.getUsersByIds(ids);
+    if (whitePlayer?.isRegistered) {
+      const user = usersById.get(whitePlayer.id);
+      if (user?.avatar_url) whiteAvatarUrl = user.avatar_url;
+    }
+    if (blackPlayer?.isRegistered) {
+      const user = usersById.get(blackPlayer.id);
+      if (user?.avatar_url) blackAvatarUrl = user.avatar_url;
+    }
   }
   return {
     ...g,

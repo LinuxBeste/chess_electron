@@ -9,6 +9,24 @@ const __dirname = path.dirname(__filename);
 
 let _pool: pg.Pool | null = null;
 
+const LEADERBOARD_CACHE_TTL_MS = parseInt(process.env.LEADERBOARD_CACHE_TTL ?? '10000', 10);
+const leaderboardCache = new Map<string, { data: unknown; expiresAt: number }>();
+function getLeaderboardCacheKey(limit: number, offset: number, minGames: number, sortKey: string, sortAsc: boolean): string {
+  return `${limit}:${offset}:${minGames}:${sortKey}:${sortAsc}`;
+}
+function getCachedLeaderboard<T>(key: string): T | null {
+  const entry = leaderboardCache.get(key);
+  if (entry && entry.expiresAt > Date.now()) return entry.data as T;
+  leaderboardCache.delete(key);
+  return null;
+}
+function setCachedLeaderboard(key: string, data: unknown): void {
+  leaderboardCache.set(key, { data, expiresAt: Date.now() + LEADERBOARD_CACHE_TTL_MS });
+}
+export function invalidateLeaderboardCache(): void {
+  leaderboardCache.clear();
+}
+
 function getPool(): pg.Pool {
   if (!_pool) {
     _pool = new pg.Pool({
@@ -380,18 +398,18 @@ export async function createBackup(): Promise<string | null> {
 }
 
 export async function addWin(userId: string): Promise<void> {
-  await getPool().query('UPDATE users SET wins = wins + 1 WHERE id = $1', [userId]);
-  logger.debug('DB: addWin userId=' + userId);
+  await getPool().query('UPDATE users SET wins = wins + 1, rating = rating + 16 WHERE id = $1', [userId]);
+  invalidateLeaderboardCache();
 }
 
 export async function addLoss(userId: string): Promise<void> {
-  await getPool().query('UPDATE users SET losses = losses + 1 WHERE id = $1', [userId]);
-  logger.debug('DB: addLoss userId=' + userId);
+  await getPool().query('UPDATE users SET losses = losses + 1, rating = rating - 16 WHERE id = $1', [userId]);
+  invalidateLeaderboardCache();
 }
 
 export async function addDraw(userId: string): Promise<void> {
   await getPool().query('UPDATE users SET draws = draws + 1 WHERE id = $1', [userId]);
-  logger.debug('DB: addDraw userId=' + userId);
+  invalidateLeaderboardCache();
 }
 
 export async function loadAllUsers(): Promise<DbUser[]> {
@@ -597,6 +615,22 @@ export async function getLeaderboard(
   }[];
   total: number;
 }> {
+  const cacheKey = getLeaderboardCacheKey(limit, offset, minGames, sortKey, sortAsc);
+  const cached = getCachedLeaderboard<{
+    rows: {
+      id: string;
+      username: string;
+      display_name: string;
+      avatar_url: string | null;
+      rating: number;
+      wins: number;
+      losses: number;
+      draws: number;
+    }[];
+    total: number;
+  }>(cacheKey);
+  if (cached) return cached;
+
   const conditions: string[] = [];
   const params: unknown[] = [];
   let paramIdx = 0;
@@ -620,7 +654,7 @@ export async function getLeaderboard(
       (paramIdx + 2),
     [...params, limit, offset],
   );
-  return {
+  const result = {
     rows: rows as {
       id: string;
       username: string;
@@ -633,6 +667,8 @@ export async function getLeaderboard(
     }[],
     total,
   };
+  setCachedLeaderboard(cacheKey, result);
+  return result;
 }
 
 export async function getPlayerRating(userId: string): Promise<number> {
@@ -643,6 +679,7 @@ export async function getPlayerRating(userId: string): Promise<number> {
 
 export async function updatePlayerRating(userId: string, rating: number): Promise<void> {
   await getPool().query('UPDATE users SET rating = $1 WHERE id = $2', [rating, userId]);
+  invalidateLeaderboardCache();
 }
 
 export async function updateWinLossDraw(userId: string, result: 'win' | 'loss' | 'draw'): Promise<void> {

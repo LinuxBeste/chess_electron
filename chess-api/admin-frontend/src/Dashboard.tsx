@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, lazy, Suspense } from 'react';
 import {
   LogOut,
   LayoutDashboard,
@@ -21,22 +21,23 @@ import {
 import { setToken } from './api';
 import { ToastProvider } from './Toast';
 import { TabProvider } from './TabContext';
-import OverviewTab from './OverviewTab';
-import GamesTab from './GamesTab';
-import PlayersTab from './PlayersTab';
-import AccountsTab from './AccountsTab';
-import BansTab from './BansTab';
-import LogsTab from './LogsTab';
-import LeaderboardTab from './LeaderboardTab';
-import ArchiveTab from './ArchiveTab';
-import TournamentsTab from './TournamentsTab';
-import BotGamesTab from './BotGamesTab';
-import BroadcastTab from './BroadcastTab';
-import ConfigTab from './ConfigTab';
-import GameReplayTab from './GameReplayTab';
-import WebSocketMonitorTab from './WebSocketMonitorTab';
-import HealthTab from './HealthTab';
-import DbBrowserTab from './DbBrowserTab';
+
+const OverviewTab = lazy(() => import('./OverviewTab'));
+const GamesTab = lazy(() => import('./GamesTab'));
+const PlayersTab = lazy(() => import('./PlayersTab'));
+const AccountsTab = lazy(() => import('./AccountsTab'));
+const BansTab = lazy(() => import('./BansTab'));
+const LogsTab = lazy(() => import('./LogsTab'));
+const LeaderboardTab = lazy(() => import('./LeaderboardTab'));
+const ArchiveTab = lazy(() => import('./ArchiveTab'));
+const TournamentsTab = lazy(() => import('./TournamentsTab'));
+const BotGamesTab = lazy(() => import('./BotGamesTab'));
+const BroadcastTab = lazy(() => import('./BroadcastTab'));
+const ConfigTab = lazy(() => import('./ConfigTab'));
+const GameReplayTab = lazy(() => import('./GameReplayTab'));
+const WebSocketMonitorTab = lazy(() => import('./WebSocketMonitorTab'));
+const HealthTab = lazy(() => import('./HealthTab'));
+const DbBrowserTab = lazy(() => import('./DbBrowserTab'));
 
 const tabs = [
   { key: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -75,42 +76,48 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   function renderTab() {
     const p = navParams ?? {};
-    switch (active) {
-      case 'overview':
-        return <OverviewTab key={navKey} />;
-      case 'games':
-        return <GamesTab key={navKey} />;
-      case 'players':
-        return <PlayersTab key={navKey} />;
-      case 'accounts':
-        return <AccountsTab key={navKey} />;
-      case 'bans':
-        return <BansTab key={navKey} />;
-      case 'logs':
-        return <LogsTab key={navKey} />;
-      case 'leaderboard':
-        return <LeaderboardTab key={navKey} />;
-      case 'archive':
-        return <ArchiveTab key={navKey} initialPlayer={p.player} />;
-      case 'tournaments':
-        return <TournamentsTab key={navKey} />;
-      case 'bot-games':
-        return <BotGamesTab key={navKey} />;
-      case 'broadcast':
-        return <BroadcastTab key={navKey} />;
-      case 'config':
-        return <ConfigTab key={navKey} />;
-      case 'replay':
-        return <GameReplayTab key={navKey} initialGameId={p.gameId} />;
-      case 'ws':
-        return <WebSocketMonitorTab key={navKey} />;
-      case 'health':
-        return <HealthTab key={navKey} />;
-      case 'db':
-        return <DbBrowserTab key={navKey} />;
-      default:
-        return null;
-    }
+    const fallback = (
+      <div className="flex items-center justify-center py-12 text-[#888]">Loading…</div>
+    );
+    const tab = (() => {
+      switch (active) {
+        case 'overview':
+          return <OverviewTab key={navKey} />;
+        case 'games':
+          return <GamesTab key={navKey} />;
+        case 'players':
+          return <PlayersTab key={navKey} />;
+        case 'accounts':
+          return <AccountsTab key={navKey} />;
+        case 'bans':
+          return <BansTab key={navKey} />;
+        case 'logs':
+          return <LogsTab key={navKey} />;
+        case 'leaderboard':
+          return <LeaderboardTab key={navKey} />;
+        case 'archive':
+          return <ArchiveTab key={navKey} initialPlayer={p.player} />;
+        case 'tournaments':
+          return <TournamentsTab key={navKey} />;
+        case 'bot-games':
+          return <BotGamesTab key={navKey} />;
+        case 'broadcast':
+          return <BroadcastTab key={navKey} />;
+        case 'config':
+          return <ConfigTab key={navKey} />;
+        case 'replay':
+          return <GameReplayTab key={navKey} initialGameId={p.gameId} />;
+        case 'ws':
+          return <WebSocketMonitorTab key={navKey} />;
+        case 'health':
+          return <HealthTab key={navKey} />;
+        case 'db':
+          return <DbBrowserTab key={navKey} />;
+        default:
+          return null;
+      }
+    })();
+    return <Suspense fallback={fallback}>{tab}</Suspense>;
   }
 
   return (

@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
-import { execFileSync } from 'child_process';
+import { execFile } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import * as game from './game.js';
@@ -272,7 +272,7 @@ router.get('/admin/api/system/metrics', adminAuthMiddleware, (_req: Request, res
   });
 });
 
-router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Response) => {
+router.get('/admin/api/system', adminAuthMiddleware, async (_req: Request, res: Response) => {
   logger.info('Admin system info requested');
   const totalMem = os.totalmem();
   const freeMem = os.freemem();
@@ -286,10 +286,16 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
   let diskTotal = 0,
     diskFree = 0;
   try {
-    const out = execFileSync('df', ['-k', '/'], { maxBuffer: 65536 }).toString().split('\n')[1]?.split(/\s+/);
-    if (out && out.length >= 4) {
-      diskTotal = parseInt(out[1], 10) * 1024 || 0;
-      diskFree = parseInt(out[3], 10) * 1024 || 0;
+    const out = await new Promise<string>((resolve, reject) => {
+      execFile('df', ['-k', '/'], { maxBuffer: 65536 }, (err, stdout) => {
+        if (err) reject(err);
+        else resolve(stdout);
+      });
+    });
+    const parts = out.split('\n')[1]?.split(/\s+/);
+    if (parts && parts.length >= 4) {
+      diskTotal = parseInt(parts[1], 10) * 1024 || 0;
+      diskFree = parseInt(parts[3], 10) * 1024 || 0;
     }
   } catch (e) {
     logger.warn('Failed to read disk info via df: ' + e);
@@ -346,9 +352,14 @@ router.get('/admin/api/system', adminAuthMiddleware, (_req: Request, res: Respon
   });
 });
 
-router.get('/admin/api/system/processes', adminAuthMiddleware, (_req: Request, res: Response) => {
+router.get('/admin/api/system/processes', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
-    const out = execFileSync('ps', ['aux', '--sort=-%cpu', '--no-headers'], { maxBuffer: 65536 }).toString();
+    const out = await new Promise<string>((resolve, reject) => {
+      execFile('ps', ['aux', '--sort=-%cpu', '--no-headers'], { maxBuffer: 65536 }, (err, stdout) => {
+        if (err) reject(err);
+        else resolve(stdout);
+      });
+    });
     const lines = out.split('\n');
     const processes = [];
     for (const line of lines) {
