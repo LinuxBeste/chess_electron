@@ -184,12 +184,12 @@ jobs:
           path: website/dist/
       - name: Deploy to Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   deploy-api:
     needs: docker
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    if: ${{ github.event_name == 'workflow_dispatch' && secrets.DEPLOY_HOST != '' }}
     strategy:
       matrix:
         environment:
