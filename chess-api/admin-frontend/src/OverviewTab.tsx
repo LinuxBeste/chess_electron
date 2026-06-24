@@ -85,7 +85,9 @@ export default function OverviewTab() {
       if (!cancelled) setTimeout(poll, 30000);
     }
     poll();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -97,7 +99,9 @@ export default function OverviewTab() {
   }, []);
 
   function exportJson() {
-    const blob = new Blob([JSON.stringify({ stats, system: sys, processes: procs }, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ stats, system: sys, processes: procs }, null, 2)], {
+      type: 'application/json',
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -124,12 +128,13 @@ export default function OverviewTab() {
           <span className="text-xs text-[#555]">
             Uptime: <span className="text-[#aaa] font-mono">{fmtUptime(uptime)}</span>
           </span>
-          <button onClick={load}
-            className="px-3 py-1.5 text-xs bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
+          <button onClick={load} className="px-3 py-1.5 text-xs bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
             Refresh
           </button>
-          <button onClick={exportJson}
-            className="px-3 py-1.5 text-xs bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
+          <button
+            onClick={exportJson}
+            className="px-3 py-1.5 text-xs bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]"
+          >
             Export JSON
           </button>
         </div>
@@ -137,8 +142,11 @@ export default function OverviewTab() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c) => (
-          <button key={c.label} onClick={() => navigate(c.tab)}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 text-center hover:bg-[#222] hover:border-[#4a9eff] transition-colors cursor-pointer">
+          <button
+            key={c.label}
+            onClick={() => navigate(c.tab)}
+            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 text-center hover:bg-[#222] hover:border-[#4a9eff] transition-colors cursor-pointer"
+          >
             <div className="text-3xl font-bold text-[#4a9eff]">{c.value}</div>
             <div className="text-xs text-[#888] mt-1">{c.label}</div>
           </button>
@@ -168,11 +176,17 @@ export default function OverviewTab() {
               label="Load (1m / 5m / 15m)"
               value={
                 <span>
-                  <span className={cpuColor(sys.cpu.loadAverage1, sys.cpu.cores)}>{sys.cpu.loadAverage1.toFixed(2)}</span>
+                  <span className={cpuColor(sys.cpu.loadAverage1, sys.cpu.cores)}>
+                    {sys.cpu.loadAverage1.toFixed(2)}
+                  </span>
                   {' / '}
-                  <span className={cpuColor(sys.cpu.loadAverage5, sys.cpu.cores)}>{sys.cpu.loadAverage5.toFixed(2)}</span>
+                  <span className={cpuColor(sys.cpu.loadAverage5, sys.cpu.cores)}>
+                    {sys.cpu.loadAverage5.toFixed(2)}
+                  </span>
                   {' / '}
-                  <span className={cpuColor(sys.cpu.loadAverage15, sys.cpu.cores)}>{sys.cpu.loadAverage15.toFixed(2)}</span>
+                  <span className={cpuColor(sys.cpu.loadAverage15, sys.cpu.cores)}>
+                    {sys.cpu.loadAverage15.toFixed(2)}
+                  </span>
                 </span>
               }
             />
@@ -218,7 +232,10 @@ export default function OverviewTab() {
             ]}
             sortKey={procSortKey}
             sortAsc={procSortAsc}
-            onSortChange={(k, a) => { setProcSortKey(k); setProcSortAsc(a); }}
+            onSortChange={(k, a) => {
+              setProcSortKey(k);
+              setProcSortAsc(a);
+            }}
           />
         </div>
         {(() => {
@@ -233,7 +250,11 @@ export default function OverviewTab() {
             if (procSortKey === 'mem') return (a.mem - b.mem) * dir;
             if (procSortKey === 'rss') return (a.rss - b.rss) * dir;
             if (procSortKey === 'pid') return (a.pid - b.pid) * dir;
-            return String(a[procSortKey as keyof typeof a] || '').localeCompare(String(b[procSortKey as keyof typeof b] || '')) * dir;
+            return (
+              String(a[procSortKey as keyof typeof a] || '').localeCompare(
+                String(b[procSortKey as keyof typeof b] || ''),
+              ) * dir
+            );
           });
           return sorted.length > 0 ? (
             <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">

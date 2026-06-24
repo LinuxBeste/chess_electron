@@ -32,9 +32,8 @@ export default function BotGamesTab() {
   if (!data) return <p className="text-[#666] text-center py-12">Loading...</p>;
 
   const completedGames = data.games.filter((g) => g.status !== 'active');
-  const avgDuration = completedGames.length > 0
-    ? completedGames.reduce((sum, g) => sum + g.moves, 0) / completedGames.length
-    : 0;
+  const avgDuration =
+    completedGames.length > 0 ? completedGames.reduce((sum, g) => sum + g.moves, 0) / completedGames.length : 0;
 
   return (
     <div className="max-w-4xl mx-auto">

@@ -112,7 +112,8 @@ export default function GamesTab() {
     if (selected.size === 0) return;
     if (!confirm('End ' + selected.size + ' selected game(s)? They will be marked as draws.')) return;
     setBulkEnding(true);
-    let ok = 0, fail = 0;
+    let ok = 0,
+      fail = 0;
     for (const id of selected) {
       try {
         await api('/games/' + id + '/end', { method: 'POST' });
@@ -148,7 +149,11 @@ export default function GamesTab() {
               <span className="text-xs font-normal text-[#666]">({games.length})</span>
             </h2>
             <div className="w-64">
-              <SearchBar value={query} onChange={setQuery} placeholder="Search games by ID, player, status, winner..." />
+              <SearchBar
+                value={query}
+                onChange={setQuery}
+                placeholder="Search games by ID, player, status, winner..."
+              />
             </div>
           </div>
         </div>
@@ -157,12 +162,20 @@ export default function GamesTab() {
           {selected.size > 0 && (
             <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-[#222] rounded-lg text-sm">
               <span className="text-[#888]">{selected.size} selected</span>
-              <button onClick={handleBulkEnd} disabled={bulkEnding}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-40">
+              <button
+                onClick={handleBulkEnd}
+                disabled={bulkEnding}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-40"
+              >
                 {bulkEnding ? <RotateCcw size={12} className="animate-spin" /> : <Flag size={12} />}
                 End Selected
               </button>
-              <button onClick={() => setSelected(new Set())} className="px-2 py-1 text-xs text-[#888] hover:text-[#ccc]">Clear</button>
+              <button
+                onClick={() => setSelected(new Set())}
+                className="px-2 py-1 text-xs text-[#888] hover:text-[#ccc]"
+              >
+                Clear
+              </button>
             </div>
           )}
 
@@ -176,10 +189,13 @@ export default function GamesTab() {
                     <tr className="text-[#888] uppercase text-xs tracking-wider border-b border-[#2a2a2a]">
                       <th className="text-center px-2 py-2.5 w-8">
                         <button onClick={toggleAll} className="text-[#888] hover:text-[#ccc]">
-                          {selected.size === paginated.filter((g) => g.status === 'active' || g.status === 'waiting').length &&
+                          {selected.size ===
+                            paginated.filter((g) => g.status === 'active' || g.status === 'waiting').length &&
                           paginated.some((g) => g.status === 'active' || g.status === 'waiting') ? (
                             <CheckSquare size={14} />
-                          ) : <Square size={14} />}
+                          ) : (
+                            <Square size={14} />
+                          )}
                         </button>
                       </th>
                       <SortHeader k="status" label="Status" />
@@ -195,7 +211,10 @@ export default function GamesTab() {
                   </thead>
                   <tbody>
                     {paginated.map((g) => (
-                      <tr key={g.id} className={`border-b border-[#222] last:border-0 hover:bg-[#222] ${g.status === 'active' ? 'bg-green-900/10' : ''}`}>
+                      <tr
+                        key={g.id}
+                        className={`border-b border-[#222] last:border-0 hover:bg-[#222] ${g.status === 'active' ? 'bg-green-900/10' : ''}`}
+                      >
                         <td className="px-2 py-2.5 text-center">
                           {(g.status === 'active' || g.status === 'waiting') && (
                             <button onClick={() => toggleOne(g.id)} className="text-[#888] hover:text-[#ccc]">
@@ -204,13 +223,17 @@ export default function GamesTab() {
                           )}
                         </td>
                         <td className="px-4 py-2.5">
-                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${statusColors[g.status] || 'bg-gray-800 text-gray-400'}`}>
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${statusColors[g.status] || 'bg-gray-800 text-gray-400'}`}
+                          >
                             {g.status}
                           </span>
                         </td>
                         <td className="px-4 py-2.5">
-                          <button onClick={() => navigate('replay', { gameId: g.id })}
-                            className="font-mono text-[#4a9eff] hover:underline flex items-center gap-1">
+                          <button
+                            onClick={() => navigate('replay', { gameId: g.id })}
+                            className="font-mono text-[#4a9eff] hover:underline flex items-center gap-1"
+                          >
                             {g.id.slice(0, 8)}… <ExternalLink size={10} />
                           </button>
                         </td>
@@ -224,8 +247,11 @@ export default function GamesTab() {
                         <td className="px-4 py-2.5">{g.winner || '—'}</td>
                         <td className="px-4 py-2.5">
                           {(g.status === 'active' || g.status === 'waiting') && (
-                            <button onClick={() => handleEndGame(g.id)} disabled={ending === g.id}
-                              className="flex items-center gap-1 px-2.5 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50">
+                            <button
+                              onClick={() => handleEndGame(g.id)}
+                              disabled={ending === g.id}
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50"
+                            >
                               {ending === g.id ? <RotateCcw size={12} className="animate-spin" /> : <Flag size={12} />}
                               End
                             </button>

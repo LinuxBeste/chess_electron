@@ -31,7 +31,9 @@ function getStream(file: string): fs.WriteStream {
     if (!isTest) {
       try {
         fs.mkdirSync(LOG_DIR, { recursive: true });
-      } catch { /* noop */ }
+      } catch {
+        /* noop */
+      }
     }
     const filePath = path.join(LOG_DIR, file.replace('{date}', tag));
     s = fs.createWriteStream(filePath, { flags: 'a' });
@@ -42,7 +44,11 @@ function getStream(file: string): fs.WriteStream {
 
 function closeAllStreams(): void {
   for (const s of streams.values()) {
-    try { s.end(); } catch { /* noop */ }
+    try {
+      s.end();
+    } catch {
+      /* noop */
+    }
   }
   streams.clear();
 }
@@ -123,7 +129,11 @@ export function cleanupOldLogs(): void {
         continue;
       }
       if (stat.isFile() && stat.mtimeMs < cutoff) {
-        try { fs.unlinkSync(filePath); } catch { /* noop */ }
+        try {
+          fs.unlinkSync(filePath);
+        } catch {
+          /* noop */
+        }
       }
     }
   } catch {

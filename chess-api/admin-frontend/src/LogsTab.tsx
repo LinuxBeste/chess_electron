@@ -39,7 +39,9 @@ export default function LogsTab() {
       .catch((e) => setError(e.message));
   }
 
-  useEffect(() => { load(); }, [type, lines]);
+  useEffect(() => {
+    load();
+  }, [type, lines]);
 
   useEffect(() => {
     if (autoRefresh) {
@@ -48,7 +50,9 @@ export default function LogsTab() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [autoRefresh]);
 
   useEffect(() => {
@@ -110,16 +114,22 @@ export default function LogsTab() {
   return (
     <div>
       <div className="flex flex-wrap gap-3 items-center mb-4">
-        <select value={type} onChange={(e) => setType(e.target.value)}
-          className="px-3 py-1.5 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]">
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          className="px-3 py-1.5 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
+        >
           <option value="all">All logs</option>
           <option value="app">App logs</option>
           <option value="audit">Audit logs</option>
           <option value="http">HTTP logs</option>
         </select>
 
-        <select value={lines} onChange={(e) => setLines(Number(e.target.value))}
-          className="px-3 py-1.5 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]">
+        <select
+          value={lines}
+          onChange={(e) => setLines(Number(e.target.value))}
+          className="px-3 py-1.5 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
+        >
           <option value={100}>100 lines</option>
           <option value={200}>200 lines</option>
           <option value={500}>500 lines</option>
@@ -128,23 +138,36 @@ export default function LogsTab() {
 
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#555]" />
-          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search in logs..."
-            className="w-full pl-8 pr-3 py-1.5 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] placeholder-[#555] focus:outline-none focus:border-[#4a9eff]" />
+            className="w-full pl-8 pr-3 py-1.5 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] placeholder-[#555] focus:outline-none focus:border-[#4a9eff]"
+          />
         </div>
 
-        <button onClick={load}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
+        <button
+          onClick={load}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]"
+        >
           <RotateCcw size={14} /> Refresh
         </button>
 
-        <button onClick={handleCopyAll}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
+        <button
+          onClick={handleCopyAll}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]"
+        >
           <Copy size={14} /> Copy All
         </button>
 
         <label className="flex items-center gap-1.5 text-sm text-[#aaa] cursor-pointer">
-          <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="accent-[#4a9eff]" />
+          <input
+            type="checkbox"
+            checked={autoRefresh}
+            onChange={(e) => setAutoRefresh(e.target.checked)}
+            className="accent-[#4a9eff]"
+          />
           Auto-refresh (5s)
         </label>
 
@@ -158,9 +181,13 @@ export default function LogsTab() {
       {data?.files && data.files.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1">
           {data.files.map((f) => (
-            <button key={f.name} onClick={() => handleDownload(f)}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#888] hover:text-[#ccc] hover:border-[#555]">
-              <FileText size={12} /> {f.name} <span className="text-[#555]">({fmtSize(f.size)})</span> <Download size={10} />
+            <button
+              key={f.name}
+              onClick={() => handleDownload(f)}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#888] hover:text-[#ccc] hover:border-[#555]"
+            >
+              <FileText size={12} /> {f.name} <span className="text-[#555]">({fmtSize(f.size)})</span>{' '}
+              <Download size={10} />
             </button>
           ))}
         </div>
@@ -168,17 +195,22 @@ export default function LogsTab() {
 
       <div className="mb-3 flex gap-1.5">
         {levelFilters.map((level) => (
-          <button key={level} onClick={() => setQuickFilter(quickFilter === level ? null : level)}
+          <button
+            key={level}
+            onClick={() => setQuickFilter(quickFilter === level ? null : level)}
             className={`px-2 py-0.5 text-[10px] rounded-full font-mono border ${
               quickFilter === level
                 ? 'bg-[#4a9eff] border-[#4a9eff] text-white'
                 : 'bg-[#1a1a1a] border-[#333] text-[#888] hover:text-[#ccc]'
-            }`}>
+            }`}
+          >
             {level.replace(/[\[\]]/g, '')}
           </button>
         ))}
         {quickFilter && (
-          <button onClick={() => setQuickFilter(null)} className="text-[10px] text-[#555] hover:text-[#888]">Clear</button>
+          <button onClick={() => setQuickFilter(null)} className="text-[10px] text-[#555] hover:text-[#888]">
+            Clear
+          </button>
         )}
       </div>
 
@@ -192,7 +224,17 @@ export default function LogsTab() {
   );
 }
 
-function LogSection({ title, lines, highlight, searchQuery }: { title: string; lines: string[]; highlight?: boolean; searchQuery?: string }) {
+function LogSection({
+  title,
+  lines,
+  highlight,
+  searchQuery,
+}: {
+  title: string;
+  lines: string[];
+  highlight?: boolean;
+  searchQuery?: string;
+}) {
   function colorize(line: string): string {
     if (line.includes('[ERROR]')) return 'text-red-400';
     if (line.includes('[WARN]')) return 'text-yellow-400';

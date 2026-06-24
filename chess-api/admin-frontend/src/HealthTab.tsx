@@ -17,13 +17,16 @@ function fmtUptime(sec: number): string {
 
 function MiniSparkline({ data, color }: { data: number[]; color: string }) {
   if (data.length < 2) return null;
-  const w = 120, h = 30;
+  const w = 120,
+    h = 30;
   const maxVal = Math.max(...data, 1);
-  const points = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w;
-    const y = h - (v / maxVal) * h;
-    return `${x},${y}`;
-  }).join(' ');
+  const points = data
+    .map((v, i) => {
+      const x = (i / (data.length - 1)) * w;
+      const y = h - (v / maxVal) * h;
+      return `${x},${y}`;
+    })
+    .join(' ');
   return (
     <svg width={w} height={h} className="inline-block">
       <polyline points={points} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
@@ -49,7 +52,9 @@ export default function HealthTab() {
   useEffect(() => {
     load();
     pollingRef.current = setInterval(load, 15000);
-    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
   }, []);
 
   if (error) return <p className="text-red-500 text-sm">{error}</p>;
@@ -69,13 +74,17 @@ export default function HealthTab() {
             · {checkAge < 1000 ? 'just now' : `${Math.floor(checkAge / 1000)}s ago`}
           </span>
         </h2>
-        <button onClick={load}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
+        <button
+          onClick={load}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]"
+        >
           <RotateCcw size={14} /> Refresh
         </button>
       </div>
 
-      <div className={`px-4 py-3 rounded-lg mb-4 text-sm font-semibold ${overallOk ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'}`}>
+      <div
+        className={`px-4 py-3 rounded-lg mb-4 text-sm font-semibold ${overallOk ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'}`}
+      >
         {overallOk ? 'All systems operational' : 'System issues detected'}
       </div>
 

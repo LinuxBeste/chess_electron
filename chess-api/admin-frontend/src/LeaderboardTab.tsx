@@ -75,12 +75,23 @@ export default function LeaderboardTab() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <Filter size={12} className="text-[#555]" />
-              <input type="number" min={0} value={minGames} onChange={(e) => { setMinGames(e.target.value); setPage(1); }}
+              <input
+                type="number"
+                min={0}
+                value={minGames}
+                onChange={(e) => {
+                  setMinGames(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Min games"
-                className="w-20 px-2 py-1.5 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#e0e0e0] placeholder-[#555] focus:outline-none focus:border-[#4a9eff]" />
+                className="w-20 px-2 py-1.5 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#e0e0e0] placeholder-[#555] focus:outline-none focus:border-[#4a9eff]"
+              />
             </div>
             <div className="w-64">
-              <SearchBar value={query} onChange={setQuery} placeholder="Filter by name..."
+              <SearchBar
+                value={query}
+                onChange={setQuery}
+                placeholder="Filter by name..."
                 sortOptions={[
                   { key: 'rank', label: 'Rank' },
                   { key: 'rating', label: 'Rating' },
@@ -90,7 +101,10 @@ export default function LeaderboardTab() {
                 ]}
                 sortKey={sortKey}
                 sortAsc={sortAsc}
-                onSortChange={(k, a) => { setSortKey(k); setSortAsc(a); }}
+                onSortChange={(k, a) => {
+                  setSortKey(k);
+                  setSortAsc(a);
+                }}
               />
             </div>
           </div>
@@ -121,19 +135,30 @@ export default function LeaderboardTab() {
                       const winPct = totalGames > 0 ? ((e.wins / totalGames) * 100).toFixed(1) : '—';
                       const change = ratingChange(e);
                       const rankColor =
-                        e.rank === 1 ? 'text-yellow-400' : e.rank === 2 ? 'text-gray-300' : e.rank === 3 ? 'text-amber-600' : 'text-[#666]';
+                        e.rank === 1
+                          ? 'text-yellow-400'
+                          : e.rank === 2
+                            ? 'text-gray-300'
+                            : e.rank === 3
+                              ? 'text-amber-600'
+                              : 'text-[#666]';
                       return (
-                        <tr key={e.id} className="border-b border-[#222] last:border-0 hover:bg-[#222] cursor-pointer"
-                          onClick={() => navigate('accounts')}>
+                        <tr
+                          key={e.id}
+                          className="border-b border-[#222] last:border-0 hover:bg-[#222] cursor-pointer"
+                          onClick={() => navigate('accounts')}
+                        >
                           <td className={`px-3 py-2.5 text-center font-bold ${rankColor}`}>{e.rank}</td>
                           <td className="px-4 py-2.5">
                             <div className="font-medium text-[#e0e0e0]">{e.displayName || e.username}</div>
                             {e.username && e.displayName && <div className="text-xs text-[#666]">@{e.username}</div>}
                           </td>
                           <td className="px-3 py-2.5 text-center font-semibold text-[#4a9eff]">{e.rating}</td>
-                          <td className={`px-3 py-2.5 text-center text-xs font-mono ${
-                            change === null ? 'text-[#555]' : change > 0 ? 'text-green-400' : 'text-red-400'
-                          }`}>
+                          <td
+                            className={`px-3 py-2.5 text-center text-xs font-mono ${
+                              change === null ? 'text-[#555]' : change > 0 ? 'text-green-400' : 'text-red-400'
+                            }`}
+                          >
                             {change === null ? '—' : change > 0 ? `+${change}` : change}
                           </td>
                           <td className="px-3 py-2.5 text-center text-green-400">{e.wins}</td>

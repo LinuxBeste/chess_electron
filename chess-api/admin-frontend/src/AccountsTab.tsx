@@ -40,39 +40,65 @@ function CreateAccountModal({ onClose, onCreated }: { onClose: () => void; onCre
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   }
 
   const strength = passwordStrength(password);
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-100"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-100"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 w-[380px] max-w-[90vw]">
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-sm font-semibold text-[#e0e0e0]">Create Account</h2>
-          <button onClick={onClose} className="text-[#888] hover:text-[#ccc]"><X size={18} /></button>
+          <button onClick={onClose} className="text-[#888] hover:text-[#ccc]">
+            <X size={18} />
+          </button>
         </div>
         {error && <p className="text-red-400 text-xs mb-3">{error}</p>}
         <div className="flex flex-col gap-3.5">
           <div>
             <label className="text-xs text-[#888] block mb-1">Username *</label>
-            <input className="w-full px-2.5 py-1.5 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <input
+              className="w-full px-2.5 py-1.5 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
           </div>
           <div>
             <label className="text-xs text-[#888] block mb-1">Password *</label>
-            <input type="password" className="w-full px-2.5 py-1.5 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input
+              type="password"
+              className="w-full px-2.5 py-1.5 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
             {password && <span className={`text-xs mt-1 ${strength.color}`}>{strength.label}</span>}
           </div>
           <div>
             <label className="text-xs text-[#888] block mb-1">Display Name</label>
-            <input className="w-full px-2.5 py-1.5 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            <input
+              className="w-full px-2.5 py-1.5 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
           </div>
         </div>
         <div className="flex gap-2 justify-end mt-5">
-          <button onClick={onClose} className="px-3 py-1.5 text-xs bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">Cancel</button>
-          <button onClick={handleCreate} disabled={saving}
-            className="px-3 py-1.5 text-xs bg-[#4a9eff] text-white rounded-lg hover:bg-[#3a8eef] disabled:opacity-60">
+          <button onClick={onClose} className="px-3 py-1.5 text-xs bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
+            Cancel
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={saving}
+            className="px-3 py-1.5 text-xs bg-[#4a9eff] text-white rounded-lg hover:bg-[#3a8eef] disabled:opacity-60"
+          >
             {saving ? 'Creating...' : 'Create'}
           </button>
         </div>
@@ -88,53 +114,90 @@ function UserGamesModal({ userId, username, onClose }: { userId: string; usernam
   useEffect(() => {
     let cancelled = false;
     api<UserGamesResponse>('/accounts/' + userId + '/games')
-      .then((d) => { if (!cancelled) setData(d); })
-      .catch((e) => { if (!cancelled) setError(e.message); });
-    return () => { cancelled = true; };
+      .then((d) => {
+        if (!cancelled) setData(d);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-100"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-100"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 w-[700px] max-w-[90vw] max-h-[80vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-sm font-semibold text-[#e0e0e0]">Games — {username}</h2>
-          <button onClick={onClose} className="text-[#888] hover:text-[#ccc]"><X size={18} /></button>
+          <button onClick={onClose} className="text-[#888] hover:text-[#ccc]">
+            <X size={18} />
+          </button>
         </div>
-        {error ? <p className="text-red-400 text-xs">{error}</p>
-        : !data ? <p className="text-xs text-[#666]">Loading...</p>
-        : (<>
-          {data.active.length > 0 && (
-            <div className="mb-5">
-              <h3 className="text-xs font-semibold text-[#4a9eff] mb-2">Active Games ({data.active.length})</h3>
-              {data.active.map((g) => (
-                <div key={g.id} className="flex gap-3 px-2.5 py-1.5 bg-[#222] rounded mb-1 text-xs text-[#ccc]">
-                  <span className="font-mono text-[#888]">{g.id.slice(0, 8)}</span>
-                  <span>{g.white} vs {g.black}</span>
-                  <span className="text-[#888]">{g.status} · {g.moves} moves</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <h3 className="text-xs font-semibold text-[#888] mb-2">Completed Games ({data.totalCompleted})</h3>
-          {data.completed.length === 0 ? <p className="text-xs text-[#666]">No completed games.</p>
-          : (<table className="w-full text-xs">
-            <thead><tr className="text-[#888] border-b border-[#2a2a2a] text-left">
-              <th className="px-2 py-1.5">ID</th><th className="px-2 py-1.5">White</th><th className="px-2 py-1.5">Black</th>
-              <th className="px-2 py-1.5">Result</th><th className="px-2 py-1.5">Date</th>
-            </tr></thead>
-            <tbody>{data.completed.slice(0, 20).map((g) => (
-              <tr key={g.id} className="border-b border-[#222]">
-                <td className="px-2 py-1.5 font-mono text-[#888]">{g.id.slice(0, 8)}</td>
-                <td className="px-2 py-1.5 text-[#ccc]">{g.white}</td>
-                <td className="px-2 py-1.5 text-[#ccc]">{g.black}</td>
-                <td className="px-2 py-1.5">{g.winner === userId ? <span className="text-green-400">Won</span>
-                  : g.winner ? <span className="text-red-400">Lost</span> : <span className="text-yellow-400">Draw</span>}</td>
-                <td className="px-2 py-1.5 text-[#888]">{new Date(g.playedAt).toLocaleDateString()}</td>
-              </tr>
-            ))}</tbody>
-          </table>)}
-        </>)}
+        {error ? (
+          <p className="text-red-400 text-xs">{error}</p>
+        ) : !data ? (
+          <p className="text-xs text-[#666]">Loading...</p>
+        ) : (
+          <>
+            {data.active.length > 0 && (
+              <div className="mb-5">
+                <h3 className="text-xs font-semibold text-[#4a9eff] mb-2">Active Games ({data.active.length})</h3>
+                {data.active.map((g) => (
+                  <div key={g.id} className="flex gap-3 px-2.5 py-1.5 bg-[#222] rounded mb-1 text-xs text-[#ccc]">
+                    <span className="font-mono text-[#888]">{g.id.slice(0, 8)}</span>
+                    <span>
+                      {g.white} vs {g.black}
+                    </span>
+                    <span className="text-[#888]">
+                      {g.status} · {g.moves} moves
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <h3 className="text-xs font-semibold text-[#888] mb-2">Completed Games ({data.totalCompleted})</h3>
+            {data.completed.length === 0 ? (
+              <p className="text-xs text-[#666]">No completed games.</p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-[#888] border-b border-[#2a2a2a] text-left">
+                    <th className="px-2 py-1.5">ID</th>
+                    <th className="px-2 py-1.5">White</th>
+                    <th className="px-2 py-1.5">Black</th>
+                    <th className="px-2 py-1.5">Result</th>
+                    <th className="px-2 py-1.5">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.completed.slice(0, 20).map((g) => (
+                    <tr key={g.id} className="border-b border-[#222]">
+                      <td className="px-2 py-1.5 font-mono text-[#888]">{g.id.slice(0, 8)}</td>
+                      <td className="px-2 py-1.5 text-[#ccc]">{g.white}</td>
+                      <td className="px-2 py-1.5 text-[#ccc]">{g.black}</td>
+                      <td className="px-2 py-1.5">
+                        {g.winner === userId ? (
+                          <span className="text-green-400">Won</span>
+                        ) : g.winner ? (
+                          <span className="text-red-400">Lost</span>
+                        ) : (
+                          <span className="text-yellow-400">Draw</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-1.5 text-[#888]">{new Date(g.playedAt).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -165,7 +228,10 @@ export default function AccountsTab() {
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortAsc(!sortAsc);
-    else { setSortKey(key); setSortAsc(true); }
+    else {
+      setSortKey(key);
+      setSortAsc(true);
+    }
   }
 
   const filtered = query
@@ -189,7 +255,8 @@ export default function AccountsTab() {
 
   function toggleOne(id: string) {
     const next = new Set(selected);
-    if (next.has(id)) next.delete(id); else next.add(id);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     setSelected(next);
   }
 
@@ -197,10 +264,15 @@ export default function AccountsTab() {
     if (selected.size === 0) return;
     if (!confirm(`Delete ${selected.size} selected account(s)? This cannot be undone.`)) return;
     setDeleting(true);
-    let ok = 0, fail = 0;
+    let ok = 0,
+      fail = 0;
     for (const id of selected) {
-      try { await api('/accounts/' + id, { method: 'DELETE' }); ok++; }
-      catch { fail++; }
+      try {
+        await api('/accounts/' + id, { method: 'DELETE' });
+        ok++;
+      } catch {
+        fail++;
+      }
     }
     addToast(`Deleted ${ok} account(s)` + (fail ? `, ${fail} failed` : ''), fail ? 'error' : 'success');
     setSelected(new Set());
@@ -210,11 +282,25 @@ export default function AccountsTab() {
 
   function handleExportCsv() {
     const headers = ['ID', 'Username', 'Display Name', 'Rating', 'Wins', 'Losses', 'Draws', 'Created'];
-    const rows = sorted.map((a) => [a.id, a.username, a.displayName, String(a.rating), String(a.wins), String(a.losses), String(a.draws), new Date(a.createdAt).toISOString()]);
-    const csv = [headers.join(','), ...rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(','))].join('\n');
+    const rows = sorted.map((a) => [
+      a.id,
+      a.username,
+      a.displayName,
+      String(a.rating),
+      String(a.wins),
+      String(a.losses),
+      String(a.draws),
+      new Date(a.createdAt).toISOString(),
+    ]);
+    const csv = [headers.join(','), ...rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(','))].join(
+      '\n',
+    );
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'accounts.csv'; a.click();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'accounts.csv';
+    a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -231,20 +317,31 @@ export default function AccountsTab() {
 
   async function handleDelete(id: string, username: string) {
     if (!confirm(`Delete ${username}? This cannot be undone.`)) return;
-    try { await api('/accounts/' + id, { method: 'DELETE' }); load(); }
-    catch (err: unknown) { addToast(err instanceof Error ? err.message : String(err), 'error'); }
+    try {
+      await api('/accounts/' + id, { method: 'DELETE' });
+      load();
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : String(err), 'error');
+    }
   }
 
   async function handleImpersonate(id: string) {
     try {
       const result = await api<ImpersonateResponse>('/accounts/' + id + '/impersonate', { method: 'POST' });
       addToast('Impersonation token generated for ' + result.username, 'success');
-    } catch (err: unknown) { addToast(err instanceof Error ? err.message : String(err), 'error'); }
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : String(err), 'error');
+    }
   }
 
-  const totalStats = accounts.reduce((acc, a) => ({
-    wins: acc.wins + a.wins, losses: acc.losses + a.losses, draws: acc.draws + a.draws,
-  }), { wins: 0, losses: 0, draws: 0 });
+  const totalStats = accounts.reduce(
+    (acc, a) => ({
+      wins: acc.wins + a.wins,
+      losses: acc.losses + a.losses,
+      draws: acc.draws + a.draws,
+    }),
+    { wins: 0, losses: 0, draws: 0 },
+  );
 
   function SortHeader({ k, label }: { k: SortKey; label: string }) {
     return (
@@ -268,12 +365,16 @@ export default function AccountsTab() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleExportCsv}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
+          <button
+            onClick={handleExportCsv}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]"
+          >
             <Download size={14} /> CSV
           </button>
-          <button onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-[#4a9eff] text-white rounded-lg hover:bg-[#3a8eef] whitespace-nowrap">
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-[#4a9eff] text-white rounded-lg hover:bg-[#3a8eef] whitespace-nowrap"
+          >
             <Plus size={15} /> Create Account
           </button>
         </div>
@@ -282,11 +383,16 @@ export default function AccountsTab() {
       {selected.size > 0 && (
         <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-[#222] rounded-lg text-sm">
           <span className="text-[#888]">{selected.size} selected</span>
-          <button onClick={handleBulkDelete} disabled={deleting}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-40">
+          <button
+            onClick={handleBulkDelete}
+            disabled={deleting}
+            className="flex items-center gap-1 px-2.5 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-40"
+          >
             <Trash2 size={12} /> Delete Selected
           </button>
-          <button onClick={() => setSelected(new Set())} className="px-2 py-1 text-xs text-[#888] hover:text-[#ccc]">Clear</button>
+          <button onClick={() => setSelected(new Set())} className="px-2 py-1 text-xs text-[#888] hover:text-[#ccc]">
+            Clear
+          </button>
         </div>
       )}
 
@@ -297,7 +403,9 @@ export default function AccountsTab() {
           {sorted.length > 0 && (
             <div className="mb-3 flex items-center gap-4 px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-xs text-[#888]">
               <span>{sorted.length} accounts</span>
-              <span>{totalStats.wins}W / {totalStats.losses}L / {totalStats.draws}D</span>
+              <span>
+                {totalStats.wins}W / {totalStats.losses}L / {totalStats.draws}D
+              </span>
             </div>
           )}
           <div className="overflow-x-auto">
@@ -306,7 +414,11 @@ export default function AccountsTab() {
                 <tr className="bg-[#222] text-[#888] uppercase text-xs tracking-wider">
                   <th className="text-center px-2 py-2.5 w-8">
                     <button onClick={toggleAll} className="text-[#888] hover:text-[#ccc]">
-                      {selected.size === sorted.length && sorted.length > 0 ? <CheckSquare size={14} /> : <Square size={14} />}
+                      {selected.size === sorted.length && sorted.length > 0 ? (
+                        <CheckSquare size={14} />
+                      ) : (
+                        <Square size={14} />
+                      )}
                     </button>
                   </th>
                   <th className="text-left px-4 py-2.5">ID</th>
@@ -330,15 +442,42 @@ export default function AccountsTab() {
                     <td className="px-4 py-2.5">{a.username}</td>
                     <td className="px-4 py-2.5">{a.displayName}</td>
                     <td className="px-4 py-2.5 text-[#4a9eff] font-semibold">{a.rating}</td>
-                    <td className="px-4 py-2.5">{a.wins} / {a.losses} / {a.draws}</td>
+                    <td className="px-4 py-2.5">
+                      {a.wins} / {a.losses} / {a.draws}
+                    </td>
                     <td className="px-4 py-2.5 text-xs">{new Date(a.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex gap-1 flex-wrap">
-                        <button onClick={() => setEditAccount(a)} className="px-2 py-1 text-xs bg-[#4a9eff] text-white rounded hover:bg-[#3a8eef]">Edit</button>
-                        <button onClick={() => setGamesUser({ id: a.id, username: a.username })} className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"><Eye size={10} /> Games</button>
-                        <button onClick={() => handleImpersonate(a.id)} className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700"><UserCheck size={10} /> Impersonate</button>
-                        <button onClick={() => handleReset(a.id)} className="flex items-center gap-1 px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600"><Key size={10} /> Reset PW</button>
-                        <button onClick={() => handleDelete(a.id, a.username)} className="flex items-center gap-1 px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"><Trash2 size={10} /> Delete</button>
+                        <button
+                          onClick={() => setEditAccount(a)}
+                          className="px-2 py-1 text-xs bg-[#4a9eff] text-white rounded hover:bg-[#3a8eef]"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setGamesUser({ id: a.id, username: a.username })}
+                          className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          <Eye size={10} /> Games
+                        </button>
+                        <button
+                          onClick={() => handleImpersonate(a.id)}
+                          className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700"
+                        >
+                          <UserCheck size={10} /> Impersonate
+                        </button>
+                        <button
+                          onClick={() => handleReset(a.id)}
+                          className="flex items-center gap-1 px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600"
+                        >
+                          <Key size={10} /> Reset PW
+                        </button>
+                        <button
+                          onClick={() => handleDelete(a.id, a.username)}
+                          className="flex items-center gap-1 px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                        >
+                          <Trash2 size={10} /> Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -351,7 +490,9 @@ export default function AccountsTab() {
 
       {editAccount && <AccountEditModal account={editAccount} onClose={() => setEditAccount(null)} onSaved={load} />}
       {showCreate && <CreateAccountModal onClose={() => setShowCreate(false)} onCreated={load} />}
-      {gamesUser && <UserGamesModal userId={gamesUser.id} username={gamesUser.username} onClose={() => setGamesUser(null)} />}
+      {gamesUser && (
+        <UserGamesModal userId={gamesUser.id} username={gamesUser.username} onClose={() => setGamesUser(null)} />
+      )}
     </div>
   );
 }

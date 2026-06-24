@@ -76,9 +76,7 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   function renderTab() {
     const p = navParams ?? {};
-    const fallback = (
-      <div className="flex items-center justify-center py-12 text-[#888]">Loading…</div>
-    );
+    const fallback = <div className="flex items-center justify-center py-12 text-[#888]">Loading…</div>;
     const tab = (() => {
       switch (active) {
         case 'overview':
@@ -141,7 +139,10 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
               return (
                 <button
                   key={t.key}
-                  onClick={() => { setActive(t.key); setNavParams(undefined); }}
+                  onClick={() => {
+                    setActive(t.key);
+                    setNavParams(undefined);
+                  }}
                   className={`flex items-center gap-1.5 px-4 py-2.5 text-sm border-b-2 transition-colors whitespace-nowrap ${
                     active === t.key
                       ? 'text-[#4a9eff] border-[#4a9eff]'

@@ -4,8 +4,16 @@ import { api } from './api';
 import { useToast } from './Toast';
 
 const TEMPLATES = [
-  { label: 'Maintenance', icon: Wrench, message: 'Server will undergo maintenance in 15 minutes. Please finish your games.' },
-  { label: 'Tournament Starting', icon: Bell, message: 'A tournament is about to start! Check the tournament page for details.' },
+  {
+    label: 'Maintenance',
+    icon: Wrench,
+    message: 'Server will undergo maintenance in 15 minutes. Please finish your games.',
+  },
+  {
+    label: 'Tournament Starting',
+    icon: Bell,
+    message: 'A tournament is about to start! Check the tournament page for details.',
+  },
   { label: 'Update', icon: Info, message: 'New features have been deployed! Refresh to get the latest version.' },
   { label: 'Warning', icon: AlertTriangle, message: 'Please refrain from using exploits. Violators will be banned.' },
 ];
@@ -27,7 +35,9 @@ export default function BroadcastTab() {
         body: JSON.stringify({ message: message.trim() }),
       });
       setResult(res);
-      setHistory((prev) => [{ text: message.trim(), count: res.recipientCount, time: Date.now() }, ...prev].slice(0, 10));
+      setHistory((prev) =>
+        [{ text: message.trim(), count: res.recipientCount, time: Date.now() }, ...prev].slice(0, 10),
+      );
       addToast('Broadcast sent to ' + res.recipientCount + ' players', 'success');
       setMessage('');
     } catch (err: unknown) {

@@ -49,7 +49,8 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
     if (statusFilter) path += '&status=' + encodeURIComponent(statusFilter);
     if (fromDate) path += '&fromDate=' + encodeURIComponent(fromDate);
     if (toDate) path += '&toDate=' + encodeURIComponent(toDate);
-    const sortParam = sortKey === 'date' ? 'played_at' : sortKey === 'white' ? 'white_display_name' : 'black_display_name';
+    const sortParam =
+      sortKey === 'date' ? 'played_at' : sortKey === 'white' ? 'white_display_name' : 'black_display_name';
     path += '&sortKey=' + sortParam + '&sortAsc=' + sortAsc;
     api<{ games: ArchiveGame[]; total: number }>(path)
       .then((d) => {
@@ -59,7 +60,9 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
       .catch((e) => setError(e.message));
   }
 
-  useEffect(() => { if (initialPlayer) setPlayer(initialPlayer); }, [initialPlayer]);
+  useEffect(() => {
+    if (initialPlayer) setPlayer(initialPlayer);
+  }, [initialPlayer]);
 
   useEffect(load, [page, limit, player, statusFilter, fromDate, toDate, sortKey, sortAsc]);
 
@@ -81,13 +84,30 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
             <span className="text-xs font-normal text-[#666]">({total} games)</span>
           </h2>
           <div className="flex gap-2 items-center">
-            <input type="date" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
-              className="px-2 py-1.5 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" />
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => {
+                setFromDate(e.target.value);
+                setPage(1);
+              }}
+              className="px-2 py-1.5 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
+            />
             <span className="text-xs text-[#555]">to</span>
-            <input type="date" value={toDate} onChange={(e) => { setToDate(e.target.value); setPage(1); }}
-              className="px-2 py-1.5 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" />
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => {
+                setToDate(e.target.value);
+                setPage(1);
+              }}
+              className="px-2 py-1.5 text-xs bg-[#1a1a1a] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
+            />
             <div className="w-48">
-              <SearchBar value={player} onChange={setPlayer} placeholder="Filter by player..."
+              <SearchBar
+                value={player}
+                onChange={setPlayer}
+                placeholder="Filter by player..."
                 sortOptions={[
                   { key: 'date', label: 'Date' },
                   { key: 'white', label: 'White' },
@@ -95,11 +115,20 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
                 ]}
                 sortKey={sortKey}
                 sortAsc={sortAsc}
-                onSortChange={(k, a) => { setSortKey(k); setSortAsc(a); }}
+                onSortChange={(k, a) => {
+                  setSortKey(k);
+                  setSortAsc(a);
+                }}
               />
             </div>
-            <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              className="px-3 py-2 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]">
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="px-3 py-2 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
+            >
               <option value="">All results</option>
               <option value="checkmate">Checkmate</option>
               <option value="resigned">Resigned</option>
@@ -131,8 +160,10 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
                     {games.map((g) => (
                       <tr key={g.id} className="border-b border-[#222] last:border-0 hover:bg-[#222]">
                         <td className="px-4 py-2.5 font-mono">
-                          <button onClick={() => navigate('replay', { gameId: g.id })}
-                            className="text-[#4a9eff] hover:underline flex items-center gap-1">
+                          <button
+                            onClick={() => navigate('replay', { gameId: g.id })}
+                            className="text-[#4a9eff] hover:underline flex items-center gap-1"
+                          >
                             {g.id.slice(0, 8)}… <ExternalLink size={10} />
                           </button>
                         </td>
@@ -152,10 +183,16 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
                         <td className="px-3 py-2.5 text-center">
                           {g.pgn ? (
                             <div className="flex items-center justify-center gap-1">
-                              <button onClick={() => navigator.clipboard.writeText(g.pgn!)}
-                                className="text-xs text-[#4a9eff] hover:underline">Copy</button>
-                              <button onClick={() => setExpandedPgn(expandedPgn === g.id ? null : g.id)}
-                                className="text-[#888] hover:text-[#ccc]">
+                              <button
+                                onClick={() => navigator.clipboard.writeText(g.pgn!)}
+                                className="text-xs text-[#4a9eff] hover:underline"
+                              >
+                                Copy
+                              </button>
+                              <button
+                                onClick={() => setExpandedPgn(expandedPgn === g.id ? null : g.id)}
+                                className="text-[#888] hover:text-[#ccc]"
+                              >
                                 {expandedPgn === g.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                               </button>
                             </div>
@@ -169,15 +206,16 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
                 </table>
               </div>
 
-              {expandedPgn && (() => {
-                const g = games.find((x) => x.id === expandedPgn);
-                if (!g || !g.pgn) return null;
-                return (
-                  <div className="mt-3 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg p-4">
-                    <pre className="text-xs font-mono text-[#ccc] whitespace-pre-wrap">{g.pgn}</pre>
-                  </div>
-                );
-              })()}
+              {expandedPgn &&
+                (() => {
+                  const g = games.find((x) => x.id === expandedPgn);
+                  if (!g || !g.pgn) return null;
+                  return (
+                    <div className="mt-3 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg p-4">
+                      <pre className="text-xs font-mono text-[#ccc] whitespace-pre-wrap">{g.pgn}</pre>
+                    </div>
+                  );
+                })()}
 
               <Pagination page={page} totalPages={totalPages} onChange={setPage} />
             </>

@@ -39,7 +39,9 @@ export default function SearchBar({
             className="px-2 py-2 text-xs bg-[#1a1a1a] border border-[#333] rounded-lg text-[#ccc] focus:outline-none focus:border-[#4a9eff] cursor-pointer"
           >
             {sortOptions.map((opt) => (
-              <option key={opt.key} value={opt.key}>{opt.label}</option>
+              <option key={opt.key} value={opt.key}>
+                {opt.label}
+              </option>
             ))}
           </select>
           <button

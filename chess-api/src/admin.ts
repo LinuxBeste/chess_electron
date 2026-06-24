@@ -177,7 +177,6 @@ router.get('/admin/api/stats', adminAuthMiddleware, async (_req: Request, res: R
   }
 });
 
-
 /* ─── Live metrics (delta-tracked CPU/net/disk) ─── */
 
 let prevCpu: { idle: number; total: number } | null = null;
@@ -732,7 +731,11 @@ router.get('/admin/api/logs', adminAuthMiddleware, (req: Request, res: Response)
       .reverse()
       .map((f) => {
         let size = 0;
-        try { size = fs.statSync(path.join(LOG_DIR, f)).size; } catch { /* ok */ }
+        try {
+          size = fs.statSync(path.join(LOG_DIR, f)).size;
+        } catch {
+          /* ok */
+        }
         return { name: f, size };
       });
   } catch {
@@ -750,7 +753,10 @@ router.get('/admin/api/leaderboard', adminAuthMiddleware, async (_req: Request, 
     const page = Math.max(1, parseInt(_req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(_req.query.limit as string, 10) || 50));
     const minGames = Math.max(0, parseInt(_req.query.minGames as string, 10) || 0);
-    const sortKey = (typeof _req.query.sortKey === 'string' && ['rating', 'wins', 'username'].includes(_req.query.sortKey)) ? _req.query.sortKey : 'rating';
+    const sortKey =
+      typeof _req.query.sortKey === 'string' && ['rating', 'wins', 'username'].includes(_req.query.sortKey)
+        ? _req.query.sortKey
+        : 'rating';
     const sortAsc = _req.query.sortAsc === 'true';
     const offset = (page - 1) * limit;
     const result = await db.getLeaderboard(limit, offset, minGames, sortKey, sortAsc);
@@ -771,7 +777,11 @@ router.get('/admin/api/archive', adminAuthMiddleware, async (req: Request, res: 
     const status = req.query.status as string | undefined;
     const fromDate = req.query.fromDate ? parseInt(req.query.fromDate as string, 10) : undefined;
     const toDate = req.query.toDate ? parseInt(req.query.toDate as string, 10) : undefined;
-    const sortKey = (typeof req.query.sortKey === 'string' && ['played_at', 'white_display_name', 'black_display_name'].includes(req.query.sortKey)) ? req.query.sortKey : 'played_at';
+    const sortKey =
+      typeof req.query.sortKey === 'string' &&
+      ['played_at', 'white_display_name', 'black_display_name'].includes(req.query.sortKey)
+        ? req.query.sortKey
+        : 'played_at';
     const sortAsc = req.query.sortAsc === 'true';
     const result = await db.getArchivedGames(page, limit, player, status, fromDate, toDate, sortKey, sortAsc);
     res.json({ games: result.rows, total: result.total, page, limit });
@@ -832,16 +842,30 @@ router.delete('/admin/api/tournaments/:id', adminAuthMiddleware, async (req: Req
 router.post('/admin/api/tournaments/:id/notify', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const t = await db.getTournament(req.params.id);
-    if (!t) { res.status(404).json({ error: 'Tournament not found' }); return; }
+    if (!t) {
+      res.status(404).json({ error: 'Tournament not found' });
+      return;
+    }
     const parsed = z.object({ message: z.string().min(1).max(500) }).safeParse(req.body);
-    if (!parsed.success) { res.status(400).json({ error: parsed.error.issues[0].message }); return; }
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
     const participants = await db.getTournamentParticipants(req.params.id);
     let sent = 0;
     for (const _p of participants) {
-      const count = game.broadcastToAll({ type: 'tournament_notification', tournamentId: req.params.id, message: parsed.data.message, timestamp: Date.now() });
+      const count = game.broadcastToAll({
+        type: 'tournament_notification',
+        tournamentId: req.params.id,
+        message: parsed.data.message,
+        timestamp: Date.now(),
+      });
       sent += count;
     }
-    logger.audit('admin_tournament_notified', `tournament="${req.params.id}" message="${parsed.data.message}" by admin`);
+    logger.audit(
+      'admin_tournament_notified',
+      `tournament="${req.params.id}" message="${parsed.data.message}" by admin`,
+    );
     res.json({ success: true, sentCount: sent, participantCount: participants.length });
   } catch (err) {
     logger.error('Admin tournament notify failed: ' + err);
@@ -1180,10 +1204,12 @@ router.get('/admin/api/db/tables', adminAuthMiddleware, async (_req: Request, re
       WHERE table_schema = 'public' 
       ORDER BY table_name
     `);
-    res.json({ tables: rows.map((r: { table_name: string; row_count: number | null }) => ({
-      name: r.table_name,
-      estimatedRows: r.row_count || 0,
-    })) });
+    res.json({
+      tables: rows.map((r: { table_name: string; row_count: number | null }) => ({
+        name: r.table_name,
+        estimatedRows: r.row_count || 0,
+      })),
+    });
   } catch (err) {
     logger.error('Admin DB tables query failed: ' + err);
     res.status(500).json({ error: 'Failed to list tables' });

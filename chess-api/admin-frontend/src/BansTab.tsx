@@ -27,18 +27,16 @@ export default function BansTab() {
 
   useEffect(load, []);
 
-  const filteredPlayers = (query
-    ? bans.players.filter((b) => b.id && b.id.toLowerCase().includes(query.toLowerCase()))
-    : bans.players
+  const filteredPlayers = (
+    query ? bans.players.filter((b) => b.id && b.id.toLowerCase().includes(query.toLowerCase())) : bans.players
   ).sort((a, b) => {
     const dir = sortAsc ? 1 : -1;
     if (sortKey === 'date') return ((a.bannedAt ?? 0) - (b.bannedAt ?? 0)) * dir;
     return String(a.id || '').localeCompare(String(b.id || '')) * dir;
   });
 
-  const filteredIps = (query
-    ? bans.ips.filter((b) => b.ip && b.ip.toLowerCase().includes(query.toLowerCase()))
-    : bans.ips
+  const filteredIps = (
+    query ? bans.ips.filter((b) => b.ip && b.ip.toLowerCase().includes(query.toLowerCase())) : bans.ips
   ).sort((a, b) => {
     const dir = sortAsc ? 1 : -1;
     if (sortKey === 'date') return ((a.bannedAt ?? 0) - (b.bannedAt ?? 0)) * dir;
@@ -55,7 +53,9 @@ export default function BansTab() {
       load();
     } catch (err: unknown) {
       addToast(err instanceof Error ? err.message : String(err), 'error');
-    } finally { setActionId(null); }
+    } finally {
+      setActionId(null);
+    }
   }
 
   async function handleUnbanPlayer(id: string) {
@@ -63,8 +63,11 @@ export default function BansTab() {
     try {
       await api('/bans/player/' + encodeURIComponent(id), { method: 'DELETE' });
       load();
-    } catch (err: unknown) { addToast(err instanceof Error ? err.message : String(err), 'error');
-    } finally { setActionId(null); }
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : String(err), 'error');
+    } finally {
+      setActionId(null);
+    }
   }
 
   async function handleUnbanIp(ip: string) {
@@ -72,8 +75,11 @@ export default function BansTab() {
     try {
       await api('/bans/ip/' + encodeURIComponent(ip), { method: 'DELETE' });
       load();
-    } catch (err: unknown) { addToast(err instanceof Error ? err.message : String(err), 'error');
-    } finally { setActionId(null); }
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : String(err), 'error');
+    } finally {
+      setActionId(null);
+    }
   }
 
   async function handleBulkUnban(type: 'players' | 'ips') {
@@ -81,13 +87,16 @@ export default function BansTab() {
     if (items.size === 0) return;
     if (!confirm(`Unban ${items.size} selected ${type}?`)) return;
     setBulkUnbanning(true);
-    let ok = 0, fail = 0;
+    let ok = 0,
+      fail = 0;
     for (const id of items) {
       try {
         if (type === 'players') await api('/bans/player/' + encodeURIComponent(id), { method: 'DELETE' });
         else await api('/bans/ip/' + encodeURIComponent(id), { method: 'DELETE' });
         ok++;
-      } catch { fail++; }
+      } catch {
+        fail++;
+      }
     }
     addToast(`Unbanned ${ok} ${type}` + (fail ? `, ${fail} failed` : ''), fail ? 'error' : 'success');
     setSelectedPlayers(new Set());
@@ -98,13 +107,15 @@ export default function BansTab() {
 
   function togglePlayer(id: string) {
     const next = new Set(selectedPlayers);
-    if (next.has(id)) next.delete(id); else next.add(id);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     setSelectedPlayers(next);
   }
 
   function toggleIp(ip: string) {
     const next = new Set(selectedIps);
-    if (next.has(ip)) next.delete(ip); else next.add(ip);
+    if (next.has(ip)) next.delete(ip);
+    else next.add(ip);
     setSelectedIps(next);
   }
 
@@ -119,17 +130,26 @@ export default function BansTab() {
     <div>
       <div className="flex flex-wrap gap-2 mb-4">
         <div className="flex-1 flex gap-2">
-          <input type="text" value={newIp} onChange={(e) => setNewIp(e.target.value)}
+          <input
+            type="text"
+            value={newIp}
+            onChange={(e) => setNewIp(e.target.value)}
             placeholder="IP address to ban..."
             onKeyDown={(e) => e.key === 'Enter' && handleAddIpBan()}
-            className="flex-1 px-3 py-2 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] placeholder-[#555] focus:outline-none focus:border-[#4a9eff]" />
-          <button onClick={() => setShowDuration(!showDuration)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border ${showDuration ? 'bg-[#333] border-[#4a9eff] text-[#4a9eff]' : 'bg-[#1a1a1a] border-[#333] text-[#888] hover:text-[#ccc]'}`}>
+            className="flex-1 px-3 py-2 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] placeholder-[#555] focus:outline-none focus:border-[#4a9eff]"
+          />
+          <button
+            onClick={() => setShowDuration(!showDuration)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border ${showDuration ? 'bg-[#333] border-[#4a9eff] text-[#4a9eff]' : 'bg-[#1a1a1a] border-[#333] text-[#888] hover:text-[#ccc]'}`}
+          >
             <Clock size={14} />
           </button>
         </div>
-        <button onClick={handleAddIpBan} disabled={actionId === 'add' || !newIp.trim()}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-40">
+        <button
+          onClick={handleAddIpBan}
+          disabled={actionId === 'add' || !newIp.trim()}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-40"
+        >
           {actionId === 'add' ? <RotateCcw size={14} className="animate-spin" /> : <Plus size={14} />}
           Ban IP
         </button>
@@ -138,21 +158,34 @@ export default function BansTab() {
       {showDuration && (
         <div className="mb-4 flex gap-2 items-center px-3 py-2 bg-[#222] rounded-lg text-sm">
           <span className="text-[#888] text-xs">Ban duration (minutes, 0=permanent):</span>
-          <input type="number" min={0} value={banDuration} onChange={(e) => setBanDuration(parseInt(e.target.value) || 0)}
-            className="w-20 px-2 py-1 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" />
-          <span className="text-xs text-[#555]">{banDuration > 0 ? `~${(banDuration / 60).toFixed(1)}h` : 'Permanent'}</span>
+          <input
+            type="number"
+            min={0}
+            value={banDuration}
+            onChange={(e) => setBanDuration(parseInt(e.target.value) || 0)}
+            className="w-20 px-2 py-1 text-sm bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
+          />
+          <span className="text-xs text-[#555]">
+            {banDuration > 0 ? `~${(banDuration / 60).toFixed(1)}h` : 'Permanent'}
+          </span>
         </div>
       )}
 
       <div className="mb-4 max-w-md">
-        <SearchBar value={query} onChange={setQuery} placeholder="Search bans by player ID or IP..."
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder="Search bans by player ID or IP..."
           sortOptions={[
             { key: 'date', label: 'Date' },
             { key: 'id', label: 'Name' },
           ]}
           sortKey={sortKey}
           sortAsc={sortAsc}
-          onSortChange={(k, a) => { setSortKey(k); setSortAsc(a); }}
+          onSortChange={(k, a) => {
+            setSortKey(k);
+            setSortAsc(a);
+          }}
         />
       </div>
 
@@ -166,8 +199,11 @@ export default function BansTab() {
           {selectedPlayers.size > 0 && (
             <div className="mb-2 flex items-center gap-2 px-2 py-1.5 bg-[#222] rounded text-xs">
               <span className="text-[#888]">{selectedPlayers.size} selected</span>
-              <button onClick={() => handleBulkUnban('players')} disabled={bulkUnbanning}
-                className="flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-700 text-[#ccc] rounded hover:bg-gray-600 disabled:opacity-40">
+              <button
+                onClick={() => handleBulkUnban('players')}
+                disabled={bulkUnbanning}
+                className="flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-700 text-[#ccc] rounded hover:bg-gray-600 disabled:opacity-40"
+              >
                 {bulkUnbanning ? <RotateCcw size={10} className="animate-spin" /> : <Trash2 size={10} />}
                 Unban Selected
               </button>
@@ -190,8 +226,11 @@ export default function BansTab() {
                         <span className="text-[#555] shrink-0">{new Date(b.bannedAt).toLocaleDateString()}</span>
                       )}
                     </div>
-                    <button onClick={() => handleUnbanPlayer(pid)} disabled={actionId === pid}
-                      className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-700 text-[#ccc] rounded hover:bg-gray-600 disabled:opacity-40 shrink-0">
+                    <button
+                      onClick={() => handleUnbanPlayer(pid)}
+                      disabled={actionId === pid}
+                      className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-700 text-[#ccc] rounded hover:bg-gray-600 disabled:opacity-40 shrink-0"
+                    >
                       {actionId === pid ? <RotateCcw size={10} className="animate-spin" /> : <Trash2 size={10} />}
                       Unban
                     </button>
@@ -211,8 +250,11 @@ export default function BansTab() {
           {selectedIps.size > 0 && (
             <div className="mb-2 flex items-center gap-2 px-2 py-1.5 bg-[#222] rounded text-xs">
               <span className="text-[#888]">{selectedIps.size} selected</span>
-              <button onClick={() => handleBulkUnban('ips')} disabled={bulkUnbanning}
-                className="flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-700 text-[#ccc] rounded hover:bg-gray-600 disabled:opacity-40">
+              <button
+                onClick={() => handleBulkUnban('ips')}
+                disabled={bulkUnbanning}
+                className="flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-700 text-[#ccc] rounded hover:bg-gray-600 disabled:opacity-40"
+              >
                 {bulkUnbanning ? <RotateCcw size={10} className="animate-spin" /> : <Trash2 size={10} />}
                 Unban Selected
               </button>
@@ -234,13 +276,18 @@ export default function BansTab() {
                       <button onClick={() => copyIp(ip)} className="text-[#555] hover:text-[#ccc]" title="Copy IP">
                         <Copy size={10} />
                       </button>
-                      {b.bannedAt && (
-                        <span className="text-[#555]">{new Date(b.bannedAt).toLocaleDateString()}</span>
-                      )}
+                      {b.bannedAt && <span className="text-[#555]">{new Date(b.bannedAt).toLocaleDateString()}</span>}
                     </div>
-                    <button onClick={() => handleUnbanIp(ip)} disabled={actionId === 'ip:' + ip}
-                      className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-700 text-[#ccc] rounded hover:bg-gray-600 disabled:opacity-40 shrink-0">
-                      {actionId === 'ip:' + ip ? <RotateCcw size={10} className="animate-spin" /> : <Trash2 size={10} />}
+                    <button
+                      onClick={() => handleUnbanIp(ip)}
+                      disabled={actionId === 'ip:' + ip}
+                      className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-700 text-[#ccc] rounded hover:bg-gray-600 disabled:opacity-40 shrink-0"
+                    >
+                      {actionId === 'ip:' + ip ? (
+                        <RotateCcw size={10} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={10} />
+                      )}
                       Unban
                     </button>
                   </li>

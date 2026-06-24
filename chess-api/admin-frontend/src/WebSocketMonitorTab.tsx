@@ -24,8 +24,10 @@ export default function WebSocketMonitorTab() {
           <Radio size={16} className="text-purple-400" />
           WebSocket Monitor
         </h2>
-        <button onClick={load}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
+        <button
+          onClick={load}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]"
+        >
           <RotateCcw size={14} /> Refresh
         </button>
       </div>
@@ -71,7 +73,9 @@ export default function WebSocketMonitorTab() {
                     <span className="text-[#ccc]">{p.username}</span>
                     <span className="text-[#555] font-mono">{p.playerId.slice(0, 8)}</span>
                   </div>
-                  <span className="text-[#888]">{p.connectionCount} connection{p.connectionCount !== 1 ? 's' : ''}</span>
+                  <span className="text-[#888]">
+                    {p.connectionCount} connection{p.connectionCount !== 1 ? 's' : ''}
+                  </span>
                 </div>
               ))}
             </div>
@@ -92,7 +96,9 @@ export default function WebSocketMonitorTab() {
                     <span className="w-2 h-2 rounded-full bg-purple-400" />
                     <span className="font-mono text-[#ccc]">{s.gameId.slice(0, 12)}&hellip;</span>
                   </div>
-                  <span className="text-[#888]">{s.connectionCount} connection{s.connectionCount !== 1 ? 's' : ''}</span>
+                  <span className="text-[#888]">
+                    {s.connectionCount} connection{s.connectionCount !== 1 ? 's' : ''}
+                  </span>
                 </div>
               ))}
             </div>

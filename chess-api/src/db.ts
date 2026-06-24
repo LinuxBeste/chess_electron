@@ -11,7 +11,13 @@ let _pool: pg.Pool | null = null;
 
 const LEADERBOARD_CACHE_TTL_MS = parseInt(process.env.LEADERBOARD_CACHE_TTL ?? '10000', 10);
 const leaderboardCache = new Map<string, { data: unknown; expiresAt: number }>();
-function getLeaderboardCacheKey(limit: number, offset: number, minGames: number, sortKey: string, sortAsc: boolean): string {
+function getLeaderboardCacheKey(
+  limit: number,
+  offset: number,
+  minGames: number,
+  sortKey: string,
+  sortAsc: boolean,
+): string {
   return `${limit}:${offset}:${minGames}:${sortKey}:${sortAsc}`;
 }
 function getCachedLeaderboard<T>(key: string): T | null {
@@ -469,7 +475,9 @@ export async function saveBan(id: string, playerId: string | null, ip: string | 
   logger.debug('DB: ban saved id=' + id + ' playerId=' + playerId + ' ip=' + ip);
 }
 
-export async function loadAllBans(): Promise<{ id: string; player_id: string | null; ip: string | null; banned_at: number }[]> {
+export async function loadAllBans(): Promise<
+  { id: string; player_id: string | null; ip: string | null; banned_at: number }[]
+> {
   const { rows } = await getPool().query('SELECT id, player_id, ip, banned_at FROM bans');
   logger.debug('DB: loadAllBans count=' + rows.length);
   return rows as { id: string; player_id: string | null; ip: string | null; banned_at: number }[];
@@ -556,34 +564,34 @@ export async function hasPendingRequest(fromUserId: string, toUserId: string): P
 }
 
 export async function updateFriendRequestStatus(id: string, status: string): Promise<void> {
-  await getPool().query('UPDATE friend_requests SET status = $1, updated_at = $2 WHERE id = $3', [status, Date.now(), id]);
+  await getPool().query('UPDATE friend_requests SET status = $1, updated_at = $2 WHERE id = $3', [
+    status,
+    Date.now(),
+    id,
+  ]);
   logger.debug('DB: friend request status updated id=' + id + ' status=' + status);
 }
 
 export async function addFriendRelationship(userId: string, friendId: string): Promise<void> {
   return transaction(async (client) => {
     const now = Date.now();
-    await client.query('INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [
-      userId,
-      friendId,
-      now,
-    ]);
-    await client.query('INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [
-      friendId,
-      userId,
-      now,
-    ]);
+    await client.query(
+      'INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+      [userId, friendId, now],
+    );
+    await client.query(
+      'INSERT INTO friends (user_id, friend_id, created_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+      [friendId, userId, now],
+    );
     logger.debug('DB: friend relationship added user1=' + userId + ' user2=' + friendId);
   });
 }
 
 export async function removeFriendRelationship(userId: string, friendId: string): Promise<void> {
-  await getPool().query('DELETE FROM friends WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $3 AND friend_id = $4)', [
-    userId,
-    friendId,
-    friendId,
-    userId,
-  ]);
+  await getPool().query(
+    'DELETE FROM friends WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $3 AND friend_id = $4)',
+    [userId, friendId, friendId, userId],
+  );
   logger.debug('DB: friend relationship removed user1=' + userId + ' user2=' + friendId);
 }
 
@@ -648,7 +656,11 @@ export async function getLeaderboard(
   const { rows } = await getPool().query(
     'SELECT id, username, display_name, avatar_url, rating, wins, losses, draws FROM users' +
       where +
-      ' ORDER BY ' + orderCol + ' ' + orderDir + ' LIMIT $' +
+      ' ORDER BY ' +
+      orderCol +
+      ' ' +
+      orderDir +
+      ' LIMIT $' +
       (paramIdx + 1) +
       ' OFFSET $' +
       (paramIdx + 2),
@@ -771,7 +783,11 @@ export async function getArchivedGames(
   const { rows } = await getPool().query(
     'SELECT * FROM completed_games' +
       where +
-      ' ORDER BY ' + orderCol + ' ' + orderDir + ' LIMIT $' +
+      ' ORDER BY ' +
+      orderCol +
+      ' ' +
+      orderDir +
+      ' LIMIT $' +
       (paramIdx + 1) +
       ' OFFSET $' +
       (paramIdx + 2),
@@ -850,7 +866,9 @@ export async function getPublicTournaments(status?: string): Promise<TournamentR
 
 export async function getTournaments(status?: string): Promise<TournamentRow[]> {
   if (status) {
-    const { rows } = await getPool().query('SELECT * FROM tournaments WHERE status = $1 ORDER BY created_at DESC', [status]);
+    const { rows } = await getPool().query('SELECT * FROM tournaments WHERE status = $1 ORDER BY created_at DESC', [
+      status,
+    ]);
     return rows as TournamentRow[];
   }
   const { rows } = await getPool().query('SELECT * FROM tournaments ORDER BY created_at DESC');
@@ -858,9 +876,10 @@ export async function getTournaments(status?: string): Promise<TournamentRow[]> 
 }
 
 export async function getTournamentParticipants(tournamentId: string): Promise<TournamentParticipantRow[]> {
-  const { rows } = await getPool().query('SELECT * FROM tournament_participants WHERE tournament_id = $1 ORDER BY seed', [
-    tournamentId,
-  ]);
+  const { rows } = await getPool().query(
+    'SELECT * FROM tournament_participants WHERE tournament_id = $1 ORDER BY seed',
+    [tournamentId],
+  );
   return rows as TournamentParticipantRow[];
 }
 
@@ -981,7 +1000,9 @@ export async function getPlayerTournamentStats(
     [playerId],
   );
   const total = (totalRows[0] as { c: number }).c;
-  const { rows: winsRows } = await getPool().query('SELECT COUNT(*) as c FROM tournaments WHERE winner_id = $1', [playerId]);
+  const { rows: winsRows } = await getPool().query('SELECT COUNT(*) as c FROM tournaments WHERE winner_id = $1', [
+    playerId,
+  ]);
   const wins = (winsRows[0] as { c: number }).c;
   const { rows: currentRows } = await getPool().query(
     `SELECT t.id FROM tournament_participants tp
@@ -1024,7 +1045,10 @@ export async function updateTournamentMatch(
 }
 
 export async function areFriends(userId: string, friendId: string): Promise<boolean> {
-  const { rows } = await getPool().query('SELECT 1 FROM friends WHERE user_id = $1 AND friend_id = $2', [userId, friendId]);
+  const { rows } = await getPool().query('SELECT 1 FROM friends WHERE user_id = $1 AND friend_id = $2', [
+    userId,
+    friendId,
+  ]);
   const result = rows.length > 0;
   logger.debug('DB: areFriends user1=' + userId + ' user2=' + friendId + ' =' + result);
   return result;

@@ -2125,7 +2125,7 @@ describe('Admin API — DB browser (tables & query)', () => {
     await request
       .post('/admin/api/db/query')
       .set('Authorization', adminAuth)
-      .send({ sql: 'INSERT INTO users (id) VALUES (\'x\')' })
+      .send({ sql: "INSERT INTO users (id) VALUES ('x')" })
       .expect(403);
     await request
       .post('/admin/api/db/query')

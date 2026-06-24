@@ -86,9 +86,19 @@ export default function ConfigTab() {
               <Settings size={16} className="text-blue-400" />
               Server Configuration
             </h2>
-            <button onClick={editing ? handleSave : startEdit}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs bg-[#4a9eff] text-white rounded hover:bg-[#3a8eef]">
-              {editing ? <><Check size={12} /> Apply</> : <><Edit3 size={12} /> Edit</>}
+            <button
+              onClick={editing ? handleSave : startEdit}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs bg-[#4a9eff] text-white rounded hover:bg-[#3a8eef]"
+            >
+              {editing ? (
+                <>
+                  <Check size={12} /> Apply
+                </>
+              ) : (
+                <>
+                  <Edit3 size={12} /> Edit
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -110,7 +120,9 @@ export default function ConfigTab() {
                       <div className="flex items-center gap-1.5">
                         {field.label}
                         {src && (
-                          <span className={`inline-block px-1 py-0.5 rounded text-[10px] font-mono ${src === 'env' ? 'bg-green-900 text-green-400' : 'bg-gray-800 text-gray-400'}`}>
+                          <span
+                            className={`inline-block px-1 py-0.5 rounded text-[10px] font-mono ${src === 'env' ? 'bg-green-900 text-green-400' : 'bg-gray-800 text-gray-400'}`}
+                          >
                             {src === 'env' ? '.env' : 'default'}
                           </span>
                         )}
@@ -119,16 +131,23 @@ export default function ConfigTab() {
                     <td className="px-4 py-3 text-xs">
                       {editing ? (
                         <div className="flex items-center gap-1">
-                          <input value={draft[field.key] || ''} onChange={(e) => setDraft((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                            className="flex-1 px-2 py-1 bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]" />
-                          <button onClick={() => handleReset(field.key)}
+                          <input
+                            value={draft[field.key] || ''}
+                            onChange={(e) => setDraft((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                            className="flex-1 px-2 py-1 bg-[#111] border border-[#333] rounded text-[#e0e0e0] focus:outline-none focus:border-[#4a9eff]"
+                          />
+                          <button
+                            onClick={() => handleReset(field.key)}
                             className="p-1 text-[#888] hover:text-[#ccc]"
-                            title="Reset to default">
+                            title="Reset to default"
+                          >
                             <RotateCcw size={12} />
                           </button>
                         </div>
                       ) : (
-                        <span className="font-mono text-[#e0e0e0]">{String((config as Record<string, string | number>)[field.key])}</span>
+                        <span className="font-mono text-[#e0e0e0]">
+                          {String((config as Record<string, string | number>)[field.key])}
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -145,7 +164,9 @@ export default function ConfigTab() {
         </div>
 
         <div className="px-6 py-3 border-t border-[#2a2a2a]">
-          <p className="text-xs text-[#555]">Editable values are copied as environment variables. Restart the server to apply changes.</p>
+          <p className="text-xs text-[#555]">
+            Editable values are copied as environment variables. Restart the server to apply changes.
+          </p>
         </div>
       </div>
     </div>

@@ -1,12 +1,31 @@
 import { useEffect, useState } from 'react';
-import { Users, Ban, LogOut, RotateCcw, ShieldBan, CheckSquare, Square, Copy, MessageSquare, ExternalLink } from 'lucide-react';
+import {
+  Users,
+  Ban,
+  LogOut,
+  RotateCcw,
+  ShieldBan,
+  CheckSquare,
+  Square,
+  Copy,
+  MessageSquare,
+  ExternalLink,
+} from 'lucide-react';
 import { api, PlayerRow } from './api';
 import { useToast } from './Toast';
 import SearchBar from './SearchBar';
 import Pagination from './Pagination';
 import { useNavigateTab } from './TabContext';
 
-function WhisperModal({ playerId, playerName, onClose }: { playerId: string; playerName: string; onClose: () => void }) {
+function WhisperModal({
+  playerId,
+  playerName,
+  onClose,
+}: {
+  playerId: string;
+  playerName: string;
+  onClose: () => void;
+}) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const { addToast } = useToast();
@@ -29,16 +48,30 @@ function WhisperModal({ playerId, playerName, onClose }: { playerId: string; pla
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-100"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-100"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 w-[380px] max-w-[90vw]">
         <h2 className="text-sm font-semibold text-[#e0e0e0] mb-4">Whisper to {playerName}</h2>
-        <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder="Type your message..."
-          className="w-full px-3 py-2 text-sm bg-[#111] border border-[#333] rounded-lg text-[#e0e0e0] placeholder-[#555] focus:outline-none focus:border-[#4a9eff] resize-none" />
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          rows={3}
+          placeholder="Type your message..."
+          className="w-full px-3 py-2 text-sm bg-[#111] border border-[#333] rounded-lg text-[#e0e0e0] placeholder-[#555] focus:outline-none focus:border-[#4a9eff] resize-none"
+        />
         <div className="flex gap-2 justify-end mt-4">
-          <button onClick={onClose} className="px-3 py-1.5 text-xs bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">Cancel</button>
-          <button onClick={handleSend} disabled={sending || !message.trim()}
-            className="px-3 py-1.5 text-xs bg-[#4a9eff] text-white rounded-lg hover:bg-[#3a8eef] disabled:opacity-40">
+          <button onClick={onClose} className="px-3 py-1.5 text-xs bg-[#2a2a2a] text-[#ccc] rounded-lg hover:bg-[#333]">
+            Cancel
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={sending || !message.trim()}
+            className="px-3 py-1.5 text-xs bg-[#4a9eff] text-white rounded-lg hover:bg-[#3a8eef] disabled:opacity-40"
+          >
             {sending ? 'Sending...' : 'Send'}
           </button>
         </div>
@@ -75,8 +108,10 @@ export default function PlayersTab() {
   const filtered = players
     .filter((p) => !filterOnline || p.online)
     .filter((p) => !filterTemp || !p.isRegistered)
-    .filter((p) => !query ||
-      [p.id, p.username, p.displayName, p.ip].some((v) => v && v.toLowerCase().includes(query.toLowerCase()))
+    .filter(
+      (p) =>
+        !query ||
+        [p.id, p.username, p.displayName, p.ip].some((v) => v && v.toLowerCase().includes(query.toLowerCase())),
     );
 
   const sorted = [...filtered].sort((a, b) => {
@@ -150,12 +185,15 @@ export default function PlayersTab() {
     const verb = action === 'ban' ? 'Ban' : 'Kick';
     if (!confirm(`${verb} ${selected.size} selected player(s)?`)) return;
     setBulkAction(action);
-    let ok = 0, fail = 0;
+    let ok = 0,
+      fail = 0;
     for (const id of selected) {
       try {
         await api('/players/' + id + '/' + action, { method: 'POST' });
         ok++;
-      } catch { fail++; }
+      } catch {
+        fail++;
+      }
     }
     addToast(`${verb}ed ${ok} player(s)` + (fail ? `, ${fail} failed` : ''), fail ? 'error' : 'success');
     setSelected(new Set());
@@ -180,7 +218,10 @@ export default function PlayersTab() {
               Active Players
             </h2>
             <div className="w-96">
-              <SearchBar value={query} onChange={setQuery} placeholder="Search players by ID, username, display name, IP..."
+              <SearchBar
+                value={query}
+                onChange={setQuery}
+                placeholder="Search players by ID, username, display name, IP..."
                 sortOptions={[
                   { key: 'username', label: 'Username' },
                   { key: 'displayName', label: 'Display Name' },
@@ -190,7 +231,10 @@ export default function PlayersTab() {
                 ]}
                 sortKey={sortKey}
                 sortAsc={sortAsc}
-                onSortChange={(k, a) => { setSortKey(k); setSortAsc(a); }}
+                onSortChange={(k, a) => {
+                  setSortKey(k);
+                  setSortAsc(a);
+                }}
               />
             </div>
           </div>
@@ -198,41 +242,63 @@ export default function PlayersTab() {
 
         <div className="p-4">
           <div className="flex gap-1.5 mb-3">
-            <button onClick={() => setFilterOnline(!filterOnline)}
+            <button
+              onClick={() => setFilterOnline(!filterOnline)}
               className={`px-2.5 py-1 text-[11px] rounded-full font-medium border ${
                 filterOnline
                   ? 'bg-green-900 border-green-600 text-green-400'
                   : 'bg-[#1a1a1a] border-[#333] text-[#888] hover:text-[#ccc]'
-              }`}>
+              }`}
+            >
               Online only
             </button>
-            <button onClick={() => setFilterTemp(!filterTemp)}
+            <button
+              onClick={() => setFilterTemp(!filterTemp)}
               className={`px-2.5 py-1 text-[11px] rounded-full font-medium border ${
                 filterTemp
                   ? 'bg-gray-800 border-gray-500 text-gray-300'
                   : 'bg-[#1a1a1a] border-[#333] text-[#888] hover:text-[#ccc]'
-              }`}>
+              }`}
+            >
               Temporary only
             </button>
             {(filterOnline || filterTemp) && (
-              <button onClick={() => { setFilterOnline(false); setFilterTemp(false); }}
-                className="text-[11px] text-[#555] hover:text-[#888] px-2">Clear</button>
+              <button
+                onClick={() => {
+                  setFilterOnline(false);
+                  setFilterTemp(false);
+                }}
+                className="text-[11px] text-[#555] hover:text-[#888] px-2"
+              >
+                Clear
+              </button>
             )}
           </div>
           {selected.size > 0 && (
             <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-[#222] rounded-lg text-sm">
               <span className="text-[#888]">{selected.size} selected</span>
-              <button onClick={() => handleBulk('kick')} disabled={bulkAction !== null}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-40">
+              <button
+                onClick={() => handleBulk('kick')}
+                disabled={bulkAction !== null}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-40"
+              >
                 {bulkAction === 'kick' ? <RotateCcw size={12} className="animate-spin" /> : <LogOut size={12} />}
                 Kick Selected
               </button>
-              <button onClick={() => handleBulk('ban')} disabled={bulkAction !== null}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-40">
+              <button
+                onClick={() => handleBulk('ban')}
+                disabled={bulkAction !== null}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-40"
+              >
                 {bulkAction === 'ban' ? <RotateCcw size={12} className="animate-spin" /> : <Ban size={12} />}
                 Ban Selected
               </button>
-              <button onClick={() => setSelected(new Set())} className="px-2 py-1 text-xs text-[#888] hover:text-[#ccc]">Clear</button>
+              <button
+                onClick={() => setSelected(new Set())}
+                className="px-2 py-1 text-xs text-[#888] hover:text-[#ccc]"
+              >
+                Clear
+              </button>
             </div>
           )}
 
@@ -246,7 +312,11 @@ export default function PlayersTab() {
                     <tr className="text-[#888] uppercase text-xs tracking-wider border-b border-[#2a2a2a]">
                       <th className="text-center px-2 py-2.5 w-8">
                         <button onClick={toggleAll} className="text-[#888] hover:text-[#ccc]">
-                          {selected.size === paginated.length && paginated.length > 0 ? <CheckSquare size={14} /> : <Square size={14} />}
+                          {selected.size === paginated.length && paginated.length > 0 ? (
+                            <CheckSquare size={14} />
+                          ) : (
+                            <Square size={14} />
+                          )}
                         </button>
                       </th>
                       <th className="text-left px-4 py-2.5">ID</th>
@@ -271,7 +341,11 @@ export default function PlayersTab() {
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-1">
                             <span className="font-mono">{p.id.slice(0, 8)}…</span>
-                            <button onClick={() => copyId(p.id)} className="text-[#555] hover:text-[#ccc]" title="Copy ID">
+                            <button
+                              onClick={() => copyId(p.id)}
+                              className="text-[#555] hover:text-[#ccc]"
+                              title="Copy ID"
+                            >
                               <Copy size={11} />
                             </button>
                           </div>
@@ -279,12 +353,16 @@ export default function PlayersTab() {
                         <td className="px-4 py-2.5">{p.username}</td>
                         <td className="px-4 py-2.5">{p.displayName}</td>
                         <td className="px-4 py-2.5">
-                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${p.isRegistered ? 'bg-blue-900 text-blue-400' : 'bg-gray-800 text-gray-400'}`}>
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${p.isRegistered ? 'bg-blue-900 text-blue-400' : 'bg-gray-800 text-gray-400'}`}
+                          >
                             {p.isRegistered ? 'Registered' : 'Temporary'}
                           </span>
                         </td>
                         <td className="px-4 py-2.5">
-                          <span className={`inline-flex items-center gap-1.5 ${p.online ? 'text-green-400' : 'text-gray-500'}`}>
+                          <span
+                            className={`inline-flex items-center gap-1.5 ${p.online ? 'text-green-400' : 'text-gray-500'}`}
+                          >
                             <span className={`w-2 h-2 rounded-full ${p.online ? 'bg-green-400' : 'bg-gray-600'}`} />
                             {p.online ? 'Online' : 'Offline'}
                           </span>
@@ -298,29 +376,52 @@ export default function PlayersTab() {
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex gap-1 flex-nowrap">
-                            <button onClick={() => setWhisperTarget({ id: p.id, name: p.displayName })}
+                            <button
+                              onClick={() => setWhisperTarget({ id: p.id, name: p.displayName })}
                               disabled={!p.online}
-                              className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40" title="Whisper">
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40"
+                              title="Whisper"
+                            >
                               <MessageSquare size={10} />
                             </button>
                             {p.currentGameId && (
-                              <button onClick={() => navigate('replay', { gameId: p.currentGameId! })}
-                                className="flex items-center gap-1 px-2 py-1 text-xs bg-green-700 text-white rounded hover:bg-green-800" title="View game">
+                              <button
+                                onClick={() => navigate('replay', { gameId: p.currentGameId! })}
+                                className="flex items-center gap-1 px-2 py-1 text-xs bg-green-700 text-white rounded hover:bg-green-800"
+                                title="View game"
+                              >
                                 <ExternalLink size={10} />
                               </button>
                             )}
-                            <button onClick={() => handleKick(p.id, p.displayName)} disabled={actionId === p.id || !p.online}
-                              className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-40">
-                              {actionId === p.id ? <RotateCcw size={10} className="animate-spin" /> : <LogOut size={10} />}
+                            <button
+                              onClick={() => handleKick(p.id, p.displayName)}
+                              disabled={actionId === p.id || !p.online}
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-40"
+                            >
+                              {actionId === p.id ? (
+                                <RotateCcw size={10} className="animate-spin" />
+                              ) : (
+                                <LogOut size={10} />
+                              )}
                             </button>
-                            <button onClick={() => handleBan(p.id, p.displayName)} disabled={actionId === p.id}
-                              className="flex items-center gap-1 px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-40">
+                            <button
+                              onClick={() => handleBan(p.id, p.displayName)}
+                              disabled={actionId === p.id}
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-40"
+                            >
                               {actionId === p.id ? <RotateCcw size={10} className="animate-spin" /> : <Ban size={10} />}
                             </button>
                             {p.ip && (
-                              <button onClick={() => handleBanIp(p.ip!)} disabled={actionId === 'ip:' + p.ip}
-                                className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-40">
-                                {actionId === 'ip:' + p.ip ? <RotateCcw size={10} className="animate-spin" /> : <ShieldBan size={10} />}
+                              <button
+                                onClick={() => handleBanIp(p.ip!)}
+                                disabled={actionId === 'ip:' + p.ip}
+                                className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-40"
+                              >
+                                {actionId === 'ip:' + p.ip ? (
+                                  <RotateCcw size={10} className="animate-spin" />
+                                ) : (
+                                  <ShieldBan size={10} />
+                                )}
                               </button>
                             )}
                           </div>
@@ -335,7 +436,13 @@ export default function PlayersTab() {
           )}
         </div>
       </div>
-      {whisperTarget && <WhisperModal playerId={whisperTarget.id} playerName={whisperTarget.name} onClose={() => setWhisperTarget(null)} />}
+      {whisperTarget && (
+        <WhisperModal
+          playerId={whisperTarget.id}
+          playerName={whisperTarget.name}
+          onClose={() => setWhisperTarget(null)}
+        />
+      )}
     </div>
   );
 }
