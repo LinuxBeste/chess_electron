@@ -24,12 +24,12 @@ import {
   setSweepTimer,
   removeGameById,
   gameCompletedAt,
+  COMPLETED_GAME_TTL_MS,
   addPlayerGameIndex,
   sendToPlayer,
   sendToPlayerRaw,
   sendToSpectators,
 } from './state.js';
-import { COMPLETED_GAME_TTL_MS } from './state.js';
 import { updateEloRatings } from './elo.js';
 import { sendChatHistory } from './chat.js';
 import { loadPersistedBans } from './bans.js';
