@@ -43,10 +43,26 @@ jobs:
       - run: pnpm lint
 
   api:
+    needs: lint
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: chess-api
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: chess
+          POSTGRES_PASSWORD: chess
+          POSTGRES_DB: chess_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -68,19 +84,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Setup PostgreSQL
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql postgresql-client
-          sudo pg_ctlcluster $(pg_lsclusters -h | awk '{print $1, $2}') start 2>/dev/null || true
-          sudo -u postgres createuser -s chess 2>/dev/null || true
-          sudo -u postgres createdb -O chess chess_test 2>/dev/null || true
-          sudo -u postgres psql -c "ALTER USER chess WITH PASSWORD 'chess'"
-
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm typecheck
       - run: pnpm test:coverage
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: chess
+          PGPASSWORD: chess
+          PGDATABASE: chess_test
       - run: pnpm build
 
       - name: Upload coverage
@@ -98,8 +111,13 @@ jobs:
           pnpm exec tsc --noEmit -p chess-api/admin-frontend/tsconfig.json
           pnpm exec prettier --check chess-api/admin-frontend/src/
 
-      - name: Copy lockfile for Docker context
-        run: cp ../pnpm-lock.yaml .
+  docker:
+    needs: api
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+
+    steps:
+      - uses: actions/checkout@v4
 
       - uses: docker/setup-buildx-action@v3
 
@@ -116,11 +134,12 @@ jobs:
         with:
           context: chess-api
           push: false
-          tags: chess-api:ci
+          tags: chess-api:ci-${{ github.sha }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
   client:
+    needs: lint
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -166,3 +185,60 @@ jobs:
           name: chess-client-build
           path: chess-client/dist/
           retention-days: 3
+
+  website:
+    needs: lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PNPM_CACHE_FOLDER }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter chess-website build
+
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/dist/
+
+  release:
+    needs: [api, client, website]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate release tag
+        id: tag
+        run: |
+          TAG="v$(date +'%Y.%m.%d')-${GITHUB_SHA:0:7}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Create release draft
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Release ${{ steps.tag.outputs.tag }}
+          draft: true
+          generate_release_notes: true
