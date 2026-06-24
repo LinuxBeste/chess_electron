@@ -189,7 +189,7 @@ jobs:
   deploy-api:
     needs: docker
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' && secrets.DEPLOY_HOST != '' }}
+    if: github.event_name == 'workflow_dispatch'
     strategy:
       matrix:
         environment:
@@ -199,6 +199,7 @@ jobs:
       url: ${{ vars.DEPLOY_URL || 'https://chess.example.com' }}
     steps:
       - name: Deploy via SSH
+        if: ${{ secrets.DEPLOY_HOST != '' }}
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
