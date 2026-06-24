@@ -199,7 +199,9 @@ jobs:
       url: ${{ vars.DEPLOY_URL || 'https://chess.example.com' }}
     steps:
       - name: Deploy via SSH
-        if: ${{ secrets.DEPLOY_HOST != '' }}
+        if: ${{ env.DEPLOY_HOST != '' }}
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
