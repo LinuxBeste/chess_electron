@@ -16,6 +16,7 @@
     "dev": "pnpm run build && electron .",
     "typecheck": "tsc --noEmit",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "package": "pnpm run build && electron-builder",
     "package:linux": "pnpm run build && electron-builder --linux",
     "package:mac": "pnpm run build && electron-builder --mac",
