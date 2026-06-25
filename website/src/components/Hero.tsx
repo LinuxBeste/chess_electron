@@ -2,6 +2,7 @@ import { Sword, Sparkles } from 'lucide-react';
 
 export default function Hero() {
   return (
+    // full-viewport hero with padding for fixed navbar overlap
     <section className="relative min-h-screen flex items-center justify-center px-6 pt-24 pb-20 text-center">
       <div className="relative max-w-2xl">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-semibold mb-6">
@@ -21,6 +22,7 @@ export default function Hero() {
         </p>
 
         <div className="flex gap-4 flex-wrap justify-center">
+          {/* primary CTA links to GitHub releases; secondary scrolls to features */}
           <a
             href="https://github.com/linuxbeste/chess_electron/releases"
             target="_blank"

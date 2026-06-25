@@ -40,12 +40,14 @@ export default function ThemesPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
           {themes.map((t, i) => (
+            // cascading entrance for each theme card
             <ScrollReveal key={t.name} variant="scale-up" delay={i * 0.06}>
               <div className="bg-surface border border-border rounded-2xl overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5">
                 <Placeholder label={`${t.name} theme preview`} className="w-full h-40 rounded-none" />
                 <div className="p-5">
                   <h3 className="font-semibold mb-1">{t.name}</h3>
                   <p className="text-muted text-sm leading-relaxed mb-3">{t.desc}</p>
+                  {/* render color swatches from the paired color string */}
                   <div className="flex gap-1.5">
                     {t.colors.split(' / ').map((c) => (
                       <div key={c} className="w-5 h-5 rounded border border-border" style={{ background: c.trim() }} />

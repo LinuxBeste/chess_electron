@@ -27,6 +27,7 @@ export default function ScrollReveal({ children, variant = 'fade-up', delay = 0,
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
+          // spring-like cubic-bezier for smooth entrance
           el.style.transition = `all 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`;
           el.classList.remove(
             'opacity-0',
@@ -36,9 +37,11 @@ export default function ScrollReveal({ children, variant = 'fade-up', delay = 0,
             'scale-95',
             'scale-75',
           );
+          // fire once unless component opts into repeat reveals
           if (once) observer.unobserve(el);
         }
       },
+      // trigger when 15% of element is visible
       { threshold: 0.15 },
     );
     observer.observe(el);
@@ -46,6 +49,7 @@ export default function ScrollReveal({ children, variant = 'fade-up', delay = 0,
   }, [delay, once]);
 
   return (
+    // transition:none prevents flash before observer kicks in
     <div ref={ref} className={`${variantStyles[variant]} ${className}`} style={{ transition: 'none' }}>
       {children}
     </div>

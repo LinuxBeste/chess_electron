@@ -11,10 +11,12 @@ interface Piece {
 
 const pieces: Piece[] = [];
 
+// inclusive random integer helper
 function rand(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+// size doubles as opacity range — larger = more visible
 const sizes = [
   { class: 'text-3xl md:text-5xl', range: [30, 50] },
   { class: 'text-4xl md:text-6xl', range: [50, 70] },
@@ -24,6 +26,7 @@ const sizes = [
 
 const anims = ['animate-float', 'animate-float-delayed', 'animate-float-slow'];
 
+// generate static set of floating pieces — deterministic per render
 for (let i = 0; i < 30; i++) {
   const sizeObj = sizes[rand(0, sizes.length - 1)];
   pieces.push({
@@ -32,12 +35,14 @@ for (let i = 0; i < 30; i++) {
     top: `${rand(2, 94)}%`,
     size: sizeObj.class,
     anim: anims[rand(0, anims.length - 1)],
+    // lower bound of range → opacity (e.g. 30 → 0.3)
     opacity: `${sizeObj.range[0] / 100}`,
   });
 }
 
 export default function BackgroundPieces() {
   return (
+    // decorative layer — invisible to screen readers and interactions
     <div className="fixed inset-0 z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true">
       {pieces.map((p, i) => (
         <div

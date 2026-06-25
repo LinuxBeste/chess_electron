@@ -34,7 +34,9 @@ export default function GameModes() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {modes.map((m, i) => (
+            // first card slides from left, second from right
             <ScrollReveal key={m.title} variant={i === 0 ? 'fade-left' : 'fade-right'} delay={i * 0.1}>
+              {/* remove default rounding on Placeholder for seamless image */}
               <div className="bg-surface border border-border rounded-2xl overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
                 <Placeholder label={m.img} className="w-full h-44 rounded-none" />
                 <div className="p-8">

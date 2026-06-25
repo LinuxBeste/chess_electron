@@ -21,6 +21,7 @@ export default function Releases() {
           <Placeholder label="App screenshot" className="w-full max-w-lg h-56 mx-auto mb-10" />
         </ScrollReveal>
 
+        {/* dual-action: download binary or browse source */}
         <ScrollReveal>
           <div className="flex flex-wrap gap-4 justify-center mb-12">
             <a
@@ -44,6 +45,7 @@ export default function Releases() {
           </div>
         </ScrollReveal>
 
+        {/* staggered reveal for platform cards */}
         <ScrollReveal variant="fade-up" delay={0.15}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-lg mx-auto">
             {platforms.map((p) => (

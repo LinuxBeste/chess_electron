@@ -19,12 +19,15 @@ export default function Navbar({ theme, onToggleTheme }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
 
+  // track scroll position for backdrop-blur transition
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll, { passive: true });
+    // passive improves scroll performance, cleanup prevents stale listener
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // conditionally show anchor link only on home page
   const isHome = location.pathname === '/';
 
   return (
@@ -62,6 +65,7 @@ export default function Navbar({ theme, onToggleTheme }: Props) {
           className="flex items-center justify-center w-9 h-9 rounded-lg text-muted hover:text-text hover:bg-surface border border-border transition-all"
           aria-label="Toggle theme"
         >
+          {/* show opposite icon as hint for what toggle does */}
           {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
         </button>
         <a

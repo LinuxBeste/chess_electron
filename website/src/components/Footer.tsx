@@ -4,6 +4,7 @@ import ScrollReveal from './ScrollReveal';
 export default function Footer() {
   return (
     <footer className="py-10 px-6 text-center border-t border-border">
+      {/* fade-up animation on initial scroll into view */}
       <ScrollReveal variant="fade-up">
         <div className="flex gap-6 justify-center mb-3">
           <a
@@ -27,6 +28,7 @@ export default function Footer() {
           </a>
         </div>
         <p className="text-muted text-xs flex items-center justify-center gap-1">
+          {/* red heart purely decorative — kept subtle */}
           Built with <Heart size={12} className="text-red-400" /> &mdash; MIT License
         </p>
       </ScrollReveal>

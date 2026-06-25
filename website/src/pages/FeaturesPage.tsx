@@ -103,8 +103,10 @@ export default function FeaturesPage() {
 
         <div className="space-y-20">
           {features.map((f, i) => (
+            // alternate animation direction and layout order per row
             <ScrollReveal key={f.title} variant={i % 2 === 0 ? 'fade-left' : 'fade-right'} delay={0.05}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+                {/* flip column order on every other row for visual variety */}
                 <div className={i % 2 === 0 ? 'md:order-1' : 'md:order-2'}>
                   <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-accent/10 text-accent mb-4">
                     <f.icon size={22} />

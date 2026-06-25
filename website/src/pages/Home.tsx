@@ -11,6 +11,7 @@ import ScrollReveal from '../components/ScrollReveal';
 export default function Home() {
   return (
     <>
+      {/* full-viewport hero section */}
       <section className="relative min-h-screen flex items-center justify-center px-6 pt-24 pb-20 text-center">
         <div className="relative max-w-2xl">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-semibold mb-6">
@@ -53,6 +54,7 @@ export default function Home() {
         </div>
       </section>
 
+      {/* compose landing page from independent sections */}
       <HowItWorks />
       <Stats />
       <Features />

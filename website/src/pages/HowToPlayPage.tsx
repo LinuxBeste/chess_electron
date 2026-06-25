@@ -61,8 +61,10 @@ export default function HowToPlayPage() {
 
         <div className="space-y-12">
           {steps.map((s, i) => (
+            // alternate reveal direction and layout per step
             <ScrollReveal key={s.num} variant={i % 2 === 0 ? 'fade-left' : 'fade-right'} delay={i * 0.06}>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-center">
+                {/* swap text and image order on alternating rows */}
                 <div className={`md:col-span-3 ${i % 2 === 0 ? 'md:order-1' : 'md:order-2'}`}>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent/10 text-accent">

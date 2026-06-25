@@ -50,7 +50,9 @@ export default function Features() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {features.map((f, i) => (
+            // staggered reveal — each card animates slightly later
             <ScrollReveal key={f.title} variant="scale-up" delay={i * 0.05}>
+              {/* subtle lift on hover for tactile feedback */}
               <div className="bg-surface border border-border rounded-xl p-7 transition-all hover:shadow-md hover:-translate-y-0.5">
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent/10 text-accent mb-4">
                   <f.icon size={20} />

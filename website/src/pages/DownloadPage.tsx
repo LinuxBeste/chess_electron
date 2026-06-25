@@ -53,6 +53,7 @@ export default function DownloadPage() {
             <p className="text-muted text-lg max-w-lg mx-auto mb-8">
               Get the latest release for your platform. All builds are signed and verified.
             </p>
+            {/* links directly to GitHub releases where users find their platform */}
             <a
               href="https://github.com/linuxbeste/chess_electron/releases"
               target="_blank"
@@ -67,6 +68,7 @@ export default function DownloadPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
           {platforms.map((p, i) => (
+            // stagger each platform card entrance
             <ScrollReveal key={p.name} variant="fade-up" delay={i * 0.1}>
               <div className="bg-surface border border-border rounded-2xl p-6">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-accent/10 text-accent mb-4">
@@ -76,6 +78,7 @@ export default function DownloadPage() {
                 <ul className="space-y-2 mb-4">
                   {p.formats.map((f) => (
                     <li key={f.file}>
+                      {/* version hardcoded until release automation is set up */}
                       <a
                         href={`https://github.com/linuxbeste/chess_electron/releases/download/v1.0.0/${f.file}`}
                         target="_blank"

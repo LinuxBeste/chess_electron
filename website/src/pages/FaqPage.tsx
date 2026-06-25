@@ -47,6 +47,7 @@ const faqs = [
 ];
 
 function FaqItem({ q, a }: { q: string; a: string }) {
+  // local toggle state per item — independent of other FAQs
   const [open, setOpen] = useState(false);
   return (
     <div className="border border-border rounded-xl overflow-hidden">
@@ -55,11 +56,13 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-text hover:bg-surface-alt transition-colors"
       >
         {q}
+        {/* rotate chevron on open for visual feedback */}
         <ChevronDown
           size={16}
           className={`text-muted shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         />
       </button>
+      {/* conditionally render answer to keep DOM clean when closed */}
       {open && <div className="px-5 pb-4 text-sm text-muted leading-relaxed">{a}</div>}
     </div>
   );

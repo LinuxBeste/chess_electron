@@ -11,6 +11,7 @@ interface StatBoxProps {
 function StatBox({ icon: Icon, end, suffix, label }: StatBoxProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [count, setCount] = useState(0);
+  // prevent re-triggering on re-renders
   const counted = useRef(false);
 
   useEffect(() => {
@@ -20,6 +21,7 @@ function StatBox({ icon: Icon, end, suffix, label }: StatBoxProps) {
       ([entry]) => {
         if (entry.isIntersecting && !counted.current) {
           counted.current = true;
+          // count up over 1.5s in 40 frames for smooth animation
           const duration = 1500;
           const steps = 40;
           const increment = end / steps;
@@ -27,6 +29,7 @@ function StatBox({ icon: Icon, end, suffix, label }: StatBoxProps) {
           const timer = setInterval(() => {
             current += increment;
             if (current >= end) {
+              // snap to exact final value to avoid rounding errors
               setCount(end);
               clearInterval(timer);
             } else {

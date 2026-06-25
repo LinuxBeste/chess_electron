@@ -39,8 +39,10 @@ export default function HowItWorks() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
           {steps.map((s, i) => (
+            // incrementing delay creates a cascading entrance
             <ScrollReveal
               key={s.title}
+              // outer items slide in from edges, center one fades up
               variant={i === 0 ? 'fade-left' : i === 2 ? 'fade-right' : 'fade-up'}
               delay={i * 0.12}
             >
