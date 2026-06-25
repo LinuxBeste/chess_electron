@@ -32,6 +32,7 @@ export default function BotGamesTab() {
   if (!data) return <p className="text-[#666] text-center py-12">Loading...</p>;
 
   const completedGames = data.games.filter((g) => g.status !== 'active');
+  // average move count across completed bot games, useful for tuning bot difficulty
   const avgDuration =
     completedGames.length > 0 ? completedGames.reduce((sum, g) => sum + g.moves, 0) / completedGames.length : 0;
 

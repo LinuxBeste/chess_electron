@@ -31,6 +31,7 @@ router.post(
       return;
     }
     if (targetUser.id === req.player.id) {
+      // Prevent self-friending
       res.status(400).json({ error: 'Cannot send friend request to yourself' });
       return;
     }
@@ -39,6 +40,7 @@ router.post(
       return;
     }
     if (await db.hasPendingRequest(req.player.id, targetUser.id)) {
+      // Check bi-directional pending requests
       res.status(409).json({ error: 'Friend request already pending' });
       return;
     }
@@ -73,7 +75,7 @@ router.get('/friends/requests', authMiddleware, banCheckMiddleware, async (req: 
   const allIds = new Set<string>();
   for (const r of incoming) allIds.add(r.from_user_id);
   for (const r of outgoing) allIds.add(r.to_user_id);
-  const usersById = await db.getUsersByIds([...allIds]);
+  const usersById = await db.getUsersByIds([...allIds]); // Batch-load all referenced users
 
   const enrich = (rows: db.FriendRequestRow[], key: 'from_user_id' | 'to_user_id') =>
     rows.map((r) => {
@@ -104,6 +106,7 @@ router.post('/friends/requests/:id/accept', authMiddleware, banCheckMiddleware, 
     return;
   }
   if (fr.to_user_id !== req.player.id) {
+    // Only the recipient can accept
     res.status(403).json({ error: 'Not your friend request to accept' });
     return;
   }

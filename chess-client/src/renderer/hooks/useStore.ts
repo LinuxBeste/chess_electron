@@ -29,15 +29,16 @@ type StateMap = {
   outgoingRequests: import('../../types').FriendRequestInfo[];
 };
 
+// React binding: subscribes on mount, re-renders on change, cleans up on unmount
 export function useStoreValue<K extends keyof StateMap>(key: K): StateMap[K] {
-  const [val, setVal] = useState<StateMap[K]>(store.get(key));
+  const [val, setVal] = useState<StateMap[K]>(store.get(key)); // initial value from store
   useEffect(() => {
     logger.debug('Subscribing to store key', key);
-    const unsubscribe = store.subscribe(key, (v: StateMap[K]) => setVal(v));
+    const unsubscribe = store.subscribe(key, (v: StateMap[K]) => setVal(v)); // triggers re-render
     return () => {
       logger.debug('Unsubscribing from store key', key);
-      unsubscribe();
+      unsubscribe(); // prevent stale subscription after unmount
     };
-  }, [key]);
+  }, [key]); // re-subscribe only when observed key changes
   return val;
 }

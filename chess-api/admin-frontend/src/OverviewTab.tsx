@@ -5,7 +5,7 @@ import SearchBar from './SearchBar';
 import { useNavigateTab } from './TabContext';
 
 function fmtBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) return '0 B'; // log(0) is -Infinity, handle separately
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i];
@@ -47,6 +47,7 @@ function InfoCard({ label, value }: { label: string; value: string | React.React
   );
 }
 
+// color-code CPU load relative to core count (not raw percentage)
 function cpuColor(load: number, cores: number): string {
   const pct = (load / cores) * 100;
   if (pct > 80) return 'text-red-400';
@@ -61,12 +62,13 @@ export default function OverviewTab() {
   const [procQuery, setProcQuery] = useState('');
   const [error, setError] = useState('');
   const [uptime, setUptime] = useState(0);
-  const uptimeRef = useRef(0);
+  const uptimeRef = useRef(0); // ref avoids stale closure in interval callback
   const navigate = useNavigateTab();
   const [procSortKey, setProcSortKey] = useState('cpu');
   const [procSortAsc, setProcSortAsc] = useState(false);
 
   function load() {
+    // fetch all dashboard data in parallel
     return Promise.all([api<Stats>('/stats'), api<SystemStats>('/system'), api<ProcessRow[]>('/system/processes')])
       .then(([s, sy, p]) => {
         setStats(s);
@@ -82,7 +84,7 @@ export default function OverviewTab() {
     let cancelled = false;
     async function poll() {
       await load();
-      if (!cancelled) setTimeout(poll, 30000);
+      if (!cancelled) setTimeout(poll, 30000); // poll every 30s
     }
     poll();
     return () => {
@@ -91,6 +93,7 @@ export default function OverviewTab() {
   }, []);
 
   useEffect(() => {
+    // local uptime ticker independent of server data freshness
     const tick = setInterval(() => {
       uptimeRef.current++;
       setUptime(uptimeRef.current);
@@ -107,7 +110,7 @@ export default function OverviewTab() {
     a.href = url;
     a.download = 'server-overview.json';
     a.click();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url); // free blob memory after download
   }
 
   if (error) return <p className="text-red-500 text-sm">{error}</p>;

@@ -27,7 +27,7 @@ const Chat = memo(function Chat({ gameId }: ChatProps) {
   const [input, setInput] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
 
-  /* Subscribe to incoming chat messages and request history on mount. */
+  /* Subscribe to chat messages; request history on mount to backfill */
   useEffect(() => {
     socketManager.requestChatHistory(gameId);
 
@@ -58,7 +58,7 @@ const Chat = memo(function Chat({ gameId }: ChatProps) {
     };
   }, [gameId]);
 
-  /* Auto-scroll to bottom when a new message arrives */
+  /* Auto-scroll to latest message — only triggers on count change, not individual content */
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;

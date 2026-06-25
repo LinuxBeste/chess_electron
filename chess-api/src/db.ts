@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 let _pool: pg.Pool | null = null;
 
 const LEADERBOARD_CACHE_TTL_MS = parseInt(process.env.LEADERBOARD_CACHE_TTL ?? '10000', 10);
-const leaderboardCache = new Map<string, { data: unknown; expiresAt: number }>();
+const leaderboardCache = new Map<string, { data: unknown; expiresAt: number }>(); // TTL-based cache reduces DB load
 function getLeaderboardCacheKey(
   limit: number,
   offset: number,
@@ -35,13 +35,14 @@ export function invalidateLeaderboardCache(): void {
 
 function getPool(): pg.Pool {
   if (!_pool) {
+    // Lazy singleton: pool created on first query
     _pool = new pg.Pool({
       connectionString: process.env.DATABASE_URL || 'postgresql://chess:chess@localhost:5432/chess',
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
     });
-    pg.types.setTypeParser(pg.types.builtins.INT8, (val: string) => parseInt(val, 10));
+    pg.types.setTypeParser(pg.types.builtins.INT8, (val: string) => parseInt(val, 10)); // Auto-parse INT8/NUMERIC to JS numbers
     pg.types.setTypeParser(pg.types.builtins.NUMERIC, (val: string) => parseFloat(val));
     _pool.on('error', (err) => {
       logger.error('Unexpected PostgreSQL pool error:', err);
@@ -56,7 +57,7 @@ export function getDb(): pg.Pool {
 
 export function setConnectionString(url: string): void {
   if (_pool) {
-    _pool.end();
+    _pool.end(); // Gracefully close old pool before replacing
     _pool = null;
   }
   process.env.DATABASE_URL = url;
@@ -70,7 +71,7 @@ export async function transaction<T>(fn: (client: pg.PoolClient) => Promise<T>):
     await client.query('COMMIT');
     return result;
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
+    await client.query('ROLLBACK').catch(() => {}); // Rollback failure must not throw
     throw err;
   } finally {
     client.release();
@@ -120,7 +121,7 @@ const MIGRATIONS: { version: number; sql: string }[] = [
 
       CREATE INDEX IF NOT EXISTS idx_friend_requests_to_status ON friend_requests(to_user_id, status);
       CREATE INDEX IF NOT EXISTS idx_friend_requests_from_status ON friend_requests(from_user_id, status);
-      CREATE INDEX IF NOT EXISTS idx_friend_requests_both_status ON friend_requests(from_user_id, to_user_id, status);
+      CREATE INDEX IF NOT EXISTS idx_friend_requests_both_status ON friend_requests(from_user_id, to_user_id, status); // Compound index for bi-directional queries
 
       CREATE TABLE IF NOT EXISTS friends (
         user_id TEXT NOT NULL REFERENCES users(id),
@@ -332,7 +333,7 @@ export async function getUserById(id: string): Promise<DbUser | undefined> {
 }
 
 export async function getUsersByIds(ids: string[]): Promise<Map<string, DbUser>> {
-  if (ids.length === 0) return new Map();
+  if (ids.length === 0) return new Map(); // Early return for empty batch query
   const placeholders = ids.map((_, i) => '$' + (i + 1)).join(',');
   const { rows } = await getPool().query('SELECT * FROM users WHERE id IN (' + placeholders + ')', ids);
   const map = new Map<string, DbUser>();
@@ -381,11 +382,11 @@ export async function createBackup(): Promise<string | null> {
     const { promisify } = await import('util');
     const execFileAsync = promisify(execFile);
     await execFileAsync('pg_dump', ['--dbname=' + process.env.DATABASE_URL!, '-Fc', '-f', backupPath], {
-      timeout: 60000,
+      timeout: 60000, // 60s backup timeout
     });
     logger.info('DB backup created: ' + backupPath);
 
-    const cutoff = Date.now() - 7 * 86400000;
+    const cutoff = Date.now() - 7 * 86400000; // Auto-prune backups older than 7 days
     const files = fs.readdirSync(dir);
     for (const file of files) {
       if (!file.startsWith('chess-') || !file.endsWith('.dump')) continue;
@@ -404,7 +405,7 @@ export async function createBackup(): Promise<string | null> {
 }
 
 export async function addWin(userId: string): Promise<void> {
-  await getPool().query('UPDATE users SET wins = wins + 1, rating = rating + 16 WHERE id = $1', [userId]);
+  await getPool().query('UPDATE users SET wins = wins + 1, rating = rating + 16 WHERE id = $1', [userId]); // +16 Elo as simple default delta
   invalidateLeaderboardCache();
 }
 

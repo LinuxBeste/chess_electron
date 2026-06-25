@@ -17,9 +17,10 @@ const PIECES: Record<string, string> = {
   p: '♟',
 };
 
+// convert UCI move string to algebraic notation for readability
 function toAlgebraic(move: string): string {
   const pieceMap: Record<string, string> = { K: 'K', Q: 'Q', R: 'R', B: 'B', N: 'N', P: '' };
-  if (move.length < 4) return move;
+  if (move.length < 4) return move; // castling O-O/O-O-O
   const piece = move[0];
   const pieceChar = pieceMap[piece] || '';
   const rank = move[2];
@@ -37,6 +38,7 @@ interface BoardState {
   squares: (string | null)[][];
 }
 
+// parse FEN string into 8x8 board array, digits represent consecutive empty squares
 function parseFen(fen: string): BoardState {
   const rows = fen.split(' ')[0].split('/');
   const squares: (string | null)[][] = Array(8)
@@ -46,7 +48,7 @@ function parseFen(fen: string): BoardState {
     let c = 0;
     for (const ch of rows[r]) {
       if (ch >= '1' && ch <= '8') {
-        c += parseInt(ch);
+        c += parseInt(ch); // skip N empty squares
       } else {
         squares[r][c] = ch;
         c++;
@@ -159,6 +161,7 @@ export default function GameReplayTab({ initialGameId }: { initialGameId?: strin
     }
   }
 
+  // keyboard navigation: arrow keys + Home/End for move replay
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!replay) return;
@@ -175,6 +178,7 @@ export default function GameReplayTab({ initialGameId }: { initialGameId?: strin
     [replay],
   );
 
+  // global keydown listener, cleanup on unmount to avoid leaks
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);

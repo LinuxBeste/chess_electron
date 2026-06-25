@@ -7,6 +7,7 @@ interface LogResponse {
   files: LogFileInfo[];
 }
 
+// case-insensitive substring highlight, first match only
 function highlightText(text: string, query: string): React.ReactNode {
   if (!query) return text;
   const lower = text.toLowerCase();
@@ -43,6 +44,7 @@ export default function LogsTab() {
     load();
   }, [type, lines]);
 
+  // auto-refresh polls every 5s, cleans up interval on toggle/unmount
   useEffect(() => {
     if (autoRefresh) {
       intervalRef.current = setInterval(load, 5000);
@@ -55,6 +57,7 @@ export default function LogsTab() {
     };
   }, [autoRefresh]);
 
+  // auto-scroll to bottom when new log data arrives
   useEffect(() => {
     if (preRef.current) {
       preRef.current.scrollTop = preRef.current.scrollHeight;
@@ -87,6 +90,7 @@ export default function LogsTab() {
     return (bytes / 1024).toFixed(1) + ' KB';
   }
 
+  // memoized client-side log filter avoids re-scanning on every render
   const filteredLogs = useMemo(() => {
     if (!data?.logs) return null;
     const result: Record<string, string[]> = {};
@@ -235,6 +239,7 @@ function LogSection({
   highlight?: boolean;
   searchQuery?: string;
 }) {
+  // color-code log lines by severity level prefix
   function colorize(line: string): string {
     if (line.includes('[ERROR]')) return 'text-red-400';
     if (line.includes('[WARN]')) return 'text-yellow-400';

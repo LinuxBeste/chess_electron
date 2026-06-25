@@ -51,7 +51,7 @@ function WhisperModal({
     <div
       className="fixed inset-0 bg-black/70 flex items-center justify-center z-100"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) onClose(); // close on backdrop click only
       }}
     >
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 w-[380px] max-w-[90vw]">
@@ -106,8 +106,8 @@ export default function PlayersTab() {
   useEffect(load, []);
 
   const filtered = players
-    .filter((p) => !filterOnline || p.online)
-    .filter((p) => !filterTemp || !p.isRegistered)
+    .filter((p) => !filterOnline || p.online) // optional online-only toggle
+    .filter((p) => !filterTemp || !p.isRegistered) // optional temporary-accounts-only toggle
     .filter(
       (p) =>
         !query ||
@@ -126,6 +126,7 @@ export default function PlayersTab() {
   const totalPages = Math.ceil(sorted.length / pageSize);
   const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
 
+  // select/deselect all visible rows on current page
   function toggleAll() {
     if (selected.size === paginated.length) setSelected(new Set());
     else setSelected(new Set(paginated.map((p) => p.id)));
@@ -138,6 +139,7 @@ export default function PlayersTab() {
     setSelected(next);
   }
 
+  // ban: disconnect + prevent rejoin; kick: disconnect only
   async function handleBan(id: string, name: string) {
     if (!confirm(`Ban player "${name}"? They will be disconnected and cannot rejoin.`)) return;
     setActionId(id);
@@ -180,6 +182,7 @@ export default function PlayersTab() {
     }
   }
 
+  // sequential bulk action, continues even if some fail
   async function handleBulk(action: 'ban' | 'kick') {
     if (selected.size === 0) return;
     const verb = action === 'ban' ? 'Ban' : 'Kick';

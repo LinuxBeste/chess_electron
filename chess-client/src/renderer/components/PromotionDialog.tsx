@@ -17,7 +17,7 @@ interface PromotionDialogProps {
   onSelect: (piece: PieceType) => void;
 }
 
-/* FIDE promotion options (ordered by frequency of choice) */
+// Pawn→queen is most common (~98%); order matches frequency (FIDE rules: no pawn/king)
 const pieces: PieceType[] = ['queen', 'rook', 'bishop', 'knight'];
 
 export default function PromotionDialog({ color, onSelect }: PromotionDialogProps) {
@@ -32,6 +32,8 @@ export default function PromotionDialog({ color, onSelect }: PromotionDialogProp
 
   return (
     <div className="modal-overlay" onClick={(e) => e.stopPropagation()}>
+      {' '}
+      {/* block clicks from reaching board */}
       <div className="modal-card" style={{ padding: 24 }}>
         <div className="promo-title">{t('promotion.title')}</div>
         <div className="promo-row">

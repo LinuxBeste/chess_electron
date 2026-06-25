@@ -9,6 +9,7 @@
 import { useStoreValue } from '../hooks/useStore';
 import logger from '../logger';
 
+// Renders transient notification stack; each toast auto-dismisses after 4s (managed by store)
 export default function ToastContainer() {
   const toasts = useStoreValue('toasts');
   if (toasts.length > 0) logger.debug('ToastContainer rendering ' + toasts.length + ' toasts');

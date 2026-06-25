@@ -44,9 +44,7 @@ const Board = memo(function Board({
   const [hoverSquare, setHoverSquare] = useState<string | null>(null);
   const [dragFrom, setDragFrom] = useState<string | null>(null);
 
-  /* Track the board DOM element's width so square sizing is always exact.
-     A ResizeObserver is more reliable than window resize events.
-     Also caches the board DOM rect to avoid layout thrashing on drag. */
+  /* ResizeObserver tracks board width for exact square sizing — more reliable than window resize events. */
   useEffect(() => {
     const el = boardRef.current;
     if (!el) return;
@@ -77,8 +75,7 @@ const Board = memo(function Board({
   const alwaysBottom = useRef(getSetting('alwaysWhiteBottom')).current;
   const showCoordinates = useRef(getSetting('showCoordinates')).current;
   const highlightLastMove = useRef(getSetting('highlightLastMove')).current;
-  /* When alwaysWhiteBottom is on, white is always at the visual bottom
-     regardless of player colour.  Otherwise the active player's side is at the bottom. */
+  /* Perspective flip: when flipped, display rows/cols invert but logical board stays fixed */
   const isWhiteBottom = alwaysBottom ? true : playerColor === 'white';
 
   /* Initialise cached board rect after first layout. */
@@ -94,10 +91,7 @@ const Board = memo(function Board({
     [onSquareClick, playerColor, isActive],
   );
 
-  /* Pointer-event-based drag-and-drop.  Uses pointer capture semantics
-     so the drag continues even if the pointer leaves the board element.
-     Coordinates are transformed from visual (display) space to logical
-     (board array) space via isWhiteBottom. */
+  /* Pointer-based drag: pointer capture keeps drag active even outside the board element */
   const handlePointerDown = useCallback(
     (square: string, _e: React.PointerEvent) => {
       if (!isActive) return;
@@ -132,8 +126,7 @@ const Board = memo(function Board({
     [dragFrom, sqSize, isWhiteBottom],
   );
 
-  /* End the drag: convert pointer position back to a board square.
-     If the pointer is outside the board, the move is cancelled. */
+  /* Drop: map pointer coordinates back to board square; cancel if outside board */
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
       if (!dragFrom || !boardRef.current) {
@@ -175,6 +168,7 @@ const Board = memo(function Board({
       onPointerUp={handlePointerUp}
       onPointerLeave={() => setHoverSquare(null)}
     >
+      {/* dr, df = display row/col; br, bf = board row/col (inverted when flipped) */}
       {Array.from({ length: 8 }, (_, dr) => {
         const br = isWhiteBottom ? dr : 7 - dr;
         return Array.from({ length: 8 }, (_, df) => {

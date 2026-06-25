@@ -17,10 +17,10 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
         method: 'POST',
         body: JSON.stringify({ username, password }),
       });
-      setToken(data.token);
-      onLogin();
+      setToken(data.token); // persist JWT to memory + localStorage
+      onLogin(); // lift auth state up to App
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(err instanceof Error ? err.message : String(err)); // err can be unknown, handle both Error and string
     } finally {
       setLoading(false);
     }

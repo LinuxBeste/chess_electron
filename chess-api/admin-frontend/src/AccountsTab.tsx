@@ -5,6 +5,7 @@ import { useToast } from './Toast';
 import SearchBar from './SearchBar';
 import AccountEditModal from './AccountEditModal';
 
+// heuristic client-side password strength: length + char variety
 function passwordStrength(pw: string): { label: string; color: string; score: number } {
   let score = 0;
   if (pw.length >= 6) score++;
@@ -111,6 +112,7 @@ function UserGamesModal({ userId, username, onClose }: { userId: string; usernam
   const [data, setData] = useState<UserGamesResponse | null>(null);
   const [error, setError] = useState('');
 
+  // cancelled flag prevents setState after unmount (fast tab switching)
   useEffect(() => {
     let cancelled = false;
     api<UserGamesResponse>('/accounts/' + userId + '/games')
@@ -260,6 +262,7 @@ export default function AccountsTab() {
     setSelected(next);
   }
 
+  // sequential bulk delete, tolerates per-account failures
   async function handleBulkDelete() {
     if (selected.size === 0) return;
     if (!confirm(`Delete ${selected.size} selected account(s)? This cannot be undone.`)) return;
@@ -292,6 +295,7 @@ export default function AccountsTab() {
       String(a.draws),
       new Date(a.createdAt).toISOString(),
     ]);
+    // CSV spec: quote-escape embedded double-quotes
     const csv = [headers.join(','), ...rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(','))].join(
       '\n',
     );

@@ -12,6 +12,7 @@ export default function WebSocketMonitorTab() {
       .catch((e) => setError(e.message));
   }
 
+  // load on mount, manual refresh button
   useEffect(load, []);
 
   if (error) return <p className="text-red-500 text-sm">{error}</p>;

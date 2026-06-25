@@ -206,6 +206,7 @@ type WsMessage =
 
 /** Handler type for move events */
 export type MoveHandler = (msg: MoveMessage) => void;
+// All on* methods below return an unsubscribe function — call on unmount to prevent leaks
 
 /** Handler type for game-over events */
 export type GameOverHandler = (msg: GameOverMessage) => void;
@@ -312,7 +313,7 @@ class SocketManager {
     store.set('wsStatus', 'connecting');
 
     const wsBase = this.serverUrl.replace(/^http/, 'ws') + '/chess-ws';
-    this.ws = new WebSocket(wsBase, [token]);
+    this.ws = new WebSocket(wsBase, [token]); // token sent as subprotocol header, not query param
 
     this.ws.onopen = () => {
       this.retryCount = 0;
@@ -443,7 +444,7 @@ class SocketManager {
     setTimeout(() => {
       if (this.shouldReconnect) {
         logger.info('Socket: attempting reconnect');
-        this.connect();
+        this.connect(); // onclose triggers scheduleReconnect again if still shouldReconnect
       }
     }, delay);
   }

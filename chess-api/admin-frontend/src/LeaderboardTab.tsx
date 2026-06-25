@@ -16,6 +16,7 @@ interface LeaderboardEntry {
   draws: number;
 }
 
+// win rate vs 50% baseline, null until 10+ games for statistical significance
 function ratingChange(entry: LeaderboardEntry): number | null {
   const total = entry.wins + entry.losses + entry.draws;
   if (total < 10) return null;
@@ -39,7 +40,7 @@ export default function LeaderboardTab() {
     let path = '/leaderboard?page=' + page + '&limit=' + limit;
     const mg = parseInt(minGames, 10);
     if (mg > 0) path += '&minGames=' + mg;
-    const sortParam = sortKey === 'rank' ? 'rating' : sortKey;
+    const sortParam = sortKey === 'rank' ? 'rating' : sortKey; // rank sort maps to rating on the server
     path += '&sortKey=' + sortParam + '&sortAsc=' + sortAsc;
     api<{ entries: LeaderboardEntry[]; total: number }>(path)
       .then((d) => {
@@ -49,6 +50,7 @@ export default function LeaderboardTab() {
       .catch((e) => setError(e.message));
   }
 
+  // refetch when any filter, sort, or page changes
   useEffect(load, [page, limit, minGames, sortKey, sortAsc]);
 
   const filtered = query
@@ -134,6 +136,7 @@ export default function LeaderboardTab() {
                       const totalGames = e.wins + e.losses + e.draws;
                       const winPct = totalGames > 0 ? ((e.wins / totalGames) * 100).toFixed(1) : '—';
                       const change = ratingChange(e);
+                      // gold / silver / bronze medal colors for top 3
                       const rankColor =
                         e.rank === 1
                           ? 'text-yellow-400'

@@ -71,7 +71,7 @@ function Square({
       data-file={file}
       data-square={squareName}
       style={{
-        position: 'absolute',
+        position: 'absolute', // Board uses absolute positioning for all squares
         top: displayRank * sqSize,
         left: displayFile * sqSize,
         width: sqSize,
@@ -80,6 +80,7 @@ function Square({
       onClick={() => onClick(squareName)}
       onPointerDown={(e) => onPointerDown(squareName, e)}
     >
+      {/* Show file labels (a-h) on bottom row, rank labels (1-8) on leftmost column */}
       {showCoordinates && displayRank === 7 && (
         <span className="sq-label sq-label-file">{String.fromCharCode(97 + displayFile)}</span>
       )}
@@ -95,7 +96,7 @@ function Square({
             justifyContent: 'center',
             width: '100%',
             height: '100%',
-            textShadow: '0 2px 4px rgba(0,0,0,0.4)',
+            textShadow: '0 2px 4px rgba(0,0,0,0.4)', // dark shadow makes light pieces pop on both backgrounds
             color: piece!.color === 'white' ? '#ffffff' : '#1a1a1a',
           }}
         >
@@ -108,4 +109,4 @@ function Square({
   );
 }
 
-export default memo(Square);
+export default memo(Square); // memo: skip re-render unless props change (Board re-renders on every move)

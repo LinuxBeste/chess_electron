@@ -45,6 +45,7 @@ function Sparkline({
   color: string;
   maxVal: number;
 }) {
+  // need at least 2 points and positive max for meaningful sparkline
   if (data.length < 2 || maxVal <= 0) {
     return <svg width={width} height={height} />;
   }
@@ -88,8 +89,8 @@ export default function SystemCharts() {
   useEffect(() => {
     function poll() {
       api<SystemMetricsSample>('/system/metrics')
-        .then((s) => setSamples((prev) => [...prev.slice(-(MAX_POINTS - 1)), s]))
-        .catch(() => {});
+        .then((s) => setSamples((prev) => [...prev.slice(-(MAX_POINTS - 1)), s])) // ring buffer of MAX_POINTS
+        .catch(() => {}); // silently ignore poll errors to avoid console noise
     }
     poll();
     intervalRef.current = setInterval(poll, POLL_MS);

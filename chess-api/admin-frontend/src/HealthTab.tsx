@@ -15,6 +15,7 @@ function fmtUptime(sec: number): string {
   return `${d}d ${h}h ${m}m`;
 }
 
+// inline SVG sparkline for latency trend, needs ≥2 data points
 function MiniSparkline({ data, color }: { data: number[]; color: string }) {
   if (data.length < 2) return null;
   const w = 120,
@@ -49,6 +50,7 @@ export default function HealthTab() {
       .catch(() => {});
   }
 
+  // poll health status every 15s, cleanup on unmount
   useEffect(() => {
     load();
     pollingRef.current = setInterval(load, 15000);
@@ -62,7 +64,7 @@ export default function HealthTab() {
 
   const overallOk = health.status === 'ok' && health.database.connected;
   const checkAge = Date.now() - health.timestamp;
-  const ageColor = checkAge < 30000 ? 'text-green-400' : checkAge < 60000 ? 'text-yellow-400' : 'text-red-400';
+  const ageColor = checkAge < 30000 ? 'text-green-400' : checkAge < 60000 ? 'text-yellow-400' : 'text-red-400'; // fresh / stale / expired
 
   return (
     <div className="max-w-3xl mx-auto">

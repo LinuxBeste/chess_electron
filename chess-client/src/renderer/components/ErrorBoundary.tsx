@@ -27,6 +27,7 @@ export default class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  // Resets error state so children re-render (does not reload the page)
   handleReload = () => {
     this.setState({ hasError: false, error: null });
   };
@@ -54,6 +55,8 @@ export default class ErrorBoundary extends Component<Props, State> {
               {t('errorBoundary.tryAgain')}
             </button>
             <button className="btn btn-ghost" onClick={() => window.location.reload()}>
+              {' '}
+              {/* full page reload as last resort */}
               {t('errorBoundary.reload')}
             </button>
           </div>

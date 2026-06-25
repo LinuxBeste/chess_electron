@@ -49,11 +49,12 @@ class Store {
     outgoingRequests: [],
   };
 
-  /* Listeners stored by key string; cast internally since the map is heterogenous */
+  // Listeners by key string (heterogeneous callback types, cast internally)
   private listeners = new Map<string, Set<(value: unknown) => void>>();
 
-  private toastIdCounter = 0;
+  private toastIdCounter = 0; // incrementing ID lets us remove the right toast
 
+  // Subscribe returns an unsubscribe function — callers must clean up on unmount
   subscribe<K extends keyof StateMap>(key: K, handler: (value: StateMap[K]) => void): () => void {
     logger.info(`subscribe: ${key}`);
     if (!this.listeners.has(key)) {
@@ -110,7 +111,7 @@ class Store {
     }, 4000);
   }
 
-  /* Persist session to localStorage on change */
+  // Auto-save auth/state to localStorage so reload doesn't lose session
   persistSession(): void {
     logger.info('session persisted');
     const token = this.get('token');
@@ -147,7 +148,7 @@ class Store {
       const parsed = JSON.parse(raw);
       return { ...parsed, currentGameId: parsed.currentGameId ?? null };
     } catch {
-      localStorage.removeItem('chess_session');
+      localStorage.removeItem('chess_session'); // corrupted data → discard
       return null;
     }
   }

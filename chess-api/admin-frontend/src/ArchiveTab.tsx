@@ -17,6 +17,7 @@ interface ArchiveGame {
   pgn: string | null;
 }
 
+// human-readable relative time for game date display
 function fmtDuration(playedAt: number): string {
   const diff = Math.floor((Date.now() - playedAt) / 1000);
   const d = Math.floor(diff / 86400);
@@ -44,6 +45,7 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
   const navigate = useNavigateTab();
 
   function load() {
+    // build query string with optional filters, encodeURIComponent for safety
     let path = '/archive?page=' + page + '&limit=' + limit;
     if (player) path += '&player=' + encodeURIComponent(player);
     if (statusFilter) path += '&status=' + encodeURIComponent(statusFilter);
@@ -60,6 +62,7 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
       .catch((e) => setError(e.message));
   }
 
+  // set initial player filter from nav params (e.g. OverviewTab → ArchiveTab)
   useEffect(() => {
     if (initialPlayer) setPlayer(initialPlayer);
   }, [initialPlayer]);
@@ -205,7 +208,7 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
                   </tbody>
                 </table>
               </div>
-
+              // expandable PGN viewer, collapses if same game clicked again
               {expandedPgn &&
                 (() => {
                   const g = games.find((x) => x.id === expandedPgn);
@@ -216,7 +219,6 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
                     </div>
                   );
                 })()}
-
               <Pagination page={page} totalPages={totalPages} onChange={setPage} />
             </>
           )}

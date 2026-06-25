@@ -280,6 +280,7 @@ export default function TournamentsTab() {
 
   useEffect(load, []);
 
+  // cancel previous detail request via closure flag to avoid stale data on rapid toggle
   let detailCancel: (() => void) | null = null;
   function loadDetail(id: string) {
     if (detailCancel) detailCancel();
@@ -354,6 +355,7 @@ export default function TournamentsTab() {
     }
   }
 
+  // toggle expand/collapse tournament detail (participants + bracket)
   function toggleDetail(id: string) {
     if (expanded === id) {
       setExpanded(null);

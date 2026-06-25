@@ -35,7 +35,7 @@ function createWindow(): void {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: false, // preload needs path, dotenv, clipboard — can't use true sandbox
     },
   });
 
@@ -91,7 +91,7 @@ app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    app.quit();
+    app.quit(); // macOS convention: keep app alive in dock until Cmd+Q
   }
 });
 

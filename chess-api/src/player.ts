@@ -9,10 +9,10 @@ export const tokenIndex = new Map<string, string>();
 export const tokenExpiry = new Map<string, number>();
 export const playerIps = new Map<string, string>();
 
-const PLAYER_TOKEN_TTL = parseInt(process.env.PLAYER_TOKEN_TTL ?? String(24 * 60 * 60 * 1000), 10);
+const PLAYER_TOKEN_TTL = parseInt(process.env.PLAYER_TOKEN_TTL ?? String(24 * 60 * 60 * 1000), 10); // Per-player token 24h default
 
 const LOGIN_MAX_ATTEMPTS = parseInt(process.env.LOGIN_MAX_ATTEMPTS ?? '5', 10);
-const LOGIN_LOCKOUT_MINUTES = parseInt(process.env.LOGIN_LOCKOUT_MINUTES ?? '15', 10);
+const LOGIN_LOCKOUT_MINUTES = parseInt(process.env.LOGIN_LOCKOUT_MINUTES ?? '15', 10); // Brute-force lockout config
 const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
 
 export function checkLoginLockout(username: string): { locked: boolean; remainingMs?: number } {
@@ -53,7 +53,7 @@ export function cleanupLoginAttempts(): void {
 
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');
-  const key = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  const key = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex'); // PBKDF2 with 100k iterations
   return `${salt}:${key}`;
 }
 
@@ -65,9 +65,9 @@ export function verifyPassword(password: string, stored: string): boolean {
   const check = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
   if (key.length !== check.length) return false;
   try {
-    return crypto.timingSafeEqual(Buffer.from(key), Buffer.from(check));
+    return crypto.timingSafeEqual(Buffer.from(key), Buffer.from(check)); // Constant-time prevents timing attack
   } catch {
-    return false;
+    return false; // Return false on error, never throw
   }
 }
 
@@ -108,9 +108,8 @@ export async function registerPlayer(
 ): Promise<{ playerId: string; token: string; isRegistered: boolean; displayName: string }> {
   const playerId = uuidv4();
   const token = uuidv4();
-  const isRegistered = !!password;
+  const isRegistered = !!password; // Guest player if no password provided
   if (password) {
-    const hash = await hashPasswordAsync(password);
     await db.createUser(playerId, username, hash, username);
     await db.saveToken(token, playerId);
     const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: true };
@@ -142,7 +141,7 @@ export async function loginPlayer(
   await db.saveToken(token, user.id);
   const existing = players.get(user.id);
   if (existing) {
-    existing.tokens.push(token);
+    existing.tokens.push(token); // Append token to existing in-memory player
     setToken(token, user.id);
   } else {
     const player: Player = {
@@ -172,6 +171,7 @@ export function deleteToken(token: string): void {
 export function authenticatePlayer(token: string): Player | null {
   const expiry = tokenExpiry.get(token);
   if (expiry && expiry <= Date.now()) {
+    // Check expiry before looking up token
     deleteToken(token);
     logger.info('Auth failed: token expired');
     return null;
@@ -197,7 +197,7 @@ export function addToken(playerId: string): string | null {
     return null;
   }
   const token = uuidv4();
-  player.tokens.push(token);
+  player.tokens.push(token); // Push — don't replace existing tokens
   setToken(token, playerId);
   logger.info('Token added: playerId=' + playerId);
   return token;
@@ -262,6 +262,7 @@ export async function deleteAccount(playerId: string): Promise<{ success: true }
     deleteToken(t);
   }
   await db.transaction(async (client) => {
+    // Transaction: cascade delete user data atomically
     await client.query('DELETE FROM user_tokens WHERE user_id = $1', [playerId]);
     await client.query('DELETE FROM completed_games WHERE white_player_id = $1 OR black_player_id = $1', [playerId]);
     await client.query('DELETE FROM users WHERE id = $1', [playerId]);

@@ -3,7 +3,7 @@ import commonPkg from '@zxcvbn-ts/language-common';
 
 const { ZxcvbnFactory, Options } = corePkg;
 
-let instance: ReturnType<typeof createChecker> | null = null;
+let instance: ReturnType<typeof createChecker> | null = null; // Lazy singleton avoids zxcvbn init cost
 
 function createChecker() {
   const options = new Options({
@@ -20,5 +20,6 @@ export function getStrength(password: string): { score: number } {
 }
 
 export function isWeakPassword(password: string, minScore = 2): boolean {
+  // Default minScore=2: "feedback" level
   return getStrength(password).score < minScore;
 }

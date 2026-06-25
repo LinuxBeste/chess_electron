@@ -14,7 +14,7 @@ export const chatHistory = new Map<string, { playerId: string; username: string;
 export const rateLimitBuckets = new Map<string, number[]>();
 
 export const MAX_GAMES_PER_PLAYER = parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '20', 10);
-export const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10);
+export const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10); // Env defaults with parseInt fallback
 export const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10);
 export const WAITING_TTL_MS = parseInt(process.env.WAITING_TTL_MS ?? String(10 * 60 * 1000), 10);
 
@@ -26,7 +26,7 @@ export function setSweepTimer(timer: ReturnType<typeof setInterval> | null): voi
   _sweepTimer = timer;
 }
 
-export const COMPLETED_GAME_TTL_MS = 5 * 60 * 1000; // 5 minutes
+export const COMPLETED_GAME_TTL_MS = 5 * 60 * 1000; // Kept 5min in memory for rematch
 export const gameCompletedAt = new Map<string, number>();
 
 export function removeGameById(id: string): void {

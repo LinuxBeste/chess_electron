@@ -11,6 +11,7 @@ export default function DbBrowserTab() {
   const [queryError, setQueryError] = useState('');
   const [selectedTable, setSelectedTable] = useState('');
   const [explain, setExplain] = useState(false);
+  // restore saved query history from localStorage, with safety catch for corrupted data
   const [queryHistory, setQueryHistory] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('dbQueryHistory') || '[]');
@@ -30,6 +31,7 @@ export default function DbBrowserTab() {
 
   useEffect(loadTables, []);
 
+  // deduplicate, keep last 20 queries, persist to localStorage
   function addToHistory(sql: string) {
     const next = [sql, ...queryHistory.filter((h) => h !== sql)].slice(0, 20);
     setQueryHistory(next);
@@ -45,7 +47,7 @@ export default function DbBrowserTab() {
     try {
       const res = await api<DbQueryResult>('/db/query', {
         method: 'POST',
-        body: JSON.stringify({ sql: (explain ? 'EXPLAIN ANALYZE ' : '') + q }),
+        body: JSON.stringify({ sql: (explain ? 'EXPLAIN ANALYZE ' : '') + q }), // prepend EXPLAIN ANALYZE when toggled
       });
       setResult(res);
       addToHistory(q);
@@ -65,6 +67,7 @@ export default function DbBrowserTab() {
     handleQuery(sql);
   }
 
+  // client-side column sort, toggle direction on same column
   function handleSort(colIdx: number) {
     if (sortCol === colIdx) {
       setSortAsc(!sortAsc);
@@ -90,6 +93,7 @@ export default function DbBrowserTab() {
     navigator.clipboard.writeText(json);
   }
 
+  // stable client-side sort on displayed results, handles mixed types
   const sortedRows =
     result && sortCol !== null
       ? [...result.rows].sort((a, b) => {
@@ -180,6 +184,7 @@ export default function DbBrowserTab() {
                   className="flex-1 px-3 py-2 text-xs font-mono bg-[#0d0d0d] border border-[#333] rounded-lg text-[#e0e0e0] placeholder-[#555] focus:outline-none focus:border-[#4a9eff] resize-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                      // Ctrl/Cmd+Enter to run
                       e.preventDefault();
                       handleQuery();
                     }

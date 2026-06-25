@@ -11,6 +11,7 @@ export default function Pagination({
 }) {
   if (totalPages <= 1) return null;
 
+  // sliding window of 5 pages with ellipsis for large page counts
   const pages: (number | '...')[] = [];
   const delta = 2;
   const start = Math.max(1, page - delta);

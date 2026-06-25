@@ -6,7 +6,7 @@ export const usernameSchema = z
   .trim()
   .min(2, 'Username must be at least 2 characters')
   .max(30, 'Username must be at most 30 characters')
-  .regex(/^[a-zA-Z0-9_-]+$/, 'Username may only contain letters, digits, hyphens, and underscores');
+  .regex(/^[a-zA-Z0-9_-]+$/, 'Username may only contain letters, digits, hyphens, and underscores'); // Alphanumeric + hyphen + underscore only
 
 export const passwordSchema = z
   .string()
@@ -14,6 +14,7 @@ export const passwordSchema = z
   .min(8, 'Password must be at least 8 characters')
   .max(128, 'Password must be at most 128 characters')
   .refine((pw) => !isWeakPassword(pw, 1), {
+    // Reject zxcvbn scores below 1 (too guessable)
     message: 'Password is too weak — choose a longer or less common password',
   });
 
@@ -40,7 +41,7 @@ export const ipSchema = z
   .string()
   .trim()
   .regex(
-    /^(\d{1,3}\.){3}\d{1,3}$|^(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}$|^(?:[0-9a-f]{1,4}:){1,7}:$|^(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}$|^(?:[0-9a-f]{1,4}:){1,5}(?::[0-9a-f]{1,4}){1,2}$|^(?:[0-9a-f]{1,4}:){1,4}(?::[0-9a-f]{1,4}){1,3}$|^(?:[0-9a-f]{1,4}:){1,3}(?::[0-9a-f]{1,4}){1,4}$|^(?:[0-9a-f]{1,4}:){1,2}(?::[0-9a-f]{1,4}){1,5}$|^[0-9a-f]{1,4}:(?::[0-9a-f]{1,4}){1,6}$|^:(?::[0-9a-f]{1,4}){1,7}$/i,
+    /^(\d{1,3}\.){3}\d{1,3}$|^(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}$|^(?:[0-9a-f]{1,4}:){1,7}:$|^(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}$|^(?:[0-9a-f]{1,4}:){1,5}(?::[0-9a-f]{1,4}){1,2}$|^(?:[0-9a-f]{1,4}:){1,4}(?::[0-9a-f]{1,4}){1,3}$|^(?:[0-9a-f]{1,4}:){1,3}(?::[0-9a-f]{1,4}){1,4}$|^(?:[0-9a-f]{1,4}:){1,2}(?::[0-9a-f]{1,4}){1,5}$|^[0-9a-f]{1,4}:(?::[0-9a-f]{1,4}){1,6}$|^:(?::[0-9a-f]{1,4}){1,7}$/i, // Supports both IPv4 and IPv6
     'Invalid IP address format',
   );
 

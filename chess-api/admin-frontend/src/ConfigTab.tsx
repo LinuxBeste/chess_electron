@@ -3,6 +3,7 @@ import { Settings, Edit3, Check, RotateCcw } from 'lucide-react';
 import { api, ServerConfig } from './api';
 import { useToast } from './Toast';
 
+// fallback defaults used when resetting editable fields to server defaults
 const DEFAULTS: Record<string, string> = {
   maxGamesPerPlayer: '20',
   rateLimitWindowMs: '60000',
@@ -36,6 +37,7 @@ export default function ConfigTab() {
     setSaved(false);
   }
 
+  // "save" copies env vars to clipboard; server restart required to apply
   async function handleSave() {
     if (!config) return;
     setSaved(false);
@@ -48,12 +50,12 @@ export default function ConfigTab() {
     try {
       await navigator.clipboard.writeText(configStr);
     } catch {
-      addToast('Failed to copy to clipboard', 'error');
+      addToast('Failed to copy to clipboard', 'error'); // clipboard may reject in insecure context
       return;
     }
     setEditing(false);
     setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setTimeout(() => setSaved(false), 3000); // brief success indicator, auto-dismiss
   }
 
   function handleReset(key: string) {

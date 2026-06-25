@@ -17,6 +17,7 @@ import dotenv from 'dotenv';
 /* Load .env from project root */
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
+// Read env config once; exposed to renderer via contextBridge below
 const serverUrl = process.env.CHESS_SERVER_URL || 'http://localhost:3000';
 const wsUrl = process.env.CHESS_WS_URL || '';
 const defaultUsername = process.env.DEFAULT_USERNAME || '';

@@ -6,6 +6,7 @@ import SearchBar from './SearchBar';
 import Pagination from './Pagination';
 import { useNavigateTab } from './TabContext';
 
+// game status → Tailwind badge color mapping
 const statusColors: Record<string, string> = {
   active: 'bg-green-900 text-green-400',
   waiting: 'bg-yellow-900 text-yellow-400',
@@ -33,7 +34,7 @@ export default function GamesTab() {
   const [bulkEnding, setBulkEnding] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortAsc, setSortAsc] = useState(false);
-  const [, setNow] = useState(Date.now());
+  const [, setNow] = useState(Date.now()); // dummy state to force re-render for elapsed timer
   const { addToast } = useToast();
   const [page, setPage] = useState(1);
   const pageSize = 30;
@@ -48,10 +49,11 @@ export default function GamesTab() {
   useEffect(load, []);
 
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 5000);
+    const t = setInterval(() => setNow(Date.now()), 5000); // re-render every 5s to update elapsed times
     return () => clearInterval(t);
   }, []);
 
+  // toggle sort: reverse direction on same column, asc default on new column
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortAsc(!sortAsc);
@@ -79,6 +81,7 @@ export default function GamesTab() {
   const totalPages = Math.ceil(sorted.length / pageSize);
   const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
 
+  // toggleAll only selects games that can actually be ended (active/waiting)
   function toggleAll() {
     if (selected.size === paginated.filter((g) => g.status === 'active' || g.status === 'waiting').length) {
       setSelected(new Set());
@@ -108,6 +111,7 @@ export default function GamesTab() {
     }
   }
 
+  // sequential bulk end, tolerates partial failures
   async function handleBulkEnd() {
     if (selected.size === 0) return;
     if (!confirm('End ' + selected.size + ' selected game(s)? They will be marked as draws.')) return;

@@ -118,6 +118,7 @@ export function registerWSConnection(playerId: string, ws: WebSocket): void {
   }
   wsConnections.get(playerId)!.add(ws);
   if (wasOffline) {
+    // Notify friends only on first connection
     notifyFriendsOnline(playerId).catch(() => {});
     notifyOpponentReconnected(playerId);
   }
@@ -136,7 +137,7 @@ export function removeWSConnection(playerId: string, ws: WebSocket): void {
 
 export function cleanupPlayerWaitingGames(playerId: string): void {
   const conns = wsConnections.get(playerId);
-  if (conns && conns.size > 0) return;
+  if (conns && conns.size > 0) return; // Still connected — keep waiting games alive
   const gameIds = playerGameIndex.get(playerId);
   if (!gameIds) return;
   const toDelete: string[] = [];
@@ -161,6 +162,7 @@ export function registerSpectator(gameId: string, ws: WebSocket, code?: string):
     return false;
   }
   if (game.spectateMode === 'code' && (!code || code !== game.spectateCode)) {
+    // Code-based access requires exact match
     logger.info('Spectator register failed: gameId=' + gameId + ' reason=invalid spectate code');
     return false;
   }
@@ -243,6 +245,7 @@ export function checkRateLimit(playerId: string): boolean {
   let timestamps = rateLimitBuckets.get(playerId) ?? [];
   timestamps = timestamps.filter((t) => t > windowStart);
   if (timestamps.length >= RATE_LIMIT_MAX_REQUESTS) {
+    // Sliding window rate limit per player
     logger.info('Rate limit hit: playerId=' + playerId + ' count=' + timestamps.length);
     return false;
   }
@@ -294,6 +297,7 @@ export async function createBotGame(
   playerColor: Color = 'white',
 ): Promise<{ success: true; game: GameState } | { success: false; error: string }> {
   if (engineManager.activeCount >= engineManager.maxConcurrentEngines) {
+    // Reject if engine pool exhausted
     logger.warn(
       'Bot game rejected: engine limit reached (' +
         engineManager.activeCount +
@@ -385,6 +389,7 @@ async function triggerBotMove(gameId: string): Promise<void> {
     (m) => m.from === from && m.to === to && (!promotion || m.promotion === promotion),
   );
   if (!matchedMove) {
+    // Reject engine move if not in legal list
     logger.warn('Bot generated illegal move', { gameId, bestMove });
     return;
   }
@@ -535,6 +540,7 @@ export async function makeMove(
   if (!playerColor) return { success: false, error: 'You are not a player in this game' };
   if (game.turn !== playerColor) return { success: false, error: 'Not your turn' };
   if (!/^[a-h][1-8]$/.test(from) || !/^[a-h][1-8]$/.test(to)) {
+    // Validate algebraic notation format
     return { success: false, error: 'Invalid square format' };
   }
 
@@ -548,7 +554,7 @@ export async function makeMove(
   const matchedMove = legalMoves.find((m) => {
     if (m.from !== from || m.to !== to) return false;
     if (promotion && m.promotion !== promotion) return false;
-    if (!promotion && m.promotion && m.promotion !== 'queen') return false;
+    if (!promotion && m.promotion && m.promotion !== 'queen') return false; // Default promotion to queen
     return true;
   });
 
@@ -592,7 +598,7 @@ export async function makeMove(
   if (!uciHistory.has(gameId)) uciHistory.set(gameId, []);
   uciHistory.get(gameId)!.push(from + to + (matchedMove.promotion ? matchedMove.promotion[0] : ''));
 
-  cancelDrawOffer(gameId);
+  cancelDrawOffer(gameId); // Cancel any pending draw offer on move
 
   const isTerminal = newStatus === 'checkmate' || newStatus === 'stalemate' || newStatus === 'draw';
   const message: Record<string, unknown> = {
@@ -624,6 +630,7 @@ export async function makeMove(
     await broadcastGameListUpdate();
   } else if (isBotGame(game)) {
     setTimeout(() => {
+      // 100ms delay gives WS time to flush
       triggerBotMove(gameId);
     }, 100);
   }
@@ -742,7 +749,7 @@ async function recordGameResult(game: GameState, winner: Color | null): Promise<
     JSON.stringify(game.moveHistory),
     JSON.stringify(game.boardHistory),
     null,
-    '5+0',
+    '5+0', // Hardcoded default time control
   );
   uciHistory.delete(game.id);
   if (isBotGame(game)) {
@@ -828,7 +835,7 @@ export function declineDraw(gameId: string, playerId: string): boolean {
 export function offerRematch(gameId: string, playerId: string): boolean {
   const game = games.get(gameId);
   if (!game) return false;
-  const isFinished: ReadonlyArray<string> = ['checkmate', 'stalemate', 'resigned', 'draw'];
+  const isFinished: ReadonlyArray<string> = ['checkmate', 'stalemate', 'resigned', 'draw']; // Const array for type safety
   if (!isFinished.includes(game.status)) return false;
   const isPlayer = game.players.white === playerId || game.players.black === playerId;
   if (!isPlayer) return false;

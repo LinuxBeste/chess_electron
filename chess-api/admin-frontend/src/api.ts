@@ -1,5 +1,6 @@
 const BASE = '/admin/api';
 
+// persist admin token across page reloads
 let token: string | null = localStorage.getItem('admin_token');
 
 export function getToken() {
@@ -7,6 +8,7 @@ export function getToken() {
 }
 
 export function setToken(t: string | null) {
+  // keep in-memory token and localStorage in sync
   token = t;
   if (t) localStorage.setItem('admin_token', t);
   else localStorage.removeItem('admin_token');
@@ -14,15 +16,16 @@ export function setToken(t: string | null) {
 
 export async function api<T = unknown>(path: string, opts: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers['Authorization'] = `Bearer ${token}`; // attach JWT for authenticated requests
   const res = await fetch(BASE + path, { ...opts, headers });
+  // auto-redirect to login on 401, but not during login itself
   if (res.status === 401 && path !== '/login') {
     setToken(null);
     window.location.reload();
     throw new Error('Unauthorized');
   }
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+  if (!res.ok) throw new Error(data.error || 'Request failed'); // use server error message if available
   return data as T;
 }
 

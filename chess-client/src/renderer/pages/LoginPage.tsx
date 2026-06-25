@@ -26,6 +26,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Update server URL: validates, persists, and reconnects socket with new endpoint
   function handleServerUrlChange(url: string) {
     setServerUrl(url);
     if (!url || !serverUrlSchema.safeParse(url).success) return;
@@ -33,10 +34,10 @@ export default function LoginPage() {
     const wsUrl = window.electronAPI?.wsUrl || url;
     socketManager.setServerUrl(wsUrl);
     if (!alwaysAsk) {
-      localStorage.setItem('chess_server_url', url);
+      localStorage.setItem('chess_server_url', url); // persist so user doesn't re-enter
     }
     if (store.get('token')) {
-      socketManager.disconnect();
+      socketManager.disconnect(); // force reconnect with new URL
     }
   }
 
@@ -65,7 +66,7 @@ export default function LoginPage() {
     if (offlineMode) {
       logger.info('Quick play offline mode', { username: trimmed });
       store.set('username', trimmed);
-      store.set('playerId', null);
+      store.set('playerId', null); // no server identity
       store.set('offline', true);
       navigate('/lobby');
       return;

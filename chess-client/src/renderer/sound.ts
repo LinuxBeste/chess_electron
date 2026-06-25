@@ -11,9 +11,9 @@ import logger from './logger';
  * require a user gesture before creation).
  */
 
-/* Lazily-initialised AudioContext; kept as a singleton for the app lifetime */
+// Singleton AudioContext — created lazily (browser requires user gesture)
 let audioCtx: AudioContext | null = null;
-/* Cached volume level (0–1), updated by setSoundVolume() */
+// Cached 0-1 volume, applied per-tone via GainNode
 let cachedVolume = 1;
 
 export function setSoundVolume(pct: number): void {
@@ -21,14 +21,13 @@ export function setSoundVolume(pct: number): void {
   logger.info('Sound volume set', pct);
 }
 
-/* Lazily create AudioContext and resume if suspended (common after
-   browser autoplay policy suspension). */
+// Create AudioContext once; resume if autoplay policy suspended it
 function getCtx(): AudioContext {
   if (!audioCtx) {
     audioCtx = new AudioContext();
   }
   if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
+    audioCtx.resume(); // browser blocks audio until user gesture — this unblocks
   }
   return audioCtx;
 }
@@ -41,8 +40,8 @@ function playTone(freq: number, duration: number, type: OscillatorType = 'sine',
   const gain = ctx.createGain();
   osc.type = type;
   osc.frequency.setValueAtTime(freq, ctx.currentTime);
-  gain.gain.setValueAtTime(volume * cachedVolume, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+  gain.gain.setValueAtTime(volume * cachedVolume, ctx.currentTime); // apply master volume
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration); // natural decay envelope
   osc.connect(gain);
   gain.connect(ctx.destination);
   osc.start();

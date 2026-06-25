@@ -77,7 +77,7 @@ export function deserializeBoard(serialized: SerializedSquare[]): Board {
  * Each cell's Piece is spread so mutations to the clone don't affect the original.
  */
 export function cloneBoard(board: Board): Board {
-  const cloned = board.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
+  const cloned = board.map((row) => row.map((cell) => (cell ? { ...cell } : null))); // shallow-clone each piece to avoid mutation leaks
   logger.debug('Board cloned');
   return cloned;
 }
@@ -101,6 +101,7 @@ export function findKing(board: Board, color: 'white' | 'black'): [number, numbe
 }
 
 /** Unicode chess characters for piece rendering */
+// Unicode chess chars — no SVG assets needed, scale cleanly at any resolution
 export const PIECE_CHARS: Record<string, Record<string, string>> = {
   white: { king: '♔', queen: '♕', rook: '♖', bishop: '♗', knight: '♘', pawn: '♙' },
   black: { king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟' },

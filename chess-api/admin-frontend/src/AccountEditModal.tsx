@@ -48,6 +48,7 @@ export default function AccountEditModal({ account, onClose, onSaved }: Props) {
     }
   }
 
+  // DELETE avatar endpoint, separate from account PUT
   async function handleClearAvatar() {
     if (!confirm("Clear this account's profile picture?")) return;
     try {
@@ -71,7 +72,7 @@ export default function AccountEditModal({ account, onClose, onSaved }: Props) {
     <div
       className="fixed inset-0 bg-black/70 flex items-center justify-center z-100"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) onClose(); // dismiss on backdrop click
       }}
     >
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-6 w-[420px] max-w-[90vw] max-h-[90vh] overflow-y-auto">

@@ -68,12 +68,9 @@ export default function GamePage() {
   const [opponentConnected, setOpponentConnected] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  /* Spectator mode = read-only; no move interaction.  The ?spectate=1
-     query param is set by LobbyPage when clicking "Spectate". */
+  /* Spectator mode: read-only, set via ?spectate=1 query param from LobbyPage */
   const isSpectator = searchParams.get('spectate') === '1';
-  /* Refs that always reflect the latest state — used inside WebSocket
-     event handlers (which are registered once and would otherwise capture
-     stale values from the initial render). */
+  /* Refs to avoid stale closures — WS handlers registered once use these instead of render-cycle values */
   const boardRef = useRef(board);
   boardRef.current = board;
   const gameRef = useRef(game);
@@ -81,7 +78,7 @@ export default function GamePage() {
   const timeoutRef = useRef(timeout);
   timeoutRef.current = timeout;
 
-  /* Countdown timer — decrement the active player every 50ms */
+  /* Chess clock: decrement active player every 50ms; stops on timeout or game end */
   useEffect(() => {
     if (!game || game.status !== 'active' || timeout) return;
     const interval = setInterval(() => {
@@ -108,7 +105,7 @@ export default function GamePage() {
     return () => clearInterval(interval);
   }, [game, timeout]);
 
-  /* True when the current player can make a move */
+  /* Composite condition: must be player's turn, game active, not spectating, no timeout */
   const isActive = !!game && game.turn === playerColor && game.status === 'active' && !isSpectator && !timeout;
 
   useEffect(() => {
@@ -228,9 +225,7 @@ export default function GamePage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [menuOpen]);
 
-  /* REST polling fallback for the waiting state — if the WebSocket
-     game_started event is missed (e.g. reconnect race), this picks up
-     the transition so P1 doesn't stay stuck on the waiting overlay. */
+  /* REST polling fallback: if WS game_started is missed (reconnect race), poll every 2s */
   useEffect(() => {
     if (!gameId || !waiting) return;
     const interval = setInterval(async () => {
@@ -283,6 +278,7 @@ export default function GamePage() {
     }
   }
 
+  // Server-broadcast move: update board, clock increment, play sound for opponent's move
   function handleWsMove(msg: MoveMessage) {
     if (!gameRef.current) return;
     logger.info('WS move received', {
@@ -493,12 +489,13 @@ export default function GamePage() {
     return !!piece && piece.type === 'pawn' && (tr === 0 || tr === 7);
   }
 
+  // Optimistic update: apply move locally first, then confirm with server; rollback on error
   async function executeMove(from: string, to: string, promotion?: PieceType) {
     if (!gameRef.current) return;
     logger.info('Executing move', { gameId: gameRef.current.id, from, to, promotion });
     setSelectedSquare(null);
     setLegalHints([]);
-    const oldBoard = cloneBoard(boardRef.current);
+    const oldBoard = cloneBoard(boardRef.current); // save for rollback on failure
     const [fromR, fromF] = squareToIndices(from);
     const [toR, toF] = squareToIndices(to);
     const newBoard = cloneBoard(boardRef.current);
@@ -596,6 +593,7 @@ export default function GamePage() {
     setResignConfirmed(false);
   }
 
+  // Step through board history snapshots after game ends (-1 = initial position)
   function reviewStep(direction: number) {
     if (reviewIndex === null || !gameRef.current) return;
     const newIndex = reviewIndex + direction;
@@ -870,7 +868,7 @@ export default function GamePage() {
   );
 }
 
-/* Small helper for menu dropdown items */
+/* Inline menu item component — avoids pulling in a dropdown library */
 function MenuItem({ label, onClick, danger }: { label: string; onClick: () => void; danger?: boolean }) {
   return (
     <button

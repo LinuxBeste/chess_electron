@@ -17,6 +17,7 @@ export default function MatchHistoryDialog({ onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
 
+  // Fetch last 20 games for the current player on mount
   useEffect(() => {
     const pid = store.get('playerId');
     if (pid) {
@@ -25,7 +26,7 @@ export default function MatchHistoryDialog({ onClose }: Props) {
         .getPlayerGames(pid)
         .then((g) => {
           logger.info('Match history loaded: count=' + g.length);
-          setGames(g.slice(-20).reverse());
+          setGames(g.slice(-20).reverse()); // most recent first
         })
         .catch((e) => logger.error('Match history fetch failed: ' + e))
         .finally(() => setLoading(false));
@@ -34,6 +35,7 @@ export default function MatchHistoryDialog({ onClose }: Props) {
     }
   }, []);
 
+  // Close dialog when clicking backdrop (not the card itself)
   function handleOverlayClick(e: React.MouseEvent) {
     if (e.target === e.currentTarget) onClose();
   }

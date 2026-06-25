@@ -22,6 +22,7 @@ import { setToken } from './api';
 import { ToastProvider } from './Toast';
 import { TabProvider } from './TabContext';
 
+// code-split each tab: loaded on demand, not in initial bundle
 const OverviewTab = lazy(() => import('./OverviewTab'));
 const GamesTab = lazy(() => import('./GamesTab'));
 const PlayersTab = lazy(() => import('./PlayersTab'));
@@ -62,20 +63,23 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [active, setActive] = useState('overview');
   const [navParams, setNavParams] = useState<Record<string, string> | undefined>(undefined);
 
+  // cross-tab navigation: e.g. ArchiveTab receives player filter, GameReplayTab gets gameId
   const handleNavigate = useCallback((tab: string, params?: Record<string, string>) => {
     setActive(tab);
     setNavParams(params);
   }, []);
 
+  // composite key forces tab re-mount when tab or params change, ensuring clean state
   const navKey = active + ':' + JSON.stringify(navParams);
 
   function handleLogout() {
-    setToken(null);
+    setToken(null); // clear from both memory and localStorage
     onLogout();
   }
 
   function renderTab() {
     const p = navParams ?? {};
+    // Suspense fallback shown while lazy chunk loads
     const fallback = <div className="flex items-center justify-center py-12 text-[#888]">Loading…</div>;
     const tab = (() => {
       switch (active) {
@@ -141,7 +145,7 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
                   key={t.key}
                   onClick={() => {
                     setActive(t.key);
-                    setNavParams(undefined);
+                    setNavParams(undefined); // clear cross-tab params when navigating directly
                   }}
                   className={`flex items-center gap-1.5 px-4 py-2.5 text-sm border-b-2 transition-colors whitespace-nowrap ${
                     active === t.key

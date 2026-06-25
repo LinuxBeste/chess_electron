@@ -17,11 +17,12 @@ const Ctx = createContext<ToastCtx>({ addToast: () => {} });
 
 export const useToast = () => useContext(Ctx);
 
-let nextId = 1;
+let nextId = 1; // monotonic ID allows duplicate messages to coexist
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  // stable callback identity prevents ToastItem unnecessary re-renders
   const addToast = useCallback((message: string, type: ToastType = 'info') => {
     const id = nextId++;
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -44,6 +45,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
+  // auto-dismiss toast after 4 seconds
   useEffect(() => {
     const timer = setTimeout(onClose, 4000);
     return () => clearTimeout(timer);

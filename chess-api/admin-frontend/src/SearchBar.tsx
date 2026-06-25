@@ -45,7 +45,7 @@ export default function SearchBar({
             ))}
           </select>
           <button
-            onClick={() => onSortChange(sortKey || sortOptions[0]?.key || '', !sortAsc)}
+            onClick={() => onSortChange(sortKey || sortOptions[0]?.key || '', !sortAsc)} // toggle sort direction, default to first option
             className="p-2 text-[#888] hover:text-[#ccc] bg-[#1a1a1a] border border-[#333] rounded-lg"
             title={sortAsc ? 'Ascending' : 'Descending'}
           >

@@ -15,7 +15,7 @@ interface EngineInstance {
 
 class EngineManager {
   private instances = new Map<string, EngineInstance>();
-  private maxConcurrent = Math.max(1, parseInt(process.env.MAX_CONCURRENT_ENGINES ?? '4', 10));
+  private maxConcurrent = Math.max(1, parseInt(process.env.MAX_CONCURRENT_ENGINES ?? '4', 10)); // Cap concurrent Stockfish to limit RAM
 
   get activeCount(): number {
     return this.instances.size;
@@ -37,6 +37,7 @@ class EngineManager {
     return new Promise((resolve, reject) => {
       const enginePath = this.getEnginePath();
       const proc = spawn(process.execPath, [enginePath], {
+        // Stockfish runs as child Node.js process
         stdio: ['pipe', 'pipe', 'pipe'],
       });
 
@@ -56,7 +57,7 @@ class EngineManager {
           const trimmed = line.trim();
           if (!trimmed) continue;
 
-          if (trimmed === 'uciok') inst.uciok = true;
+          if (trimmed === 'uciok') inst.uciok = true; // UCI protocol: engine ready handshake
           if (trimmed === 'readyok') inst.ready = true;
 
           const bestMatch = trimmed.match(/^bestmove\s+(\S+)/);
@@ -90,7 +91,7 @@ class EngineManager {
       this.send(gameId, 'uci');
       this.waitForCondition(gameId, () => inst.uciok)
         .then(() => {
-          const level = Math.max(1, Math.min(20, skillLevel || 1));
+          const level = Math.max(1, Math.min(20, skillLevel || 1)); // Clamp skill level 1-20
           this.send(gameId, `setoption name Skill Level value ${level}`);
           this.send(gameId, 'isready');
           return this.waitForCondition(gameId, () => inst.ready);
@@ -123,6 +124,7 @@ class EngineManager {
     try {
       inst.process.stdin!.write(cmd + '\n');
     } catch (err) {
+      // stdin.write can throw if process died
       logger.warn('Engine send failed for game ' + gameId + ': ' + err);
     }
   }
@@ -135,7 +137,7 @@ class EngineManager {
     }
 
     if (inst.bestMovePromise) {
-      inst.bestMovePromise.reject(new Error('New search started'));
+      inst.bestMovePromise.reject(new Error('New search started')); // Reject pending when new search begins
     }
 
     return new Promise((resolve, reject) => {
@@ -145,16 +147,18 @@ class EngineManager {
       /* Timeout: if Stockfish doesn't respond within movetime + 10s, reject */
       const timeoutMs = movetime + 10000;
       const timer = setTimeout(() => {
+        // Safety timeout: 10s beyond movetime
         if (inst.bestMovePromise) {
           inst.bestMovePromise = null;
           reject(new Error('Engine best-move timeout'));
         }
-      }, timeoutMs).unref();
+      }, timeoutMs).unref(); // .unref() allows Node process to exit while waiting
 
       /* Wrap original resolve/reject to clear the timeout */
       const origResolve = inst.bestMovePromise.resolve;
       const origReject = inst.bestMovePromise.reject;
       inst.bestMovePromise.resolve = (move: string) => {
+        // Wrap to clear timeout on response
         clearTimeout(timer);
         origResolve(move);
       };

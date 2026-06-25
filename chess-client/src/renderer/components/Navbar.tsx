@@ -31,18 +31,18 @@ export default function Navbar() {
   const offline = useStoreValue('offline');
   const navigate = useNavigate();
 
-  const isLoggedIn = !!(token && username);
-  const isOffline = !!(offline && username);
+  const isLoggedIn = !!(token && username); // authenticated with server
+  const isOffline = !!(offline && username); // local-only mode, no server
 
   function handleLogout() {
     logger.info('User logged out', { username });
-    store.set('token', null);
+    store.set('token', null); // clear all auth state from store
     store.set('playerId', null);
     store.set('username', null);
     store.set('avatarUrl', null);
     store.set('offline', false);
-    store.clearSession();
-    store.set('currentGame', null);
+    store.clearSession(); // also clear persisted session from localStorage
+    store.set('currentGame', null); // drop any in-progress game reference
     navigate('/login');
   }
 

@@ -17,11 +17,12 @@ import { isWeakPassword as checkWeakPassword } from './password-strength.js';
 import { wsConnections, spectatorConnections, playerGameIndex } from './state.js';
 
 const dbLatencyHistory: number[] = [];
-const MAX_LATENCY_SAMPLES = 60;
+const MAX_LATENCY_SAMPLES = 60; // Rolling window of last 60 DB latency samples
 
 let prevWsTotalConnections = 0;
 let wsDisconnectEvents = 0;
 setInterval(() => {
+  // Poll-based disconnect tracking, not event-driven
   const now = Array.from(wsConnections.values()).reduce((s, set) => s + set.size, 0);
   if (now < prevWsTotalConnections) wsDisconnectEvents += prevWsTotalConnections - now;
   prevWsTotalConnections = now;
@@ -37,7 +38,7 @@ let ADMIN_PASSWORD_HASH: string;
 const ADMIN_TOKEN_TTL = parseInt(process.env.ADMIN_TOKEN_TTL ?? String(24 * 60 * 60 * 1000), 10);
 
 const ADMIN_LOGIN_MAX_ATTEMPTS = parseInt(process.env.ADMIN_LOGIN_MAX_ATTEMPTS ?? '5', 10);
-const ADMIN_LOGIN_LOCKOUT_MINUTES = parseInt(process.env.ADMIN_LOGIN_LOCKOUT_MINUTES ?? '15', 10);
+const ADMIN_LOGIN_LOCKOUT_MINUTES = parseInt(process.env.ADMIN_LOGIN_LOCKOUT_MINUTES ?? '15', 10); // Brute-force protection
 const adminLoginAttempts = new Map<string, { count: number; lockedUntil: number }>();
 
 function checkAdminLoginLockout(username: string): { locked: boolean; remainingMs?: number } {
@@ -71,12 +72,12 @@ function initAdminCreds(): void {
   ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
   if (process.env.ADMIN_PASSWORD) {
     if (checkWeakPassword(process.env.ADMIN_PASSWORD, 2)) {
-      logger.warn('ADMIN_PASSWORD is weak — use at least 8 characters and avoid common passwords');
+      logger.warn('ADMIN_PASSWORD is weak — use at least 8 characters and avoid common passwords'); // Warn if env password fails zxcvbn
     }
     ADMIN_PASSWORD_HASH = hashPassword(process.env.ADMIN_PASSWORD);
     logger.info('ADMIN_PASSWORD has been set from ENV.');
   } else {
-    ADMIN_PASSWORD_HASH = hashPassword(crypto.randomBytes(24).toString('hex'));
+    ADMIN_PASSWORD_HASH = hashPassword(crypto.randomBytes(24).toString('hex')); // Random 48-char hex — no admin access via ENV
     logger.warn('No ADMIN_PASSWORD set. A random password was generated for this session.');
     logger.warn('Set ADMIN_PASSWORD env var to use a custom password.');
   }
@@ -87,6 +88,7 @@ initAdminCreds();
 const adminTokens = new Map<string, number>();
 
 if (process.env.NODE_ENV !== 'test') {
+  // Skip periodic cleanup in test env
   setInterval(
     () => {
       const now = Date.now();
@@ -104,7 +106,7 @@ function adminAuthMiddleware(req: Request, res: Response, next: () => void): voi
     res.status(401).json({ error: 'Admin authentication required' });
     return;
   }
-  const token = header.slice(7);
+  const token = header.slice(7); // Strip "Bearer " prefix
   const expiry = adminTokens.get(token);
   if (!expiry || expiry <= Date.now()) {
     adminTokens.delete(token);
@@ -223,7 +225,7 @@ function sampleDisk(): { read: number; write: number } | null {
     const parts = line.trim().split(/\s+/);
     if (parts.length < 14) continue;
     const name = parts[2];
-    if (name.startsWith('loop') || name.startsWith('ram') || /\d$/.test(name)) continue;
+    if (name.startsWith('loop') || name.startsWith('ram') || /\d$/.test(name)) continue; // Skip virtual/partition devices
     read += parseInt(parts[5]) || 0;
     write += parseInt(parts[9]) || 0;
   }
@@ -239,7 +241,7 @@ router.get('/admin/api/system/metrics', adminAuthMiddleware, (_req: Request, res
   if (cpu && prevCpu) {
     const totalDiff = cpu.total - prevCpu.total;
     const idleDiff = cpu.idle - prevCpu.idle;
-    if (totalDiff > 0) cpuPercent = Math.round(((totalDiff - idleDiff) / totalDiff) * 10000) / 100;
+    if (totalDiff > 0) cpuPercent = Math.round(((totalDiff - idleDiff) / totalDiff) * 10000) / 100; // Guard division by zero on first poll
   }
   if (cpu) prevCpu = cpu;
 
@@ -756,7 +758,7 @@ router.get('/admin/api/leaderboard', adminAuthMiddleware, async (_req: Request, 
     const sortKey =
       typeof _req.query.sortKey === 'string' && ['rating', 'wins', 'username'].includes(_req.query.sortKey)
         ? _req.query.sortKey
-        : 'rating';
+        : 'rating'; // Whitelist prevents ORDER BY injection
     const sortAsc = _req.query.sortAsc === 'true';
     const offset = (page - 1) * limit;
     const result = await db.getLeaderboard(limit, offset, minGames, sortKey, sortAsc);
@@ -1226,13 +1228,14 @@ router.post('/admin/api/db/query', adminAuthMiddleware, async (req: Request, res
       return;
     }
     const sql = parsed.data.sql.trim();
-    const stripped = sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    const stripped = sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, ''); // Strip SQL comments before validation
     const upper = stripped.toUpperCase();
     if (!upper.startsWith('SELECT') && !upper.startsWith('EXPLAIN') && !upper.startsWith('WITH')) {
       res.status(403).json({ error: 'Only SELECT queries are allowed' });
       return;
     }
     if (/(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE)\s/i.test(stripped)) {
+      // Reject write statements
       res.status(403).json({ error: 'Write queries are not allowed' });
       return;
     }

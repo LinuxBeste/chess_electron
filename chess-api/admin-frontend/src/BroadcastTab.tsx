@@ -3,6 +3,7 @@ import { Send, RotateCcw, MessageSquare, Wrench, Bell, Info, AlertTriangle } fro
 import { api } from './api';
 import { useToast } from './Toast';
 
+// preset message templates for common admin broadcast scenarios
 const TEMPLATES = [
   {
     label: 'Maintenance',
@@ -35,8 +36,8 @@ export default function BroadcastTab() {
         body: JSON.stringify({ message: message.trim() }),
       });
       setResult(res);
-      setHistory((prev) =>
-        [{ text: message.trim(), count: res.recipientCount, time: Date.now() }, ...prev].slice(0, 10),
+      setHistory(
+        (prev) => [{ text: message.trim(), count: res.recipientCount, time: Date.now() }, ...prev].slice(0, 10), // keep last 10 broadcasts
       );
       addToast('Broadcast sent to ' + res.recipientCount + ' players', 'success');
       setMessage('');

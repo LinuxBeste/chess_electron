@@ -17,14 +17,14 @@ interface MoveHistoryProps {
 const MoveHistory = memo(function MoveHistory({ moves }: MoveHistoryProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  /* Auto-scroll the container to show the latest move */
+  /* Auto-scroll to the latest move as the game progresses */
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [moves.length]);
+  }, [moves.length]); // length tells us new moves arrived
 
-  /* Log when move history changes */
+  // Log move count changes for debugging
   useEffect(() => {
     const totalPairs = Math.ceil(moves.length / 2);
     if (moves.length === 0) {
@@ -57,6 +57,7 @@ const MoveHistory = memo(function MoveHistory({ moves }: MoveHistoryProps) {
           <div className="history-header">{t('moveHistory.hash')}</div>
           <div className="history-header">{t('moveHistory.white')}</div>
           <div className="history-header">{t('moveHistory.black')}</div>
+          {/* Group flat move array into (number, white, black) rows */}
           {Array.from({ length: Math.ceil(moves.length / 2) }, (_, i) => {
             const wIdx = i * 2;
             const bIdx = i * 2 + 1;

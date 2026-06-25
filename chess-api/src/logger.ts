@@ -6,7 +6,7 @@ const __dirname = path.dirname(__filename);
 
 const LOG_DIR = path.join(__dirname, '..', 'logs');
 const LOG_RETENTION_DAYS = 30;
-const isTest = process.env.NODE_ENV === 'test' || typeof process.env.JEST_WORKER_ID !== 'undefined';
+const isTest = process.env.NODE_ENV === 'test' || typeof process.env.JEST_WORKER_ID !== 'undefined'; // Suppress file I/O during tests
 
 const streams = new Map<string, fs.WriteStream>();
 let currentDateTag = '';
@@ -22,6 +22,7 @@ function timestamp(): string {
 function getStream(file: string): fs.WriteStream {
   const tag = dateTag();
   if (currentDateTag !== tag) {
+    // Rotate log files daily
     closeAllStreams();
     currentDateTag = tag;
   }
@@ -36,7 +37,7 @@ function getStream(file: string): fs.WriteStream {
       }
     }
     const filePath = path.join(LOG_DIR, file.replace('{date}', tag));
-    s = fs.createWriteStream(filePath, { flags: 'a' });
+    s = fs.createWriteStream(filePath, { flags: 'a' }); // Append mode preserves existing logs
     streams.set(key, s);
   }
   return s;
@@ -86,7 +87,7 @@ function log(level: LogLevel, message: string, ...args: unknown[]): void {
       ? `${message} ${args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')}`
       : message;
   if (!isTest) {
-    console.log(`${CONSOLE_COLORS[level]}[${level.toUpperCase()}]${CONSOLE_RESET} ${line}`);
+    console.log(`${CONSOLE_COLORS[level]}[${level.toUpperCase()}]${CONSOLE_RESET} ${line}`); // ANSI-colored console output
   }
   appendLine(`app-{date}.log`, `[${ts}] [${level.toUpperCase()}] ${line}`);
 }
@@ -102,7 +103,7 @@ export function morganStream(): { write: (msg: string) => void } {
   return {
     write: (msg: string) => {
       const trimmed = msg.trim();
-      if (!trimmed) return;
+      if (!trimmed) return; // Skip empty HTTP log lines
       appendLine(`http-{date}.log`, `[${timestamp()}] ${trimmed}`);
     },
   };

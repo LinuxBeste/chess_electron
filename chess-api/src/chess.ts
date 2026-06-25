@@ -163,6 +163,7 @@ export function generatePawnMoves(
 
     /* En passant: capture the pawn that just double-pushed */
     if (enPassantTarget === to) {
+      // Capture diagonal-adjacent pawn after double push
       const capturedPiece = board[rank][cf];
       if (capturedPiece && capturedPiece.color !== piece.color) {
         moves.push({ from, to, piece, captured: capturedPiece, isEnPassant: true });
@@ -214,6 +215,7 @@ export function generateKingMoves(
     if (rights.kingside && board[homeRank][5] === null && board[homeRank][6] === null) {
       const rook = board[homeRank][7];
       if (rook?.type === 'rook' && rook.color === piece.color) {
+        // Verify rook hasn't moved
         moves.push({ from, to: indicesToSquare(homeRank, 6), piece, isCastling: 'kingside' });
       }
     }
@@ -412,6 +414,7 @@ export function applyMove(
 
   /* Double push: set en passant target */
   if (movingPiece.type === 'pawn' && Math.abs(toRank - fromRank) === 2) {
+    // En passant target only on double push
     newEnPassantTarget = indicesToSquare(fromRank + (toRank - fromRank) / 2, fromFile);
   }
 
@@ -482,6 +485,7 @@ export function getGameStatus(
     return { status: inCheck ? 'checkmate' : 'stalemate' };
   }
   if (halfMoveClock !== undefined && halfMoveClock >= 100) {
+    // 50-move rule: 100 half-moves without pawn/capture
     return { status: 'draw' };
   }
   return { status: inCheck ? 'check' : 'active' };
@@ -541,6 +545,7 @@ export function moveToAlgebraic(move: Move, capturedPiece: Piece | undefined, le
   /* Disambiguation: two identical pieces can reach the same square */
   let disambig = '';
   const ambiguous = legalMoves.filter(
+    // Disambiguate when multiple pieces can reach same target
     (m) => m !== move && m.piece.type === move.piece.type && m.piece.color === move.piece.color && m.to === move.to,
   );
   if (ambiguous.length > 0) {

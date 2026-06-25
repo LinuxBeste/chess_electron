@@ -31,6 +31,7 @@ const IMAGE_MAGIC: Record<string, Uint8Array[]> = {
 };
 
 function isValidImageType(filePath: string, mimeType: string): boolean {
+  // Magic byte check prevents MIME bypass
   try {
     const magic = IMAGE_MAGIC[mimeType];
     if (!magic) return false;
@@ -56,7 +57,7 @@ const avatarUpload = multer({
       cb(null, uuidv4() + ext);
     },
   }),
-  limits: { fileSize: 2 * 1024 * 1024 },
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB avatar upload limit
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowed.includes(file.mimetype)) {
@@ -69,7 +70,7 @@ const avatarUpload = multer({
 
 const ipRateBuckets = new Map<string, number[]>();
 const IP_RATE_LIMIT_WINDOW_MS = 60000;
-const IP_RATE_LIMIT_MAX = process.env.NODE_ENV === 'test' ? Infinity : 20;
+const IP_RATE_LIMIT_MAX = process.env.NODE_ENV === 'test' ? Infinity : 20; // IP-based throttling, not player-based
 
 export function ipRateLimitMiddleware(req: Request, res: Response, next: () => void): void {
   const now = Date.now();
@@ -100,7 +101,7 @@ export function clearIpRateBuckets(): void {
 }
 
 const regBuckets = new Map<string, number[]>();
-const REG_WINDOW_MS = 60 * 60 * 1000;
+const REG_WINDOW_MS = 60 * 60 * 1000; // Stricter rate limit: 5 registrations per hour per IP
 const REG_MAX = process.env.NODE_ENV === 'test' ? Infinity : 5;
 
 export function cleanupRegBuckets(): void {
@@ -141,7 +142,7 @@ export function authMiddleware(req: Request, res: Response, next: () => void): v
   }
   req.player = player;
   const ip = req.ip || req.socket.remoteAddress || '';
-  game.setPlayerIp(player.id, ip);
+  game.setPlayerIp(player.id, ip); // Track player IP for ban checks
   next();
 }
 
@@ -305,7 +306,7 @@ router.put('/auth/me/password', authMiddleware, banCheckMiddleware, async (req: 
     return;
   }
   /* Invalidate all other tokens, keep current session alive */
-  const currentToken = req.headers.authorization!.slice(7);
+  const currentToken = req.headers.authorization!.slice(7); // Revoke all sessions except current
   for (const t of req.player.tokens) {
     if (t !== currentToken) game.deleteToken(t);
   }
@@ -334,6 +335,7 @@ router.post('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Request
     }
 
     if (process.env.NODE_ENV !== 'test' && !isValidImageType(req.file.path, req.file.mimetype)) {
+      // Skip magic-byte check in tests
       try {
         fs.unlinkSync(req.file.path);
       } catch {
@@ -763,7 +765,7 @@ router.get('/tournaments/:id', globalGetLimiter, async (req: Request, res: Respo
     const matches = await db.getTournamentMatches(req.params.id);
     const result: Record<string, unknown> = { ...t, participants, matches, participantCount: participants.length };
     const playerId = req.player?.id;
-    if (playerId !== t.created_by) delete result.join_code;
+    if (playerId !== t.created_by) delete result.join_code; // Hide join code from non-creators
     res.json(result);
   } catch (err) {
     logger.error('Tournament detail query failed: ' + err);

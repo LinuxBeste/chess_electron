@@ -27,6 +27,7 @@ export default function BansTab() {
 
   useEffect(load, []);
 
+  // client-side sort with nullable-safe date fallback (?? 0)
   const filteredPlayers = (
     query ? bans.players.filter((b) => b.id && b.id.toLowerCase().includes(query.toLowerCase())) : bans.players
   ).sort((a, b) => {
@@ -43,6 +44,7 @@ export default function BansTab() {
     return String(a.ip || '').localeCompare(String(b.ip || '')) * dir;
   });
 
+  // add IP ban with optional timed duration (undefined = permanent)
   async function handleAddIpBan() {
     const ip = newIp.trim();
     if (!ip) return;
@@ -82,6 +84,7 @@ export default function BansTab() {
     }
   }
 
+  // bulk unban tolerates partial failures, encodeURIComponent for special chars in IPs/IDs
   async function handleBulkUnban(type: 'players' | 'ips') {
     const items = type === 'players' ? selectedPlayers : selectedIps;
     if (items.size === 0) return;
@@ -135,7 +138,7 @@ export default function BansTab() {
             value={newIp}
             onChange={(e) => setNewIp(e.target.value)}
             placeholder="IP address to ban..."
-            onKeyDown={(e) => e.key === 'Enter' && handleAddIpBan()}
+            onKeyDown={(e) => e.key === 'Enter' && handleAddIpBan()} // Enter shortcut to submit IP ban
             className="flex-1 px-3 py-2 text-sm bg-[#1a1a1a] border border-[#333] rounded-lg text-[#e0e0e0] placeholder-[#555] focus:outline-none focus:border-[#4a9eff]"
           />
           <button

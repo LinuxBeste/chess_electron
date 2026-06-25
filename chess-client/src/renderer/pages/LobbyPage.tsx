@@ -52,6 +52,7 @@ export default function LobbyPage() {
     }
     initialFetch();
 
+    // WS pushes game list updates — no polling needed after initial fetch
     const unsubscribe = socketManager.onGameListUpdate((msg: GameListUpdateMessage) => {
       setOpenGames(msg.openGames);
       setLiveGames(msg.activeGames);
@@ -65,11 +66,12 @@ export default function LobbyPage() {
     };
   }, []);
 
-  /* If the player was in an active game (e.g. after a page refresh), resume it */
+  /* On mount, check if player has an active game to resume (survives page refresh) */
   useEffect(() => {
     if (!store.get('offline')) checkActiveGame();
   }, []);
 
+  // Check both in-memory and persisted game; redirect if still active
   async function checkActiveGame() {
     try {
       const game = store.get('currentGame');
@@ -139,6 +141,7 @@ export default function LobbyPage() {
     }
   }
 
+  // Fetch game then navigate with ?spectate=1 to enter read-only mode
   async function spectateGame(gid: string) {
     logger.info('Spectating game', { gameId: gid });
     try {
