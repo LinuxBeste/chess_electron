@@ -121,7 +121,7 @@ const MIGRATIONS: { version: number; sql: string }[] = [
 
       CREATE INDEX IF NOT EXISTS idx_friend_requests_to_status ON friend_requests(to_user_id, status);
       CREATE INDEX IF NOT EXISTS idx_friend_requests_from_status ON friend_requests(from_user_id, status);
-      CREATE INDEX IF NOT EXISTS idx_friend_requests_both_status ON friend_requests(from_user_id, to_user_id, status); // Compound index for bi-directional queries
+      CREATE INDEX IF NOT EXISTS idx_friend_requests_both_status ON friend_requests(from_user_id, to_user_id, status);
 
       CREATE TABLE IF NOT EXISTS friends (
         user_id TEXT NOT NULL REFERENCES users(id),
