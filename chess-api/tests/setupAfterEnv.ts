@@ -10,7 +10,7 @@ beforeAll(async () => {
     await pool.query('GRANT ALL ON SCHEMA public TO public');
     resetMigrations();
     await initDb();
-  } catch {
-    /* DB not available — tests that need it will fail individually */
+  } catch (err) {
+    console.error('DB setup failed:', err);
   }
 }, 30000);
