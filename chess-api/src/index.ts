@@ -20,7 +20,7 @@ const __dirname = path.dirname(__filename);
 
 export const app: Express = express();
 
-app.set('trust proxy', 1);
+app.set('trust proxy', 1); // Respect X-Forwarded-For behind nginx
 
 const PORT = parseInt(process.env.PORT ?? '25565', 10);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
@@ -29,7 +29,7 @@ const WS_PONG_TIMEOUT = parseInt(process.env.WS_PONG_TIMEOUT ?? '10000', 10);
 const WS_MAX_CONNECTIONS_PER_IP = parseInt(process.env.WS_MAX_CONNECTIONS_PER_IP ?? '5', 10);
 
 if (!process.env.ADMIN_PASSWORD && !process.env.JEST_WORKER_ID) {
-  logger.warn('ADMIN_PASSWORD not set — a random password will be generated and logged on first request');
+  logger.warn('ADMIN_PASSWORD not set — a random password will be generated and logged on first request'); // Dev convenience, insecure for production
 }
 
 app.use(
@@ -57,15 +57,16 @@ if (process.env.NODE_ENV !== 'test') {
 if (CORS_ORIGIN === '*') {
   if (process.env.NODE_ENV === 'production') {
     logger.error('CORS_ORIGIN is set to * in production — refusing to start. Set CORS_ORIGIN to a specific origin.');
-    process.exit(1);
+    process.exit(1); // Hard fail — wildcard CORS is a security risk
   }
   logger.warn('CORS origin is set to * — restrict this in production');
 }
 app.use(cors({ origin: CORS_ORIGIN, credentials: CORS_ORIGIN !== '*' }));
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: '10kb' })); // Prevent large payload attacks
 
 app.use((req, res, next) => {
   res.setTimeout(30000, () => {
+    // Global 30s timeout for all routes
     logger.warn('Request timeout: ' + req.method + ' ' + req.path);
     if (!res.headersSent) {
       res.status(503).json({ error: 'Request timeout' });
@@ -83,8 +84,9 @@ app.use('/avatars', express.static(avatarDir));
 
 const adminDir = path.join(path.resolve(__dirname, '..'), 'dist', 'admin');
 app.use('/admin', express.static(adminDir));
-app.use(adminRouter);
+app.use(adminRouter); // Admin API routes under /admin/api/
 app.get('/admin/*', (_req, res) => {
+  // SPA fallback — all non-API paths serve index.html
   res.sendFile(path.join(adminDir, 'index.html'));
 });
 app.use(friendsRouter);
@@ -103,7 +105,7 @@ export function createServer(): http.Server {
 
   const wss = new WebSocketServer({
     server,
-    handleProtocols: (protocols) => protocols.values().next().value || false,
+    handleProtocols: (protocols) => protocols.values().next().value || false, // Pick first protocol client offers (the auth token)
   });
 
   (server as http.Server & { __wss: WebSocketServer }).__wss = wss;

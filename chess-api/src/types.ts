@@ -49,7 +49,7 @@ export interface GameState {
   halfMoveClock: number;
   aiSkillLevel?: number;
   reason?: string;
-}
+} // Globally augment Express.Request with player property
 
 export interface Player {
   id: string;
@@ -125,6 +125,7 @@ export interface TournamentMatch {
   gameId: string | null;
   completed: boolean;
 }
+// Augment Express.Request with authenticated player
 declare global {
   namespace Express {
     interface Request {
