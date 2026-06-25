@@ -110,6 +110,7 @@ export async function registerPlayer(
   const token = uuidv4();
   const isRegistered = !!password; // Guest player if no password provided
   if (password) {
+    const hash = await hashPasswordAsync(password);
     await db.createUser(playerId, username, hash, username);
     await db.saveToken(token, playerId);
     const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: true };
