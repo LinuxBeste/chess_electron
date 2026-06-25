@@ -236,6 +236,10 @@ async function migrate(): Promise<void> {
   logger.info('DB migrations complete');
 }
 
+export function resetMigrations(): void {
+  migrated = false;
+}
+
 export async function initDb(): Promise<void> {
   await migrate();
 }
