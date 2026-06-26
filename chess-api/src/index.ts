@@ -218,22 +218,20 @@ export function createServer(): http.Server {
         } else if (msg.type === 'get_private_chat_history' && typeof msg.conversationId === 'string') {
           chat.sendPrivateChatHistory(msg.conversationId as string, ws);
         } else if (msg.type === 'get_conversations') {
-          chat
-            .getConversationsForUser(player.id)
-            .then(
-              (
-                convs: {
-                  id: string;
-                  type: string;
-                  name: string | null;
-                  lastMessageAt: number;
-                  unread: number;
-                  ownerId?: string;
-                }[],
-              ) => {
-                ws.send(JSON.stringify({ type: 'conversations_list', conversations: convs }));
-              },
-            );
+          chat.getConversationsForUser(player.id).then(
+            (
+              convs: {
+                id: string;
+                type: string;
+                name: string | null;
+                lastMessageAt: number;
+                unread: number;
+                ownerId?: string;
+              }[],
+            ) => {
+              ws.send(JSON.stringify({ type: 'conversations_list', conversations: convs }));
+            },
+          );
         } else if (msg.type === 'start_private_conversation' && typeof msg.toPlayerId === 'string') {
           const targetId = msg.toPlayerId as string;
           chat.getOrCreatePrivateConversation(player.id, targetId).then((convId: string) => {
