@@ -42,6 +42,7 @@ export type TranslationKeys = {
   friends: {
     title: string;
     friends: string;
+    online: string;
     requests: string;
     sent: string;
     add: string;
@@ -54,6 +55,7 @@ export type TranslationKeys = {
     challengeSent: string;
     inGame: string;
     pending: string;
+    searchPlaceholder: string;
     noFriends: string;
     noRequests: string;
     noSent: string;
@@ -195,11 +197,55 @@ export type TranslationKeys = {
     failedRematch: string;
     failedCopy: string;
   };
+  sidebar: {
+    chat: string;
+    friends: string;
+    lobby: string;
+    privateChat: string;
+    conversations: string;
+    startConversation: string;
+    messagePlaceholder: string;
+    newMessage: string;
+    noConversations: string;
+    minimize: string;
+    expand: string;
+  };
   chat: {
     title: string;
     you: string;
     placeholder: string;
     send: string;
+    justNow: string;
+    challenge: string;
+    acceptChallenge: string;
+    declineChallenge: string;
+    challengeSent: string;
+    gameReview: string;
+    createGroup: string;
+    creatingGroup: string;
+    groupNameTooShort: string;
+    groupNamePlaceholder: string;
+    manageGroup: string;
+    members: string;
+    addMember: string;
+    remove: string;
+    promote: string;
+    demote: string;
+    transferOwnership: string;
+    transferConfirm: string;
+    leaveGroup: string;
+    leaveConfirm: string;
+    disbandGroup: string;
+    disbandConfirm: string;
+    notConnected: string;
+  };
+  gameReview: {
+    title: string;
+    moves: string;
+    flipBoard: string;
+    sharePgn: string;
+    pgnCopied: string;
+    review: string;
   };
   moveHistory: {
     title: string;
@@ -236,6 +282,7 @@ export type TranslationKeys = {
     losses: string;
     draws: string;
     total: string;
+    empty: string;
   };
   profile: {
     title: string;
@@ -264,6 +311,7 @@ export type TranslationKeys = {
     lost: string;
     draw: string;
     review: string;
+    games: string;
   };
   settings: {
     title: string;
@@ -389,6 +437,8 @@ export type TranslationKeys = {
       compactModeDesc: string;
       uiDensity: string;
       uiDensityDesc: string;
+      sidebarPosition: string;
+      sidebarPositionDesc: string;
       showPlayerNames: string;
       showPlayerNamesDesc: string;
       showGameInfo: string;
@@ -492,6 +542,8 @@ export type TranslationKeys = {
       wood: string;
       compact: string;
       spacious: string;
+      left: string;
+      right: string;
       digital: string;
       minimal: string;
       short: string;
@@ -524,8 +576,8 @@ export const en: TranslationKeys = {
     backToLobby: 'Back to Lobby',
     copyGameId: 'Copy Game ID',
     copied: 'Copied ✓',
-    prev: '◀ Prev',
-    next: 'Next ▶',
+    prev: 'Prev',
+    next: 'Next',
     start: 'Start',
     end: 'End',
     white: 'White',
@@ -552,6 +604,7 @@ export const en: TranslationKeys = {
   friends: {
     title: 'Friends',
     friends: 'Friends',
+    online: 'Online',
     requests: 'Requests',
     sent: 'Sent',
     add: 'Add',
@@ -564,6 +617,7 @@ export const en: TranslationKeys = {
     challengeSent: 'Challenge sent to {name}!',
     inGame: 'In game',
     pending: 'Pending',
+    searchPlaceholder: 'Search friends...',
     noFriends: 'No friends yet. Add some!',
     noRequests: 'No pending requests',
     noSent: 'No sent requests',
@@ -672,8 +726,8 @@ export const en: TranslationKeys = {
     playAs: 'Play as',
   },
   localGame: {
-    blackToMove: '◄ Black to move',
-    whiteToMove: 'White to move ◄',
+    blackToMove: 'Black to move',
+    whiteToMove: 'White to move',
     wins: '{color} wins!',
     stalemate: 'Stalemate — Draw',
     ranOutOfTime: '{color} ran out of time',
@@ -705,11 +759,55 @@ export const en: TranslationKeys = {
     failedRematch: 'Failed to create rematch',
     failedCopy: 'Failed to copy',
   },
+  sidebar: {
+    chat: 'Chat',
+    friends: 'Friends',
+    lobby: 'Lobby',
+    privateChat: 'Private Chat',
+    conversations: 'Conversations',
+    startConversation: 'Start conversation',
+    messagePlaceholder: 'Type a message...',
+    newMessage: 'New message',
+    noConversations: 'No conversations yet',
+    minimize: 'Minimize',
+    expand: 'Expand',
+  },
   chat: {
     title: 'Chat',
     you: 'You',
     placeholder: 'Type a message...',
     send: 'Send',
+    justNow: 'now',
+    challenge: 'Challenge',
+    acceptChallenge: 'Accept',
+    declineChallenge: 'Decline',
+    challengeSent: 'Challenge sent!',
+    gameReview: 'Review Game',
+    createGroup: 'New Group',
+    creatingGroup: 'Creating group...',
+    groupNameTooShort: 'Group name must be at least 2 characters',
+    groupNamePlaceholder: 'Group name...',
+    manageGroup: 'Manage Group',
+    members: 'Members',
+    addMember: 'Add Member',
+    remove: 'Remove',
+    promote: 'Promote',
+    demote: 'Demote',
+    transferOwnership: 'Transfer',
+    transferConfirm: 'Transfer group ownership?',
+    leaveGroup: 'Leave Group',
+    leaveConfirm: 'Leave this group?',
+    disbandGroup: 'Disband Group',
+    disbandConfirm: 'Disband this group? This cannot be undone.',
+    notConnected: 'Not connected to server',
+  },
+  gameReview: {
+    title: 'Game Review',
+    moves: 'Moves',
+    flipBoard: 'Flip Board',
+    sharePgn: 'Share PGN',
+    pgnCopied: 'PGN copied!',
+    review: 'Review',
   },
   moveHistory: {
     title: 'Moves',
@@ -746,6 +844,7 @@ export const en: TranslationKeys = {
     losses: 'Losses',
     draws: 'Draws',
     total: 'Total: {count} games',
+    empty: 'Leaderboard is empty',
   },
   profile: {
     title: 'Profile',
@@ -763,7 +862,7 @@ export const en: TranslationKeys = {
     matchHistory: 'Match History',
     noGames: 'No games played yet',
     back: 'Back',
-    viewFullProfile: 'View full profile →',
+    viewFullProfile: 'View full profile',
   },
   matchHistory: {
     title: 'Match History',
@@ -774,6 +873,7 @@ export const en: TranslationKeys = {
     lost: 'Lost',
     draw: 'Draw',
     review: 'Review',
+    games: 'games',
   },
   settings: {
     title: 'Settings',
@@ -900,6 +1000,8 @@ export const en: TranslationKeys = {
       compactModeDesc: 'Tighter spacing for a more condensed UI',
       uiDensity: 'UI Density',
       uiDensityDesc: 'Overall spacing and sizing of the interface',
+      sidebarPosition: 'Sidebar Position',
+      sidebarPositionDesc: 'Which side of the screen the sidebar appears on',
       showPlayerNames: 'Show Player Names',
       showPlayerNamesDesc: 'Display player names on the game screen',
       showGameInfo: 'Show Game Info',
@@ -1003,6 +1105,8 @@ export const en: TranslationKeys = {
       wood: 'Wood',
       compact: 'Compact',
       spacious: 'Spacious',
+      left: 'Left',
+      right: 'Right',
       digital: 'Digital',
       minimal: 'Minimal',
       short: 'Short (e4)',
@@ -1035,8 +1139,8 @@ export const de: TranslationKeys = {
     backToLobby: 'Zurück zur Lobby',
     copyGameId: 'Spiel-ID kopieren',
     copied: 'Kopiert ✓',
-    prev: '◀ Zurück',
-    next: 'Weiter ▶',
+    prev: 'Zurück',
+    next: 'Weiter',
     start: 'Start',
     end: 'Ende',
     white: 'Weiß',
@@ -1063,6 +1167,7 @@ export const de: TranslationKeys = {
   friends: {
     title: 'Freunde',
     friends: 'Freunde',
+    online: 'Online',
     requests: 'Anfragen',
     sent: 'Gesendet',
     add: 'Hinzufügen',
@@ -1075,6 +1180,7 @@ export const de: TranslationKeys = {
     challengeSent: 'Herausforderung an {name} gesendet!',
     inGame: 'Im Spiel',
     pending: 'Ausstehend',
+    searchPlaceholder: 'Freunde durchsuchen...',
     noFriends: 'Noch keine Freunde. Füge welche hinzu!',
     noRequests: 'Keine ausstehenden Anfragen',
     noSent: 'Keine gesendeten Anfragen',
@@ -1183,8 +1289,8 @@ export const de: TranslationKeys = {
     playAs: 'Spielen als',
   },
   localGame: {
-    blackToMove: '◄ Schwarz ist am Zug',
-    whiteToMove: 'Weiß ist am Zug ◄',
+    blackToMove: 'Schwarz ist am Zug',
+    whiteToMove: 'Weiß ist am Zug',
     wins: '{color} gewinnt!',
     stalemate: 'Patt — Unentschieden',
     ranOutOfTime: '{color} hat keine Zeit mehr',
@@ -1216,11 +1322,55 @@ export const de: TranslationKeys = {
     failedRematch: 'Revanche fehlgeschlagen',
     failedCopy: 'Kopieren fehlgeschlagen',
   },
+  sidebar: {
+    chat: 'Chat',
+    friends: 'Freunde',
+    lobby: 'Lobby',
+    privateChat: 'Privater Chat',
+    conversations: 'Unterhaltungen',
+    startConversation: 'Unterhaltung starten',
+    messagePlaceholder: 'Schreibe eine Nachricht...',
+    newMessage: 'Neue Nachricht',
+    noConversations: 'Keine Unterhaltungen',
+    minimize: 'Minimieren',
+    expand: 'Erweitern',
+  },
   chat: {
     title: 'Chat',
     you: 'Du',
     placeholder: 'Schreibe eine Nachricht...',
     send: 'Senden',
+    justNow: 'jetzt',
+    challenge: 'Fordern',
+    acceptChallenge: 'Annehmen',
+    declineChallenge: 'Ablehnen',
+    challengeSent: 'Herausforderung gesendet!',
+    gameReview: 'Spiel analysieren',
+    createGroup: 'Neue Gruppe',
+    creatingGroup: 'Erstelle Gruppe...',
+    groupNameTooShort: 'Gruppenname muss mindestens 2 Zeichen lang sein',
+    groupNamePlaceholder: 'Gruppenname...',
+    manageGroup: 'Gruppe verwalten',
+    members: 'Mitglieder',
+    addMember: 'Mitglied hinzufügen',
+    remove: 'Entfernen',
+    promote: 'Befördern',
+    demote: 'Degradieren',
+    transferOwnership: 'Übertragen',
+    transferConfirm: 'Gruppenbesitz übertragen?',
+    leaveGroup: 'Gruppe verlassen',
+    leaveConfirm: 'Diese Gruppe verlassen?',
+    disbandGroup: 'Gruppe auflösen',
+    disbandConfirm: 'Gruppe auflösen? Dies kann nicht rückgängig gemacht werden.',
+    notConnected: 'Nicht mit Server verbunden',
+  },
+  gameReview: {
+    title: 'Spielanalyse',
+    moves: 'Züge',
+    flipBoard: 'Brett drehen',
+    sharePgn: 'PGN teilen',
+    pgnCopied: 'PGN kopiert!',
+    review: 'Analysieren',
   },
   moveHistory: {
     title: 'Züge',
@@ -1257,6 +1407,7 @@ export const de: TranslationKeys = {
     losses: 'Niederlagen',
     draws: 'Unentschieden',
     total: 'Insgesamt: {count} Spiele',
+    empty: 'Rangliste ist leer',
   },
   profile: {
     title: 'Profil',
@@ -1274,7 +1425,7 @@ export const de: TranslationKeys = {
     matchHistory: 'Spielverlauf',
     noGames: 'Noch keine Spiele gespielt',
     back: 'Zurück',
-    viewFullProfile: 'Vollständiges Profil →',
+    viewFullProfile: 'Vollständiges Profil',
   },
   matchHistory: {
     title: 'Spielverlauf',
@@ -1285,6 +1436,7 @@ export const de: TranslationKeys = {
     lost: 'Verloren',
     draw: 'Unentschieden',
     review: 'Rückblick',
+    games: 'Spiele',
   },
   settings: {
     title: 'Einstellungen',
@@ -1412,6 +1564,8 @@ export const de: TranslationKeys = {
       compactModeDesc: 'Engeres Layout für eine kompaktere Darstellung',
       uiDensity: 'UI-Dichte',
       uiDensityDesc: 'Gesamte Abstände und Größen der Oberfläche',
+      sidebarPosition: 'Seitenleistenposition',
+      sidebarPositionDesc: 'Auf welcher Seite des Bildschirms die Seitenleiste erscheint',
       showPlayerNames: 'Spielernamen anzeigen',
       showPlayerNamesDesc: 'Spielernamen auf dem Spielbildschirm anzeigen',
       showGameInfo: 'Spielinfo anzeigen',
@@ -1514,7 +1668,9 @@ export const de: TranslationKeys = {
       click: 'Klick',
       wood: 'Holz',
       compact: 'Kompakt',
-      spacious: 'Großzügig',
+      spacious: 'Geräumig',
+      left: 'Links',
+      right: 'Rechts',
       digital: 'Digital',
       minimal: 'Minimal',
       short: 'Kurz (e4)',

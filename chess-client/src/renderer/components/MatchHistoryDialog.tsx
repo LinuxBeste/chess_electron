@@ -6,6 +6,7 @@ import type { GameState } from '../../types';
 import { t } from '../translate';
 import logger from '../logger';
 import PlayerProfileDialog from './PlayerProfileDialog';
+import { X } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
@@ -73,7 +74,7 @@ export default function MatchHistoryDialog({ onClose }: Props) {
               borderRadius: 4,
             }}
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 

@@ -15,6 +15,7 @@ import { avatarSrc } from '../api';
 import { socketManager } from '../socket';
 import { t } from '../translate';
 import type { FriendInfo, FriendRequestInfo } from '../../types';
+import { X } from 'lucide-react';
 import PlayerProfileDialog from './PlayerProfileDialog';
 import logger from '../logger';
 
@@ -350,7 +351,7 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
               lineHeight: 1,
             }}
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 

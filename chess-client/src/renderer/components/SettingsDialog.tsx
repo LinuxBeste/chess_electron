@@ -11,6 +11,7 @@ import {
 import { setSoundVolume } from '../sound';
 import { t, setLanguage, getLanguage } from '../translate';
 import { getLanguageNames } from '../locales';
+import { X } from 'lucide-react';
 import {
   updateDisplayName as apiUpdateDisplayName,
   changePassword as apiChangePassword,
@@ -506,6 +507,16 @@ function DisplayTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (
         options={densityOptions}
         value={settings.uiDensity}
         onChange={(v) => onUpdate({ ...settings, uiDensity: v as AppSettings['uiDensity'] })}
+      />
+      <SelectRow
+        label={t('settings.display.sidebarPosition')}
+        desc={t('settings.display.sidebarPositionDesc')}
+        options={[
+          { value: 'left', label: t('settings.options.left') },
+          { value: 'right', label: t('settings.options.right') },
+        ]}
+        value={settings.sidebarPosition}
+        onChange={(v) => onUpdate({ ...settings, sidebarPosition: v as 'left' | 'right' })}
       />
       <ToggleRow
         label={t('settings.display.showPlayerNames')}
@@ -1337,7 +1348,7 @@ export default function SettingsDialog({ onClose }: Props) {
               borderRadius: 4,
             }}
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 

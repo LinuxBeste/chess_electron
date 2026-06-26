@@ -16,6 +16,7 @@ import logger from '../logger';
 import { store } from '../store';
 import * as api from '../api';
 import { socketManager } from '../socket';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Board from '../components/Board';
 import MoveHistory from '../components/MoveHistory';
 import Chat from '../components/Chat';
@@ -786,7 +787,7 @@ export default function GamePage() {
           {showReview && (
             <div className="review-controls active">
               <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(-1)}>
-                {t('common.prev')}
+                <ChevronLeft size={14} /> {t('common.prev')}
               </button>
               <span className="review-label">
                 {reviewIndex === -1
@@ -796,7 +797,7 @@ export default function GamePage() {
                     : t('common.end')}
               </span>
               <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(1)}>
-                {t('common.next')}
+                {t('common.next')} <ChevronRight size={14} />
               </button>
             </div>
           )}

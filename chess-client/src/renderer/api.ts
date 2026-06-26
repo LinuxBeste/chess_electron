@@ -90,7 +90,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new ApiError(res.status, msg);
   }
 
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new ApiError(res.status, 'Server returned non-JSON response (endpoint may not exist or server error)');
+  }
 }
 
 /* POST /auth/register — no auth required.
@@ -613,9 +618,13 @@ export interface ArchivedGame {
   black_player_id: string;
   played_at: number;
   status: string;
-  reason: string;
+  reason: string | null;
   winner: string | null;
-  time_control?: string;
+  result: string;
+  time_control: string;
+  move_history: string;
+  board_history: string;
+  pgn: string | null;
 }
 
 export interface PlayerProfile {
@@ -660,6 +669,22 @@ export async function getPlayerProfile(playerId: string): Promise<PlayerProfile>
 }
 
 /* ─── Friends ─── */
+
+export interface UserSearchResult {
+  id: string;
+  username: string;
+  displayName: string;
+}
+
+let searchCache: { q: string; results: UserSearchResult[] } | null = null;
+
+/* GET /users/search?q= — auth required (debounced externally). */
+export async function searchUsers(q: string): Promise<UserSearchResult[]> {
+  if (searchCache && searchCache.q === q) return searchCache.results;
+  const results = await request<UserSearchResult[]>(`/users/search?q=${encodeURIComponent(q)}`);
+  searchCache = { q, results };
+  return results;
+}
 
 /* POST /friends/request — auth required. */
 export async function sendFriendRequest(username: string): Promise<{ id: string }> {

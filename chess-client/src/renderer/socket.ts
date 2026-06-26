@@ -63,6 +63,132 @@ export interface ChatHistoryMessage {
   messages: { playerId: string; username: string; text: string; timestamp: number }[];
 }
 
+export interface LobbyChatMessage {
+  type: 'lobby_chat_message';
+  conversationId: string;
+  messageId: string;
+  playerId: string;
+  username: string;
+  text: string;
+  timestamp: number;
+}
+
+export interface LobbyChatHistoryMessage {
+  type: 'lobby_chat_history';
+  conversationId: string;
+  messages: { messageId: string; playerId: string; username: string; text: string; timestamp: number }[];
+}
+
+export interface PrivateChatMessage {
+  type: 'private_chat_message';
+  conversationId: string;
+  messageId: string;
+  playerId: string;
+  username: string;
+  text: string;
+  timestamp: number;
+}
+
+export interface PrivateChatHistoryMessage {
+  type: 'private_chat_history';
+  conversationId: string;
+  messages: { messageId: string; playerId: string; username: string; text: string; timestamp: number }[];
+}
+
+export interface ConversationsListMessage {
+  type: 'conversations_list';
+  conversations: {
+    id: string;
+    type: string;
+    name: string | null;
+    lastMessageAt: number;
+    unread: number;
+    ownerId?: string;
+  }[];
+}
+
+export interface ConversationCreatedMessage {
+  type: 'conversation_created';
+  conversationId: string;
+  withName?: string;
+}
+
+/* ─── Group Chat ─── */
+
+export interface GroupChatMessage {
+  type: 'group_chat_message';
+  conversationId: string;
+  messageId: string;
+  playerId: string;
+  username: string;
+  text: string;
+  timestamp: number;
+}
+
+export interface GroupChatHistoryMessage {
+  type: 'group_chat_history';
+  conversationId: string;
+  messages: { messageId: string; playerId: string; username: string; text: string; timestamp: number }[];
+  members: { playerId: string; username: string; displayName: string; role: string }[];
+}
+
+export interface GroupCreatedMessage {
+  type: 'group_created';
+  conversationId: string;
+  name: string;
+}
+
+export interface GroupMemberAddedMessage {
+  type: 'group_member_added';
+  conversationId: string;
+  playerId: string;
+  username: string;
+  displayName: string;
+  role: string;
+}
+
+export interface GroupMemberRemovedMessage {
+  type: 'group_member_removed';
+  conversationId: string;
+  playerId: string;
+}
+
+export interface GroupMemberPromotedMessage {
+  type: 'group_member_promoted';
+  conversationId: string;
+  playerId: string;
+  role: string;
+}
+
+export interface GroupMemberDemotedMessage {
+  type: 'group_member_demoted';
+  conversationId: string;
+  playerId: string;
+  role: string;
+}
+
+export interface GroupOwnershipTransferredMessage {
+  type: 'group_ownership_transferred';
+  conversationId: string;
+  newOwnerId: string;
+}
+
+export interface GroupMemberLeftMessage {
+  type: 'group_member_left';
+  conversationId: string;
+  playerId: string;
+}
+
+export interface GroupDisbandedMessage {
+  type: 'group_disbanded';
+  conversationId: string;
+}
+
+export interface ErrorMessage {
+  type: 'error';
+  error: string;
+}
+
 export interface GameAbortedMessage {
   type: 'game_aborted';
   gameId: string;
@@ -202,7 +328,24 @@ type WsMessage =
   | RematchOfferMessage
   | RematchAcceptedMessage
   | OpponentDisconnectedMessage
-  | OpponentReconnectedMessage;
+  | OpponentReconnectedMessage
+  | LobbyChatMessage
+  | LobbyChatHistoryMessage
+  | PrivateChatMessage
+  | PrivateChatHistoryMessage
+  | ConversationsListMessage
+  | ConversationCreatedMessage
+  | GroupChatMessage
+  | GroupChatHistoryMessage
+  | GroupCreatedMessage
+  | GroupMemberAddedMessage
+  | GroupMemberRemovedMessage
+  | GroupMemberPromotedMessage
+  | GroupMemberDemotedMessage
+  | GroupOwnershipTransferredMessage
+  | GroupMemberLeftMessage
+  | GroupDisbandedMessage
+  | ErrorMessage;
 
 /** Handler type for move events */
 export type MoveHandler = (msg: MoveMessage) => void;
@@ -217,7 +360,23 @@ export type GameStartedHandler = (msg: GameStartedMessage) => void;
 /** Handler type for chat messages */
 export type ChatHandler = (msg: ChatMessage) => void;
 export type ChatHistoryHandler = (msg: ChatHistoryMessage) => void;
+export type LobbyChatHandler = (msg: LobbyChatMessage) => void;
+export type LobbyChatHistoryHandler = (msg: LobbyChatHistoryMessage) => void;
+export type PrivateChatHandler = (msg: PrivateChatMessage) => void;
+export type PrivateChatHistoryHandler = (msg: PrivateChatHistoryMessage) => void;
+export type ConversationsListHandler = (msg: ConversationsListMessage) => void;
+export type ConversationCreatedHandler = (msg: ConversationCreatedMessage) => void;
 export type SpectatorCountHandler = (msg: SpectatorCountMessage) => void;
+export type GroupChatHandler = (msg: GroupChatMessage) => void;
+export type GroupChatHistoryHandler = (msg: GroupChatHistoryMessage) => void;
+export type GroupCreatedHandler = (msg: GroupCreatedMessage) => void;
+export type GroupMemberAddedHandler = (msg: GroupMemberAddedMessage) => void;
+export type GroupMemberRemovedHandler = (msg: GroupMemberRemovedMessage) => void;
+export type GroupMemberPromotedHandler = (msg: GroupMemberPromotedMessage) => void;
+export type GroupMemberDemotedHandler = (msg: GroupMemberDemotedMessage) => void;
+export type GroupOwnershipTransferredHandler = (msg: GroupOwnershipTransferredMessage) => void;
+export type GroupMemberLeftHandler = (msg: GroupMemberLeftMessage) => void;
+export type GroupDisbandedHandler = (msg: GroupDisbandedMessage) => void;
 
 /** Handler type for game-aborted events */
 export type GameAbortedHandler = (msg: GameAbortedMessage) => void;
@@ -262,6 +421,12 @@ class SocketManager {
   private gameStartedHandlers = new Set<GameStartedHandler>();
   private chatHandlers = new Set<ChatHandler>();
   private chatHistoryHandlers = new Set<ChatHistoryHandler>();
+  private lobbyChatHandlers = new Set<LobbyChatHandler>();
+  private lobbyChatHistoryHandlers = new Set<LobbyChatHistoryHandler>();
+  private privateChatHandlers = new Set<PrivateChatHandler>();
+  private privateChatHistoryHandlers = new Set<PrivateChatHistoryHandler>();
+  private conversationsListHandlers = new Set<ConversationsListHandler>();
+  private conversationCreatedHandlers = new Set<ConversationCreatedHandler>();
   private gameAbortedHandlers = new Set<GameAbortedHandler>();
   private drawOfferedHandlers = new Set<DrawOfferedHandler>();
   private drawDeclinedHandlers = new Set<DrawDeclinedHandler>();
@@ -280,6 +445,16 @@ class SocketManager {
   private rematchAcceptedHandlers = new Set<RematchAcceptedHandler>();
   private opponentDisconnectedHandlers = new Set<OpponentDisconnectedHandler>();
   private opponentReconnectedHandlers = new Set<OpponentReconnectedHandler>();
+  private groupChatHandlers = new Set<GroupChatHandler>();
+  private groupChatHistoryHandlers = new Set<GroupChatHistoryHandler>();
+  private groupCreatedHandlers = new Set<GroupCreatedHandler>();
+  private groupMemberAddedHandlers = new Set<GroupMemberAddedHandler>();
+  private groupMemberRemovedHandlers = new Set<GroupMemberRemovedHandler>();
+  private groupMemberPromotedHandlers = new Set<GroupMemberPromotedHandler>();
+  private groupMemberDemotedHandlers = new Set<GroupMemberDemotedHandler>();
+  private groupOwnershipTransferredHandlers = new Set<GroupOwnershipTransferredHandler>();
+  private groupMemberLeftHandlers = new Set<GroupMemberLeftHandler>();
+  private groupDisbandedHandlers = new Set<GroupDisbandedHandler>();
   private serverUrl = 'http://localhost:3000';
 
   /** Set a custom server URL for the WebSocket connection */
@@ -346,6 +521,24 @@ class SocketManager {
           case 'chat_history':
             this.chatHistoryHandlers.forEach((h) => h(msg as ChatHistoryMessage));
             break;
+          case 'lobby_chat_message':
+            this.lobbyChatHandlers.forEach((h) => h(msg as LobbyChatMessage));
+            break;
+          case 'lobby_chat_history':
+            this.lobbyChatHistoryHandlers.forEach((h) => h(msg as LobbyChatHistoryMessage));
+            break;
+          case 'private_chat_message':
+            this.privateChatHandlers.forEach((h) => h(msg as PrivateChatMessage));
+            break;
+          case 'private_chat_history':
+            this.privateChatHistoryHandlers.forEach((h) => h(msg as PrivateChatHistoryMessage));
+            break;
+          case 'conversations_list':
+            this.conversationsListHandlers.forEach((h) => h(msg as ConversationsListMessage));
+            break;
+          case 'conversation_created':
+            this.conversationCreatedHandlers.forEach((h) => h(msg as ConversationCreatedMessage));
+            break;
           case 'game_aborted':
             this.gameAbortedHandlers.forEach((h) => h(msg as GameAbortedMessage));
             break;
@@ -400,6 +593,39 @@ class SocketManager {
           case 'opponent_reconnected':
             this.opponentReconnectedHandlers.forEach((h) => h(msg as OpponentReconnectedMessage));
             break;
+          case 'group_chat_message':
+            this.groupChatHandlers.forEach((h) => h(msg as GroupChatMessage));
+            break;
+          case 'group_chat_history':
+            this.groupChatHistoryHandlers.forEach((h) => h(msg as GroupChatHistoryMessage));
+            break;
+          case 'group_created':
+            this.groupCreatedHandlers.forEach((h) => h(msg as GroupCreatedMessage));
+            break;
+          case 'group_member_added':
+            this.groupMemberAddedHandlers.forEach((h) => h(msg as GroupMemberAddedMessage));
+            break;
+          case 'group_member_removed':
+            this.groupMemberRemovedHandlers.forEach((h) => h(msg as GroupMemberRemovedMessage));
+            break;
+          case 'group_member_promoted':
+            this.groupMemberPromotedHandlers.forEach((h) => h(msg as GroupMemberPromotedMessage));
+            break;
+          case 'group_member_demoted':
+            this.groupMemberDemotedHandlers.forEach((h) => h(msg as GroupMemberDemotedMessage));
+            break;
+          case 'group_ownership_transferred':
+            this.groupOwnershipTransferredHandlers.forEach((h) => h(msg as GroupOwnershipTransferredMessage));
+            break;
+          case 'group_member_left':
+            this.groupMemberLeftHandlers.forEach((h) => h(msg as GroupMemberLeftMessage));
+            break;
+          case 'group_disbanded':
+            this.groupDisbandedHandlers.forEach((h) => h(msg as GroupDisbandedMessage));
+            break;
+          case 'error':
+            store.toast((msg as ErrorMessage).error || 'Server error');
+            break;
         }
       } catch {
         logger.warn('Socket: failed to parse incoming message');
@@ -451,10 +677,12 @@ class SocketManager {
 
   /** Send a JSON message through the WebSocket */
   send(msg: Record<string, unknown>): void {
+    const msgType = (msg as { type?: string }).type ?? 'unknown';
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const msgType = (msg as { type?: string }).type ?? 'unknown';
       logger.info('Socket: sending message type:', msgType);
       this.ws.send(JSON.stringify(msg));
+    } else {
+      logger.warn('Socket: dropping message type ' + msgType + ' - WebSocket not open');
     }
   }
 
@@ -635,6 +863,61 @@ class SocketManager {
     };
   }
 
+  onLobbyChat(handler: LobbyChatHandler): () => void {
+    this.lobbyChatHandlers.add(handler);
+    return () => {
+      this.lobbyChatHandlers.delete(handler);
+    };
+  }
+
+  onLobbyChatHistory(handler: LobbyChatHistoryHandler): () => void {
+    this.lobbyChatHistoryHandlers.add(handler);
+    return () => {
+      this.lobbyChatHistoryHandlers.delete(handler);
+    };
+  }
+
+  onPrivateChat(handler: PrivateChatHandler): () => void {
+    this.privateChatHandlers.add(handler);
+    return () => {
+      this.privateChatHandlers.delete(handler);
+    };
+  }
+
+  onPrivateChatHistory(handler: PrivateChatHistoryHandler): () => void {
+    this.privateChatHistoryHandlers.add(handler);
+    return () => {
+      this.privateChatHistoryHandlers.delete(handler);
+    };
+  }
+
+  onConversationsList(handler: ConversationsListHandler): () => void {
+    this.conversationsListHandlers.add(handler);
+    return () => {
+      this.conversationsListHandlers.delete(handler);
+    };
+  }
+
+  sendLobbyChat(text: string): void {
+    this.send({ type: 'lobby_chat', text });
+  }
+
+  requestLobbyChatHistory(): void {
+    this.send({ type: 'get_lobby_chat_history' });
+  }
+
+  sendPrivateChat(toPlayerId: string, text: string): void {
+    this.send({ type: 'private_chat', toPlayerId, text });
+  }
+
+  requestPrivateChatHistory(conversationId: string): void {
+    this.send({ type: 'get_private_chat_history', conversationId });
+  }
+
+  requestConversations(): void {
+    this.send({ type: 'get_conversations' });
+  }
+
   onChatHistory(handler: ChatHistoryHandler): () => void {
     logger.info('Socket: chat_history handler registered');
     this.chatHistoryHandlers.add(handler);
@@ -656,6 +939,134 @@ class SocketManager {
   sendRematchAccept(gameId: string): void {
     logger.info('Socket: sending rematch_accept', { gameId });
     this.send({ type: 'rematch_accept', gameId });
+  }
+
+  startPrivateConversation(toPlayerId: string): void {
+    logger.info('Socket: starting private conversation', { toPlayerId });
+    this.send({ type: 'start_private_conversation', toPlayerId });
+  }
+
+  onConversationCreated(handler: ConversationCreatedHandler): () => void {
+    this.conversationCreatedHandlers.add(handler);
+    return () => {
+      this.conversationCreatedHandlers.delete(handler);
+    };
+  }
+
+  /* ─── Group Chat ─── */
+
+  onGroupChat(handler: GroupChatHandler): () => void {
+    this.groupChatHandlers.add(handler);
+    return () => {
+      this.groupChatHandlers.delete(handler);
+    };
+  }
+
+  onGroupChatHistory(handler: GroupChatHistoryHandler): () => void {
+    this.groupChatHistoryHandlers.add(handler);
+    return () => {
+      this.groupChatHistoryHandlers.delete(handler);
+    };
+  }
+
+  onGroupCreated(handler: GroupCreatedHandler): () => void {
+    this.groupCreatedHandlers.add(handler);
+    return () => {
+      this.groupCreatedHandlers.delete(handler);
+    };
+  }
+
+  onGroupMemberAdded(handler: GroupMemberAddedHandler): () => void {
+    this.groupMemberAddedHandlers.add(handler);
+    return () => {
+      this.groupMemberAddedHandlers.delete(handler);
+    };
+  }
+
+  onGroupMemberRemoved(handler: GroupMemberRemovedHandler): () => void {
+    this.groupMemberRemovedHandlers.add(handler);
+    return () => {
+      this.groupMemberRemovedHandlers.delete(handler);
+    };
+  }
+
+  onGroupMemberPromoted(handler: GroupMemberPromotedHandler): () => void {
+    this.groupMemberPromotedHandlers.add(handler);
+    return () => {
+      this.groupMemberPromotedHandlers.delete(handler);
+    };
+  }
+
+  onGroupMemberDemoted(handler: GroupMemberDemotedHandler): () => void {
+    this.groupMemberDemotedHandlers.add(handler);
+    return () => {
+      this.groupMemberDemotedHandlers.delete(handler);
+    };
+  }
+
+  onGroupOwnershipTransferred(handler: GroupOwnershipTransferredHandler): () => void {
+    this.groupOwnershipTransferredHandlers.add(handler);
+    return () => {
+      this.groupOwnershipTransferredHandlers.delete(handler);
+    };
+  }
+
+  onGroupMemberLeft(handler: GroupMemberLeftHandler): () => void {
+    this.groupMemberLeftHandlers.add(handler);
+    return () => {
+      this.groupMemberLeftHandlers.delete(handler);
+    };
+  }
+
+  onGroupDisbanded(handler: GroupDisbandedHandler): () => void {
+    this.groupDisbandedHandlers.add(handler);
+    return () => {
+      this.groupDisbandedHandlers.delete(handler);
+    };
+  }
+
+  createGroup(name: string): void {
+    this.send({ type: 'create_group', name });
+  }
+
+  sendGroupChat(conversationId: string, text: string): void {
+    this.send({ type: 'group_chat', conversationId, text });
+  }
+
+  requestGroupChatHistory(conversationId: string): void {
+    this.send({ type: 'get_group_chat_history', conversationId });
+  }
+
+  groupAddMember(conversationId: string, playerId: string): void {
+    this.send({ type: 'group_add_member', conversationId, playerId });
+  }
+
+  groupAddMemberByName(conversationId: string, username: string): void {
+    this.send({ type: 'group_add_member_by_name', conversationId, username });
+  }
+
+  groupRemoveMember(conversationId: string, playerId: string): void {
+    this.send({ type: 'group_remove_member', conversationId, playerId });
+  }
+
+  groupPromoteMember(conversationId: string, playerId: string): void {
+    this.send({ type: 'group_promote_member', conversationId, playerId });
+  }
+
+  groupDemoteMember(conversationId: string, playerId: string): void {
+    this.send({ type: 'group_demote_member', conversationId, playerId });
+  }
+
+  groupTransferOwnership(conversationId: string, playerId: string): void {
+    this.send({ type: 'group_transfer_ownership', conversationId, playerId });
+  }
+
+  groupLeave(conversationId: string): void {
+    this.send({ type: 'group_leave', conversationId });
+  }
+
+  groupDisband(conversationId: string): void {
+    this.send({ type: 'group_disband', conversationId });
   }
 }
 

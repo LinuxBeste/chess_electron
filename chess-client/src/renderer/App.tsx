@@ -11,6 +11,7 @@ import { useEffect, lazy, Suspense, useRef, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import logger from './logger';
 import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
 import ToastContainer from './components/ToastContainer';
 import ErrorBoundary from './components/ErrorBoundary';
 import { store } from './store';
@@ -49,7 +50,6 @@ export default function App() {
     fromPlayerId: string;
     fromDisplayName: string;
   } | null>(null);
-
   /* One-shot initialisation on app mount:
       - Resolve server URL from Electron preload, localStorage, or default
       - Load persisted settings and override with Electron env vars if present
@@ -93,6 +93,7 @@ export default function App() {
       applyTheme(existing.boardTheme);
     }
     setSoundVolume(existing.soundVolume);
+    store.set('sidebarPosition', existing.sidebarPosition);
 
     /* Subscribe to token changes FIRST so the initial restore triggers it */
     const unsubToken = store.subscribe('token', (token) => {
@@ -147,6 +148,23 @@ export default function App() {
           }
         });
     }
+
+    /* ─── Lobby chat + conversation list + unread count ─── */
+    const unsubLobbyChat = socketManager.onLobbyChat((msg) => {
+      const pid = store.get('playerId');
+      if (msg.playerId !== pid && !store.get('sidebarOpen')) {
+        store.set('unreadCount', store.get('unreadCount') + 1);
+      }
+    });
+    const unsubPrivateChat = socketManager.onPrivateChat((msg) => {
+      const pid = store.get('playerId');
+      if (msg.playerId !== pid && !store.get('sidebarOpen')) {
+        store.set('unreadCount', store.get('unreadCount') + 1);
+      }
+    });
+    const unsubConversations = socketManager.onConversationsList((msg) => {
+      store.set('conversations', msg.conversations as import('../types').ConversationInfo[]);
+    });
 
     /* ─── Friend WS event handlers ─── */
     const unsubFriendOnline = socketManager.onFriendOnline((msg) => {
@@ -214,7 +232,11 @@ export default function App() {
         fromPlayerId: msg.fromPlayerId,
         gameId: msg.gameId,
       });
+      store.toast(t('chat.challengeSent'), 'info');
+      store.set('unreadCount', store.get('unreadCount') + 1);
+      store.set('sidebarOpen', true);
       setPendingChallenge({ gameId: msg.gameId, fromPlayerId: msg.fromPlayerId, fromDisplayName: msg.fromDisplayName });
+      setTimeout(() => setPendingChallenge(null), 10000);
     });
     const unsubChallengeAccept = socketManager.onChallengeAccept((msg) => {
       logger.info('Challenge accepted, navigating to game', { gameId: msg.gameId });
@@ -229,6 +251,9 @@ export default function App() {
     return () => {
       unsubLang();
       unsubToken();
+      unsubLobbyChat();
+      unsubPrivateChat();
+      unsubConversations();
       unsubFriendOnline();
       unsubFriendOffline();
       unsubFriendRequest();
@@ -308,48 +333,64 @@ export default function App() {
     setPendingChallenge(null);
   }
 
+  const showChallengeModal = pendingChallenge !== null;
+
   return (
     <ErrorBoundary>
-      <Navbar key={langKey} />
-      <ToastContainer />
+      <div
+        className="app-main"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          minHeight: 0,
+          marginRight: 'var(--sidebar-push-right, 0px)',
+          marginLeft: 'var(--sidebar-push-left, 0px)',
+          transition: 'margin-right 0.2s ease-out, margin-left 0.2s ease-out',
+        }}
+      >
+        <Navbar key={langKey} />
+        <Sidebar />
+        <ToastContainer />
 
-      {/* Challenge dialog */}
-      {pendingChallenge && (
-        <div className="modal-overlay" onClick={() => setPendingChallenge(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#e0e0e0', marginBottom: 12 }}>
-              {t('game.challengeTitle')}
-            </h3>
-            <p style={{ fontSize: 14, color: '#888', marginBottom: 20 }}>
-              {pendingChallenge.fromDisplayName} {t('game.challengedYou')}
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              <button className="btn btn-primary" onClick={handleAcceptChallenge}>
-                {t('game.accept')}
-              </button>
-              <button className="btn btn-ghost" onClick={handleDeclineChallenge}>
-                {t('game.decline')}
-              </button>
+        {/* Challenge dialog — only shown briefly, main interaction via sidebar */}
+        {showChallengeModal && pendingChallenge && (
+          <div className="modal-overlay" onClick={() => setPendingChallenge(null)}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: '#e0e0e0', marginBottom: 12 }}>
+                {t('game.challengeTitle')}
+              </h3>
+              <p style={{ fontSize: 14, color: '#888', marginBottom: 20 }}>
+                {pendingChallenge.fromDisplayName} {t('game.challengedYou')}
+              </p>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                <button className="btn btn-primary" onClick={handleAcceptChallenge}>
+                  {t('game.accept')}
+                </button>
+                <button className="btn btn-ghost" onClick={handleDeclineChallenge}>
+                  {t('game.decline')}
+                </button>
+              </div>
             </div>
           </div>
+        )}
+        <div id="app-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Suspense fallback={<Loading />}>
+            <Routes key={langKey}>
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/lobby" element={<LobbyPage />} />
+              <Route path="/game/:gameId" element={<GamePage />} />
+              <Route path="/result/:gameId" element={<ResultPage />} />
+              <Route path="/result" element={<ResultPage />} />
+              <Route path="/local" element={<LocalGamePage />} />
+              <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/archive" element={<ArchivePage />} />
+              <Route path="/tournaments" element={<TournamentPage />} />
+              <Route path="/profile/:playerId" element={<ProfilePage />} />
+            </Routes>
+          </Suspense>
         </div>
-      )}
-      <div id="app-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Suspense fallback={<Loading />}>
-          <Routes key={langKey}>
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/lobby" element={<LobbyPage />} />
-            <Route path="/game/:gameId" element={<GamePage />} />
-            <Route path="/result/:gameId" element={<ResultPage />} />
-            <Route path="/result" element={<ResultPage />} />
-            <Route path="/local" element={<LocalGamePage />} />
-            <Route path="/leaderboard" element={<LeaderboardPage />} />
-            <Route path="/archive" element={<ArchivePage />} />
-            <Route path="/tournaments" element={<TournamentPage />} />
-            <Route path="/profile/:playerId" element={<ProfilePage />} />
-          </Routes>
-        </Suspense>
       </div>
     </ErrorBoundary>
   );

@@ -5,6 +5,7 @@ import * as api from '../api';
 import { store } from '../store';
 import { t } from '../translate';
 import type { ApiError } from '../api';
+import { ArrowLeft, Crown } from 'lucide-react';
 
 function fmtDate(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
@@ -185,7 +186,7 @@ export default function ProfilePage() {
         }}
         onClick={() => navigate(-1)}
       >
-        ← {t('profile.back')}
+        <ArrowLeft size={16} style={{ marginRight: 4 }} /> {t('profile.back')}
       </button>
 
       <div className="profile-body stagger-enter">
@@ -409,10 +410,11 @@ export default function ProfilePage() {
                     : isLoss
                       ? t('matchHistory.lost')
                       : t('matchHistory.draw');
-                  const playerColor = whitePid === profile.id ? 'white' : blackPid === profile.id ? 'black' : null;
                   return (
                     <div key={g.id} className="game-card profile-match-row" onClick={() => navigate(`/game/${g.id}`)}>
-                      <div className="profile-match-pawn">{playerColor === 'white' ? '♔' : '♚'}</div>
+                      <div className="profile-match-pawn">
+                        <Crown size={16} />
+                      </div>
                       <div className="profile-match-info">
                         <div className="profile-match-names">
                           {whiteName} vs {blackName}

@@ -27,6 +27,12 @@ type StateMap = {
   friends: import('../../types').FriendInfo[];
   incomingRequests: import('../../types').FriendRequestInfo[];
   outgoingRequests: import('../../types').FriendRequestInfo[];
+  sidebarOpen: boolean;
+  sidebarMinimized: boolean;
+  sidebarPosition: 'left' | 'right';
+  sidebarTab: 'play' | 'chat' | 'friends';
+  conversations: import('../../types').ConversationInfo[];
+  unreadCount: number;
 };
 
 // React binding: subscribes on mount, re-renders on change, cleans up on unmount

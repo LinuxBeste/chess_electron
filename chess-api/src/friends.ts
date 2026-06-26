@@ -208,6 +208,16 @@ router.delete('/friends/:friendId', authMiddleware, banCheckMiddleware, async (r
   }
 });
 
+router.get('/users/search', authMiddleware, async (req: Request, res: Response) => {
+  const q = ((req.query.q as string) || '').trim();
+  if (q.length < 2) {
+    res.status(400).json({ error: 'Query must be at least 2 characters' });
+    return;
+  }
+  const users = await db.searchUsers(q, 10);
+  res.json(users.map((u) => ({ id: u.id, username: u.username, displayName: u.display_name })));
+});
+
 router.get('/friends', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
   if (!req.player.isRegistered) {
     res.status(403).json({ error: 'Only registered users can list friends' });

@@ -12,6 +12,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logger from '../logger';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Board from '../components/Board';
 import MoveHistory from '../components/MoveHistory';
 import PromotionDialog from '../components/PromotionDialog';
@@ -447,7 +448,13 @@ export default function LocalGamePage() {
       <div className="game-center">
         <div className="player-bar">
           <span className="player-name">
-            {turn === 'black' && !gameOver ? t('localGame.blackToMove') : t('common.black')}
+            {turn === 'black' && !gameOver ? (
+              <>
+                <ChevronLeft size={14} /> {t('localGame.blackToMove')}
+              </>
+            ) : (
+              t('common.black')
+            )}
           </span>
           <span className="player-clock">{formatTime(blackTime)}</span>
         </div>
@@ -489,7 +496,13 @@ export default function LocalGamePage() {
         </Board>
         <div className="player-bar">
           <span className="player-name">
-            {turn === 'white' && !gameOver ? t('localGame.whiteToMove') : t('common.white')}
+            {turn === 'white' && !gameOver ? (
+              <>
+                {t('localGame.whiteToMove')} <ChevronLeft size={14} />
+              </>
+            ) : (
+              t('common.white')
+            )}
           </span>
           <span className="player-clock">{formatTime(whiteTime)}</span>
         </div>
@@ -503,7 +516,7 @@ export default function LocalGamePage() {
           {gameOver && boardHistory.length > 0 && (
             <div className="review-controls active">
               <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(-1)}>
-                {t('common.prev')}
+                <ChevronLeft size={14} /> {t('common.prev')}
               </button>
               <span className="review-label">
                 {reviewIndex === -1
@@ -513,7 +526,7 @@ export default function LocalGamePage() {
                     : t('common.end')}
               </span>
               <button className="btn btn-ghost btn-sm" onClick={() => reviewStep(1)}>
-                {t('common.next')}
+                {t('common.next')} <ChevronRight size={14} />
               </button>
             </div>
           )}

@@ -49,8 +49,9 @@ export interface GameState {
   halfMoveClock: number;
   aiSkillLevel?: number;
   reason?: string;
-} // Globally augment Express.Request with player property
+}
 
+// Globally augment Express.Request with player property
 export interface Player {
   id: string;
   username: string;

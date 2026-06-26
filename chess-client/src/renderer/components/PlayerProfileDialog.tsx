@@ -4,6 +4,7 @@ import { getPlayerProfile, sendFriendRequest, PlayerProfile, avatarSrc } from '.
 import { store } from '../store';
 import { t } from '../translate';
 import logger from '../logger';
+import { X, ChevronRight } from 'lucide-react';
 
 interface Props {
   playerId: string;
@@ -81,7 +82,7 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
             onClick={onClose}
             style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 4, fontSize: 18 }}
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 
@@ -213,7 +214,7 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
                   navigate(`/profile/${profile.id}`);
                 }}
               >
-                {t('profile.viewFullProfile')}
+                {t('profile.viewFullProfile')} <ChevronRight size={14} />
               </button>
             </div>
           </>

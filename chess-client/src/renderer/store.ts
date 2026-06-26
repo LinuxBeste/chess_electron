@@ -11,7 +11,15 @@
  */
 
 import logger from './logger';
-import type { GameState, ViewName, WsStatus, ToastMessage, FriendInfo, FriendRequestInfo } from '../types';
+import type {
+  GameState,
+  ViewName,
+  WsStatus,
+  ToastMessage,
+  FriendInfo,
+  FriendRequestInfo,
+  ConversationInfo,
+} from '../types';
 
 interface StateMap {
   token: string | null;
@@ -28,6 +36,12 @@ interface StateMap {
   friends: FriendInfo[];
   incomingRequests: FriendRequestInfo[];
   outgoingRequests: FriendRequestInfo[];
+  sidebarOpen: boolean;
+  sidebarMinimized: boolean;
+  sidebarPosition: 'left' | 'right';
+  sidebarTab: 'play' | 'chat' | 'friends';
+  conversations: ConversationInfo[];
+  unreadCount: number;
 }
 
 /* Typed observable store. subscribe/get/set are key-constrained to StateMap keys. */
@@ -47,6 +61,12 @@ class Store {
     friends: [],
     incomingRequests: [],
     outgoingRequests: [],
+    sidebarOpen: false,
+    sidebarMinimized: false,
+    sidebarPosition: 'right',
+    sidebarTab: 'chat',
+    conversations: [],
+    unreadCount: 0,
   };
 
   // Listeners by key string (heterogeneous callback types, cast internally)
@@ -92,6 +112,29 @@ class Store {
       key === 'currentGame'
     ) {
       this.persistSession();
+    }
+    if (key === 'sidebarOpen' || key === 'sidebarMinimized' || key === 'sidebarPosition') {
+      const open = key === 'sidebarOpen' ? (value as boolean) : this.state.sidebarOpen;
+      const minimized = key === 'sidebarMinimized' ? (value as boolean) : this.state.sidebarMinimized;
+      const pos = key === 'sidebarPosition' ? (value as 'left' | 'right') : this.state.sidebarPosition;
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 900;
+      let width: string;
+      if (!open) {
+        width = '0px';
+      } else if (minimized) {
+        width = '48px';
+      } else if (isMobile) {
+        width = '0px';
+      } else {
+        width = 'clamp(320px, 30vw, 420px)';
+      }
+      if (pos === 'right') {
+        document.documentElement.style.setProperty('--sidebar-push-right', width);
+        document.documentElement.style.setProperty('--sidebar-push-left', '0px');
+      } else {
+        document.documentElement.style.setProperty('--sidebar-push-left', width);
+        document.documentElement.style.setProperty('--sidebar-push-right', '0px');
+      }
     }
   }
 

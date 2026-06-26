@@ -24,6 +24,8 @@ export default defineConfig({
       '/admin': 'http://localhost:25565',
       '/avatars': 'http://localhost:25565',
       '/health': 'http://localhost:25565',
+      '/leaderboard': 'http://localhost:25565',
+      '/friends': 'http://localhost:25565',
       '/chess-ws': {
         target: 'ws://localhost:25565',
         ws: true,

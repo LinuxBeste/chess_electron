@@ -3,6 +3,7 @@ import logger from '../logger';
 import * as api from '../api';
 import { t } from '../translate';
 import { useNavigate } from 'react-router-dom';
+import { Crown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ArchivePage() {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ export default function ArchivePage() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="page-container" style={{ maxWidth: 800, margin: '0 auto', padding: '0 16px' }}>
+    <div className="page-container" style={{ padding: '0 24px' }}>
       <h2 style={{ margin: '24px 0 16px', fontSize: 20, fontWeight: 600 }}>{t('matchHistory.title')}</h2>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -61,34 +62,90 @@ export default function ArchivePage() {
       ) : (
         <>
           <div className="game-list" style={{ marginBottom: 16 }}>
-            {games.map((g) => (
-              <div
-                key={g.id}
-                className="game-card"
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', cursor: 'pointer' }}
-                onClick={() => navigate('/result/' + g.id)}
-              >
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 500, fontSize: 14 }}>
-                    {g.white_display_name} vs {g.black_display_name}
+            {games.map((g) => {
+              const resultColor = !g.winner ? '#888' : '#4f8ef7';
+              const resultLabel = g.winner ? g.result : '½–½';
+              const date = new Date(g.played_at);
+              const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+              const now = Date.now();
+              const diffMs = now - g.played_at;
+              const mins = Math.floor(diffMs / 60000);
+              const hrs = Math.floor(mins / 60);
+              const days = Math.floor(hrs / 24);
+              const relativeTime =
+                days > 0 ? dateStr : hrs > 0 ? `${hrs}h ago` : mins > 0 ? `${mins}m ago` : 'just now';
+              const moveCount = g.move_history ? g.move_history.split(' ').filter(Boolean).length : 0;
+              const borderColor = !g.winner ? '#555' : g.winner === 'white' ? '#22c55e' : '#e55';
+              const resultDesc = g.reason
+                ? (g.result === '1-0' ? 'White won' : g.result === '0-1' ? 'Black won' : 'Draw') + ' by ' + g.reason
+                : '';
+              return (
+                <div
+                  key={g.id}
+                  className="game-card"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '10px 14px',
+                    borderLeft: '4px solid ' + borderColor,
+                  }}
+                >
+                  <div style={{ flex: 1, cursor: 'pointer', minWidth: 0 }} onClick={() => navigate('/result/' + g.id)}>
+                    <div
+                      style={{
+                        fontWeight: 500,
+                        fontSize: 14,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <span style={{ color: g.winner === 'white' ? 'var(--text)' : 'var(--muted)' }}>
+                        <Crown size={14} style={{ marginRight: 2, verticalAlign: 'middle' }} /> {g.white_display_name}
+                      </span>
+                      <span style={{ color: 'var(--muted)', margin: '0 6px' }}>vs</span>
+                      <span style={{ color: g.winner === 'black' ? 'var(--text)' : 'var(--muted)' }}>
+                        <Crown size={14} style={{ marginRight: 2, verticalAlign: 'middle' }} /> {g.black_display_name}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: 'var(--muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        marginTop: 2,
+                      }}
+                    >
+                      <span>{relativeTime}</span>
+                      <span style={{ color: 'var(--accent)', fontSize: 10, fontWeight: 600 }}>{g.time_control}</span>
+                      <span style={{ color: '#777' }}>{moveCount} moves</span>
+                    </div>
+                    {resultDesc && <div style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}>{resultDesc}</div>}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                    {new Date(g.played_at).toLocaleDateString()} — {g.status} — {g.reason || ''}
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: resultColor }}>{resultLabel}</div>
+                    <div style={{ fontSize: 10, color: 'var(--muted)' }}>{g.status}</div>
                   </div>
+                  <button
+                    className="btn btn-ghost"
+                    style={{ padding: '4px 8px', fontSize: 11, flexShrink: 0 }}
+                    onClick={() => navigate('/game/' + g.id)}
+                  >
+                    {t('gameReview.review')}
+                  </button>
                 </div>
-                <div style={{ textAlign: 'right', fontSize: 12, color: g.winner ? '#4f8ef7' : 'var(--muted)' }}>
-                  {g.winner
-                    ? (g.winner === g.white_player_id ? g.white_display_name : g.black_display_name) + ' won'
-                    : 'Draw'}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
               <button className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                {t('common.prev')}
+                <ChevronLeft size={14} /> {t('common.prev')}
               </button>
               <span style={{ fontSize: 12, color: 'var(--muted)', alignSelf: 'center' }}>
                 {page} / {totalPages}
@@ -98,7 +155,7 @@ export default function ArchivePage() {
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >
-                {t('common.next')}
+                {t('common.next')} <ChevronRight size={14} />
               </button>
             </div>
           )}

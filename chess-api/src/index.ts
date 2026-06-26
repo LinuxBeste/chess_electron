@@ -13,6 +13,8 @@ import adminRouter from './admin.js';
 import friendsRouter from './friends.js';
 import * as game from './game.js';
 import * as db from './db.js';
+import * as chat from './chat.js';
+import { players } from './player.js';
 import logger from './logger.js';
 import { cleanupIpRateBuckets, cleanupRegBuckets } from './routes.js';
 const __filename = fileURLToPath(import.meta.url);
@@ -205,6 +207,45 @@ export function createServer(): http.Server {
           if (trimmed) game.handleChatMessage(msg.gameId, player.id, trimmed, ws);
         } else if (msg.type === 'get_chat_history' && typeof msg.gameId === 'string') {
           game.sendChatHistory(msg.gameId as string, ws);
+        } else if (msg.type === 'lobby_chat' && typeof msg.text === 'string') {
+          const trimmed = (msg.text as string).trim().slice(0, 500);
+          if (trimmed) chat.handleLobbyChat(player.id, trimmed);
+        } else if (msg.type === 'get_lobby_chat_history') {
+          chat.sendLobbyChatHistory(ws);
+        } else if (msg.type === 'private_chat' && typeof msg.toPlayerId === 'string' && typeof msg.text === 'string') {
+          const trimmed = (msg.text as string).trim().slice(0, 500);
+          if (trimmed) chat.handlePrivateChat(player.id, msg.toPlayerId as string, trimmed);
+        } else if (msg.type === 'get_private_chat_history' && typeof msg.conversationId === 'string') {
+          chat.sendPrivateChatHistory(msg.conversationId as string, ws);
+        } else if (msg.type === 'get_conversations') {
+          chat
+            .getConversationsForUser(player.id)
+            .then(
+              (
+                convs: {
+                  id: string;
+                  type: string;
+                  name: string | null;
+                  lastMessageAt: number;
+                  unread: number;
+                  ownerId?: string;
+                }[],
+              ) => {
+                ws.send(JSON.stringify({ type: 'conversations_list', conversations: convs }));
+              },
+            );
+        } else if (msg.type === 'start_private_conversation' && typeof msg.toPlayerId === 'string') {
+          const targetId = msg.toPlayerId as string;
+          chat.getOrCreatePrivateConversation(player.id, targetId).then((convId: string) => {
+            const targetPlayer = players.get(targetId);
+            ws.send(
+              JSON.stringify({
+                type: 'conversation_created',
+                conversationId: convId,
+                withName: targetPlayer?.displayName || targetId.slice(0, 8),
+              }),
+            );
+          });
         } else if (msg.type === 'offer_draw' && typeof msg.gameId === 'string') {
           game.offerDraw(msg.gameId as string, player.id);
         } else if (msg.type === 'accept_draw' && typeof msg.gameId === 'string') {
@@ -246,6 +287,93 @@ export function createServer(): http.Server {
             fromPlayerId: player.id,
           });
           logger.info('WS challenge decline: from=' + player.id + ' to=' + msg.toPlayerId + ' gameId=' + msg.gameId);
+        } else if (msg.type === 'create_group' && typeof msg.name === 'string') {
+          chat
+            .handleCreateGroupConversation(player.id, msg.name as string)
+            .then((convId: string) => {
+              ws.send(JSON.stringify({ type: 'group_created', conversationId: convId, name: msg.name }));
+              logger.info('WS create_group: playerId=' + player.id + ' convId=' + convId);
+            })
+            .catch((err: Error) => {
+              ws.send(JSON.stringify({ type: 'error', error: err.message }));
+            });
+        } else if (
+          msg.type === 'group_chat' &&
+          typeof msg.conversationId === 'string' &&
+          typeof msg.text === 'string'
+        ) {
+          const trimmed = (msg.text as string).trim().slice(0, 500);
+          if (trimmed) chat.handleGroupChat(msg.conversationId as string, player.id, trimmed);
+        } else if (msg.type === 'get_group_chat_history' && typeof msg.conversationId === 'string') {
+          chat.sendGroupChatHistory(msg.conversationId as string, ws);
+        } else if (
+          msg.type === 'group_add_member' &&
+          typeof msg.conversationId === 'string' &&
+          typeof msg.playerId === 'string'
+        ) {
+          chat
+            .handleAddGroupMember(msg.conversationId as string, player.id, msg.playerId as string)
+            .catch((err: Error) => {
+              ws.send(JSON.stringify({ type: 'error', error: err.message }));
+            });
+        } else if (
+          msg.type === 'group_add_member_by_name' &&
+          typeof msg.conversationId === 'string' &&
+          typeof msg.username === 'string'
+        ) {
+          chat
+            .handleAddGroupMemberByName(msg.conversationId as string, player.id, msg.username as string)
+            .catch((err: Error) => {
+              ws.send(JSON.stringify({ type: 'error', error: err.message }));
+            });
+        } else if (
+          msg.type === 'group_remove_member' &&
+          typeof msg.conversationId === 'string' &&
+          typeof msg.playerId === 'string'
+        ) {
+          chat
+            .handleRemoveGroupMember(msg.conversationId as string, player.id, msg.playerId as string)
+            .catch((err: Error) => {
+              ws.send(JSON.stringify({ type: 'error', error: err.message }));
+            });
+        } else if (
+          msg.type === 'group_promote_member' &&
+          typeof msg.conversationId === 'string' &&
+          typeof msg.playerId === 'string'
+        ) {
+          chat
+            .handlePromoteGroupMember(msg.conversationId as string, player.id, msg.playerId as string)
+            .catch((err: Error) => {
+              ws.send(JSON.stringify({ type: 'error', error: err.message }));
+            });
+        } else if (
+          msg.type === 'group_demote_member' &&
+          typeof msg.conversationId === 'string' &&
+          typeof msg.playerId === 'string'
+        ) {
+          chat
+            .handleDemoteGroupMember(msg.conversationId as string, player.id, msg.playerId as string)
+            .catch((err: Error) => {
+              ws.send(JSON.stringify({ type: 'error', error: err.message }));
+            });
+        } else if (
+          msg.type === 'group_transfer_ownership' &&
+          typeof msg.conversationId === 'string' &&
+          typeof msg.playerId === 'string'
+        ) {
+          chat
+            .handleTransferGroupOwnership(msg.conversationId as string, player.id, msg.playerId as string)
+            .catch((err: Error) => {
+              ws.send(JSON.stringify({ type: 'error', error: err.message }));
+            });
+        } else if (msg.type === 'group_leave' && typeof msg.conversationId === 'string') {
+          chat.handleLeaveGroup(msg.conversationId as string, player.id).catch((err: Error) => {
+            ws.send(JSON.stringify({ type: 'error', error: err.message }));
+          });
+        } else if (msg.type === 'group_disband' && typeof msg.conversationId === 'string') {
+          chat.handleDisbandGroup(msg.conversationId as string, player.id).catch((err: Error) => {
+            ws.send(JSON.stringify({ type: 'error', error: err.message }));
+          });
         }
       } catch (e) {
         logger.warn('WS malformed message from playerId=' + player.id + ': ' + e);
@@ -358,7 +486,8 @@ if (!isTestEnv) {
   });
 
   db.initDb()
-    .then(() => {
+    .then(async () => {
+      await chat.ensureLobbyConversation().catch((e) => logger.error('Failed to ensure lobby conversation: ' + e));
       server.listen(PORT, () => {
         logger.info('Chess API server listening on port ' + PORT);
         logger.info('CORS origin: ' + CORS_ORIGIN);

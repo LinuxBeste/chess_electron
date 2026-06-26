@@ -31,8 +31,9 @@ export default function Navbar() {
   const offline = useStoreValue('offline');
   const navigate = useNavigate();
 
-  const isLoggedIn = !!(token && username); // authenticated with server
-  const isOffline = !!(offline && username); // local-only mode, no server
+  const isLoggedIn = !!(token && username);
+  const isOffline = !!(offline && username);
+  const unreadCount = useStoreValue('unreadCount');
 
   function handleLogout() {
     logger.info('User logged out', { username });
@@ -59,11 +60,6 @@ export default function Navbar() {
   function handleOpenStats() {
     logger.debug('Stats dialog opened');
     setShowStats(true);
-  }
-
-  function handleOpenFriends() {
-    logger.debug('Friends dialog opened');
-    setShowFriends(true);
   }
 
   return (
@@ -149,8 +145,24 @@ export default function Navbar() {
               </span>
             )}
             {isLoggedIn && isRegistered && (
-              <button className="navbar-btn" onClick={handleOpenFriends}>
-                {t('navbar.friends')}
+              <button
+                className="navbar-btn"
+                onClick={() => {
+                  const isOpen = store.get('sidebarOpen');
+                  const isMinimized = store.get('sidebarMinimized');
+                  if (!isOpen || isMinimized) {
+                    store.set('sidebarOpen', true);
+                    store.set('sidebarMinimized', false);
+                    store.set('sidebarTab', 'chat');
+                  } else {
+                    store.set('sidebarOpen', false);
+                  }
+                  logger.info('Chat button clicked', { sidebarOpen: !isOpen });
+                }}
+                style={{ position: 'relative' }}
+              >
+                {t('sidebar.chat')}
+                {unreadCount > 0 && <span className="navbar-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
               </button>
             )}
             <button className="navbar-btn" onClick={handleOpenSettings}>

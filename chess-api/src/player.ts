@@ -108,19 +108,13 @@ export async function registerPlayer(
 ): Promise<{ playerId: string; token: string; isRegistered: boolean; displayName: string }> {
   const playerId = uuidv4();
   const token = uuidv4();
-  const isRegistered = !!password; // Guest player if no password provided
-  if (password) {
-    const hash = await hashPasswordAsync(password);
-    await db.createUser(playerId, username, hash, username);
-    await db.saveToken(token, playerId);
-    const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: true };
-    players.set(playerId, player);
-    setToken(token, playerId);
-  } else {
-    const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered: false };
-    players.set(playerId, player);
-    setToken(token, playerId);
-  }
+  const isRegistered = !!password;
+  const hash = password ? await hashPasswordAsync(password) : null;
+  await db.createUser(playerId, username, hash, username);
+  await db.saveToken(token, playerId);
+  const player: Player = { id: playerId, username, displayName: username, tokens: [token], isRegistered };
+  players.set(playerId, player);
+  setToken(token, playerId);
   logger.info('Player registered: playerId=' + playerId + ' username="' + username + '" registered=' + isRegistered);
   return { playerId, token, isRegistered, displayName: username };
 }

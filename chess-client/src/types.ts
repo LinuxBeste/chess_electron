@@ -90,6 +90,32 @@ export interface FriendRequestInfo {
   createdAt: number;
 }
 
+/** Chat conversation info */
+export interface ConversationInfo {
+  id: string;
+  type: 'lobby' | 'private' | 'group' | 'game';
+  name: string | null;
+  lastMessageAt: number;
+  unread: number;
+  ownerId?: string;
+}
+
+export interface GroupMember {
+  playerId: string;
+  username: string;
+  displayName: string;
+  role: 'owner' | 'admin' | 'member';
+}
+
+/** A single chat message */
+export interface ChatMessageData {
+  messageId?: string;
+  playerId: string;
+  username: string;
+  text: string;
+  timestamp: number;
+}
+
 /** Electron preload API exposed via contextBridge */
 declare global {
   interface Window {

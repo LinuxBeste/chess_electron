@@ -57,7 +57,7 @@ export function getDb(): pg.Pool {
 
 export function setConnectionString(url: string): void {
   if (_pool) {
-    _pool.end(); // Gracefully close old pool before replacing
+    _pool.end();
     _pool = null;
   }
   process.env.DATABASE_URL = url;
@@ -71,7 +71,7 @@ export async function transaction<T>(fn: (client: pg.PoolClient) => Promise<T>):
     await client.query('COMMIT');
     return result;
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {}); // Rollback failure must not throw
+    await client.query('ROLLBACK').catch(() => {});
     throw err;
   } finally {
     client.release();
@@ -212,6 +212,44 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_user_tokens_created_at ON user_tokens(created_at);
     `,
   },
+  {
+    version: 4,
+    sql: `
+      CREATE TABLE IF NOT EXISTS chat_conversations (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL CHECK (type IN ('lobby', 'private', 'group', 'game')),
+        name TEXT,
+        created_at BIGINT NOT NULL,
+        last_message_at BIGINT NOT NULL DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS chat_conversation_members (
+        conversation_id TEXT NOT NULL REFERENCES chat_conversations(id),
+        user_id TEXT NOT NULL REFERENCES users(id),
+        joined_at BIGINT NOT NULL,
+        PRIMARY KEY (conversation_id, user_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_conv_members_user ON chat_conversation_members(user_id);
+
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL REFERENCES chat_conversations(id),
+        sender_id TEXT NOT NULL REFERENCES users(id),
+        text TEXT NOT NULL,
+        created_at BIGINT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_chat_messages_conv ON chat_messages(conversation_id, created_at);
+    `,
+  },
+  {
+    version: 5,
+    sql: `
+      ALTER TABLE chat_conversations ADD COLUMN owner_id TEXT REFERENCES users(id);
+      ALTER TABLE chat_conversation_members ADD COLUMN role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member'));
+    `,
+  },
 ];
 
 let migrated = false;
@@ -346,6 +384,15 @@ export async function getUsersByIds(ids: string[]): Promise<Map<string, DbUser>>
   }
   logger.debug('DB: getUsersByIds requested=' + ids.length + ' found=' + rows.length);
   return map;
+}
+
+export async function searchUsers(query: string, limit = 10): Promise<DbUser[]> {
+  const pattern = '%' + query.replace(/[%_]/g, '\\$&') + '%';
+  const { rows } = await getPool().query(
+    'SELECT * FROM users WHERE username ILIKE $1 OR display_name ILIKE $1 LIMIT $2',
+    [pattern, limit],
+  );
+  return rows as DbUser[];
 }
 
 export async function saveToken(token: string, userId: string): Promise<void> {
@@ -924,7 +971,13 @@ export async function getParticipantCount(tournamentId: string): Promise<number>
 
 export async function getPublicTournamentsWithCounts(): Promise<Record<string, unknown>[]> {
   const { rows } = await getPool().query(
-    `SELECT t.*, COUNT(tp.id) AS "participantCount"
+    `SELECT t.*,
+            COUNT(tp.id) AS "participantCount",
+            COALESCE(
+              json_agg(json_build_object('player_id', tp.player_id, 'display_name', tp.display_name))
+                FILTER (WHERE tp.id IS NOT NULL),
+              '[]'::json
+            ) AS "participants"
      FROM tournaments t
      LEFT JOIN tournament_participants tp ON tp.tournament_id = t.id
      WHERE t.is_private = false
@@ -1057,6 +1110,94 @@ export async function areFriends(userId: string, friendId: string): Promise<bool
   const result = rows.length > 0;
   logger.debug('DB: areFriends user1=' + userId + ' user2=' + friendId + ' =' + result);
   return result;
+}
+
+/* ─── Group Chat ─── */
+
+export interface GroupMemberRow {
+  conversation_id: string;
+  user_id: string;
+  joined_at: number;
+  role: 'owner' | 'admin' | 'member';
+}
+
+export async function createGroupConversation(ownerId: string, name: string): Promise<string> {
+  const id = crypto.randomUUID();
+  const ts = Date.now();
+  const db = getPool();
+  await db.query('INSERT INTO chat_conversations (id, type, name, owner_id, created_at) VALUES ($1, $2, $3, $4, $5)', [
+    id,
+    'group',
+    name,
+    ownerId,
+    ts,
+  ]);
+  await db.query(
+    'INSERT INTO chat_conversation_members (conversation_id, user_id, role, joined_at) VALUES ($1, $2, $3, $4)',
+    [id, ownerId, 'owner', ts],
+  );
+  logger.debug('DB: group conversation created id=' + id + ' owner=' + ownerId + ' name=' + name);
+  return id;
+}
+
+export async function getGroupMembers(conversationId: string): Promise<GroupMemberRow[]> {
+  const { rows } = await getPool().query(
+    'SELECT * FROM chat_conversation_members WHERE conversation_id = $1 ORDER BY joined_at ASC',
+    [conversationId],
+  );
+  return rows as GroupMemberRow[];
+}
+
+export async function getConversationOwnerId(conversationId: string): Promise<string | null> {
+  const { rows } = await getPool().query('SELECT owner_id FROM chat_conversations WHERE id = $1', [conversationId]);
+  const row = rows[0] as { owner_id: string } | undefined;
+  return row?.owner_id ?? null;
+}
+
+export async function addGroupMember(conversationId: string, userId: string): Promise<void> {
+  await getPool().query(
+    'INSERT INTO chat_conversation_members (conversation_id, user_id, role, joined_at) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
+    [conversationId, userId, 'member', Date.now()],
+  );
+  logger.debug('DB: group member added conv=' + conversationId + ' user=' + userId);
+}
+
+export async function removeGroupMember(conversationId: string, userId: string): Promise<void> {
+  await getPool().query('DELETE FROM chat_conversation_members WHERE conversation_id = $1 AND user_id = $2', [
+    conversationId,
+    userId,
+  ]);
+  logger.debug('DB: group member removed conv=' + conversationId + ' user=' + userId);
+}
+
+export async function updateMemberRole(
+  conversationId: string,
+  userId: string,
+  role: 'admin' | 'member',
+): Promise<void> {
+  await getPool().query('UPDATE chat_conversation_members SET role = $1 WHERE conversation_id = $2 AND user_id = $3', [
+    role,
+    conversationId,
+    userId,
+  ]);
+  logger.debug('DB: group member role updated conv=' + conversationId + ' user=' + userId + ' role=' + role);
+}
+
+export async function transferGroupOwnership(conversationId: string, newOwnerId: string): Promise<void> {
+  await getPool().query('UPDATE chat_conversations SET owner_id = $1 WHERE id = $2', [newOwnerId, conversationId]);
+  await getPool().query('UPDATE chat_conversation_members SET role = $1 WHERE conversation_id = $2 AND user_id = $3', [
+    'owner',
+    conversationId,
+    newOwnerId,
+  ]);
+  logger.debug('DB: group ownership transferred conv=' + conversationId + ' newOwner=' + newOwnerId);
+}
+
+export async function disbandGroupConversation(conversationId: string): Promise<void> {
+  await getPool().query('DELETE FROM chat_messages WHERE conversation_id = $1', [conversationId]);
+  await getPool().query('DELETE FROM chat_conversation_members WHERE conversation_id = $1', [conversationId]);
+  await getPool().query('DELETE FROM chat_conversations WHERE id = $1', [conversationId]);
+  logger.debug('DB: group conversation disbanded id=' + conversationId);
 }
 
 export async function closeDb(): Promise<void> {

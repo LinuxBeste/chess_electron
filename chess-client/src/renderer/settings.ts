@@ -1,3 +1,4 @@
+import { store } from './store';
 import logger from './logger';
 
 /**
@@ -52,6 +53,7 @@ export interface AppSettings {
   autoFlipBoard: boolean;
   compactMode: boolean;
   uiDensity: 'compact' | 'normal' | 'spacious';
+  sidebarPosition: 'left' | 'right';
   showPlayerNames: boolean;
   showGameInfo: boolean;
   showGameResultPopup: boolean;
@@ -140,6 +142,7 @@ export const defaultSettings: AppSettings = {
   autoFlipBoard: false,
   compactMode: false,
   uiDensity: 'normal',
+  sidebarPosition: 'right',
   showPlayerNames: true,
   showGameInfo: true,
   showGameResultPopup: true,
@@ -215,6 +218,7 @@ export function saveSettings(settings: AppSettings): void {
   applyCompactMode(settings.compactMode);
   applyReduceMotion(settings.reduceMotion);
   applyBoardBorder(settings.boardBorder);
+  store.set('sidebarPosition', settings.sidebarPosition);
 }
 
 export function getSetting<K extends keyof AppSettings>(key: K): AppSettings[K] {

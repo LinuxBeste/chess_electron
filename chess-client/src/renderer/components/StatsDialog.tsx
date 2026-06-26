@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import * as api from '../api';
 import { t } from '../translate';
 import logger from '../logger';
+import { X } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
@@ -62,7 +63,7 @@ export default function StatsDialog({ onClose }: Props) {
               borderRadius: 4,
             }}
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 

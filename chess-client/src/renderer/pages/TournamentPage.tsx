@@ -5,6 +5,13 @@ import { store } from '../store';
 import { t } from '../translate';
 import { useNavigate } from 'react-router-dom';
 import { copyToClipboard } from '../clipboard';
+import { ArrowLeft, X } from 'lucide-react';
+
+interface TournamentParticipant {
+  id?: string;
+  player_id: string;
+  display_name?: string;
+}
 
 interface TournamentData {
   id: string;
@@ -14,12 +21,12 @@ interface TournamentData {
   status: string;
   created_by?: string;
   join_code?: string;
+  created_at?: number;
+  started_at?: number | null;
+  completed_at?: number | null;
+  winner_id?: string | null;
   participantCount?: number;
-  participants?: Array<{
-    id: string;
-    player_id: string;
-    display_name?: string;
-  }>;
+  participants?: TournamentParticipant[];
   matches?: Array<{
     id: string;
     round: number;
@@ -213,7 +220,7 @@ function ManageTournamentDialog({
               borderRadius: 4,
             }}
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 
@@ -410,13 +417,22 @@ export default function TournamentPage() {
   function renderBracket(matches: NonNullable<TournamentData['matches']>) {
     if (!matches || matches.length === 0)
       return <p style={{ fontSize: 13, color: '#888', textAlign: 'center', padding: 24 }}>No matches yet</p>;
+    const nameMap = new Map<string, string>();
+    for (const p of selected?.participants || []) {
+      nameMap.set(p.player_id, p.display_name || p.player_id.slice(0, 8));
+    }
+    function playerName(pid: string | undefined): string {
+      if (!pid) return 'BYE';
+      if (pid === myId) return t('common.you');
+      return nameMap.get(pid) || pid.slice(0, 8);
+    }
     const rounds = [...new Set(matches.map((m) => m.round))].sort();
     return (
       <div style={{ display: 'flex', gap: 24, overflowX: 'auto', padding: '8px 0' }}>
         {rounds.map((round) => {
           const roundMatches = matches.filter((m) => m.round === round);
           return (
-            <div key={round} style={{ minWidth: 200 }}>
+            <div key={round} style={{ minWidth: 220 }}>
               <h4
                 style={{ fontSize: 12, color: '#888', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}
               >
@@ -429,21 +445,29 @@ export default function TournamentPage() {
                   style={{ padding: 10, marginBottom: 8, fontSize: 12, cursor: m.game_id ? 'pointer' : undefined }}
                   onClick={() => m.game_id && navigate('/result/' + m.game_id)}
                 >
-                  <div style={{ color: m.winner_id === m.white_player_id ? '#4f8ef7' : '#888' }}>
-                    {m.white_player_id
-                      ? m.white_player_id === myId
-                        ? t('common.you')
-                        : m.white_player_id?.slice(0, 8)
-                      : 'BYE'}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      color: m.winner_id === m.white_player_id ? '#4f8ef7' : '#888',
+                    }}
+                  >
+                    <span>{playerName(m.white_player_id)}</span>
+                    {m.winner_id === m.white_player_id && <span style={{ fontSize: 10, fontWeight: 700 }}>WIN</span>}
                   </div>
-                  <div style={{ color: m.winner_id === m.black_player_id ? '#4f8ef7' : '#888' }}>
-                    {m.black_player_id
-                      ? m.black_player_id === myId
-                        ? t('common.you')
-                        : m.black_player_id?.slice(0, 8)
-                      : 'BYE'}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      color: m.winner_id === m.black_player_id ? '#4f8ef7' : '#888',
+                    }}
+                  >
+                    <span>{playerName(m.black_player_id)}</span>
+                    {m.winner_id === m.black_player_id && <span style={{ fontSize: 10, fontWeight: 700 }}>WIN</span>}
                   </div>
-                  <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>
+                  <div style={{ fontSize: 10, color: '#555', marginTop: 4, textAlign: 'center' }}>
                     {m.status === 'completed'
                       ? m.winner_id
                         ? 'Completed'
@@ -464,10 +488,10 @@ export default function TournamentPage() {
   if (selected) {
     const isCreator = selected.created_by === myId;
     return (
-      <div className="page-container" style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px' }}>
+      <div className="page-container" style={{ padding: '0 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0 16px' }}>
           <button className="btn btn-ghost btn-sm" onClick={() => setSelected(null)}>
-            ← Back
+            <ArrowLeft size={16} style={{ marginRight: 4 }} /> Back
           </button>
           <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{selected.name}</h2>
           <span className={`badge badge-${selected.status}`}>{selected.status}</span>
@@ -479,8 +503,94 @@ export default function TournamentPage() {
           {isCreator && <span style={{ fontSize: 11, color: 'var(--primary)', marginLeft: 4 }}>Creator</span>}
         </div>
 
-        <div style={{ fontSize: 13, color: '#888', marginBottom: 16 }}>
-          Players: {selected.participantCount || selected.participants?.length || 0} / {selected.max_players}
+        <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>Players</div>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>
+                {selected.participantCount || selected.participants?.length || 0} / {selected.max_players}
+              </div>
+            </div>
+            {selected.created_at && (
+              <div>
+                <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>Created</div>
+                <div style={{ fontSize: 13 }}>
+                  {new Date(selected.created_at).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </div>
+              </div>
+            )}
+            {selected.started_at && (
+              <div>
+                <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>Started</div>
+                <div style={{ fontSize: 13 }}>
+                  {new Date(selected.started_at).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </div>
+              </div>
+            )}
+            {selected.completed_at && (
+              <div>
+                <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>Completed</div>
+                <div style={{ fontSize: 13 }}>
+                  {new Date(selected.completed_at).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </div>
+              </div>
+            )}
+            {selected.started_at && selected.completed_at && (
+              <div>
+                <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>Duration</div>
+                <div style={{ fontSize: 13 }}>
+                  {Math.floor((selected.completed_at - selected.started_at) / 60000)} min
+                </div>
+              </div>
+            )}
+            {selected.winner_id && (
+              <div>
+                <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>Winner</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#f5a623' }}>
+                  {selected.participants?.find((p) => p.player_id === selected.winner_id)?.display_name ||
+                    selected.winner_id?.slice(0, 8)}
+                </div>
+              </div>
+            )}
+          </div>
+          {selected.status === 'waiting' && selected.max_players > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--surface2)', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      width:
+                        ((selected.participantCount || selected.participants?.length || 0) / selected.max_players) *
+                          100 +
+                        '%',
+                      height: 6,
+                      background: 'var(--accent)',
+                      borderRadius: 3,
+                      transition: 'width 0.3s',
+                    }}
+                  />
+                </div>
+                <span style={{ fontSize: 11, color: '#888' }}>
+                  {Math.round(
+                    ((selected.participantCount || selected.participants?.length || 0) / selected.max_players) * 100,
+                  )}
+                  %
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {selected.join_code && (
@@ -531,13 +641,48 @@ export default function TournamentPage() {
           </div>
         )}
 
-        <h3 style={{ fontSize: 14, fontWeight: 500, marginBottom: 8 }}>Participants</h3>
-        <div style={{ marginBottom: 24 }}>
-          {(selected.participants || []).map((p) => (
-            <div key={p.id} style={{ fontSize: 13, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
-              {p.display_name || p.player_id?.slice(0, 8)}
-            </div>
-          ))}
+        <div className="card" style={{ padding: 16, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+            Participants ({selected.participants?.length || 0} / {selected.max_players})
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {(selected.participants || []).map((p) => (
+              <div
+                key={p.id || p.player_id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 0',
+                  borderBottom: '1px solid var(--border)',
+                  cursor: 'pointer',
+                }}
+                onClick={() => navigate('/profile/' + p.player_id)}
+              >
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    background: p.player_id === myId ? 'var(--primary)' : '#2a2a2a',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: '#ddd',
+                    flexShrink: 0,
+                  }}
+                >
+                  {(p.display_name || p.player_id || '?')[0].toUpperCase()}
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>{p.display_name || p.player_id?.slice(0, 8)}</span>
+                {p.player_id === myId && (
+                  <span style={{ fontSize: 10, color: 'var(--primary)', marginLeft: 'auto' }}>You</span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {(selected.matches?.length || 0) > 0 && (
@@ -559,7 +704,7 @@ export default function TournamentPage() {
   }
 
   return (
-    <div className="page-container" style={{ maxWidth: 800, margin: '0 auto', padding: '0 16px' }}>
+    <div className="page-container" style={{ padding: '0 24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '24px 0 16px' }}>
         <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{t('tournaments.title')}</h2>
         <div style={{ position: 'relative' }}>
@@ -595,31 +740,88 @@ export default function TournamentPage() {
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>{t('tournaments.none')}</div>
       ) : (
         <div>
-          {tournaments.map((t) => (
-            <div
-              key={t.id}
-              className="game-card"
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', cursor: 'pointer' }}
-              onClick={() => openDetails(t.id)}
-            >
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 500, fontSize: 14 }}>
-                  {t.name}
-                  {t.created_by === myId && (
-                    <span style={{ fontSize: 10, color: 'var(--primary)', marginLeft: 6, fontWeight: 400 }}>
-                      Created by you
-                    </span>
+          {tournaments.map((t) => {
+            const players = t.participantCount || t.participants?.length || 0;
+            const isCreator = t.created_by === myId;
+            const participants = t.participants || [];
+            const maxShow = 5;
+            const extra = Math.max(0, players - maxShow);
+            const createdDate = t.created_at ? new Date(t.created_at) : null;
+            const createdStr =
+              createdDate && t.created_at
+                ? Date.now() - t.created_at < 86400000
+                  ? Math.floor((Date.now() - t.created_at) / 3600000) + 'h ago'
+                  : createdDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                : null;
+            return (
+              <div
+                key={t.id}
+                className="game-card"
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', cursor: 'pointer' }}
+                onClick={() => openDetails(t.id)}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontWeight: 500,
+                      fontSize: 14,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {t.name}
+                    {isCreator && (
+                      <span style={{ fontSize: 10, color: 'var(--primary)', marginLeft: 6, fontWeight: 400 }}>
+                        (Creator)
+                      </span>
+                    )}
+                  </div>
+                  {participants.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+                      {participants.slice(0, maxShow).map((p, idx) => (
+                        <span
+                          key={p.id || p.player_id + idx}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            background: p.player_id === myId ? 'var(--primary)' : '#2a2a2a',
+                            color: '#ccc',
+                            fontSize: 10,
+                            fontWeight: 600,
+                            flexShrink: 0,
+                          }}
+                          title={p.display_name || p.player_id}
+                        >
+                          {(p.display_name || p.player_id || '?')[0].toUpperCase()}
+                        </span>
+                      ))}
+                      {extra > 0 && <span style={{ fontSize: 11, color: 'var(--muted)' }}>+{extra}</span>}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+                    {players} / {t.max_players} {players === 1 ? 'player' : 'players'}
+                    {t.is_private === 1 && <span style={{ marginLeft: 8 }}>— Private</span>}
+                    {createdStr && <span style={{ marginLeft: 8, color: '#555' }}>{createdStr}</span>}
+                  </div>
+                </div>
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}
+                >
+                  <span className={`badge badge-${t.status}`} style={{ fontSize: 11 }}>
+                    {t.status}
+                  </span>
+                  {players === t.max_players && t.status === 'waiting' && (
+                    <span style={{ fontSize: 9, color: 'var(--success)', fontWeight: 600 }}>Full</span>
                   )}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                  {t.participantCount || 0} players — {t.status}
-                </div>
               </div>
-              <span className={`badge badge-${t.status}`} style={{ fontSize: 11 }}>
-                {t.status}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
