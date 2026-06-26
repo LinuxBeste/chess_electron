@@ -1093,9 +1093,9 @@ describe('abortGame', () => {
 });
 
 describe('getPlayerStats', () => {
-  test('getPlayerStats returns null for anonymous player', async () => {
+  test('getPlayerStats returns zero stats for anonymous player', async () => {
     const pid = await registerPlayer('pstats_anon');
-    expect(await game.getPlayerStats(pid)).toBeNull();
+    expect(await game.getPlayerStats(pid)).toEqual({ wins: 0, losses: 0, draws: 0 });
   });
 
   test('getPlayerStats returns null for unknown player', async () => {

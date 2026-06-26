@@ -1210,7 +1210,7 @@ describe('GET /players/:playerId/profile', () => {
     expect(profile.body.id).toBe(res.body.playerId);
     expect(profile.body.isRegistered).toBe(false);
     expect(profile.body.avatarUrl).toBeNull();
-    expect(profile.body.stats).toBeNull();
+    expect(profile.body.stats).toEqual({ wins: 0, losses: 0, draws: 0 });
   });
 
   test('returns avatarUrl after upload', async () => {
