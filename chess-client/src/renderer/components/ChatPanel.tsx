@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { socketManager } from '../socket';
 import { store } from '../store';
 import { useStoreValue } from '../hooks/useStore';
