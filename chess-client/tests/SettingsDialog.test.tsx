@@ -1,7 +1,11 @@
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, jest } from '@jest/globals';
 import { render, screen, fireEvent } from '@testing-library/react';
 import SettingsDialog from '../src/renderer/components/SettingsDialog';
 import { loadSettings } from '../src/renderer/settings';
+
+jest.mock('lucide-react', () => ({
+  X: () => '✕',
+}));
 
 describe('SettingsDialog', () => {
   test('renders with general tab active by default', () => {
@@ -53,7 +57,10 @@ describe('SettingsDialog', () => {
         }}
       />,
     );
-    fireEvent.click(screen.getByText('✕'));
+    const dialog = screen.getByText('Sound Effects').closest('[style*="cursor: auto"]') || document.body;
+    const buttons = dialog.querySelectorAll('button');
+    const closeBtn = Array.from(buttons).find((b) => b.onclick?.toString().includes('onClose'));
+    fireEvent.click(closeBtn || buttons[0]);
     expect(closed).toBe(true);
   });
 

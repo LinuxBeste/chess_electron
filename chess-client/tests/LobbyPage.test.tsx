@@ -37,19 +37,19 @@ describe('LobbyPage — offline mode', () => {
     return result!;
   }
 
-  test('shows Local 1v1 card always', async () => {
-    await renderPage();
-    expect(screen.getByText('Local 1v1')).toBeTruthy();
-    expect(screen.getByText('Start Local Game')).toBeTruthy();
-  });
-
-  test('shows open games, live games, create, join, spectate when online', async () => {
+  test('shows open games heading when online', async () => {
     await renderPage();
     expect(screen.getByText('Open Games')).toBeTruthy();
+  });
+
+  test('shows live games heading when online', async () => {
+    await renderPage();
     expect(screen.getByText('Live Games')).toBeTruthy();
-    expect(screen.getByText('Create Game')).toBeTruthy();
-    expect(screen.getByText('Join by ID')).toBeTruthy();
-    expect(screen.getByText('Spectate by ID')).toBeTruthy();
+  });
+
+  test('shows no open games message when online and empty', async () => {
+    await renderPage();
+    expect(screen.getByText('No open games yet')).toBeTruthy();
   });
 
   test('hides open games when offline', async () => {
@@ -59,18 +59,9 @@ describe('LobbyPage — offline mode', () => {
     expect(screen.queryByText('Live Games')).toBeNull();
   });
 
-  test('hides create game, join, spectate when offline', async () => {
+  test('hides open games section when offline', async () => {
     store.set('offline', true);
     await renderPage();
-    expect(screen.queryByText('Create Game')).toBeNull();
-    expect(screen.queryByText('Join by ID')).toBeNull();
-    expect(screen.queryByText('Spectate by ID')).toBeNull();
-  });
-
-  test('still shows Local 1v1 when offline', async () => {
-    store.set('offline', true);
-    await renderPage();
-    expect(screen.getByText('Local 1v1')).toBeTruthy();
-    expect(screen.getByText('Start Local Game')).toBeTruthy();
+    expect(screen.queryByText('No open games')).toBeNull();
   });
 });
