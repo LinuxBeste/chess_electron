@@ -61,9 +61,9 @@ describe('EngineManager', () => {
     expect(() => engineManager.send('no-such-game', 'uci')).not.toThrow();
   });
 
-  test('getBestMove returns empty string for unknown game', async () => {
+  test('getBestMove returns empty result for unknown game', async () => {
     const result = await engineManager.getBestMove('no-such-game');
-    expect(result).toBe('');
+    expect(result).toEqual({ move: '', score: 0 });
   });
 
   test('setPosition does not throw for unknown game', () => {

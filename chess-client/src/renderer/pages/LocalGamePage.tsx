@@ -10,21 +10,30 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import logger from '../logger';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Board from '../components/Board';
 import MoveHistory from '../components/MoveHistory';
 import PromotionDialog from '../components/PromotionDialog';
-import { cloneBoard, createInitialBoard, squareToIndices, indicesToSquare } from '../chess';
+import { cloneBoard, createInitialBoard, squareToIndices, indicesToSquare, boardToFen, fenToBoard } from '../chess';
 import { getSetting } from '../settings';
 import { playMoveSound, playCaptureSound, playCheckSound, playGameOverSound } from '../sound';
 import type { Board as BoardType, PieceType, Move, LegalMoveHint } from '../../types';
+import type { MoveQuality } from '../components/MoveQualityIndicator';
 import { t } from '../translate';
 
 export default function LocalGamePage() {
   const navigate = useNavigate();
-  const [board, setBoard] = useState<BoardType>(createInitialBoard);
+  const [searchParams] = useSearchParams();
+  const fenParam = searchParams.get('fen');
+  const [board, setBoard] = useState<BoardType>(() => {
+    if (fenParam) {
+      const parsed = fenToBoard(fenParam);
+      if (parsed) return parsed;
+    }
+    return createInitialBoard();
+  });
   const [turn, setTurn] = useState<'white' | 'black'>('white');
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [legalHints, setLegalHints] = useState<LegalMoveHint[]>([]);
@@ -37,6 +46,7 @@ export default function LocalGamePage() {
   const [blackTime, setBlackTime] = useState(initialMs);
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
   const [boardHistory, setBoardHistory] = useState<{ board: BoardType; move: string }[]>([]);
+  const [moveQualities, setMoveQualities] = useState<Record<string, MoveQuality>>({});
 
   /* Refs that always reflect current state — used inside closures that would
       otherwise capture stale values from the render cycle */
@@ -299,8 +309,26 @@ export default function LocalGamePage() {
     const incMs = getSetting('timeControlIncrement') * 1000;
     if (turnRef.current === 'white') setWhiteTime((t) => t + incMs);
     else setBlackTime((t) => t + incMs);
-    setMoves((prev) => [...prev, `${from}-${to}`]);
-    setBoardHistory((prev) => [...prev, { board: cloneBoard(newBoard), move: `${from}-${to}` }]);
+    const moveStr = `${from}-${to}`;
+    const moveKey = `${from}${to}`;
+    setMoves((prev) => [...prev, moveStr]);
+    setBoardHistory((prev) => [...prev, { board: cloneBoard(newBoard), move: moveStr }]);
+
+    /* Evaluate move quality asynchronously */
+    const fen = boardToFen(boardRef.current);
+    const baseUrl = localStorage.getItem('chess_server_url') || 'http://localhost:3000';
+    fetch(`${baseUrl}/analysis/move-quality`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fen, move: moveKey }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.quality) {
+          setMoveQualities((prev) => ({ ...prev, [moveStr]: data.quality }));
+        }
+      })
+      .catch(() => {});
 
     if (isCheckmate(newBoard, nextTurn)) {
       logger.info('Game over: checkmate', { winner: turnRef.current });
@@ -534,7 +562,7 @@ export default function LocalGamePage() {
       </div>
       <div className="sidebar">
         <h3 className="sidebar-title">{t('localGame.moves')}</h3>
-        <MoveHistory moves={moves} />
+        <MoveHistory moves={moves} moveQualities={moveQualities} />
         <div style={{ marginTop: 12, padding: '0 16px' }}>
           <div
             style={{

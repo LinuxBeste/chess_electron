@@ -516,6 +516,121 @@ export function serializeBoard(board: Board): SerializedSquare[] {
   return result;
 }
 
+const PIECE_FEN: Record<PieceType, string> = {
+  king: 'k',
+  queen: 'q',
+  rook: 'r',
+  bishop: 'b',
+  knight: 'n',
+  pawn: 'p',
+};
+
+const FEN_PIECE: Record<string, PieceType> = {
+  k: 'king',
+  q: 'queen',
+  r: 'rook',
+  b: 'bishop',
+  n: 'knight',
+  p: 'pawn',
+};
+
+export function boardToFen(
+  board: Board,
+  color: Color,
+  castlingRights: CastlingRights,
+  enPassantTarget: string | null,
+  halfMoveClock: number,
+  fullMoveNumber: number,
+): string {
+  let fen = '';
+  for (let r = 0; r < 8; r++) {
+    let empty = 0;
+    for (let f = 0; f < 8; f++) {
+      const p = board[r][f];
+      if (p) {
+        if (empty > 0) {
+          fen += empty;
+          empty = 0;
+        }
+        const letter = PIECE_FEN[p.type];
+        fen += p.color === 'white' ? letter.toUpperCase() : letter;
+      } else {
+        empty++;
+      }
+    }
+    if (empty > 0) fen += empty;
+    if (r < 7) fen += '/';
+  }
+
+  fen += color === 'white' ? ' w ' : ' b ';
+
+  let castling = '';
+  if (castlingRights.white.kingside) castling += 'K';
+  if (castlingRights.white.queenside) castling += 'Q';
+  if (castlingRights.black.kingside) castling += 'k';
+  if (castlingRights.black.queenside) castling += 'q';
+  fen += castling || '-';
+
+  fen += ' ' + (enPassantTarget || '-');
+  fen += ' ' + halfMoveClock;
+  fen += ' ' + fullMoveNumber;
+
+  return fen;
+}
+
+export function fenToBoard(
+  fen: string,
+): {
+  board: Board;
+  color: Color;
+  castlingRights: CastlingRights;
+  enPassantTarget: string | null;
+  halfMoveClock: number;
+  fullMoveNumber: number;
+} | null {
+  const parts = fen.trim().split(/\s+/);
+  if (parts.length < 1) return null;
+  const rows = parts[0].split('/');
+  if (rows.length !== 8) return null;
+
+  const board: Board = Array.from({ length: 8 }, () => Array(8).fill(null));
+  for (let r = 0; r < 8; r++) {
+    let f = 0;
+    for (const ch of rows[r]) {
+      if (ch >= '1' && ch <= '8') {
+        f += parseInt(ch, 10);
+      } else {
+        const lower = ch.toLowerCase();
+        const type = FEN_PIECE[lower];
+        if (!type || f >= 8) return null;
+        board[r][f] = { type, color: ch === ch.toUpperCase() ? 'white' : 'black' };
+        f++;
+      }
+    }
+    if (f !== 8) return null;
+  }
+
+  const color: Color = (parts[1] || 'w') === 'w' ? 'white' : 'black';
+
+  const castlingRights: CastlingRights = {
+    white: { kingside: false, queenside: false },
+    black: { kingside: false, queenside: false },
+  };
+  const castlingStr = parts[2] || '-';
+  if (castlingStr !== '-') {
+    if (castlingStr.includes('K')) castlingRights.white.kingside = true;
+    if (castlingStr.includes('Q')) castlingRights.white.queenside = true;
+    if (castlingStr.includes('k')) castlingRights.black.kingside = true;
+    if (castlingStr.includes('q')) castlingRights.black.queenside = true;
+  }
+
+  const enPassant = parts[3] && parts[3] !== '-' ? parts[3] : null;
+  const halfMoveClock = parts[4] ? parseInt(parts[4], 10) : 0;
+  const fullMoveNumber = parts[5] ? parseInt(parts[5], 10) : 1;
+
+  return { board, color, castlingRights, enPassantTarget: enPassant, halfMoveClock, fullMoveNumber };
+}
+
 /* PieceType to algebraic notation letter (knight = 'N', pawn = ''). */
 const PIECE_LETTER: Record<PieceType, string> = {
   king: 'K',

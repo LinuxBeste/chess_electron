@@ -14,6 +14,7 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import ToastContainer from './components/ToastContainer';
 import ErrorBoundary from './components/ErrorBoundary';
+import { SkeletonBoard } from './components/Skeleton';
 import { store } from './store';
 import { socketManager } from './socket';
 import { ApiError, setBaseUrl, getMe, getFriends, getFriendRequests, joinGame } from './api';
@@ -31,16 +32,7 @@ const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
 const ArchivePage = lazy(() => import('./pages/ArchivePage'));
 const TournamentPage = lazy(() => import('./pages/TournamentPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-
-function Loading() {
-  return (
-    <div
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 24, color: '#888' }}
-    >
-      {t('app.loading')}
-    </div>
-  );
-}
+const BoardEditorPage = lazy(() => import('./pages/BoardEditorPage'));
 
 export default function App() {
   const navigate = useNavigate();
@@ -375,7 +367,7 @@ export default function App() {
           </div>
         )}
         <div id="app-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <Suspense fallback={<Loading />}>
+          <Suspense fallback={<SkeletonBoard />}>
             <Routes key={langKey}>
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<LoginPage />} />
@@ -388,6 +380,7 @@ export default function App() {
               <Route path="/archive" element={<ArchivePage />} />
               <Route path="/tournaments" element={<TournamentPage />} />
               <Route path="/profile/:playerId" element={<ProfilePage />} />
+              <Route path="/editor" element={<BoardEditorPage />} />
             </Routes>
           </Suspense>
         </div>

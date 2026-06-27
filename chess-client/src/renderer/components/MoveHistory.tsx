@@ -9,12 +9,14 @@
 import { useEffect, useRef, Fragment, memo } from 'react';
 import { t } from '../translate';
 import logger from '../logger';
+import MoveQualityIndicator, { type MoveQuality } from './MoveQualityIndicator';
 
 interface MoveHistoryProps {
   moves: string[];
+  moveQualities?: Record<string, MoveQuality>;
 }
 
-const MoveHistory = memo(function MoveHistory({ moves }: MoveHistoryProps) {
+const MoveHistory = memo(function MoveHistory({ moves, moveQualities }: MoveHistoryProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   /* Auto-scroll to the latest move as the game progresses */
@@ -66,9 +68,15 @@ const MoveHistory = memo(function MoveHistory({ moves }: MoveHistoryProps) {
             return (
               <Fragment key={i}>
                 <div className="history-num">{i + 1}.</div>
-                <div className={`history-move ${isLastWhite ? 'history-latest' : ''}`}>{moves[wIdx]}</div>
+                <div className={`history-move ${isLastWhite ? 'history-latest' : ''}`}>
+                  {moves[wIdx]}
+                  {moveQualities?.[moves[wIdx]] && <MoveQualityIndicator quality={moveQualities[moves[wIdx]]} />}
+                </div>
                 {bIdx < moves.length ? (
-                  <div className={`history-move ${isLastBlack ? 'history-latest' : ''}`}>{moves[bIdx]}</div>
+                  <div className={`history-move ${isLastBlack ? 'history-latest' : ''}`}>
+                    {moves[bIdx]}
+                    {moveQualities?.[moves[bIdx]] && <MoveQualityIndicator quality={moveQualities[moves[bIdx]]} />}
+                  </div>
                 ) : (
                   <div />
                 )}

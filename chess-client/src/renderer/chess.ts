@@ -100,6 +100,79 @@ export function findKing(board: Board, color: 'white' | 'black'): [number, numbe
   return null;
 }
 
+const PIECE_MAP: Record<string, string> = {
+  'white-king': 'K',
+  'white-queen': 'Q',
+  'white-rook': 'R',
+  'white-bishop': 'B',
+  'white-knight': 'N',
+  'white-pawn': 'P',
+  'black-king': 'k',
+  'black-queen': 'q',
+  'black-rook': 'r',
+  'black-bishop': 'b',
+  'black-knight': 'n',
+  'black-pawn': 'p',
+};
+
+export function boardToFen(board: Board): string {
+  let fen = '';
+  for (let r = 0; r < 8; r++) {
+    let empty = 0;
+    for (let f = 0; f < 8; f++) {
+      const p = board[r][f];
+      if (p) {
+        if (empty > 0) {
+          fen += empty;
+          empty = 0;
+        }
+        fen += PIECE_MAP[`${p.color}-${p.type}`] || '?';
+      } else {
+        empty++;
+      }
+    }
+    if (empty > 0) fen += empty;
+    if (r < 7) fen += '/';
+  }
+  fen += ' w KQkq - 0 1';
+  return fen;
+}
+
+export function fenToBoard(fen: string): Board | null {
+  const board: Board = Array.from({ length: 8 }, () => Array(8).fill(null));
+  const rows = fen.split(' ')[0].split('/');
+  if (rows.length !== 8) return null;
+  const charMap: Record<string, { type: PieceType; color: 'white' | 'black' }> = {
+    K: { type: 'king', color: 'white' },
+    Q: { type: 'queen', color: 'white' },
+    R: { type: 'rook', color: 'white' },
+    B: { type: 'bishop', color: 'white' },
+    N: { type: 'knight', color: 'white' },
+    P: { type: 'pawn', color: 'white' },
+    k: { type: 'king', color: 'black' },
+    q: { type: 'queen', color: 'black' },
+    r: { type: 'rook', color: 'black' },
+    b: { type: 'bishop', color: 'black' },
+    n: { type: 'knight', color: 'black' },
+    p: { type: 'pawn', color: 'black' },
+  };
+  for (let r = 0; r < 8; r++) {
+    let f = 0;
+    for (const ch of rows[r]) {
+      if (ch >= '1' && ch <= '8') {
+        f += parseInt(ch, 10);
+      } else {
+        const piece = charMap[ch];
+        if (!piece || f >= 8) return null;
+        board[r][f] = piece;
+        f++;
+      }
+    }
+    if (f !== 8) return null;
+  }
+  return board;
+}
+
 /** Unicode chess characters for piece rendering */
 // Unicode chess chars — no SVG assets needed, scale cleanly at any resolution
 export const PIECE_CHARS: Record<string, Record<string, string>> = {

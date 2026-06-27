@@ -22,10 +22,11 @@ import MoveHistory from '../components/MoveHistory';
 import Chat from '../components/Chat';
 import PromotionDialog from '../components/PromotionDialog';
 import PlayerProfileDialog from '../components/PlayerProfileDialog';
-import { deserializeBoard, cloneBoard, createInitialBoard, squareToIndices } from '../chess';
+import { deserializeBoard, cloneBoard, createInitialBoard, squareToIndices, boardToFen } from '../chess';
 import { getSetting } from '../settings';
 import { playMoveSound, playCaptureSound, playCheckSound, playGameOverSound } from '../sound';
 import type { Board as BoardType, GameState, PieceType, LegalMoveHint, GameStatus } from '../../types';
+import type { MoveQuality } from '../components/MoveQualityIndicator';
 import type {
   MoveMessage,
   GameOverMessage,
@@ -67,6 +68,7 @@ export default function GamePage() {
   const [rematchOfferedBy, setRematchOfferedBy] = useState<string | null>(null);
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [opponentConnected, setOpponentConnected] = useState(true);
+  const [moveQualities, setMoveQualities] = useState<Record<string, MoveQuality>>({});
   const menuRef = useRef<HTMLDivElement>(null);
 
   /* Spectator mode: read-only, set via ?spectate=1 query param from LobbyPage */
@@ -306,6 +308,9 @@ export default function GamePage() {
       else playMoveSound();
       if (msg.status === 'check') setTimeout(() => playCheckSound(), 100);
     }
+    const opponentMoveStr = `${msg.lastMove.from}-${msg.lastMove.to}`;
+    const fen = boardToFen(boardRef.current);
+    evaluateMoveQuality(opponentMoveStr, fen);
   }
 
   function handleWsGameOver(msg: GameOverMessage) {
@@ -519,6 +524,11 @@ export default function GamePage() {
       setBoard(cloneBoard(updated.board));
       setLastMove(updated.lastMove);
       setMoves(updated.moveHistory);
+      const lastMoveStr = updated.moveHistory[updated.moveHistory.length - 1];
+      if (lastMoveStr) {
+        const fen = boardToFen(oldBoard);
+        evaluateMoveQuality(lastMoveStr, fen);
+      }
       /* Apply increment to the player who just moved (opposite of updated.turn) */
       const incMs = getSetting('timeControlIncrement') * 1000;
       if (updated.turn === 'black') setWhiteTime((t) => t + incMs);
@@ -625,6 +635,23 @@ export default function GamePage() {
     const decimals = getSetting('clockDecimalPlaces');
     const dec = decimals > 0 ? '.' + String(Math.floor((totalSec % 1) * 10 ** decimals)).padStart(decimals, '0') : '';
     return `${m}:${String(s).padStart(2, '0')}${dec}`;
+  }
+
+  function evaluateMoveQuality(moveStr: string, fen: string) {
+    const baseUrl = localStorage.getItem('chess_server_url') || 'http://localhost:3000';
+    const moveNoDash = moveStr.replace('-', '');
+    fetch(`${baseUrl}/analysis/move-quality`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fen, move: moveNoDash }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.quality) {
+          setMoveQualities((prev) => ({ ...prev, [moveStr]: data.quality }));
+        }
+      })
+      .catch(() => {});
   }
 
   const isFinished = (game && ['checkmate', 'stalemate', 'resigned', 'draw'].includes(game.status)) || !!timeout;
@@ -859,7 +886,7 @@ export default function GamePage() {
         </div>
       </div>
       <div className="sidebar">
-        <MoveHistory moves={moves} />
+        <MoveHistory moves={moves} moveQualities={moveQualities} />
         {gameId && <Chat gameId={gameId} />}
       </div>
       {promotion && <PromotionDialog color={playerColor} onSelect={handlePromotionSelect} />}

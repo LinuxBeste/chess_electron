@@ -18,6 +18,7 @@ export type TranslationKeys = {
     next: string;
     start: string;
     end: string;
+    undo: string;
     white: string;
     black: string;
     vs: string;
@@ -36,6 +37,7 @@ export type TranslationKeys = {
     leaderboard: string;
     archive: string;
     tournaments: string;
+    editor: string;
     play: string;
     logout: string;
   };
@@ -313,6 +315,27 @@ export type TranslationKeys = {
     review: string;
     games: string;
   };
+  moveQuality: {
+    excellent: string;
+    good: string;
+    inaccuracy: string;
+    bestMove: string;
+  };
+  boardEditor: {
+    title: string;
+    placePiece: string;
+    clear: string;
+    startPos: string;
+    flipBoard: string;
+    exportFen: string;
+    fenCopied: string;
+    importFen: string;
+    fenPlaceholder: string;
+    invalidFen: string;
+    play: string;
+    piece: string;
+    color: string;
+  };
   settings: {
     title: string;
     reset: string;
@@ -580,6 +603,7 @@ export const en: TranslationKeys = {
     next: 'Next',
     start: 'Start',
     end: 'End',
+    undo: 'Undo',
     white: 'White',
     black: 'Black',
     vs: 'vs',
@@ -598,6 +622,7 @@ export const en: TranslationKeys = {
     leaderboard: 'Leaderboard',
     archive: 'Archive',
     tournaments: 'Tournaments',
+    editor: 'Editor',
     play: 'Play',
     logout: 'Logout',
   },
@@ -875,6 +900,27 @@ export const en: TranslationKeys = {
     review: 'Review',
     games: 'games',
   },
+  moveQuality: {
+    excellent: 'Excellent',
+    good: 'Good',
+    inaccuracy: 'Inaccuracy',
+    bestMove: 'Best: {move}',
+  },
+  boardEditor: {
+    title: 'Board Editor',
+    placePiece: 'Place Piece',
+    clear: 'Clear Board',
+    startPos: 'Start Position',
+    flipBoard: 'Flip Board',
+    exportFen: 'Export FEN',
+    fenCopied: 'FEN copied!',
+    importFen: 'Import FEN',
+    fenPlaceholder: 'Paste FEN string...',
+    invalidFen: 'Invalid FEN',
+    play: 'Play from Position',
+    piece: 'Piece',
+    color: 'Color',
+  },
   settings: {
     title: 'Settings',
     reset: 'Reset to Defaults',
@@ -1143,6 +1189,7 @@ export const de: TranslationKeys = {
     next: 'Weiter',
     start: 'Start',
     end: 'Ende',
+    undo: 'Rückgängig',
     white: 'Weiß',
     black: 'Schwarz',
     vs: 'gegen',
@@ -1161,6 +1208,7 @@ export const de: TranslationKeys = {
     leaderboard: 'Rangliste',
     archive: 'Archiv',
     tournaments: 'Turniere',
+    editor: 'Editor',
     play: 'Spielen',
     logout: 'Abmelden',
   },
@@ -1437,6 +1485,27 @@ export const de: TranslationKeys = {
     draw: 'Unentschieden',
     review: 'Rückblick',
     games: 'Spiele',
+  },
+  moveQuality: {
+    excellent: 'Hervorragend',
+    good: 'Gut',
+    inaccuracy: 'Ungenau',
+    bestMove: 'Bester: {move}',
+  },
+  boardEditor: {
+    title: 'Bretteditor',
+    placePiece: 'Figur setzen',
+    clear: 'Brett leeren',
+    startPos: 'Startposition',
+    flipBoard: 'Brett drehen',
+    exportFen: 'FEN exportieren',
+    fenCopied: 'FEN kopiert!',
+    importFen: 'FEN importieren',
+    fenPlaceholder: 'FEN-String einfügen...',
+    invalidFen: 'Ungültiges FEN',
+    play: 'Von Position spielen',
+    piece: 'Figur',
+    color: 'Farbe',
   },
   settings: {
     title: 'Einstellungen',

@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url';
 import { PieceType } from './types.js';
 import * as game from './game.js';
 import * as db from './db.js';
+import * as chess from './chess.js';
+import { engineManager } from './engine.js';
 import logger from './logger.js';
 import fs from 'fs';
 import path from 'path';
@@ -669,6 +671,53 @@ router.get('/leaderboard', globalGetLimiter, async (_req: Request, res: Response
   } catch (err) {
     logger.error('Leaderboard query failed: ' + err);
     res.status(500).json({ error: 'Failed to load leaderboard' });
+  }
+});
+
+/* ─── Move Quality ─── */
+
+router.post('/analysis/move-quality', async (req: Request, res: Response) => {
+  try {
+    const { fen, move } = req.body;
+    if (typeof fen !== 'string' || typeof move !== 'string') {
+      res.status(400).json({ error: 'FEN and move required' });
+      return;
+    }
+
+    const parsed = chess.fenToBoard(fen);
+    if (!parsed) {
+      res.status(400).json({ error: 'Invalid FEN' });
+      return;
+    }
+
+    const analysisId = uuidv4();
+    await engineManager.startInstance(analysisId, 20);
+    engineManager.send(analysisId, `position fen ${fen}`);
+    const result = await engineManager.getBestMove(analysisId, 1000);
+
+    let quality = 'good';
+    let playedScore: number | null = null;
+    if (result.move) {
+      if (move === result.move) {
+        quality = 'excellent';
+      } else {
+        engineManager.send(analysisId, `position fen ${fen} moves ${move}`);
+        const playedResult = await engineManager.getBestMove(analysisId, 500);
+        playedScore = playedResult.score;
+        const scoreDrop = Math.abs(result.score - playedResult.score);
+        if (scoreDrop <= 80) {
+          quality = 'good';
+        } else {
+          quality = 'inaccuracy';
+        }
+      }
+    }
+    engineManager.destroyInstance(analysisId);
+
+    res.json({ bestMove: result.move || null, bestScore: result.score, playedScore, playedMove: move, quality });
+  } catch (err) {
+    logger.error('Move quality analysis failed: ' + err);
+    res.status(500).json({ error: 'Analysis failed' });
   }
 });
 

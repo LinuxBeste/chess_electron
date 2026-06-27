@@ -5,12 +5,19 @@ import logger from './logger.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+interface BestMoveResult {
+  move: string;
+  score: number;
+}
+
 interface EngineInstance {
   process: ChildProcess;
   buffer: string;
-  bestMovePromise: { resolve: (move: string) => void; reject: (err: Error) => void } | null;
+  bestMovePromise: { resolve: (result: BestMoveResult) => void; reject: (err: Error) => void } | null;
   uciok: boolean;
   ready: boolean;
+  lastScore: number;
+  lastScoreFromWhite: boolean;
 }
 
 class EngineManager {
@@ -47,6 +54,8 @@ class EngineManager {
         bestMovePromise: null,
         uciok: false,
         ready: false,
+        lastScore: 0,
+        lastScoreFromWhite: true,
       };
 
       proc.stdout!.on('data', (data: Buffer) => {
@@ -57,12 +66,23 @@ class EngineManager {
           const trimmed = line.trim();
           if (!trimmed) continue;
 
-          if (trimmed === 'uciok') inst.uciok = true; // UCI protocol: engine ready handshake
+          if (trimmed === 'uciok') inst.uciok = true;
           if (trimmed === 'readyok') inst.ready = true;
+
+          const scoreMatch = trimmed.match(/^info.*\bscore\s+(cp|mate)\s+(-?\d+)/);
+          if (scoreMatch) {
+            if (scoreMatch[1] === 'mate') {
+              const mateIn = parseInt(scoreMatch[2], 10);
+              inst.lastScore = mateIn > 0 ? 10000 : -10000;
+            } else {
+              inst.lastScore = parseInt(scoreMatch[2], 10);
+            }
+            inst.lastScoreFromWhite = true;
+          }
 
           const bestMatch = trimmed.match(/^bestmove\s+(\S+)/);
           if (bestMatch && inst.bestMovePromise) {
-            inst.bestMovePromise.resolve(bestMatch[1]);
+            inst.bestMovePromise.resolve({ move: bestMatch[1], score: inst.lastScore });
             inst.bestMovePromise = null;
           }
         }
@@ -129,38 +149,34 @@ class EngineManager {
     }
   }
 
-  async getBestMove(gameId: string, movetime = 500): Promise<string> {
+  async getBestMove(gameId: string, movetime = 500): Promise<BestMoveResult> {
     const inst = this.instances.get(gameId);
     if (!inst) {
       logger.warn('Engine not found for game', gameId);
-      return '';
+      return { move: '', score: 0 };
     }
 
     if (inst.bestMovePromise) {
-      inst.bestMovePromise.reject(new Error('New search started')); // Reject pending when new search begins
+      inst.bestMovePromise.reject(new Error('New search started'));
     }
 
     return new Promise((resolve, reject) => {
       inst.bestMovePromise = { resolve, reject };
       this.send(gameId, `go movetime ${movetime}`);
 
-      /* Timeout: if Stockfish doesn't respond within movetime + 10s, reject */
       const timeoutMs = movetime + 10000;
       const timer = setTimeout(() => {
-        // Safety timeout: 10s beyond movetime
         if (inst.bestMovePromise) {
           inst.bestMovePromise = null;
           reject(new Error('Engine best-move timeout'));
         }
-      }, timeoutMs).unref(); // .unref() allows Node process to exit while waiting
+      }, timeoutMs).unref();
 
-      /* Wrap original resolve/reject to clear the timeout */
       const origResolve = inst.bestMovePromise.resolve;
       const origReject = inst.bestMovePromise.reject;
-      inst.bestMovePromise.resolve = (move: string) => {
-        // Wrap to clear timeout on response
+      inst.bestMovePromise.resolve = (result: BestMoveResult) => {
         clearTimeout(timer);
-        origResolve(move);
+        origResolve(result);
       };
       inst.bestMovePromise.reject = (err: Error) => {
         clearTimeout(timer);

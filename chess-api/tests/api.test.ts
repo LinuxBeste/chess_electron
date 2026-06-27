@@ -2146,3 +2146,36 @@ describe('Admin API — DB browser (tables & query)', () => {
     await request.get('/admin/api/db/tables').expect(401);
   });
 });
+
+describe('Move Quality', () => {
+  test('POST /analysis/move-quality returns 400 for missing fields', async () => {
+    await request.post('/analysis/move-quality').send({}).expect(400);
+    await request.post('/analysis/move-quality').send({ fen: 'start' }).expect(400);
+    await request.post('/analysis/move-quality').send({ move: 'e2e4' }).expect(400);
+  });
+
+  test('POST /analysis/move-quality returns 400 for invalid FEN', async () => {
+    await request.post('/analysis/move-quality').send({ fen: 'invalid', move: 'e2e4' }).expect(400);
+  });
+
+  test('POST /analysis/move-quality returns shape for any move', async () => {
+    const startFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const res = await request.post('/analysis/move-quality').send({ fen: startFen, move: 'e2e4' }).expect(200);
+
+    expect(res.body).toHaveProperty('bestMove');
+    expect(res.body).toHaveProperty('bestScore');
+    expect(res.body).toHaveProperty('playedMove', 'e2e4');
+    expect(res.body).toHaveProperty('quality');
+    expect(['excellent', 'good', 'inaccuracy']).toContain(res.body.quality);
+  });
+
+  test('POST /analysis/move-quality: playing the best move yields excellent', async () => {
+    const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const ref = await request.post('/analysis/move-quality').send({ fen, move: 'e2e4' }).expect(200);
+    expect(ref.body.bestMove).toBeTruthy();
+
+    const res = await request.post('/analysis/move-quality').send({ fen, move: ref.body.bestMove }).expect(200);
+
+    expect(res.body.quality).toBe('excellent');
+  });
+});

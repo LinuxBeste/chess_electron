@@ -72,6 +72,9 @@ export default function Navbar() {
         <button className="navbar-btn" onClick={() => navigate('/lobby')}>
           {t('navbar.play')}
         </button>
+        <button className="navbar-btn" onClick={() => navigate('/editor')}>
+          {t('navbar.editor')}
+        </button>
         <button className="navbar-btn" onClick={() => navigate('/leaderboard')}>
           {t('navbar.leaderboard')}
         </button>

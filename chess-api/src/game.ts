@@ -377,12 +377,12 @@ async function triggerBotMove(gameId: string): Promise<void> {
   if (game.turn !== botColor) return;
 
   await engineManager.setPosition(gameId, uciHistory.get(gameId) || []);
-  const bestMove = await engineManager.getBestMove(gameId, 500);
-  if (!bestMove || bestMove === '(none)') return;
+  const result = await engineManager.getBestMove(gameId, 500);
+  if (!result.move || result.move === '(none)') return;
 
-  const from = bestMove.slice(0, 2);
-  const to = bestMove.slice(2, 4);
-  const promotion = bestMove.length > 4 ? (bestMove.slice(4) as PieceType) : undefined;
+  const from = result.move.slice(0, 2);
+  const to = result.move.slice(2, 4);
+  const promotion = result.move.length > 4 ? (result.move.slice(4) as PieceType) : undefined;
 
   const legalMoves = chess.getLegalMoves(game.board, botColor, game.enPassantTarget, game.castlingRights);
   const matchedMove = legalMoves.find(
