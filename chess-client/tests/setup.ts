@@ -1,4 +1,5 @@
 import { TextEncoder } from 'util';
+import { jest } from '@jest/globals';
 
 globalThis.TextEncoder = TextEncoder;
 
@@ -24,3 +25,8 @@ Object.defineProperty(globalThis, 'localStorage', {
   writable: true,
   configurable: true,
 });
+
+// Suppress console output during tests to avoid Jest detecting them as failures
+console.info = jest.fn();
+console.debug = jest.fn();
+console.warn = jest.fn();

@@ -45,3 +45,12 @@ coverage/
 
 # CD workflow (replaced by separate build+release workflows)
 .github/workflows/cd.yml
+
+# Notes
+notes.md
+
+# Images (added to github later)
+website/public/*.png
+
+# Backups
+chess-api/backups/*
