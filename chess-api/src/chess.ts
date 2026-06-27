@@ -578,9 +578,7 @@ export function boardToFen(
   return fen;
 }
 
-export function fenToBoard(
-  fen: string,
-): {
+export function fenToBoard(fen: string): {
   board: Board;
   color: Color;
   castlingRights: CastlingRights;

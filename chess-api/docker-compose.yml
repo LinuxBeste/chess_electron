@@ -1,4 +1,19 @@
 services:
+  # ─── Redis (enabled via --redis flag in start.sh) ─
+  redis:
+    profiles: ["redis"]
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ─── PostgreSQL ─────────────────────────────────
   postgres:
     image: postgres:17-alpine
@@ -45,6 +60,7 @@ services:
     volumes:
       - ./logs:/app/logs
     environment:
+      - REDIS_URL=${REDIS_URL:-}
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
       - DATABASE_URL=postgresql://chess:${POSTGRES_PASSWORD:-chess}@postgres:5432/chess
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env or production environment}
@@ -67,3 +83,4 @@ services:
 volumes:
   chess-pg-data:
   pgadmin-data:
+  redis-data:

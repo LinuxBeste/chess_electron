@@ -6,7 +6,7 @@
  */
 
 import * as game from '../src/game.js';
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, jest } from '@jest/globals';
 import type { WebSocket } from 'ws';
 
 /* Each test gets a unique ID by registering a player.
@@ -1147,12 +1147,54 @@ describe('kickPlayer', () => {
     const result = game.kickPlayer('no-such-id');
     expect(result.success).toBe(false);
   });
+
+  test('kickPlayer removes waiting games for the player', async () => {
+    const pid = await registerPlayer('kick-waiting');
+    const g = await game.createGame(pid);
+    expect(g.status).toBe('waiting');
+    const result = game.kickPlayer(pid);
+    expect(result.success).toBe(true);
+    const open = await game.getOpenGames();
+    expect(open.some((og) => og.id === g.id)).toBe(false);
+  });
 });
 
 describe('endGame', () => {
   test('endGame fails for non-existent game', () => {
     const result = game.endGame('no-such-game');
     expect(result.success).toBe(false);
+  });
+});
+
+describe('registerSpectator', () => {
+  test('registerSpectator returns false for non-existent game', () => {
+    const mockWs = { readyState: 1, send: jest.fn() } as any;
+    expect(game.registerSpectator('no-such-game', mockWs)).toBe(false);
+  });
+
+  test('registerSpectator returns false for inactive game', async () => {
+    const pid = await registerPlayer('spec-inactive');
+    const g = await game.createGame(pid);
+    const mockWs = { readyState: 1, send: jest.fn() } as any;
+    expect(game.registerSpectator(g.id, mockWs)).toBe(false);
+  });
+
+  test('registerSpectator rejects incorrect spectate code', async () => {
+    const pid = await registerPlayer('spec-code-reject');
+    const g = await game.createGame(pid, 'public', 'code');
+    const mockWs = { readyState: 1, send: jest.fn() } as any;
+    expect(game.registerSpectator(g.id, mockWs, 'wrong-code')).toBe(false);
+  });
+
+  test('registerSpectator accepts correct spectate code on active game', async () => {
+    const pid = await registerPlayer('spec-code-ok');
+    const p2 = await registerPlayer('spec-code-ok-2');
+    const g = await game.createGame(pid, 'public', 'code');
+    await game.joinGame(g.id, p2);
+    const mockWs = { readyState: 1, send: jest.fn() } as any;
+    const result = game.registerSpectator(g.id, mockWs, g.spectateCode);
+    expect(result).toBe(true);
+    game.removeSpectator(g.id, mockWs);
   });
 });
 

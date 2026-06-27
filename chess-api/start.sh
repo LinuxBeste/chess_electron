@@ -6,27 +6,31 @@ cd "$SCRIPT_DIR"
 
 PORT="${PORT:-25565}"
 TUNNEL="${TUNNEL:-}"
+USE_REDIS=false
 CLIENT_ENV_FILE="../chess-client/.env"
-COMPOSE_PROFILE=""
+COMPOSE_PROFILES=()
 
 usage() {
   cat <<EOF
-Usage: $0 [--native | -n] [--tunnel (cloudflared|ngrok)] [--port <num>] [--no-client-env]
+Usage: $0 [--native | -n] [--redis] [--tunnel (cloudflared|ngrok)] [--port <num>] [--no-client-env]
 
 Start the chess-api server.
 
 Options:
-  --native, -n        Run natively (npm run dev) instead of Docker
+  --native, -n        Run natively (pnpm dev) instead of Docker
+  --redis             Enable Redis for state persistence and cross-instance WS messaging
   --tunnel <tool>     Expose via tunnel (cloudflared | ngrok)
   --port <num>        Local port (default: $PORT)
   --no-client-env     Skip updating chess-client/.env with tunnel URL
   --help, -h          Show this help
 
 Examples:
-  $0                              # Docker on port $PORT, no tunnel
-  $0 --native                     # npm run dev on port $PORT
-  $0 --tunnel cloudflared          # Docker + cloudflared tunnel
-  $0 --native --tunnel ngrok       # Native + ngrok tunnel
+  $0                              # Docker on port $PORT, no Redis (in-memory)
+  $0 --redis                      # Docker on port $PORT with Redis
+  $0 --native                     # pnpm dev on port $PORT, no Redis
+  $0 --native --redis             # pnpm dev on port $PORT with Redis
+  $0 --tunnel cloudflared         # Docker + cloudflared tunnel
+  $0 --native --tunnel ngrok      # Native + ngrok tunnel
 EOF
   exit 0
 }
@@ -35,6 +39,7 @@ UPDATE_CLIENT_ENV=true
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --native|-n) MODE="native"; shift ;;
+    --redis) USE_REDIS=true; shift ;;
     --tunnel) TUNNEL="${2:-}"; shift 2 ;;
     --port) PORT="${2:-}"; shift 2 ;;
     --no-client-env) UPDATE_CLIENT_ENV=false; shift ;;
@@ -46,7 +51,10 @@ done
 export PORT
 
 if [[ -n "$TUNNEL" ]]; then
-  COMPOSE_PROFILE="--profile tunnel"
+  COMPOSE_PROFILES+=(--profile tunnel)
+fi
+if "$USE_REDIS"; then
+  COMPOSE_PROFILES+=(--profile redis)
 fi
 
 write_client_env() {
@@ -116,34 +124,73 @@ start_tunnel() {
   fi
 }
 
+_redis_pid=""
 cleanup() {
   echo
   echo "Shutting down ..."
-  docker compose $COMPOSE_PROFILE down 2>/dev/null || true
+  docker compose "${COMPOSE_PROFILES[@]}" down 2>/dev/null || true
+  if [[ -n "$_redis_pid" ]]; then
+    redis-cli shutdown 2>/dev/null || true
+    echo "Redis stopped"
+  fi
 }
+
+trap cleanup EXIT INT TERM
 
 stop_docker() {
   cleanup
   exit 0
 }
 
+ensure_redis() {
+  if [[ -n "${REDIS_URL:-}" ]]; then
+    echo "Using existing REDIS_URL=$REDIS_URL"
+    return
+  fi
+  if command -v redis-server &>/dev/null; then
+    if redis-cli ping &>/dev/null; then
+      echo "Redis already running on localhost:6379"
+      export REDIS_URL=redis://localhost:6379
+    else
+      echo "Starting redis-server locally ..."
+      redis-server --daemonize yes --port 6379 --loglevel warning
+      sleep 1
+      if redis-cli ping &>/dev/null; then
+        echo "Redis started on localhost:6379"
+        export REDIS_URL=redis://localhost:6379
+        _redis_pid=$(redis-cli ping >/dev/null && pgrep -f "redis-server.*6379" | head -1 || true)
+      else
+        echo "Warning: Could not start redis-server" >&2
+      fi
+    fi
+  else
+    echo "Warning: redis-server not found. Install it (e.g. apt install redis-server) to enable Redis." >&2
+  fi
+}
+
 if [[ "${MODE:-docker}" == "native" ]]; then
   echo "Starting chess-api natively on port $PORT ..."
+  if "$USE_REDIS"; then
+    ensure_redis
+  fi
   if [[ ! -d dist ]]; then
     echo "Building first ..."
-    npm run build
+    pnpm run build
   fi
   if [[ -n "$TUNNEL" ]]; then
     start_tunnel "$PORT"
   fi
-  exec npm start
+  pnpm start
 else
   if [[ -n "$TUNNEL" ]]; then
     echo "Starting chess-api in Docker with $TUNNEL tunnel ..."
   else
     echo "Starting chess-api in Docker on http://localhost:$PORT ..."
   fi
-  docker compose $COMPOSE_PROFILE up --build -d
+  if "$USE_REDIS"; then
+    export REDIS_URL=redis://redis:6379
+  fi
+  docker compose "${COMPOSE_PROFILES[@]}" up --build -d
   if [[ -n "$TUNNEL" ]]; then
     start_tunnel "$PORT"
   fi

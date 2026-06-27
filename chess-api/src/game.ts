@@ -29,6 +29,8 @@ import {
   sendToPlayer,
   sendToPlayerRaw,
   sendToSpectators,
+  persistGame,
+  persistGameAndPublish,
 } from './state.js';
 import { updateEloRatings } from './elo.js';
 import { sendChatHistory } from './chat.js';
@@ -73,7 +75,7 @@ export {
 
 export { cleanupChatHistory, handleChatMessage, sendChatHistory } from './chat.js';
 
-export { removeGameById, sendToPlayer } from './state.js';
+export { removeGameById, sendToPlayer, persistGame, persistGameAndPublish } from './state.js';
 
 async function enrichNames(g: GameState): Promise<GameState> {
   const whitePlayer = g.players.white ? players.get(g.players.white) : undefined;
@@ -283,6 +285,7 @@ export async function createGame(
     halfMoveClock: 0,
   };
   games.set(id, game);
+  persistGameAndPublish(id);
   addPlayerGameIndex(playerId, id);
   logger.info(
     'Game created: gameId=' + id + ' white=' + playerId + ' visibility=' + visibility + ' spectateMode=' + spectateMode,
@@ -333,6 +336,7 @@ export async function createBotGame(
     halfMoveClock: 0,
   };
   games.set(id, game);
+  persistGameAndPublish(id);
   addPlayerGameIndex(playerId, id);
 
   engineManager
@@ -347,6 +351,7 @@ export async function createBotGame(
       logger.error('Failed to start bot engine for game ' + id, err);
       game.status = 'draw';
       game.reason = 'Engine error — game cancelled';
+      persistGameAndPublish(id);
       broadcastToGame(id, {
         type: 'game_over',
         gameId: id,
@@ -390,7 +395,7 @@ async function triggerBotMove(gameId: string): Promise<void> {
   );
   if (!matchedMove) {
     // Reject engine move if not in legal list
-    logger.warn('Bot generated illegal move', { gameId, bestMove });
+    logger.warn('Bot generated illegal move', { gameId, bestMove: result.move });
     return;
   }
 
@@ -428,6 +433,7 @@ async function triggerBotMove(gameId: string): Promise<void> {
   game.lastMove = { from, to };
   game.halfMoveClock = newHalfMoveClock;
   if (winner) game.winner = winner;
+  persistGameAndPublish(gameId);
 
   const isTerminal = newStatus === 'checkmate' || newStatus === 'stalemate' || newStatus === 'draw';
   broadcastToGame(gameId, {
@@ -509,6 +515,7 @@ export async function joinGame(
 
   game.players.black = playerId;
   game.status = 'active';
+  persistGameAndPublish(gameId);
   addPlayerGameIndex(playerId, gameId);
 
   logger.info('Game joined: gameId=' + gameId + ' white=' + game.players.white + ' black=' + playerId);
@@ -594,6 +601,7 @@ export async function makeMove(
   game.lastMove = { from, to };
   game.halfMoveClock = newHalfMoveClock;
   if (winner) game.winner = winner;
+  persistGameAndPublish(gameId);
 
   if (!uciHistory.has(gameId)) uciHistory.set(gameId, []);
   uciHistory.get(gameId)!.push(from + to + (matchedMove.promotion ? matchedMove.promotion[0] : ''));
@@ -656,6 +664,7 @@ export async function resignGame(
   const winner: Color = resigningColor === 'white' ? 'black' : 'white';
   game.status = 'resigned';
   game.winner = winner;
+  persistGameAndPublish(gameId);
 
   broadcastToGame(gameId, {
     type: 'game_over',
@@ -679,6 +688,7 @@ export async function resignGame(
 
 async function recordGameResult(game: GameState, winner: Color | null): Promise<void> {
   game.winner = winner;
+  persistGameAndPublish(game.id);
   const neededIds: string[] = [];
   const winnerId = winner ? game.players[winner] : null;
   if (winnerId) {
@@ -793,6 +803,7 @@ export async function acceptDraw(gameId: string, playerId: string): Promise<{ su
   game.winner = null;
   game.reason = 'Draw by agreement';
   drawOffers.delete(gameId);
+  persistGameAndPublish(gameId);
 
   await recordGameResult(game, null);
 
@@ -893,6 +904,7 @@ export async function acceptRematch(
     halfMoveClock: 0,
   };
   games.set(newId, newGame);
+  persistGameAndPublish(newId);
   rematchOffers.delete(gameId);
   await broadcastGameListUpdate();
 
@@ -1013,6 +1025,7 @@ export function endGame(gameId: string): { success: true } | { success: false; e
   g.status = 'draw';
   g.winner = null;
   g.reason = 'Ended by admin';
+  persistGame(g.id);
 
   uciHistory.delete(g.id);
   if (isBotGame(g)) {

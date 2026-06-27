@@ -14,6 +14,8 @@ import friendsRouter from './friends.js';
 import * as game from './game.js';
 import * as db from './db.js';
 import * as chat from './chat.js';
+import * as redis from './redis.js';
+import * as state from './state.js';
 import { players } from './player.js';
 import logger from './logger.js';
 import { cleanupIpRateBuckets, cleanupRegBuckets } from './routes.js';
@@ -485,6 +487,38 @@ if (!isTestEnv) {
 
   db.initDb()
     .then(async () => {
+      await redis.initRedis();
+      if (redis.isRedisEnabled()) {
+        redis.setMessageHandler((channel, message) => {
+          try {
+            const parsed = JSON.parse(message);
+            if (parsed.type === 'ws_message') {
+              if (channel.startsWith('player:')) {
+                const playerId = channel.slice(7);
+                const conns = state.wsConnections.get(playerId);
+                if (conns) {
+                  for (const ws of conns) {
+                    if (ws.readyState === WebSocket.OPEN) ws.send(parsed.data);
+                  }
+                }
+              } else if (channel.startsWith('spectate:')) {
+                const gameId = channel.slice(9);
+                const conns = state.spectatorConnections.get(gameId);
+                if (conns) {
+                  const data = typeof parsed.data === 'string' ? parsed.data : JSON.stringify(parsed.data);
+                  for (const ws of conns) {
+                    if (ws.readyState === WebSocket.OPEN) ws.send(data);
+                  }
+                }
+              }
+            }
+          } catch {}
+        });
+        redis.psubscribe('player:*');
+        redis.psubscribe('spectate:*');
+        await state.syncGamesFromRedis();
+        await state.syncPlayerIndexFromRedis();
+      }
       await chat.ensureLobbyConversation().catch((e) => logger.error('Failed to ensure lobby conversation: ' + e));
       server.listen(PORT, () => {
         logger.info('Chess API server listening on port ' + PORT);
@@ -508,6 +542,7 @@ if (!isTestEnv) {
         wss.clients.forEach((client) => client.close(1001, 'Server shutting down'));
       }
       if (typeof db.closeDb === 'function') db.closeDb().catch(() => {});
+      redis.closeRedis().catch(() => {});
       logger.info('Shutdown complete');
       process.exit(0);
     });

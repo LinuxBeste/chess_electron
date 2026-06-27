@@ -2179,3 +2179,76 @@ describe('Move Quality', () => {
     expect(res.body.quality).toBe('excellent');
   });
 });
+
+describe('Admin actions', () => {
+  let adminAuth: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' }).expect(200);
+    adminAuth = 'Bearer ' + res.body.token;
+  });
+
+  test('POST /admin/api/players/:id/kick kicks a waiting player', async () => {
+    const { playerId } = await registerPlayer('kicked-player');
+    const res = await request
+      .post('/admin/api/players/' + playerId + '/kick')
+      .set('Authorization', adminAuth)
+      .expect(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  test('POST /admin/api/players/:id/kick returns 400 for nonexistent', async () => {
+    await request.post('/admin/api/players/no-such-player/kick').set('Authorization', adminAuth).expect(400);
+  });
+
+  test('POST /admin/api/games/:id/end ends an active game', async () => {
+    const { authHeader } = await registerPlayer('end-game-p1');
+    const gameId = await createGame(authHeader);
+    const res = await request
+      .post('/admin/api/games/' + gameId + '/end')
+      .set('Authorization', adminAuth)
+      .expect(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  test('POST /admin/api/games/:id/end returns 400 for nonexistent', async () => {
+    await request.post('/admin/api/games/no-such-game/end').set('Authorization', adminAuth).expect(400);
+  });
+
+  test('POST /admin/api/games/:id/end returns 400 for already-finished game', async () => {
+    const { authHeader } = await registerPlayer('end-game-p2');
+    const gameId = await createGame(authHeader);
+    await request
+      .post('/admin/api/games/' + gameId + '/end')
+      .set('Authorization', adminAuth)
+      .expect(200);
+    await request
+      .post('/admin/api/games/' + gameId + '/end')
+      .set('Authorization', adminAuth)
+      .expect(400);
+  });
+});
+
+describe('Rate limiting', () => {
+  test('checkRateLimit returns true initially', () => {
+    expect(game.checkRateLimit('rate-test-player')).toBe(true);
+  });
+
+  test('checkRateLimit returns false after many requests', () => {
+    const pid = 'rate-test-spam';
+    for (let i = 0; i < 100; i++) game.checkRateLimit(pid);
+    expect(game.checkRateLimit(pid)).toBe(false);
+  });
+});
+
+describe('Move validation', () => {
+  test('POST /games/:id/move rejects invalid square format', async () => {
+    const { authHeader } = await registerPlayer('move-inv-sq');
+    const gameId = await createGame(authHeader);
+    const p2 = await registerPlayer('move-inv-sq-2');
+    await joinGame(gameId, p2.authHeader);
+    const res = await makeMove(gameId, authHeader, 'e9', 'e5');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/Invalid|square|format/i);
+  });
+});
