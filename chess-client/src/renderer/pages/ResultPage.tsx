@@ -30,7 +30,7 @@ export default function ResultPage() {
         navigate('/lobby');
       });
     return () => logger.info('ResultPage unmounting');
-  }, []);
+  }, [gameId]);
   const [rematching, setRematching] = useState(false);
 
   let outcomeText = t('result.draw');

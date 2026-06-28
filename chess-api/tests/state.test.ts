@@ -94,6 +94,18 @@ describe('state.ts', () => {
       state.persistGame('nonexistent');
       expect(mockSaveGame).not.toHaveBeenCalled();
     });
+
+    test('multiple rapid calls do not throw', () => {
+      mockIsRedisEnabled.mockReturnValue(true);
+      const g = makeGame('g1');
+      state.games.set('g1', g);
+      expect(() => {
+        state.persistGame('g1');
+        state.persistGame('g1');
+        state.persistGame('g1');
+      }).not.toThrow();
+      expect(mockSaveGame).toHaveBeenCalledTimes(3);
+    });
   });
 
   describe('persistGameAndPublish', () => {
@@ -174,6 +186,77 @@ describe('state.ts', () => {
       expect(state.playerGameIndex.get('p1')).toEqual(new Set(['g1', 'g2']));
       expect(state.playerGameIndex.get('p2')).toEqual(new Set(['g1']));
       expect(state.playerGameIndex.get('p3')).toEqual(new Set(['g2']));
+    });
+  });
+
+  describe('syncGamesFromRedis edge cases', () => {
+    test('handles empty result from getAllGames', async () => {
+      mockIsRedisEnabled.mockReturnValue(true);
+      mockGetAllGames.mockResolvedValue(new Map());
+      await state.syncGamesFromRedis();
+      expect(state.games.size).toBe(0);
+    });
+
+    test('handles getAllGames throwing', async () => {
+      mockIsRedisEnabled.mockReturnValue(true);
+      mockGetAllGames.mockRejectedValue(new Error('Redis connection failed'));
+      /* Should not throw — catch inside syncGamesFromRedis handles it */
+      await expect(state.syncGamesFromRedis()).resolves.toBeUndefined();
+      expect(state.games.size).toBe(0);
+    });
+
+    test('handles non-iterable return from getAllGames', async () => {
+      mockIsRedisEnabled.mockReturnValue(true);
+      mockGetAllGames.mockResolvedValue(undefined);
+      /* Should not throw — undefined is not iterable but caught by try/catch */
+      await expect(state.syncGamesFromRedis()).resolves.toBeUndefined();
+    });
+  });
+
+  describe('Redis reconnection', () => {
+    test('persistGame works after simulated disconnect-reconnect', () => {
+      /* Simulate Redis connected: save works */
+      mockIsRedisEnabled.mockReturnValue(true);
+      mockSaveGame.mockResolvedValue(undefined);
+      const g = makeGame('g_recon');
+      state.games.set('g_recon', g);
+      state.persistGame('g_recon');
+      expect(mockSaveGame).toHaveBeenCalledWith('g_recon', g);
+
+      /* Simulate disconnect: saveGame throws */
+      mockSaveGame.mockRejectedValue(new Error('Redis connection lost'));
+      g.status = 'active';
+      state.persistGame('g_recon');
+      /* Should not throw — persistGame catches Redis errors */
+
+      /* Simulate reconnect: save works again */
+      mockSaveGame.mockResolvedValue(undefined);
+      g.status = 'checkmate';
+      state.persistGame('g_recon');
+      expect(mockSaveGame).toHaveBeenCalledWith('g_recon', g);
+    });
+
+    test('syncGamesFromRedis works after simulated disconnect-reconnect', async () => {
+      /* Simulate Redis connected: sync works */
+      mockIsRedisEnabled.mockReturnValue(true);
+      const remote = new Map([['g1', makeGame('g1')]]);
+      mockGetAllGames.mockResolvedValue(remote);
+      await state.syncGamesFromRedis();
+      expect(state.games.size).toBe(1);
+
+      /* Simulate disconnect: sync catches error */
+      mockGetAllGames.mockRejectedValue(new Error('Connection lost'));
+      state.games.clear();
+      await state.syncGamesFromRedis();
+      expect(state.games.size).toBe(0);
+      /* In-memory state preserved (games was already cleared by test) */
+
+      /* Simulate reconnect: sync works again */
+      const remote2 = new Map([['g2', makeGame('g2')]]);
+      mockGetAllGames.mockResolvedValue(remote2);
+      await state.syncGamesFromRedis();
+      expect(state.games.size).toBe(1);
+      expect(state.games.has('g2')).toBe(true);
     });
   });
 

@@ -2,7 +2,7 @@ import * as db from './db.js';
 import logger from './logger.js';
 import type { Color, GameState } from './types.js';
 
-function calculateElo(ratingA: number, ratingB: number, scoreA: number): [number, number] {
+export function calculateElo(ratingA: number, ratingB: number, scoreA: number): [number, number] {
   const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
   const expectedB = 1 - expectedA;
   const k = 32; // Standard Elo K-factor for chess

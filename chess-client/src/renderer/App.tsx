@@ -186,20 +186,26 @@ export default function App() {
           store.set('incomingRequests', r.incoming);
           store.set('outgoingRequests', r.outgoing);
         })
-        .catch(() => {});
+        .catch((err) => {
+          logger.error('Failed to refresh friend requests after friend request', err);
+        });
     });
     const unsubFriendRequestAccepted = socketManager.onFriendRequestAccepted((msg) => {
       logger.info('Friend request accepted', { by: msg.byDisplayName });
       store.toast(t('friends.friendRequestAccepted', { name: msg.byDisplayName }), 'info');
       getFriends()
         .then((f) => store.set('friends', f))
-        .catch(() => {});
+        .catch((err) => {
+          logger.error('Failed to refresh friends list after friend request accepted', err);
+        });
       getFriendRequests()
         .then((r) => {
           store.set('incomingRequests', r.incoming);
           store.set('outgoingRequests', r.outgoing);
         })
-        .catch(() => {});
+        .catch((err) => {
+          logger.error('Failed to refresh friend requests after friend request accepted', err);
+        });
     });
     const unsubFriendRequestDeclined = socketManager.onFriendRequestDeclined((msg) => {
       logger.info('Friend request declined', { by: msg.byDisplayName });
@@ -209,14 +215,18 @@ export default function App() {
           store.set('incomingRequests', r.incoming);
           store.set('outgoingRequests', r.outgoing);
         })
-        .catch(() => {});
+        .catch((err) => {
+          logger.error('Failed to refresh friend requests after friend request declined', err);
+        });
     });
     const unsubFriendRemoved = socketManager.onFriendRemoved((msg) => {
       logger.info('Friend removed', { by: msg.byDisplayName });
       store.toast(t('friends.removedBy', { name: msg.byDisplayName }), 'info');
       getFriends()
         .then((f) => store.set('friends', f))
-        .catch(() => {});
+        .catch((err) => {
+          logger.error('Failed to refresh friends list after friend removed', err);
+        });
     });
     const unsubChallenge = socketManager.onChallenge((msg) => {
       logger.info('Challenge received', {

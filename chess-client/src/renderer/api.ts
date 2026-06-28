@@ -15,7 +15,15 @@
  * function are already excellent.
  */
 
-import type { GameState, LegalMoveHint, PieceType, FriendInfo, FriendRequestInfo } from '../types';
+import type {
+  GameState,
+  LegalMoveHint,
+  PieceType,
+  FriendInfo,
+  FriendRequestInfo,
+  TournamentData,
+  ArchivedGame,
+} from '../types';
 import { store } from './store';
 import logger from './logger';
 
@@ -237,6 +245,7 @@ export async function getArchivedGames(params: {
   status?: string;
   from?: number;
   to?: number;
+  signal?: AbortSignal;
 }): Promise<{ games: ArchivedGame[]; total: number; page: number; limit: number }> {
   logger.info('getArchivedGames called', params);
   const q = new URLSearchParams();
@@ -246,61 +255,61 @@ export async function getArchivedGames(params: {
   if (params.status) q.set('status', params.status);
   if (params.from) q.set('from', String(params.from));
   if (params.to) q.set('to', String(params.to));
-  return request('/games/archive?' + q.toString());
+  return request('/games/archive?' + q.toString(), params.signal ? { signal: params.signal } : undefined);
 }
 
-export async function getArchivedGame(gameId: string): Promise<unknown> {
+export async function getArchivedGame(gameId: string): Promise<ArchivedGame> {
   logger.info('getArchivedGame called', { gameId });
   return request('/games/archive/' + encodeURIComponent(gameId));
 }
 
 /* ─── Tournaments ─── */
 
-export async function createTournament(name: string, maxPlayers: number, isPrivate?: boolean): Promise<unknown> {
+export async function createTournament(name: string, maxPlayers: number, isPrivate?: boolean): Promise<TournamentData> {
   return request('/tournaments', {
     method: 'POST',
     body: JSON.stringify({ name, maxPlayers, isPrivate }),
   });
 }
 
-export async function getTournaments(): Promise<unknown[]> {
+export async function getTournaments(): Promise<TournamentData[]> {
   return request('/tournaments');
 }
 
-export async function getTournament(id: string): Promise<unknown> {
+export async function getTournament(id: string): Promise<TournamentData> {
   return request('/tournaments/' + encodeURIComponent(id));
 }
 
-export async function joinTournament(id: string): Promise<unknown> {
+export async function joinTournament(id: string): Promise<TournamentData> {
   return request('/tournaments/' + encodeURIComponent(id) + '/join', { method: 'POST' });
 }
 
-export async function joinTournamentByCode(code: string): Promise<unknown> {
+export async function joinTournamentByCode(code: string): Promise<TournamentData> {
   return request('/tournaments/join-by-code', {
     method: 'POST',
     body: JSON.stringify({ code }),
   });
 }
 
-export async function leaveTournament(id: string): Promise<unknown> {
+export async function leaveTournament(id: string): Promise<TournamentData> {
   return request('/tournaments/' + encodeURIComponent(id) + '/leave', { method: 'POST' });
 }
 
 export async function updateTournament(
   id: string,
   data: { name?: string; maxPlayers?: number; isPrivate?: boolean },
-): Promise<unknown> {
+): Promise<TournamentData> {
   return request('/tournaments/' + encodeURIComponent(id), {
     method: 'PUT',
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteTournament(id: string): Promise<unknown> {
+export async function deleteTournament(id: string): Promise<TournamentData> {
   return request('/tournaments/' + encodeURIComponent(id), { method: 'DELETE' });
 }
 
-export async function startTournament(id: string): Promise<unknown> {
+export async function startTournament(id: string): Promise<TournamentData> {
   return request('/tournaments/' + encodeURIComponent(id) + '/start', { method: 'POST' });
 }
 
@@ -609,23 +618,6 @@ export async function deleteAvatar(): Promise<{ success: true }> {
 }
 
 /* ─── Player Profiles ─── */
-
-export interface ArchivedGame {
-  id: string;
-  white_display_name: string;
-  black_display_name: string;
-  white_player_id: string;
-  black_player_id: string;
-  played_at: number;
-  status: string;
-  reason: string | null;
-  winner: string | null;
-  result: string;
-  time_control: string;
-  move_history: string;
-  board_history: string;
-  pgn: string | null;
-}
 
 export interface PlayerProfile {
   id: string;

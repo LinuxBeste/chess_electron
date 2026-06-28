@@ -16,6 +16,7 @@ interface ChatMessage {
   playerId: string;
   username: string;
   text: string;
+  timestamp: number;
 }
 
 interface ChatProps {
@@ -82,10 +83,10 @@ const Chat = memo(function Chat({ gameId }: ChatProps) {
         {t('chat.title')}
       </h3>
       <div ref={listRef} className="sidebar-panel" style={{ minHeight: 60, maxHeight: 150, fontSize: 12, padding: 8 }}>
-        {messages.map((msg, i) => {
+        {messages.map((msg) => {
           const isMe = msg.playerId === store.get('playerId');
           return (
-            <div key={msg.playerId + '-' + i} className={`chat-msg ${isMe ? 'chat-msg-self' : ''}`}>
+            <div key={msg.playerId + '-' + msg.timestamp} className={`chat-msg ${isMe ? 'chat-msg-self' : ''}`}>
               <span className="chat-name" style={{ color: isMe ? '#4f8ef7' : '#888' }}>
                 {isMe ? t('chat.you') : msg.username}
               </span>

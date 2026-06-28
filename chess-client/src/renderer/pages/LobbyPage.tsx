@@ -18,11 +18,13 @@ import { avatarSrc } from '../api';
 import { socketManager } from '../socket';
 import type { GameListUpdateMessage } from '../socket';
 import PlayerProfileDialog from '../components/PlayerProfileDialog';
+import { SkeletonLobby } from '../components/Skeleton';
 
 export default function LobbyPage() {
   const navigate = useNavigate();
   const [openGames, setOpenGames] = useState<GameState[]>([]);
   const [liveGames, setLiveGames] = useState<GameState[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [statusMsg, setStatusMsg] = useState('');
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
@@ -43,6 +45,8 @@ export default function LobbyPage() {
       } catch {
         logger.warn('Initial fetch failed: server unreachable');
         setStatusMsg(t('lobby.cannotConnect'));
+      } finally {
+        setLoading(false);
       }
     }
     initialFetch();
@@ -130,6 +134,10 @@ export default function LobbyPage() {
 
   const myId = store.get('playerId');
   const offline = store.get('offline');
+
+  if (loading && !offline) {
+    return <SkeletonLobby />;
+  }
 
   return (
     <div className="lobby-layout">

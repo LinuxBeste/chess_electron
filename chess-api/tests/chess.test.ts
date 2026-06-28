@@ -3504,12 +3504,12 @@ describe('getGameStatus — edge cases', () => {
   test('game status is active when not in check and has moves', () => {
     const board = boardFromFenLike([
       'k.......',
+      'pppppppp',
       '........',
       '........',
       '........',
       '........',
-      '........',
-      '........',
+      'PPPPPPPP',
       'K.......',
     ]);
     const { status } = chess.getGameStatus(board, 'white', null, {
@@ -3574,12 +3574,12 @@ describe('50-move rule', () => {
   test('getGameStatus returns draw when halfMoveClock >= 100', () => {
     const board = boardFromFenLike([
       'k.......',
+      'pppppppp',
       '........',
       '........',
       '........',
       '........',
-      '........',
-      '........',
+      'PPPPPPPP',
       'K.......',
     ]);
     const { status } = chess.getGameStatus(
@@ -3598,12 +3598,12 @@ describe('50-move rule', () => {
   test('getGameStatus returns active when halfMoveClock < 100', () => {
     const board = boardFromFenLike([
       'k.......',
+      'pppppppp',
       '........',
       '........',
       '........',
       '........',
-      '........',
-      '........',
+      'PPPPPPPP',
       'K.......',
     ]);
     const { status } = chess.getGameStatus(
@@ -3622,6 +3622,143 @@ describe('50-move rule', () => {
   test('getGameStatus ignores halfMoveClock when not provided', () => {
     const board = boardFromFenLike([
       'k.......',
+      'pppppppp',
+      '........',
+      '........',
+      '........',
+      '........',
+      'PPPPPPPP',
+      'K.......',
+    ]);
+    const { status } = chess.getGameStatus(board, 'white', null, {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    });
+    expect(status).toBe('active');
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Insufficient material                                               */
+/* ------------------------------------------------------------------ */
+
+describe('insufficient material', () => {
+  test('K vs K is a draw', () => {
+    const board = boardFromFenLike([
+      'k.......',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      'K.......',
+    ]);
+    expect(chess.hasInsufficientMaterial(board)).toBe(true);
+  });
+
+  test('K+B vs K is a draw', () => {
+    const board = boardFromFenLike([
+      'k.......',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      'KB......',
+    ]);
+    expect(chess.hasInsufficientMaterial(board)).toBe(true);
+  });
+
+  test('K+N vs K is a draw', () => {
+    const board = boardFromFenLike([
+      'k.......',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      'KN......',
+    ]);
+    expect(chess.hasInsufficientMaterial(board)).toBe(true);
+  });
+
+  test('K+B vs K+B same color is a draw', () => {
+    const board = boardFromFenLike([
+      'k...b...',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '...B.K..',
+    ]);
+    /* Both bishops on same-colored squares (rank+file even) */
+    expect(chess.hasInsufficientMaterial(board)).toBe(true);
+  });
+
+  test('K+R vs K is sufficient material', () => {
+    const board = boardFromFenLike([
+      'k.......',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      'KR......',
+    ]);
+    expect(chess.hasInsufficientMaterial(board)).toBe(false);
+  });
+
+  test('K+Q vs K is sufficient material', () => {
+    const board = boardFromFenLike([
+      'k.......',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      'KQ......',
+    ]);
+    expect(chess.hasInsufficientMaterial(board)).toBe(false);
+  });
+
+  test('K+pawn vs K is sufficient material', () => {
+    const board = boardFromFenLike([
+      'k.......',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      'KP......',
+    ]);
+    expect(chess.hasInsufficientMaterial(board)).toBe(false);
+  });
+
+  test('K+B+B vs K is sufficient material', () => {
+    const board = boardFromFenLike([
+      'k.......',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      'KB.B....',
+    ]);
+    expect(chess.hasInsufficientMaterial(board)).toBe(false);
+  });
+
+  test('getGameStatus returns draw for K vs K', () => {
+    const board = boardFromFenLike([
+      'k.......',
       '........',
       '........',
       '........',
@@ -3634,6 +3771,6 @@ describe('50-move rule', () => {
       white: { kingside: false, queenside: false },
       black: { kingside: false, queenside: false },
     });
-    expect(status).toBe('active');
+    expect(status).toBe('draw');
   });
 });

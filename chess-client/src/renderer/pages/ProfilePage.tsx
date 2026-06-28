@@ -5,7 +5,9 @@ import * as api from '../api';
 import { store } from '../store';
 import { t } from '../translate';
 import type { ApiError } from '../api';
+import type { ArchivedGame } from '../../types';
 import { ArrowLeft, Crown } from 'lucide-react';
+import { Skeleton, SkeletonAvatar, SkeletonCard, SkeletonLine } from '../components/Skeleton';
 
 function fmtDate(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
@@ -28,7 +30,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState<api.PlayerProfile | null>(null);
-  const [games, setGames] = useState<api.ArchivedGame[]>([]);
+  const [games, setGames] = useState<ArchivedGame[]>([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingGames, setLoadingGames] = useState(true);
   const [profileError, setProfileError] = useState('');
@@ -125,17 +127,11 @@ export default function ProfilePage() {
   if (loadingProfile) {
     return (
       <div className="profile-page">
-        <div className="shimmer" style={{ height: 140, borderRadius: 12, marginTop: 24 }} />
-        <div
-          className="shimmer"
-          style={{ height: 80, borderRadius: 12, marginTop: -40, marginLeft: 24, marginRight: 24 }}
-        />
-        <div
-          className="shimmer"
-          style={{ height: 16, width: '40%', borderRadius: 6, marginTop: 16, marginLeft: 'auto', marginRight: 'auto' }}
-        />
-        <div className="shimmer" style={{ height: 60, borderRadius: 12, marginTop: 16 }} />
-        <div className="shimmer" style={{ height: 200, borderRadius: 12, marginTop: 16 }} />
+        <SkeletonCard width="100%" height={140} style={{ marginTop: 24 }} />
+        <SkeletonAvatar size={80} />
+        <SkeletonLine width="40%" style={{ marginTop: 16, marginLeft: 'auto', marginRight: 'auto' }} />
+        <Skeleton width="100%" height={60} borderRadius="var(--radius)" style={{ marginTop: 16 }} />
+        <SkeletonCard width="100%" height={200} style={{ marginTop: 16 }} />
       </div>
     );
   }
@@ -380,7 +376,7 @@ export default function ProfilePage() {
               )}
             </div>
             {loadingGames ? (
-              <div className="shimmer" style={{ height: 180, borderRadius: 8 }} />
+              <SkeletonCard width="100%" height={180} />
             ) : archiveError ? (
               <p style={{ fontSize: 12, color: '#888', textAlign: 'center', padding: 20 }}>{archiveError}</p>
             ) : games.length === 0 ? (

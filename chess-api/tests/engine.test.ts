@@ -180,6 +180,29 @@ describe('EngineManager', () => {
     await expect(movePromise).rejects.toThrow();
   });
 
+  test('process crash with signal during getBestMove rejects', async () => {
+    await engineManager.startInstance('test-signal', 1);
+    const exitHandler = mockOn.mock.calls.find((c: unknown[]) => c[0] === 'exit');
+    expect(exitHandler).toBeDefined();
+
+    const movePromise = engineManager.getBestMove('test-signal', 500);
+    exitHandler![1](null, 'SIGKILL');
+
+    await expect(movePromise).rejects.toThrow();
+    expect(engineManager.hasInstance('test-signal')).toBe(false);
+  });
+
+  test('error event during getBestMove rejects', async () => {
+    await engineManager.startInstance('test-error', 1);
+    const errorHandler = mockOn.mock.calls.find((c: unknown[]) => c[0] === 'error');
+    expect(errorHandler).toBeDefined();
+
+    const movePromise = engineManager.getBestMove('test-error', 500);
+    errorHandler![1](new Error('process spawn failed'));
+
+    await expect(movePromise).rejects.toThrow();
+  });
+
   test('send writes to stdin', async () => {
     await engineManager.startInstance('test-send', 1);
     mockWrite.mockClear();

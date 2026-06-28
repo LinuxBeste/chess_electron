@@ -17,7 +17,8 @@ interface EngineInstance {
   uciok: boolean;
   ready: boolean;
   lastScore: number;
-  lastScoreFromWhite: boolean;
+  waitTimer: ReturnType<typeof setTimeout> | null;
+  settled: boolean;
 }
 
 class EngineManager {
@@ -55,7 +56,8 @@ class EngineManager {
         uciok: false,
         ready: false,
         lastScore: 0,
-        lastScoreFromWhite: true,
+        waitTimer: null,
+        settled: false,
       };
 
       proc.stdout!.on('data', (data: Buffer) => {
@@ -77,7 +79,6 @@ class EngineManager {
             } else {
               inst.lastScore = parseInt(scoreMatch[2], 10);
             }
-            inst.lastScoreFromWhite = true;
           }
 
           const bestMatch = trimmed.match(/^bestmove\s+(\S+)/);
@@ -92,10 +93,25 @@ class EngineManager {
         logger.debug('Engine stderr:', data.toString().trim());
       });
 
+      const origResolve = resolve;
+      const origReject = reject;
+      const safeReject = (err: Error) => {
+        if (!inst.settled) {
+          inst.settled = true;
+          origReject(err);
+        }
+      };
+      const safeResolve = () => {
+        if (!inst.settled) {
+          inst.settled = true;
+          origResolve();
+        }
+      };
+
       proc.on('error', (err) => {
         logger.error('Engine process error for game ' + gameId, err);
         rejectAndCleanup(inst, err);
-        reject(err);
+        safeReject(err);
       });
 
       proc.on('exit', (code, signal) => {
@@ -103,7 +119,7 @@ class EngineManager {
         const err = new Error('Engine process exited (code=' + code + ' signal=' + signal + ')');
         rejectAndCleanup(inst, err);
         this.instances.delete(gameId);
-        reject(err);
+        safeReject(err);
       });
 
       this.instances.set(gameId, inst);
@@ -111,25 +127,30 @@ class EngineManager {
       this.send(gameId, 'uci');
       this.waitForCondition(gameId, () => inst.uciok)
         .then(() => {
+          if (inst.settled) return;
           const level = Math.max(1, Math.min(20, skillLevel || 1)); // Clamp skill level 1-20
           this.send(gameId, `setoption name Skill Level value ${level}`);
           this.send(gameId, 'isready');
           return this.waitForCondition(gameId, () => inst.ready);
         })
         .then(() => {
+          if (inst.settled) return;
           logger.info('Engine ready for game', gameId);
-          resolve();
+          safeResolve();
         })
-        .catch(reject);
+        .catch((err) => {
+          safeReject(err);
+        });
     });
   }
 
   waitForCondition(gameId: string, condition: () => boolean): Promise<void> {
     return new Promise((resolve) => {
       const check = () => {
-        if (!this.instances.has(gameId)) return;
+        const inst = this.instances.get(gameId);
+        if (!inst || inst.settled) return;
         if (condition()) return resolve();
-        setTimeout(check, 100);
+        inst.waitTimer = setTimeout(check, 100);
       };
       check();
     });
@@ -196,6 +217,8 @@ class EngineManager {
   destroyInstance(gameId: string): void {
     const inst = this.instances.get(gameId);
     if (inst) {
+      if (inst.waitTimer) clearTimeout(inst.waitTimer);
+      inst.settled = true;
       try {
         inst.process.kill();
       } catch (err) {

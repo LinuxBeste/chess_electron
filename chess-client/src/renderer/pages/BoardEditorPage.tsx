@@ -93,6 +93,21 @@ export default function BoardEditorPage() {
   const [fenError, setFenError] = useState('');
   const [copied, setCopied] = useState(false);
 
+  function hasBothKings(): boolean {
+    let whiteKing = false;
+    let blackKing = false;
+    for (let r = 0; r < 8; r++) {
+      for (let f = 0; f < 8; f++) {
+        const p = board[r][f];
+        if (p) {
+          if (p.type === 'king' && p.color === 'white') whiteKing = true;
+          if (p.type === 'king' && p.color === 'black') blackKing = true;
+        }
+      }
+    }
+    return whiteKing && blackKing;
+  }
+
   const handleSquareClick = useCallback(
     (square: string) => {
       const [r, f] = squareToIndices(square);
@@ -152,6 +167,10 @@ export default function BoardEditorPage() {
   }
 
   function handlePlayFromPosition() {
+    if (!hasBothKings()) {
+      setFenError(t('boardEditor.needBothKings'));
+      return;
+    }
     const fen = boardToFen(board);
     navigate(`/local?fen=${encodeURIComponent(fen)}`);
   }

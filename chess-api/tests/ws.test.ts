@@ -135,6 +135,95 @@ describe('WebSocket connection', () => {
     const code = await wsWaitForClose(ws);
     expect(code).toBe(4001);
   });
+
+  test('connects with single protocol header (no comma)', async () => {
+    const p = await registerPlayer('ws_single_proto');
+    const ws = await new Promise<WebSocket>((resolve, reject) => {
+      const ws = new WebSocket(`ws://localhost:${port}`, [p.token]);
+      const timer = setTimeout(() => reject(new Error('WS connect timeout')), 5000);
+      ws.on('open', () => {
+        clearTimeout(timer);
+        resolve(ws);
+      });
+      ws.on('error', (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+    expect(ws.readyState).toBe(WebSocket.OPEN);
+    ws.close();
+  });
+
+  test('connects with extra protocol values after token', async () => {
+    const p = await registerPlayer('ws_extra_proto');
+    const ws = await new Promise<WebSocket>((resolve, reject) => {
+      const ws = new WebSocket(`ws://localhost:${port}`, [p.token, 'extra1', 'extra2']);
+      const timer = setTimeout(() => reject(new Error('WS connect timeout')), 5000);
+      ws.on('open', () => {
+        clearTimeout(timer);
+        resolve(ws);
+      });
+      ws.on('error', (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+    expect(ws.readyState).toBe(WebSocket.OPEN);
+    ws.close();
+  });
+
+  test('two connections for same player both receive messages', async () => {
+    const p = await registerPlayer('ws_dual');
+
+    const ws1 = await wsConnect(p.token);
+    const ws2 = await wsConnect(p.token);
+
+    /* Both connections should be open */
+    expect(ws1.readyState).toBe(WebSocket.OPEN);
+    expect(ws2.readyState).toBe(WebSocket.OPEN);
+
+    /* Create a second player and send a challenge */
+    const p2 = await registerPlayer('ws_dual_2');
+    const ws2conn = await wsConnect(p2.token);
+
+    const gameRes = await request.post('/games').set('Authorization', p.authHeader).expect(201);
+    const gameId = gameRes.body.id;
+
+    /* Both connections should receive the challenge */
+    const msg1Promise = waitForMessage(ws1, 'challenge');
+    const msg2Promise = waitForMessage(ws2, 'challenge');
+
+    /* p2 challenges p1 */
+    wsSend(ws2conn, { type: 'challenge', toPlayerId: p.playerId, gameId });
+
+    const msg1 = await msg1Promise;
+    const msg2 = await msg2Promise;
+
+    expect(msg1.fromPlayerId).toBe(p2.playerId);
+    expect(msg1.gameId).toBe(gameId);
+    expect(msg2.fromPlayerId).toBe(p2.playerId);
+    expect(msg2.gameId).toBe(gameId);
+
+    ws1.close();
+    ws2.close();
+    ws2conn.close();
+  });
+});
+
+describe('WebSocket rate limiting', () => {
+  test('rate limits after 10 messages in one second', async () => {
+    const p = await registerPlayer('ws_rate');
+    const ws = await wsConnect(p.token);
+
+    /* Send 11 messages as fast as possible — 11th should be rate limited */
+    for (let i = 0; i < 11; i++) {
+      wsSend(ws, { type: 'ping' });
+    }
+
+    const errorMsg = await waitForMessage(ws, 'error');
+    expect(errorMsg.error).toMatch(/rate limited/i);
+    ws.close();
+  });
 });
 
 describe('WebSocket spectate', () => {

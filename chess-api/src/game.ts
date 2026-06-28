@@ -373,7 +373,7 @@ export async function createBotGame(
   return { success: true, game: await enrichNames(game) };
 }
 
-async function triggerBotMove(gameId: string): Promise<void> {
+export async function triggerBotMove(gameId: string): Promise<void> {
   const game = games.get(gameId);
   if (!game || game.status !== 'active') return;
 

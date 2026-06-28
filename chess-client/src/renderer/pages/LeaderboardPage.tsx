@@ -5,6 +5,7 @@ import { t } from '../translate';
 import { store } from '../store';
 import PlayerProfileDialog from '../components/PlayerProfileDialog';
 import { Trophy, Medal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SkeletonLine } from '../components/Skeleton';
 
 interface LeaderboardEntry {
   playerId: string;
@@ -58,7 +59,11 @@ export default function LeaderboardPage() {
       <h2 style={{ margin: '24px 0 16px', fontSize: 20, fontWeight: 600 }}>{t('stats.title')}</h2>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>{t('common.loading')}</div>
+        <div style={{ padding: 16 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonLine key={i} style={{ marginBottom: 12 }} />
+          ))}
+        </div>
       ) : entries.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>{t('stats.empty')}</div>
       ) : (

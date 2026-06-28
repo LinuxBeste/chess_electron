@@ -332,6 +332,7 @@ export type TranslationKeys = {
     importFen: string;
     fenPlaceholder: string;
     invalidFen: string;
+    needBothKings: string;
     play: string;
     piece: string;
     color: string;
@@ -917,6 +918,7 @@ export const en: TranslationKeys = {
     importFen: 'Import FEN',
     fenPlaceholder: 'Paste FEN string...',
     invalidFen: 'Invalid FEN',
+    needBothKings: 'Both kings must be placed on the board',
     play: 'Play from Position',
     piece: 'Piece',
     color: 'Color',
@@ -1503,6 +1505,7 @@ export const de: TranslationKeys = {
     importFen: 'FEN importieren',
     fenPlaceholder: 'FEN-String einfügen...',
     invalidFen: 'Ungültiges FEN',
+    needBothKings: 'Beide Könige müssen auf dem Brett platziert sein',
     play: 'Von Position spielen',
     piece: 'Figur',
     color: 'Farbe',

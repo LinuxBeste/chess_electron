@@ -50,7 +50,10 @@ export function pageSchema(defaultVal = 1) {
     .string()
     .optional()
     .default(String(defaultVal))
-    .transform((v) => Math.max(1, parseInt(v, 10) || defaultVal));
+    .transform((v) => {
+      const n = parseInt(v, 10);
+      return Math.max(1, isNaN(n) ? defaultVal : n);
+    });
 }
 
 export function limitSchema(defaultVal = 20, maxVal = 100) {
@@ -58,7 +61,10 @@ export function limitSchema(defaultVal = 20, maxVal = 100) {
     .string()
     .optional()
     .default(String(defaultVal))
-    .transform((v) => Math.min(maxVal, Math.max(1, parseInt(v, 10) || defaultVal)));
+    .transform((v) => {
+      const n = parseInt(v, 10);
+      return Math.min(maxVal, Math.max(1, isNaN(n) ? defaultVal : n));
+    });
 }
 
 export const statsValueSchema = z.number().int('Stats must be integers').nonnegative('Stats cannot be negative');

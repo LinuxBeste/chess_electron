@@ -58,6 +58,24 @@ const Board = memo(function Board({
     return () => ro.disconnect();
   }, []);
 
+  /* Cancel drag on window blur/resize to prevent stale drag state. */
+  const dragFromRef = useRef<string | null>(null);
+  dragFromRef.current = dragFrom;
+  useEffect(() => {
+    const cancelDrag = () => {
+      if (dragFromRef.current) {
+        setDragFrom(null);
+        setHoverSquare(null);
+      }
+    };
+    window.addEventListener('blur', cancelDrag);
+    window.addEventListener('resize', cancelDrag);
+    return () => {
+      window.removeEventListener('blur', cancelDrag);
+      window.removeEventListener('resize', cancelDrag);
+    };
+  }, []);
+
   /* Log legal hints count when they change */
   useEffect(() => {
     if (legalHints.length > 0) {
@@ -72,9 +90,9 @@ const Board = memo(function Board({
   const sqSize = boardSize / 8;
   const boardRectRef = useRef<DOMRect | null>(null);
   const _rafRef = useRef<number | null>(null);
-  const alwaysBottom = useRef(getSetting('alwaysWhiteBottom')).current;
-  const showCoordinates = useRef(getSetting('showCoordinates')).current;
-  const highlightLastMove = useRef(getSetting('highlightLastMove')).current;
+  const alwaysBottom = getSetting('alwaysWhiteBottom');
+  const showCoordinates = getSetting('showCoordinates');
+  const highlightLastMove = getSetting('highlightLastMove');
   /* Perspective flip: when flipped, display rows/cols invert but logical board stays fixed */
   const isWhiteBottom = alwaysBottom ? true : playerColor === 'white';
 

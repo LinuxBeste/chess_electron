@@ -67,25 +67,33 @@ export default function LocalGamePage() {
     if (gameOver) return;
     const interval = setInterval(() => {
       if (turnRef.current === 'white') {
+        let timedOut = false;
         setWhiteTime((t) => {
           const next = t - 50;
           if (next <= 0) {
-            logger.info('Timeout: black wins');
-            setGameOver({ status: 'timeout', winner: 'black' });
+            timedOut = true;
             return 0;
           }
           return next;
         });
+        if (timedOut) {
+          logger.info('Timeout: black wins');
+          setGameOver({ status: 'timeout', winner: 'black' });
+        }
       } else {
+        let timedOut = false;
         setBlackTime((t) => {
           const next = t - 50;
           if (next <= 0) {
-            logger.info('Timeout: white wins');
-            setGameOver({ status: 'timeout', winner: 'white' });
+            timedOut = true;
             return 0;
           }
           return next;
         });
+        if (timedOut) {
+          logger.info('Timeout: white wins');
+          setGameOver({ status: 'timeout', winner: 'white' });
+        }
       }
     }, 50);
     return () => clearInterval(interval);

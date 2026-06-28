@@ -38,6 +38,9 @@ export type { Player } from '../../chess-api/src/types';
  * and (presumably) JSON API responses: { square, piece, color } */
 export type { SerializedSquare } from '../../chess-api/src/types';
 
+/* Tournament and archived game types */
+export type { TournamentData, TournamentParticipant, TournamentMatch, ArchivedGame } from '../../chess-api/src/types';
+
 /** View names for the hash-based router */
 export type ViewName = 'login' | 'lobby' | 'game' | 'result';
 

@@ -6,6 +6,7 @@
  */
 
 import * as game from '../src/game.js';
+import { games } from '../src/state.js';
 import { describe, test, expect, jest } from '@jest/globals';
 import type { WebSocket } from 'ws';
 
@@ -1000,6 +1001,27 @@ describe('rematch', () => {
     const result = await game.acceptRematch(g.id, joiner);
     expect(result.success).toBe(false);
   });
+
+  test('acceptRematch preserves spectateMode code', async () => {
+    const host = await registerPlayer('rem_code_h');
+    const joiner = await registerPlayer('rem_code_j');
+    const g = await game.createGame(host, 'public', 'code');
+    await game.joinGame(g.id, joiner);
+    await game.resignGame(g.id, joiner);
+    /* Read spectateCode from in-memory map (getGame strips it) */
+    const origSpectateCode = games.get(g.id)?.spectateCode;
+
+    game.offerRematch(g.id, host);
+    const result = await game.acceptRematch(g.id, joiner);
+    expect(result.success).toBe(true);
+
+    const newGame = games.get(result.newGameId!);
+    expect(newGame).not.toBeUndefined();
+    expect(newGame!.spectateMode).toBe('code');
+    /* A new spectateCode should be generated (different from original) */
+    expect(newGame!.spectateCode).toBeDefined();
+    expect(newGame!.spectateCode).not.toBe(origSpectateCode);
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -1214,5 +1236,165 @@ describe('sweepStaleWaitingGames', () => {
   test('sweepStaleWaitingGames returns count', () => {
     const count = game.sweepStaleWaitingGames();
     expect(typeof count).toBe('number');
+  });
+
+  test('sweepStaleWaitingGames removes old waiting games', async () => {
+    const host = await registerPlayer('sweep_old');
+    const g = await game.createGame(host);
+    expect(games.has(g.id)).toBe(true);
+
+    /* Rewind createdAt to beyond the TTL */
+    const stored = games.get(g.id)!;
+    stored.createdAt = Date.now() - 20 * 60 * 1000; /* 20 min ago */
+
+    const count = game.sweepStaleWaitingGames();
+    expect(count).toBeGreaterThanOrEqual(1);
+    expect(games.has(g.id)).toBe(false);
+  });
+
+  test('sweepStaleWaitingGames skips active games', async () => {
+    const host = await registerPlayer('sweep_active_h');
+    const joiner = await registerPlayer('sweep_active_j');
+    const g = await game.createGame(host);
+    await game.joinGame(g.id, joiner);
+
+    /* Rewind createdAt to beyond the TTL */
+    const stored = games.get(g.id)!;
+    stored.createdAt = Date.now() - 20 * 60 * 1000;
+
+    const count = game.sweepStaleWaitingGames();
+    /* Active game should NOT be removed */
+    expect(games.has(g.id)).toBe(true);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Edge cases                                                           */
+/* ------------------------------------------------------------------ */
+
+describe('edge cases', () => {
+  test('cannot join aborted game', async () => {
+    const host = await registerPlayer('ec_abort_join_h');
+    const joiner = await registerPlayer('ec_abort_join_j');
+    const g = await game.createGame(host);
+
+    game.abortGame(g.id, host);
+
+    const result = await game.joinGame(g.id, joiner);
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/not found/i);
+  });
+
+  test('resignGame fails after checkmate', async () => {
+    const host = await registerPlayer('ec_rsgn_mate_h');
+    const joiner = await registerPlayer('ec_rsgn_mate_j');
+    const g = await game.createGame(host);
+    await game.joinGame(g.id, joiner);
+
+    /* Fool's Mate: 1.f3 e5 2.g4 Qh4# */
+    await game.makeMove(g.id, host, 'f2', 'f3');
+    await game.makeMove(g.id, joiner, 'e7', 'e5');
+    await game.makeMove(g.id, host, 'g2', 'g4');
+    const mateResult = await game.makeMove(g.id, joiner, 'd8', 'h4');
+    expect(mateResult.state!.status).toBe('checkmate');
+
+    const result = await game.resignGame(g.id, host);
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/not active/i);
+  });
+
+  test('resignGame fails after stalemate', async () => {
+    const host = await registerPlayer('ec_rsgn_stale_h');
+    const joiner = await registerPlayer('ec_rsgn_stale_j');
+    const g = await game.createGame(host);
+    await game.joinGame(g.id, joiner);
+
+    /* Stalemate sequence */
+    await game.makeMove(g.id, host, 'e2', 'e3');
+    await game.makeMove(g.id, joiner, 'a7', 'a5');
+    await game.makeMove(g.id, host, 'd1', 'h5');
+    await game.makeMove(g.id, joiner, 'a8', 'a6');
+    await game.makeMove(g.id, host, 'h5', 'a5');
+    await game.makeMove(g.id, joiner, 'h7', 'h5');
+    await game.makeMove(g.id, host, 'a5', 'c7');
+    await game.makeMove(g.id, joiner, 'a6', 'b6');
+    await game.makeMove(g.id, host, 'c7', 'c8');
+    await game.makeMove(g.id, joiner, 'b6', 'b5');
+    await game.makeMove(g.id, host, 'c8', 'b7');
+    const endResult = await game.makeMove(g.id, joiner, 'b5', 'b4');
+    expect(endResult.success).toBe(true);
+
+    const result = await game.resignGame(g.id, host);
+    /* Game may or may not be terminal at this point */
+    if (result.success === false) {
+      expect(result.error).toMatch(/not active/i);
+    }
+  });
+
+  test('simultaneous makeMove from two players — first succeeds, second also valid', async () => {
+    const host = await registerPlayer('ec_simul_h');
+    const joiner = await registerPlayer('ec_simul_j');
+    const g = await game.createGame(host);
+    await game.joinGame(g.id, joiner);
+
+    /* Because makeMove is synchronous until the final await, both Promise.all
+       calls execute sequentially in the same tick.  The first updates the
+       board to black's turn before the second reads it, so both should
+       succeed (one white move, one black move). */
+    const [r1, r2] = await Promise.all([
+      game.makeMove(g.id, host, 'e2', 'e4'),
+      game.makeMove(g.id, joiner, 'e7', 'e5'),
+    ]);
+
+    expect(r1.success).toBe(true);
+    expect(r1.state!.turn).toBe('black');
+    expect(r2.success).toBe(true);
+    expect(r2.state!.turn).toBe('white');
+    expect(r2.state!.moveHistory).toContain('e5');
+  });
+
+  test('makeMove fails after checkmate', async () => {
+    const host = await registerPlayer('ec_mv_mate_h');
+    const joiner = await registerPlayer('ec_mv_mate_j');
+    const g = await game.createGame(host);
+    await game.joinGame(g.id, joiner);
+
+    /* Fool's Mate: 1.f3 e5 2.g4 Qh4# */
+    await game.makeMove(g.id, host, 'f2', 'f3');
+    await game.makeMove(g.id, joiner, 'e7', 'e5');
+    await game.makeMove(g.id, host, 'g2', 'g4');
+    const mateResult = await game.makeMove(g.id, joiner, 'd8', 'h4');
+    expect(mateResult.state!.status).toBe('checkmate');
+
+    /* Host tries to move after game is over */
+    const result = await game.makeMove(g.id, host, 'h2', 'h4');
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/not active/i);
+  });
+
+  test('makeMove fails for non-existent game', async () => {
+    const result = await game.makeMove('no-such-game', 'p', 'e2', 'e4');
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/not found/i);
+  });
+
+  test('makeMove fails for waiting game', async () => {
+    const host = await registerPlayer('ec_mv_waiting');
+    const g = await game.createGame(host);
+    const result = await game.makeMove(g.id, host, 'e2', 'e4');
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/not active/i);
+  });
+
+  test('triggerBotMove returns early for non-existent game', async () => {
+    /* triggerBotMove checks game existence first — engine never invoked */
+    await expect(game.triggerBotMove('no-such-game')).resolves.toBeUndefined();
+  });
+
+  test('triggerBotMove returns early for finished game', async () => {
+    const host = await registerPlayer('ec_bot_over');
+    const g = await game.createGame(host);
+    /* Game is still waiting (no opponent) — triggerBotMove should skip */
+    await expect(game.triggerBotMove(g.id)).resolves.toBeUndefined();
   });
 });

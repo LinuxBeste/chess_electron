@@ -615,13 +615,13 @@ router.post(
   },
 );
 
-router.get('/players/me/active-game', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
+router.get('/players/me/active-game', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
   const gameId = game.getPlayerCurrentGameId(req.player.id);
   if (!gameId) {
     res.json({ game: null });
     return;
   }
-  const g = game.getGame(gameId);
+  const g = await game.getGame(gameId);
   res.json({ game: g ?? null });
 });
 
@@ -676,21 +676,22 @@ router.get('/leaderboard', globalGetLimiter, async (_req: Request, res: Response
 
 /* ─── Move Quality ─── */
 
-router.post('/analysis/move-quality', async (req: Request, res: Response) => {
+router.post('/analysis/move-quality', authMiddleware, rateLimitMiddleware, async (req: Request, res: Response) => {
+  const { fen, move } = req.body;
+  if (typeof fen !== 'string' || typeof move !== 'string') {
+    res.status(400).json({ error: 'FEN and move required' });
+    return;
+  }
+
+  const parsed = chess.fenToBoard(fen);
+  if (!parsed) {
+    res.status(400).json({ error: 'Invalid FEN' });
+    return;
+  }
+
+  const analysisId = uuidv4();
+  let destroyAfter = true;
   try {
-    const { fen, move } = req.body;
-    if (typeof fen !== 'string' || typeof move !== 'string') {
-      res.status(400).json({ error: 'FEN and move required' });
-      return;
-    }
-
-    const parsed = chess.fenToBoard(fen);
-    if (!parsed) {
-      res.status(400).json({ error: 'Invalid FEN' });
-      return;
-    }
-
-    const analysisId = uuidv4();
     await engineManager.startInstance(analysisId, 20);
     engineManager.send(analysisId, `position fen ${fen}`);
     const result = await engineManager.getBestMove(analysisId, 1000);
@@ -704,20 +705,34 @@ router.post('/analysis/move-quality', async (req: Request, res: Response) => {
         engineManager.send(analysisId, `position fen ${fen} moves ${move}`);
         const playedResult = await engineManager.getBestMove(analysisId, 500);
         playedScore = playedResult.score;
-        const scoreDrop = Math.abs(result.score - playedResult.score);
-        if (scoreDrop <= 80) {
+        const isWhiteTurn = parsed.color === 'white';
+        const bestScoreAdjusted = isWhiteTurn ? result.score : -result.score;
+        const playedScoreAdjusted = isWhiteTurn ? playedResult.score : -playedResult.score;
+        const scoreDrop = bestScoreAdjusted - playedScoreAdjusted;
+        if (scoreDrop <= 30) {
           quality = 'good';
-        } else {
+        } else if (scoreDrop <= 80) {
           quality = 'inaccuracy';
+        } else {
+          quality = 'mistake';
         }
       }
     }
     engineManager.destroyInstance(analysisId);
+    destroyAfter = false;
 
     res.json({ bestMove: result.move || null, bestScore: result.score, playedScore, playedMove: move, quality });
   } catch (err) {
     logger.error('Move quality analysis failed: ' + err);
     res.status(500).json({ error: 'Analysis failed' });
+  } finally {
+    if (destroyAfter) {
+      try {
+        engineManager.destroyInstance(analysisId);
+      } catch {
+        /* ok */
+      }
+    }
   }
 });
 

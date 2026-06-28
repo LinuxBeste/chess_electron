@@ -1,37 +1,53 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import logger from '../logger';
 import * as api from '../api';
 import { t } from '../translate';
 import { useNavigate } from 'react-router-dom';
 import { Crown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SkeletonLine } from '../components/Skeleton';
+import type { ArchivedGame } from '../../types';
 
 export default function ArchivePage() {
   const navigate = useNavigate();
-  const [games, setGames] = useState<api.ArchivedGame[]>([]);
+  const [games, setGames] = useState<ArchivedGame[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [filterPlayer, setFilterPlayer] = useState('');
+  const [debouncedFilter, setDebouncedFilter] = useState('');
+  const abortRef = useRef<AbortController | null>(null);
   const limit = 20;
 
   useEffect(() => {
-    load();
-  }, [page, filterPlayer]);
+    const timer = setTimeout(() => setDebouncedFilter(filterPlayer), 300);
+    return () => clearTimeout(timer);
+  }, [filterPlayer]);
 
-  async function load() {
+  useEffect(() => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    load(controller.signal);
+    return () => controller.abort();
+  }, [page, debouncedFilter]);
+
+  async function load(signal: AbortSignal) {
     setLoading(true);
     try {
       const result = await api.getArchivedGames({
         page,
         limit,
-        player: filterPlayer.trim().slice(0, 100) || undefined,
+        player: debouncedFilter.trim().slice(0, 100) || undefined,
+        signal,
       });
+      if (signal.aborted) return;
       setGames(result.games);
       setTotal(result.total);
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       logger.warn('Failed to load archive');
     } finally {
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
   }
 
@@ -56,7 +72,11 @@ export default function ArchivePage() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>{t('common.loading')}</div>
+        <div style={{ padding: 16 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonLine key={i} style={{ marginBottom: 12 }} />
+          ))}
+        </div>
       ) : games.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>{t('matchHistory.noGames')}</div>
       ) : (

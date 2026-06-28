@@ -22,8 +22,16 @@ export async function initRedis(): Promise<void> {
     logger.info('Redis not configured — using in-memory state');
     return;
   }
-  pubClient = new Redis(REDIS_URL, { lazyConnect: true, retryStrategy: (t: number) => Math.min(t * 50, 2000) });
-  subClient = new Redis(REDIS_URL, { lazyConnect: true, retryStrategy: (t: number) => Math.min(t * 50, 2000) });
+  pubClient = new Redis(REDIS_URL, {
+    lazyConnect: true,
+    keepAlive: 10000,
+    retryStrategy: (t: number) => Math.min(t * 50, 2000),
+  });
+  subClient = new Redis(REDIS_URL, {
+    lazyConnect: true,
+    keepAlive: 10000,
+    retryStrategy: (t: number) => Math.min(t * 50, 2000),
+  });
   await pubClient.connect();
   await subClient.connect();
   subClient.on('message', (channel: string, message: string) => {

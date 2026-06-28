@@ -2148,35 +2148,79 @@ describe('Admin API — DB browser (tables & query)', () => {
 });
 
 describe('Move Quality', () => {
-  test('POST /analysis/move-quality returns 400 for missing fields', async () => {
-    await request.post('/analysis/move-quality').send({}).expect(400);
-    await request.post('/analysis/move-quality').send({ fen: 'start' }).expect(400);
-    await request.post('/analysis/move-quality').send({ move: 'e2e4' }).expect(400);
+  let authHeader: string;
+
+  beforeAll(async () => {
+    const p = await registerPlayer('analysis-user');
+    authHeader = p.authHeader;
   });
 
-  test('POST /analysis/move-quality returns 400 for invalid FEN', async () => {
-    await request.post('/analysis/move-quality').send({ fen: 'invalid', move: 'e2e4' }).expect(400);
+  test('POST /analysis/move-quality returns 401 without auth', async () => {
+    await request.post('/analysis/move-quality').send({}).expect(401);
+    await request.post('/analysis/move-quality').send({ fen: 'start' }).expect(401);
+    await request.post('/analysis/move-quality').send({ move: 'e2e4' }).expect(401);
+    await request.post('/analysis/move-quality').send({ fen: 'invalid', move: 'e2e4' }).expect(401);
   });
 
   test('POST /analysis/move-quality returns shape for any move', async () => {
     const startFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-    const res = await request.post('/analysis/move-quality').send({ fen: startFen, move: 'e2e4' }).expect(200);
+    const res = await request
+      .post('/analysis/move-quality')
+      .set('Authorization', authHeader)
+      .send({ fen: startFen, move: 'e2e4' })
+      .expect(200);
 
     expect(res.body).toHaveProperty('bestMove');
     expect(res.body).toHaveProperty('bestScore');
     expect(res.body).toHaveProperty('playedMove', 'e2e4');
     expect(res.body).toHaveProperty('quality');
-    expect(['excellent', 'good', 'inaccuracy']).toContain(res.body.quality);
+    expect(['excellent', 'good', 'inaccuracy', 'mistake']).toContain(res.body.quality);
   });
 
   test('POST /analysis/move-quality: playing the best move yields excellent', async () => {
     const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-    const ref = await request.post('/analysis/move-quality').send({ fen, move: 'e2e4' }).expect(200);
+    const ref = await request
+      .post('/analysis/move-quality')
+      .set('Authorization', authHeader)
+      .send({ fen, move: 'e2e4' })
+      .expect(200);
     expect(ref.body.bestMove).toBeTruthy();
 
-    const res = await request.post('/analysis/move-quality').send({ fen, move: ref.body.bestMove }).expect(200);
+    const res = await request
+      .post('/analysis/move-quality')
+      .set('Authorization', authHeader)
+      .send({ fen, move: ref.body.bestMove })
+      .expect(200);
 
     expect(res.body.quality).toBe('excellent');
+  });
+
+  test('POST /analysis/move-quality handles en passant FEN', async () => {
+    /* Position where en passant capture is available */
+    const epFen = 'rnbqkbnr/pp1ppppp/8/2pP4/8/8/PPP1PPPP/RNBQKBNR w KQkq c6 0 3';
+    const res = await request
+      .post('/analysis/move-quality')
+      .set('Authorization', authHeader)
+      .send({ fen: epFen, move: 'd5c6' })
+      .expect(200);
+
+    expect(res.body).toHaveProperty('bestMove');
+    expect(res.body).toHaveProperty('playedMove', 'd5c6');
+    expect(res.body).toHaveProperty('quality');
+  });
+
+  test('POST /analysis/move-quality handles castling FEN', async () => {
+    /* Position where kingside castling (e1g1) is legal */
+    const castleFen = 'r1bqkbnr/pppppppp/2n5/8/4P3/8/PPPP1PPP/RNBQKB1R w KQkq - 1 2';
+    const res = await request
+      .post('/analysis/move-quality')
+      .set('Authorization', authHeader)
+      .send({ fen: castleFen, move: 'e1g1' })
+      .expect(200);
+
+    expect(res.body).toHaveProperty('bestMove');
+    expect(res.body).toHaveProperty('playedMove', 'e1g1');
+    expect(res.body).toHaveProperty('quality');
   });
 });
 

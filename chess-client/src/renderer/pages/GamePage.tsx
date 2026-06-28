@@ -41,6 +41,7 @@ import type {
 } from '../socket';
 import { t } from '../translate';
 import { copyToClipboard } from '../clipboard';
+import { SkeletonBoard } from '../components/Skeleton';
 
 export default function GamePage() {
   const { gameId } = useParams<{ gameId: string }>();
@@ -80,29 +81,37 @@ export default function GamePage() {
   gameRef.current = game;
   const timeoutRef = useRef(timeout);
   timeoutRef.current = timeout;
+  const playerColorRef = useRef(playerColor);
+  playerColorRef.current = playerColor;
+  const moveInProgressRef = useRef(false);
+  const mountedRef = useRef(true);
 
   /* Chess clock: decrement active player every 50ms; stops on timeout or game end */
   useEffect(() => {
     if (!game || game.status !== 'active' || timeout) return;
     const interval = setInterval(() => {
       if (gameRef.current && gameRef.current.turn === 'white') {
+        let timedOut = false;
         setWhiteTime((t) => {
           const next = t - 50;
           if (next <= 0) {
-            setTimeout_('black');
+            timedOut = true;
             return 0;
           }
           return next;
         });
+        if (timedOut) setTimeout_('black');
       } else {
+        let timedOut = false;
         setBlackTime((t) => {
           const next = t - 50;
           if (next <= 0) {
-            setTimeout_('white');
+            timedOut = true;
             return 0;
           }
           return next;
         });
+        if (timedOut) setTimeout_('white');
       }
     }, 50);
     return () => clearInterval(interval);
@@ -185,6 +194,8 @@ export default function GamePage() {
     }
 
     return () => {
+      mountedRef.current = false;
+      moveQualityAbortRef.current?.abort();
       logger.info('GamePage unmounting, cleaning up WS handlers', { gameId });
       unsubMove();
       unsubGameOver();
@@ -269,7 +280,7 @@ export default function GamePage() {
       const msg = err instanceof Error ? err.message : String(err);
       logger.info('Game not found via /games/, trying archive fallback', { gameId: gid });
       try {
-        const g = (await api.getArchivedGame(gid)) as GameState;
+        const g = (await api.getArchivedGame(gid)) as unknown as GameState;
         store.set('currentGame', g);
         initGame(g);
       } catch (err2: unknown) {
@@ -303,7 +314,7 @@ export default function GamePage() {
     if (msg.turn === 'black') setWhiteTime((t) => t + incMs);
     else setBlackTime((t) => t + incMs);
 
-    if (getSetting('soundEnabled') && playerColor !== msg.turn) {
+    if (getSetting('soundEnabled') && playerColorRef.current !== msg.turn) {
       if (wasCapture) playCaptureSound();
       else playMoveSound();
       if (msg.status === 'check') setTimeout(() => playCheckSound(), 100);
@@ -498,6 +509,8 @@ export default function GamePage() {
   // Optimistic update: apply move locally first, then confirm with server; rollback on error
   async function executeMove(from: string, to: string, promotion?: PieceType) {
     if (!gameRef.current) return;
+    if (moveInProgressRef.current) return;
+    moveInProgressRef.current = true;
     logger.info('Executing move', { gameId: gameRef.current.id, from, to, promotion });
     setSelectedSquare(null);
     setLegalHints([]);
@@ -547,6 +560,8 @@ export default function GamePage() {
       setBoard(oldBoard);
       setLastMove(gameRef.current?.lastMove || null);
       store.toast(msg || t('game.moveFailed'));
+    } finally {
+      moveInProgressRef.current = false;
     }
   }
 
@@ -569,7 +584,9 @@ export default function GamePage() {
     logger.info('Aborting game', { gameId });
     try {
       if (gameId) await api.abortGame(gameId);
-    } catch {}
+    } catch (err) {
+      logger.error('Failed to abort game', { gameId, error: err });
+    }
     store.set('currentGame', null);
     navigate('/lobby');
   }
@@ -600,8 +617,8 @@ export default function GamePage() {
         const msg = err instanceof Error ? err.message : String(err);
         logger.error('Resignation failed', { error: msg });
         store.toast(msg || t('game.failedResign'));
-      });
-    setResignConfirmed(false);
+      })
+      .finally(() => setResignConfirmed(false));
   }
 
   // Step through board history snapshots after game ends (-1 = initial position)
@@ -637,17 +654,23 @@ export default function GamePage() {
     return `${m}:${String(s).padStart(2, '0')}${dec}`;
   }
 
+  const moveQualityAbortRef = useRef<AbortController | null>(null);
+
   function evaluateMoveQuality(moveStr: string, fen: string) {
+    moveQualityAbortRef.current?.abort();
+    const controller = new AbortController();
+    moveQualityAbortRef.current = controller;
     const baseUrl = localStorage.getItem('chess_server_url') || 'http://localhost:3000';
     const moveNoDash = moveStr.replace('-', '');
     fetch(`${baseUrl}/analysis/move-quality`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fen, move: moveNoDash }),
+      signal: controller.signal,
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.quality) {
+        if (data.quality && mountedRef.current) {
           setMoveQualities((prev) => ({ ...prev, [moveStr]: data.quality }));
         }
       })
@@ -656,6 +679,16 @@ export default function GamePage() {
 
   const isFinished = (game && ['checkmate', 'stalemate', 'resigned', 'draw'].includes(game.status)) || !!timeout;
   const showReview = isFinished && !window.location.hash.startsWith('#result/');
+
+  if (!game) {
+    return (
+      <div className="game-layout">
+        <div className="game-center">
+          <SkeletonBoard />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="game-layout">

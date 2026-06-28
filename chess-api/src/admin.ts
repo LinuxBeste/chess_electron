@@ -854,16 +854,12 @@ router.post('/admin/api/tournaments/:id/notify', adminAuthMiddleware, async (req
       return;
     }
     const participants = await db.getTournamentParticipants(req.params.id);
-    let sent = 0;
-    for (const _p of participants) {
-      const count = game.broadcastToAll({
-        type: 'tournament_notification',
-        tournamentId: req.params.id,
-        message: parsed.data.message,
-        timestamp: Date.now(),
-      });
-      sent += count;
-    }
+    const sent = game.broadcastToAll({
+      type: 'tournament_notification',
+      tournamentId: req.params.id,
+      message: parsed.data.message,
+      timestamp: Date.now(),
+    });
     logger.audit(
       'admin_tournament_notified',
       `tournament="${req.params.id}" message="${parsed.data.message}" by admin`,

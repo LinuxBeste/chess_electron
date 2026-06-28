@@ -6,37 +6,8 @@ import { t } from '../translate';
 import { useNavigate } from 'react-router-dom';
 import { copyToClipboard } from '../clipboard';
 import { ArrowLeft, X } from 'lucide-react';
-
-interface TournamentParticipant {
-  id?: string;
-  player_id: string;
-  display_name?: string;
-}
-
-interface TournamentData {
-  id: string;
-  name: string;
-  max_players: number;
-  is_private: number;
-  status: string;
-  created_by?: string;
-  join_code?: string;
-  created_at?: number;
-  started_at?: number | null;
-  completed_at?: number | null;
-  winner_id?: string | null;
-  participantCount?: number;
-  participants?: TournamentParticipant[];
-  matches?: Array<{
-    id: string;
-    round: number;
-    game_id?: string;
-    white_player_id?: string;
-    black_player_id?: string;
-    winner_id?: string;
-    status: string;
-  }>;
-}
+import { SkeletonCard } from '../components/Skeleton';
+import type { TournamentData } from '../../types';
 
 function CreateTournamentMenu({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
@@ -48,7 +19,7 @@ function CreateTournamentMenu({ onClose }: { onClose: () => void }) {
     if (!name.trim()) return;
     setCreating(true);
     try {
-      const result = (await api.createTournament(name.trim(), maxPlayers, isPrivate)) as TournamentData;
+      const result = await api.createTournament(name.trim(), maxPlayers, isPrivate);
       store.toast('Tournament created!', 'info');
       if (result.join_code) {
         await copyToClipboard(result.join_code);
@@ -335,7 +306,7 @@ export default function TournamentPage() {
   async function load() {
     setLoading(true);
     try {
-      const tlist = (await api.getTournaments()) as TournamentData[];
+      const tlist = await api.getTournaments();
       setTournaments(tlist);
     } catch {
       logger.warn('Failed to load tournaments');
@@ -346,7 +317,7 @@ export default function TournamentPage() {
 
   async function openDetails(id: string) {
     try {
-      const t = (await api.getTournament(id)) as TournamentData;
+      const t = await api.getTournament(id);
       setSelected(t);
     } catch {
       logger.warn('Failed to load tournament');
@@ -388,7 +359,7 @@ export default function TournamentPage() {
     if (!code) return;
     setJoiningCode(true);
     try {
-      const t = (await api.joinTournamentByCode(code)) as TournamentData;
+      const t = await api.joinTournamentByCode(code);
       store.toast('Joined tournament!', 'info');
       setJoinCode('');
       openDetails(t.id);
@@ -421,7 +392,7 @@ export default function TournamentPage() {
     for (const p of selected?.participants || []) {
       nameMap.set(p.player_id, p.display_name || p.player_id.slice(0, 8));
     }
-    function playerName(pid: string | undefined): string {
+    function playerName(pid: string | null | undefined): string {
       if (!pid) return 'BYE';
       if (pid === myId) return t('common.you');
       return nameMap.get(pid) || pid.slice(0, 8);
@@ -735,7 +706,11 @@ export default function TournamentPage() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>{t('common.loading')}</div>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: 16 }}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={i} width={260} height={180} />
+          ))}
+        </div>
       ) : tournaments.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>{t('tournaments.none')}</div>
       ) : (

@@ -468,9 +468,39 @@ export function getLegalMoves(
   return legalMoves;
 }
 
+export function hasInsufficientMaterial(board: Board): boolean {
+  const pieces: { type: PieceType; color: Color; rank: number; file: number }[] = [];
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const p = board[r][f];
+      if (p && p.type !== 'king') pieces.push({ type: p.type, color: p.color, rank: r, file: f });
+    }
+  }
+
+  if (pieces.length === 0) return true;
+
+  if (pieces.length === 1) {
+    return pieces[0].type === 'bishop' || pieces[0].type === 'knight';
+  }
+
+  if (
+    pieces.length === 2 &&
+    pieces[0].type === 'bishop' &&
+    pieces[1].type === 'bishop' &&
+    pieces[0].color !== pieces[1].color
+  ) {
+    const sq1 = (pieces[0].rank + pieces[0].file) % 2;
+    const sq2 = (pieces[1].rank + pieces[1].file) % 2;
+    if (sq1 === sq2) return true;
+  }
+
+  return false;
+}
+
 /* Evaluate game status from color's perspective.
  * Returns 'active', 'check', 'checkmate', 'stalemate', or 'draw'
- * (50-move rule). Other draws (agreement, repetition) handled at app layer. */
+ * (50-move rule, insufficient material).
+ * Other draws (agreement, repetition) handled at app layer. */
 export function getGameStatus(
   board: Board,
   color: Color,
@@ -485,7 +515,9 @@ export function getGameStatus(
     return { status: inCheck ? 'checkmate' : 'stalemate' };
   }
   if (halfMoveClock !== undefined && halfMoveClock >= 100) {
-    // 50-move rule: 100 half-moves without pawn/capture
+    return { status: 'draw' };
+  }
+  if (hasInsufficientMaterial(board)) {
     return { status: 'draw' };
   }
   return { status: inCheck ? 'check' : 'active' };
