@@ -134,6 +134,7 @@ declare global {
   namespace Express {
     interface Request {
       player: Player;
+      requestId: string;
     }
   }
 }

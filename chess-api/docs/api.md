@@ -2,6 +2,8 @@
 
 Base URL: `http://localhost:25565` (direct) or webpack proxy at `http://localhost:3000` (in dev).
 
+> **Last updated:** 2026-06-29 | **Changelog:** See [releases](https://github.com/linuxbeste/chess_electron/releases)
+
 ## Authentication
 
 ### Two modes

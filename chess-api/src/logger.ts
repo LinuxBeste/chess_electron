@@ -5,7 +5,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const LOG_DIR = path.join(__dirname, '..', 'logs');
-const LOG_RETENTION_DAYS = 30;
+const LOG_RETENTION_DAYS = parseInt(process.env.LOG_RETENTION_DAYS ?? '30', 10);
 const isTest = process.env.NODE_ENV === 'test' || typeof process.env.JEST_WORKER_ID !== 'undefined'; // Suppress file I/O during tests
 
 const streams = new Map<string, fs.WriteStream>();
@@ -43,7 +43,7 @@ function getStream(file: string): fs.WriteStream {
   return s;
 }
 
-function closeAllStreams(): void {
+export function closeAllStreams(): void {
   for (const s of streams.values()) {
     try {
       s.end();

@@ -108,31 +108,36 @@ A grab bag of stuff that keeps the server from catching fire:
 
 ### Security odds and ends
 
-- **CSP**: helmet with `'unsafe-inline'` on scripts/styles (Vite needs it, and in production it's harmless)
-- **CORS**: defaults to `*`, which is fine for local play. Change it if you're deploying publicly
-- **JSON body limit**: 10 KB - chess data doesn't need more
+- **CSP & HSTS**: helmet with `'unsafe-inline'` on scripts/styles + HSTS (1 year, include subdomains)
+- **CORS**: must not be `*` in production — the server refuses to start if `CORS_ORIGIN=*` with `NODE_ENV=production`
+- **JSON body limit**: 10 KB by default — chess data doesn't need more
 - **trust proxy**: on, so IP detection works behind Cloudflare
-- **Auth**: PBKDF2 for both admin and user passwords, account lockout after 5 fails (15 min), rate limits on login endpoints
-- **WebSocket**: max 5 connections per IP, 10s pong timeout
+- **Auth**: PBKDF2 for both admin and user passwords, account lockout after 5 fails (15 min), rate limits on login endpoints, IP-based WebSocket auth throttling
+- **WebSocket**: max 5 connections per IP, 10s pong timeout, per-IP auth attempt throttling
 
 ### Stability stuff
 
-- **Request timeout**: 30s, then 503 + kills the connection
-- **Crash handlers**: unhandled rejections and exceptions get logged, process keeps going
-- **Graceful shutdown**: SIGTERM/SIGINT kills engines, closes WS connections, closes DB
+- **Request timeout**: 30s (configurable), then 503 + kills the connection
+- **Process handlers**: unhandled rejections set `exitCode = 1`; uncaught exceptions call `process.exit(1)`
+- **DB init retry**: retries up to 5 times with 5s delay before giving up
+- **Redis fallback**: if Redis is unreachable, the server continues with in-memory state
+- **Graceful shutdown**: SIGTERM/SIGINT kills engines, closes WS connections, closes DB, closes log file streams
 
 ### Housekeeping
 
 The server runs a few cleanup intervals so memory doesn't grow forever:
 
-- Every 60s: expired login lockouts, stale rate-limit entries
-- Every 30min: expired admin tokens
-- Every 10min: orphaned waiting games (configurable, off if set to 0)
-- Every 6h: SQLite backup to `data/backups/`, keeps 7 days
+- Every 60s (configurable): expired login lockouts, stale rate-limit buckets, WS auth blocks
+- Every 60s (configurable): stale games, game sweep
+- Every 1h (configurable): expired tokens
+- Every 24h (configurable): old log file cleanup
+- Every 6h (configurable): DB backup to `data/backups/`, keeps 7 days
 
 ### Docker health check
 
 Pings `GET /health` every 30s with a 10s timeout and 3 retries before Docker calls it unhealthy.
+
+The `/health` endpoint returns DB connectivity, Redis status, memory usage, WebSocket connection count, and basic game stats.
 
 ## start.sh
 
@@ -162,7 +167,7 @@ Runs Jest with `--forceExit --detectOpenHandles`. The test suite:
 
 - `chess.test.ts` - unit tests covering the full chess engine
 - `game.test.ts` - game logic unit tests
-- `api.test.ts` - integration tests covering the full API surface and admin routes (396 tests)
+- `api.test.ts` - integration tests covering the full API surface and admin routes (828 tests)
 - `ws.test.ts` - WebSocket end-to-end tests (spectate, auth, chat, challenge forwarding)
 
 Tests are designed to run outside Docker without any external services.

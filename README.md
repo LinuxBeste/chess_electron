@@ -97,9 +97,12 @@
 - **Admin dashboard** - React SPA with stats, games, players, accounts, bans, leaderboard, archives, bot games, tournaments, logs, system charts
 - **PBKDF2 password hashing** - admin and user passwords hashed with salt
 - **Admin token TTL** - configurable session expiry (default 24h), with manual revoke
-- **CSP headers** - Content-Security-Policy via helmet
-- **Request timeout** - 30-second timeout per request
+- **CSP + HSTS headers** - Content-Security-Policy and Strict-Transport-Security via helmet
+- **Request timeout** - 30-second timeout per request (configurable)
 - **JSON body limit** - 10kb max payload
+- **WS auth rate limiting** - per-IP throttling on failed WebSocket auth attempts
+- **DB retry** - automatic retry with configurable delay and max attempts
+- **Redis fallback** - continues with in-memory state if Redis is unreachable
 
 ### WebSocket Events
 
@@ -223,26 +226,33 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 
 ### chess-api
 
-| Variable                    | Default         | Description                                   |
-| --------------------------- | --------------- | --------------------------------------------- |
-| `PORT`                      | `25565`         | HTTP/WS server port                           |
-| `CORS_ORIGIN`               | `*`             | Allowed CORS origin                           |
-| `WS_HEARTBEAT_INTERVAL`     | `30000`         | WebSocket ping interval (ms)                  |
-| `WS_PONG_TIMEOUT`           | `10000`         | WebSocket pong timeout (ms)                   |
-| `WS_MAX_CONNECTIONS_PER_IP` | `5`             | Max WebSocket connections per IP              |
-| `LOG_LEVEL`                 | `info`          | Log level (debug, info, warn, error)          |
-| `ADMIN_USERNAME`            | `admin`         | Admin dashboard login username                |
-| `ADMIN_PASSWORD`            | (random)        | Admin password (auto-generated if not set)    |
-| `ADMIN_TOKEN_TTL`           | `86400000`      | Admin session TTL in ms (default 24h)         |
-| `DB_PATH`                   | `data/chess.db` | SQLite database file path                     |
-| `MAX_GAMES_PER_PLAYER`      | `20`            | Max concurrent games per player               |
-| `MAX_CONCURRENT_ENGINES`    | `4`             | Max concurrent Stockfish instances            |
-| `RATE_LIMIT_WINDOW_MS`      | `60000`         | Rate limit window (ms)                        |
-| `RATE_LIMIT_MAX_REQUESTS`   | `100`           | Max requests per player per window            |
-| `WAITING_TTL_MS`            | `600000`        | Orphaned waiting game TTL (10 min, 0=disable) |
-| `LOGIN_MAX_ATTEMPTS`        | `5`             | Failed logins before lockout                  |
-| `LOGIN_LOCKOUT_MINUTES`     | `15`            | Lockout duration after max attempts           |
-| `DB_BACKUP_INTERVAL_MS`     | `21600000`      | DB backup interval (6h, 0=disable)            |
+| Variable                    | Default         | Description                                         |
+| --------------------------- | --------------- | --------------------------------------------------- |
+| `PORT`                      | `25565`         | HTTP/WS server port                                 |
+| `HOST`                      | `0.0.0.0`       | Bind address                                        |
+| `CORS_ORIGIN`               | `*`             | Allowed CORS origin (must not be `*` in production) |
+| `MAX_BODY_SIZE`             | `10kb`          | Max JSON body size                                  |
+| `ENABLE_HELMET`             | `true`          | HTTP security headers (CSP, HSTS)                   |
+| `LOG_LEVEL`                 | `info`          | Log level (debug, info, warn, error)                |
+| `LOG_RETENTION_DAYS`        | `30`            | Days to retain log files                            |
+| `ADMIN_USERNAME`            | `admin`         | Admin dashboard login username                      |
+| `ADMIN_PASSWORD`            | (random)        | Admin password (auto-generated if not set)          |
+| `ADMIN_TOKEN_TTL`           | `86400000`      | Admin session TTL (ms)                              |
+| `DATABASE_URL`              | `postgresql://` | PostgreSQL connection string                        |
+| `DB_POOL_MAX`               | `20`            | Max pool connections                                |
+| `DB_RETRY_MAX_ATTEMPTS`     | `5`             | DB init retries before exiting                      |
+| `MAX_GAMES_PER_PLAYER`      | `20`            | Max concurrent games per player                     |
+| `MAX_CONCURRENT_ENGINES`    | `4`             | Max concurrent Stockfish instances                  |
+| `RATE_LIMIT_WINDOW_MS`      | `60000`         | Rate limit window (ms)                              |
+| `RATE_LIMIT_MAX_REQUESTS`   | `100`           | Max requests per player per window                  |
+| `WS_HEARTBEAT_INTERVAL`     | `30000`         | WebSocket ping interval (ms)                        |
+| `WS_PONG_TIMEOUT`           | `10000`         | WebSocket pong timeout (ms)                         |
+| `WS_MAX_CONNECTIONS_PER_IP` | `5`             | Max WebSocket connections per IP                    |
+| `WAITING_TTL_MS`            | `600000`        | Orphaned waiting game TTL (10 min, 0=disable)       |
+| `LOGIN_MAX_ATTEMPTS`        | `5`             | Failed logins before lockout                        |
+| `LOGIN_LOCKOUT_MINUTES`     | `15`            | Lockout duration after max attempts                 |
+| `ELO_K_FACTOR`              | `32`            | Elo K-factor for rating calculations                |
+| `DB_BACKUP_INTERVAL_MS`     | `21600000`      | DB backup interval (6h, 0=disable)                  |
 
 ### chess-client (`chess-client/.env`)
 
@@ -363,13 +373,9 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 | `pnpm install`                       | Install all dependencies (both packages)        |
 | `pnpm dev`                           | Start API + build client concurrently           |
 | `pnpm build`                         | Compile all packages                            |
-| `pnpm test`                          | Run all test suites (550 tests)                 |
-| `pnpm typecheck`                     | Type-check all packages                         |
-| `pnpm --filter chess-api dev`        | Start API server with `ts-node` (port 25565)    |
-| `pnpm --filter chess-api test`       | Run API tests (388 tests)                       |
-| `pnpm --filter chess-client dev`     | Build webpack bundles + launch Electron         |
-| `pnpm --filter chess-client dev:web` | Webpack dev server + auto-starts API on :25565  |
-| `pnpm --filter chess-client test`    | Run client tests (154 tests)                    |
+| `pnpm test`                          | Run all test suites (1060 tests)                |
+| `pnpm --filter chess-api test`       | Run API tests (828 tests)                       |
+| `pnpm --filter chess-client test`    | Run client tests (232 tests)                    |
 | `pnpm --filter chess-client package` | Package platform installer via electron-builder |
 | `pnpm format`                        | Format all source files with Prettier           |
 | `pnpm format:check`                  | Check formatting without writing (CI use)       |

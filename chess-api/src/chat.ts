@@ -1,6 +1,11 @@
 import { WebSocket } from 'ws';
 import logger from './logger.js';
 import { players } from './player.js';
+
+const CHAT_MAX_LENGTH = parseInt(process.env.CHAT_MAX_LENGTH ?? '500', 10);
+const CHAT_HISTORY_MAX = parseInt(process.env.CHAT_HISTORY_MAX ?? '50', 10);
+const GROUP_NAME_MAX_LENGTH = parseInt(process.env.GROUP_NAME_MAX_LENGTH ?? '50', 10);
+const GROUP_HISTORY_LIMIT = parseInt(process.env.GROUP_HISTORY_LIMIT ?? '200', 10);
 import {
   getDb,
   createGroupConversation,
@@ -44,7 +49,7 @@ export async function ensureLobbyConversation(): Promise<void> {
 
 export async function handleLobbyChat(playerId: string, text: string): Promise<void> {
   if (!text) return;
-  if (text.length > 500) text = text.slice(0, 500);
+  if (text.length > CHAT_MAX_LENGTH) text = text.slice(0, CHAT_MAX_LENGTH);
   const player = players.get(playerId);
   if (!player) return;
 
@@ -84,8 +89,8 @@ export async function sendLobbyChatHistory(ws: WebSocket): Promise<void> {
     `SELECT m.id, m.conversation_id, m.sender_id, m.text, m.created_at, u.display_name
      FROM chat_messages m JOIN users u ON m.sender_id = u.id
      WHERE m.conversation_id = $1
-     ORDER BY m.created_at ASC LIMIT 200`,
-    [LOBBY_CONVERSATION_ID],
+     ORDER BY m.created_at ASC LIMIT $2`,
+    [LOBBY_CONVERSATION_ID, GROUP_HISTORY_LIMIT],
   );
   ws.send(
     JSON.stringify({
@@ -130,7 +135,7 @@ export async function getOrCreatePrivateConversation(playerA: string, playerB: s
 
 export async function handlePrivateChat(senderId: string, targetPlayerId: string, text: string): Promise<void> {
   if (!text) return;
-  if (text.length > 500) text = text.slice(0, 500);
+  if (text.length > CHAT_MAX_LENGTH) text = text.slice(0, CHAT_MAX_LENGTH);
   const player = players.get(senderId);
   if (!player) return;
 
@@ -165,8 +170,8 @@ export async function sendPrivateChatHistory(convId: string, ws: WebSocket): Pro
     `SELECT m.id, m.sender_id, m.text, m.created_at, u.display_name
      FROM chat_messages m JOIN users u ON m.sender_id = u.id
      WHERE m.conversation_id = $1
-     ORDER BY m.created_at ASC LIMIT 200`,
-    [convId],
+     ORDER BY m.created_at ASC LIMIT $2`,
+    [convId, GROUP_HISTORY_LIMIT],
   );
   ws.send(
     JSON.stringify({
@@ -244,7 +249,7 @@ export async function getConversationsForUser(
 
 export async function handleCreateGroupConversation(ownerId: string, name: string): Promise<string> {
   if (!name || name.trim().length === 0) name = 'Group Chat';
-  if (name.length > 50) name = name.slice(0, 50);
+  if (name.length > GROUP_NAME_MAX_LENGTH) name = name.slice(0, GROUP_NAME_MAX_LENGTH);
   const convId = await createGroupConversation(ownerId, name.trim());
   logger.info('Group conversation created: id=' + convId + ' owner=' + ownerId + ' name=' + name);
   return convId;
@@ -252,7 +257,7 @@ export async function handleCreateGroupConversation(ownerId: string, name: strin
 
 export async function handleGroupChat(convId: string, senderId: string, text: string): Promise<void> {
   if (!text) return;
-  if (text.length > 500) text = text.slice(0, 500);
+  if (text.length > CHAT_MAX_LENGTH) text = text.slice(0, CHAT_MAX_LENGTH);
   const player = players.get(senderId);
   if (!player) return;
 
@@ -289,9 +294,9 @@ export async function sendGroupChatHistory(convId: string, ws: WebSocket): Promi
   const { rows } = await dbPool.query(
     `SELECT m.id, m.sender_id, m.text, m.created_at, u.display_name
      FROM chat_messages m JOIN users u ON m.sender_id = u.id
-     WHERE m.conversation_id = $1
-     ORDER BY m.created_at ASC LIMIT 200`,
-    [convId],
+      WHERE m.conversation_id = $1
+       ORDER BY m.created_at ASC LIMIT $2`,
+    [convId, GROUP_HISTORY_LIMIT],
   );
   const members = await getGroupMembers(convId);
   const memberInfos: { playerId: string; username: string; displayName: string; role: string }[] = [];
@@ -494,7 +499,7 @@ export function cleanupChatHistory(gameId: string): void {
 
 export function handleChatMessage(gameId: string, playerId: string, text: string, ws: WebSocket): void {
   if (!text) return;
-  if (text.length > 500) text = text.slice(0, 500);
+  if (text.length > CHAT_MAX_LENGTH) text = text.slice(0, CHAT_MAX_LENGTH);
   const player = players.get(playerId);
   if (!player) return;
   const game = games.get(gameId);
@@ -508,7 +513,7 @@ export function handleChatMessage(gameId: string, playerId: string, text: string
   const displayName = player.displayName;
   const history = chatHistory.get(gameId)!;
   history.push({ playerId, username: displayName, text, timestamp: Date.now() });
-  if (history.length > 50) history.shift();
+  if (history.length > CHAT_HISTORY_MAX) history.shift();
 
   const message = {
     type: 'chat_message',

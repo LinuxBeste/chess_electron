@@ -9,8 +9,16 @@ src/admin.ts          Admin API route handlers → auth, stats, accounts CRUD
 src/game.ts           Game orchestration, auth, WebSocket broadcasting
 src/engine.ts         Stockfish engine manager (child process spawn)
 src/chess.ts          Pure chess engine - no I/O, no side effects
-src/db.ts             SQLite database helpers (users, tokens, tournaments)
+src/db.ts             PostgreSQL database helpers (users, tokens, tournaments, chat)
+src/redis.ts          Redis client for cross-instance state + WebSocket messaging
+src/state.ts          In-memory state maps + Redis write-through helpers
+src/chat.ts           Chat logic (lobby, private, group conversations)
+src/friends.ts        Friend request/management routes
+src/elo.ts            Elo rating calculation
+src/validation.ts     Zod schemas for input validation
 src/types.ts          Shared TypeScript interfaces
+src/logger.ts         File + console logger with log rotation
+src/player.ts         Player state, token management, login lockout
 admin-frontend/src/   React SPA components (Vite + TailwindCSS + lucide-react)
 ```
 
@@ -51,16 +59,17 @@ in-memory for the duration of the server process.
 
 ## Key Design Decisions
 
-### In-Memory State
+### In-Memory State + Redis
 
-Game/player state lives in `Map` objects in `game.ts`. No database for active games.
-Data is ephemeral - restarting the process loses in-progress games. This is acceptable
-for the target use case (local multiplayer, demos, small tournaments).
+Game/player state lives in `Map` objects in `state.ts`. When Redis is configured,
+state is written through to Redis for cross-instance availability. Redis also enables
+cross-instance WebSocket message broadcasting via pub/sub.
 
-### SQLite for Persistence
+### PostgreSQL for Persistence
 
-Registered users, auth tokens, friend relationships, tournament data, and bans are
-persisted to SQLite via `db.ts`. This allows server restarts without losing accounts.
+Registered users, auth tokens, friend relationships, tournament data, bans, chat
+messages, and completed games are persisted to PostgreSQL via `db.ts`. Connection
+pooling with configurable pool size and timeouts.
 
 ### Spectate Code Access
 
@@ -103,7 +112,7 @@ A player is limited to `MAX_GAMES_PER_PLAYER` (default 20) concurrent active gam
 
 ### Elo Rating
 
-K-factor fixed at 32. Anonymous players are not rated. Rating changes are calculated after each completed game.
+K-factor configurable via `ELO_K_FACTOR` (default 32). Anonymous players are not rated. Rating changes are calculated after each completed game.
 
 ## Production Deployment
 

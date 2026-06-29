@@ -6,6 +6,8 @@ import { PieceType } from './types.js';
 import * as game from './game.js';
 import * as db from './db.js';
 import * as chess from './chess.js';
+import * as redis from './redis.js';
+import * as state from './state.js';
 import { engineManager } from './engine.js';
 import logger from './logger.js';
 import fs from 'fs';
@@ -24,6 +26,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router: ReturnType<typeof Router> = Router();
+
+const AVATAR_MAX_SIZE_BYTES = parseInt(process.env.AVATAR_MAX_SIZE_BYTES ?? String(2 * 1024 * 1024), 10);
 
 const IMAGE_MAGIC: Record<string, Uint8Array[]> = {
   'image/jpeg': [new Uint8Array([0xff, 0xd8, 0xff])],
@@ -59,7 +63,7 @@ const avatarUpload = multer({
       cb(null, uuidv4() + ext);
     },
   }),
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB avatar upload limit
+  limits: { fileSize: AVATAR_MAX_SIZE_BYTES },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowed.includes(file.mimetype)) {
@@ -71,63 +75,78 @@ const avatarUpload = multer({
 });
 
 const ipRateBuckets = new Map<string, number[]>();
-const IP_RATE_LIMIT_WINDOW_MS = 60000;
-const IP_RATE_LIMIT_MAX = process.env.NODE_ENV === 'test' ? Infinity : 20; // IP-based throttling, not player-based
+const ipRegBuckets = new Map<string, number[]>();
+const ipHealthBuckets = new Map<string, number[]>();
 
-export function ipRateLimitMiddleware(req: Request, res: Response, next: () => void): void {
-  const now = Date.now();
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  const windowStart = now - IP_RATE_LIMIT_WINDOW_MS;
-  let timestamps = ipRateBuckets.get(ip) ?? [];
-  timestamps = timestamps.filter((t) => t > windowStart);
-  if (timestamps.length >= IP_RATE_LIMIT_MAX) {
-    res.status(429).json({ error: 'Too many requests. Please slow down.' });
-    return;
-  }
-  timestamps.push(now);
-  ipRateBuckets.set(ip, timestamps);
-  next();
+const IP_RATE_LIMIT_WINDOW_MS = parseInt(process.env.IP_RATE_LIMIT_WINDOW_MS ?? '60000', 10);
+const IP_RATE_LIMIT_MAX =
+  process.env.NODE_ENV === 'test' ? Infinity : parseInt(process.env.IP_RATE_LIMIT_MAX ?? '20', 10);
+const REG_RATE_WINDOW_MS = parseInt(process.env.REG_RATE_LIMIT_WINDOW_MS ?? '3600000', 10);
+const REG_RATE_MAX = process.env.NODE_ENV === 'test' ? Infinity : parseInt(process.env.REG_RATE_LIMIT_MAX ?? '5', 10);
+const HEALTH_RATE_MAX = parseInt(process.env.HEALTH_RATE_LIMIT_MAX ?? '60', 10);
+
+const ANALYSIS_MOVE_TIME_MS = parseInt(process.env.ANALYSIS_MOVE_TIME_MS ?? '1000', 10);
+const ANALYSIS_PLAYED_MOVE_TIME_MS = parseInt(process.env.ANALYSIS_PLAYED_MOVE_TIME_MS ?? '500', 10);
+
+function createSlidingWindowLimiter(buckets: Map<string, number[]>, windowMs: number, max: number, errorMsg: string) {
+  return (req: Request, res: Response, next: () => void): void => {
+    const now = Date.now();
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const windowStart = now - windowMs;
+    let timestamps = buckets.get(ip) ?? [];
+    timestamps = timestamps.filter((t) => t > windowStart);
+    if (timestamps.length >= max) {
+      res.status(429).json({ error: errorMsg });
+      return;
+    }
+    timestamps.push(now);
+    buckets.set(ip, timestamps);
+    next();
+  };
 }
 
-export function cleanupIpRateBuckets(): void {
-  const cutoff = Date.now() - IP_RATE_LIMIT_WINDOW_MS;
-  for (const [ip, timestamps] of ipRateBuckets) {
-    const filtered = timestamps.filter((t) => t > cutoff);
-    if (filtered.length === 0) ipRateBuckets.delete(ip);
-    else ipRateBuckets.set(ip, filtered);
-  }
+function createCleanupFn(buckets: Map<string, number[]>, windowMs: number) {
+  return (): void => {
+    const cutoff = Date.now() - windowMs;
+    for (const [key, timestamps] of buckets) {
+      const filtered = timestamps.filter((t) => t > cutoff);
+      if (filtered.length === 0) buckets.delete(key);
+      else buckets.set(key, filtered);
+    }
+  };
 }
+
+export const ipRateLimitMiddleware = createSlidingWindowLimiter(
+  ipRateBuckets,
+  IP_RATE_LIMIT_WINDOW_MS,
+  IP_RATE_LIMIT_MAX,
+  'Too many requests. Please slow down.',
+);
+
+export const regRateLimit = createSlidingWindowLimiter(
+  ipRegBuckets,
+  REG_RATE_WINDOW_MS,
+  REG_RATE_MAX,
+  'Too many registrations from this IP. Try again later.',
+);
+
+const healthLimiter = createSlidingWindowLimiter(
+  ipHealthBuckets,
+  IP_RATE_LIMIT_WINDOW_MS,
+  HEALTH_RATE_MAX,
+  'Too many requests. Please slow down.',
+);
+
+const globalGetLimiter = ipRateLimitMiddleware;
+
+export const cleanupIpRateBuckets = createCleanupFn(ipRateBuckets, IP_RATE_LIMIT_WINDOW_MS);
+export const cleanupRegBuckets = createCleanupFn(ipRegBuckets, REG_RATE_WINDOW_MS);
+export const cleanupHealthBuckets = createCleanupFn(ipHealthBuckets, IP_RATE_LIMIT_WINDOW_MS);
 
 export function clearIpRateBuckets(): void {
   ipRateBuckets.clear();
-}
-
-const regBuckets = new Map<string, number[]>();
-const REG_WINDOW_MS = 60 * 60 * 1000; // Stricter rate limit: 5 registrations per hour per IP
-const REG_MAX = process.env.NODE_ENV === 'test' ? Infinity : 5;
-
-export function cleanupRegBuckets(): void {
-  const cutoff = Date.now() - REG_WINDOW_MS;
-  for (const [ip, timestamps] of regBuckets) {
-    const filtered = timestamps.filter((t) => t > cutoff);
-    if (filtered.length === 0) regBuckets.delete(ip);
-    else regBuckets.set(ip, filtered);
-  }
-}
-
-function regRateLimit(req: Request, res: Response, next: () => void): void {
-  const now = Date.now();
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  const windowStart = now - REG_WINDOW_MS;
-  let timestamps = regBuckets.get(ip) ?? [];
-  timestamps = timestamps.filter((t) => t > windowStart);
-  if (timestamps.length >= REG_MAX) {
-    res.status(429).json({ error: 'Too many registrations from this IP. Try again later.' });
-    return;
-  }
-  timestamps.push(now);
-  regBuckets.set(ip, timestamps);
-  next();
+  ipRegBuckets.clear();
+  ipHealthBuckets.clear();
 }
 
 export function authMiddleware(req: Request, res: Response, next: () => void): void {
@@ -165,27 +184,44 @@ export function banCheckMiddleware(req: Request, res: Response, next: () => void
   next();
 }
 
-export function healthLimiter(req: Request, res: Response, next: () => void): void {
-  const now = Date.now();
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  const windowStart = now - IP_RATE_LIMIT_WINDOW_MS;
-  let timestamps = ipRateBuckets.get(ip) ?? [];
-  timestamps = timestamps.filter((t) => t > windowStart);
-  if (timestamps.length >= 60) {
-    res.status(429).json({ error: 'Too many requests. Please slow down.' });
-    return;
-  }
-  timestamps.push(now);
-  ipRateBuckets.set(ip, timestamps);
-  next();
-}
-
-const globalGetLimiter = ipRateLimitMiddleware;
-
-router.get('/health', healthLimiter, (_req: Request, res: Response) => {
+router.get('/health', healthLimiter, async (_req: Request, res: Response) => {
   const { gamesActive, playersOnline } = game.getStats();
-  logger.debug('GET /health: gamesActive=' + gamesActive + ' playersOnline=' + playersOnline);
-  res.json({ status: 'ok', uptime: process.uptime(), gamesActive, playersOnline });
+  const memUsage = process.memoryUsage();
+  let dbConnected = false;
+  let dbLatency = -1;
+  try {
+    const pool = db.getDb();
+    const start = Date.now();
+    await pool.query('SELECT 1');
+    dbLatency = Date.now() - start;
+    dbConnected = true;
+  } catch {}
+  const redisEnabled = redis.isRedisEnabled();
+  const wsConnCount = Array.from(state.wsConnections.values()).reduce((s, set) => s + set.size, 0);
+  logger.debug(
+    'GET /health: gamesActive=' +
+      gamesActive +
+      ' playersOnline=' +
+      playersOnline +
+      ' wsConns=' +
+      wsConnCount +
+      ' db=' +
+      dbConnected +
+      ' redis=' +
+      redisEnabled,
+  );
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    gamesActive,
+    playersOnline,
+    wsConnections: wsConnCount,
+    database: { connected: dbConnected, latencyMs: dbLatency },
+    redis: { enabled: redisEnabled },
+    memory: { rss: memUsage.rss, heapUsed: memUsage.heapUsed, heapTotal: memUsage.heapTotal },
+    nodeVersion: process.version,
+    timestamp: Date.now(),
+  });
 });
 
 router.post('/auth/register', ipRateLimitMiddleware, regRateLimit, async (req: Request, res: Response) => {
@@ -290,78 +326,90 @@ router.put('/auth/me', authMiddleware, banCheckMiddleware, async (req: Request, 
   res.json({ success: true, displayName: parsed.data });
 });
 
-router.put('/auth/me/password', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
-  const parsed = z
-    .object({
-      currentPassword: z.string().min(1, 'Current password is required'),
-      newPassword: passwordSchema,
-    })
-    .safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0].message });
-    return;
-  }
-  const { currentPassword, newPassword } = parsed.data;
-  const result = await game.changePassword(req.player.id, currentPassword, newPassword);
-  if (!result.success) {
-    res.status(400).json({ error: result.error });
-    return;
-  }
-  /* Invalidate all other tokens, keep current session alive */
-  const currentToken = req.headers.authorization!.slice(7); // Revoke all sessions except current
-  for (const t of req.player.tokens) {
-    if (t !== currentToken) game.deleteToken(t);
-  }
-  req.player.tokens = [currentToken];
-  logger.audit('password_changed', `playerId="${req.player.id}"`);
-  res.json({ success: true });
-});
+router.put(
+  '/auth/me/password',
+  authMiddleware,
+  banCheckMiddleware,
+  rateLimitMiddleware,
+  async (req: Request, res: Response) => {
+    const parsed = z
+      .object({
+        currentPassword: z.string().min(1, 'Current password is required'),
+        newPassword: passwordSchema,
+      })
+      .safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const { currentPassword, newPassword } = parsed.data;
+    const result = await game.changePassword(req.player.id, currentPassword, newPassword);
+    if (!result.success) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    /* Invalidate all other tokens, keep current session alive */
+    const currentToken = req.headers.authorization!.slice(7); // Revoke all sessions except current
+    for (const t of req.player.tokens) {
+      if (t !== currentToken) game.deleteToken(t);
+    }
+    req.player.tokens = [currentToken];
+    logger.audit('password_changed', `playerId="${req.player.id}"`);
+    res.json({ success: true });
+  },
+);
 
-router.post('/auth/me/avatar', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  if (!req.player.isRegistered) {
-    res.status(400).json({ error: 'Only registered accounts can set a profile picture' });
-    return;
-  }
-  avatarUpload.single('avatar')(req, res, async (err) => {
-    if (err) {
-      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-        res.status(400).json({ error: 'File too large. Maximum size is 2 MB.' });
+router.post(
+  '/auth/me/avatar',
+  authMiddleware,
+  banCheckMiddleware,
+  rateLimitMiddleware,
+  (req: Request, res: Response) => {
+    if (!req.player.isRegistered) {
+      res.status(400).json({ error: 'Only registered accounts can set a profile picture' });
+      return;
+    }
+    avatarUpload.single('avatar')(req, res, async (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+          res.status(400).json({ error: 'File too large. Maximum size is 2 MB.' });
+          return;
+        }
+        res.status(400).json({ error: 'Upload failed: ' + err.message });
         return;
       }
-      res.status(400).json({ error: 'Upload failed: ' + err.message });
-      return;
-    }
-    if (!req.file) {
-      res.status(400).json({ error: 'No file provided' });
-      return;
-    }
+      if (!req.file) {
+        res.status(400).json({ error: 'No file provided' });
+        return;
+      }
 
-    if (process.env.NODE_ENV !== 'test' && !isValidImageType(req.file.path, req.file.mimetype)) {
-      // Skip magic-byte check in tests
+      if (process.env.NODE_ENV !== 'test' && !isValidImageType(req.file.path, req.file.mimetype)) {
+        // Skip magic-byte check in tests
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {
+          /* ok */
+        }
+        res.status(400).json({ error: 'Invalid image content' });
+        return;
+      }
+
+      const ext = path.extname(req.file.filename) || '.jpg';
+      const finalName = req.player.id + ext;
+      const finalPath = path.join(__dirname, '..', 'data', 'avatars', finalName);
       try {
-        fs.unlinkSync(req.file.path);
+        fs.renameSync(req.file.path, finalPath);
       } catch {
         /* ok */
       }
-      res.status(400).json({ error: 'Invalid image content' });
-      return;
-    }
 
-    const ext = path.extname(req.file.filename) || '.jpg';
-    const finalName = req.player.id + ext;
-    const finalPath = path.join(__dirname, '..', 'data', 'avatars', finalName);
-    try {
-      fs.renameSync(req.file.path, finalPath);
-    } catch {
-      /* ok */
-    }
-
-    const avatarUrl = '/avatars/' + finalName;
-    await db.updateUserAvatar(req.player.id, avatarUrl);
-    logger.info('Avatar uploaded: playerId=' + req.player.id + ' url=' + avatarUrl);
-    res.json({ avatarUrl });
-  });
-});
+      const avatarUrl = '/avatars/' + finalName;
+      await db.updateUserAvatar(req.player.id, avatarUrl);
+      logger.info('Avatar uploaded: playerId=' + req.player.id + ' url=' + avatarUrl);
+      res.json({ avatarUrl });
+    });
+  },
+);
 
 router.delete('/auth/me/avatar', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
   const user = await db.getUserById(req.player.id);
@@ -420,17 +468,23 @@ router.get('/players/:playerId/profile', authMiddleware, banCheckMiddleware, asy
   }
 });
 
-router.delete('/auth/me', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
-  const result = await game.deleteAccount(req.player.id);
-  if (!result.success) {
-    res.status(400).json({ error: result.error });
-    return;
-  }
-  logger.audit('account_deleted', 'playerId=' + req.player.id + ' username=' + req.player.username);
-  res.json({ success: true });
-});
+router.delete(
+  '/auth/me',
+  authMiddleware,
+  banCheckMiddleware,
+  rateLimitMiddleware,
+  async (req: Request, res: Response) => {
+    const result = await game.deleteAccount(req.player.id);
+    if (!result.success) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    logger.audit('account_deleted', 'playerId=' + req.player.id + ' username=' + req.player.username);
+    res.json({ success: true });
+  },
+);
 
-router.post('/games', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
+router.post('/games', authMiddleware, banCheckMiddleware, rateLimitMiddleware, async (req: Request, res: Response) => {
   const visibility: 'public' | 'private' = req.body.visibility === 'private' ? 'private' : 'public';
   const spectateMode: 'public' | 'code' = req.body.spectateMode === 'code' ? 'code' : 'public';
   try {
@@ -694,7 +748,7 @@ router.post('/analysis/move-quality', authMiddleware, rateLimitMiddleware, async
   try {
     await engineManager.startInstance(analysisId, 20);
     engineManager.send(analysisId, `position fen ${fen}`);
-    const result = await engineManager.getBestMove(analysisId, 1000);
+    const result = await engineManager.getBestMove(analysisId, ANALYSIS_MOVE_TIME_MS);
 
     let quality = 'good';
     let playedScore: number | null = null;
@@ -703,7 +757,7 @@ router.post('/analysis/move-quality', authMiddleware, rateLimitMiddleware, async
         quality = 'excellent';
       } else {
         engineManager.send(analysisId, `position fen ${fen} moves ${move}`);
-        const playedResult = await engineManager.getBestMove(analysisId, 500);
+        const playedResult = await engineManager.getBestMove(analysisId, ANALYSIS_PLAYED_MOVE_TIME_MS);
         playedScore = playedResult.score;
         const isWhiteTurn = parsed.color === 'white';
         const bestScoreAdjusted = isWhiteTurn ? result.score : -result.score;
@@ -738,36 +792,42 @@ router.post('/analysis/move-quality', authMiddleware, rateLimitMiddleware, async
 
 /* ─── Tournaments ─── */
 
-router.post('/tournaments', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
-  if (!req.player.isRegistered) {
-    res.status(403).json({ error: 'Only registered users can create tournaments' });
-    return;
-  }
-  const parsed = z
-    .object({
-      name: tournamentNameSchema,
-      maxPlayers: z.union([z.string(), z.number()]).optional(),
-      isPrivate: z.boolean().optional(),
-    })
-    .safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0].message });
-    return;
-  }
-  const { name, maxPlayers: maxPlayersRaw, isPrivate } = parsed.data;
-  const maxPlayersStr = typeof maxPlayersRaw === 'number' ? String(maxPlayersRaw) : maxPlayersRaw || '8';
-  const maxPlayers = Math.max(2, Math.min(64, parseInt(maxPlayersStr, 10) || 8));
-  try {
-    const t = await db.createTournament(name, req.player.id, maxPlayers, isPrivate);
-    await db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, 0);
-    const tournament = await db.getTournament(t.id);
-    if (tournament && t.joinCode) tournament.join_code = t.joinCode;
-    res.status(201).json(tournament);
-  } catch (err) {
-    logger.error('Tournament creation failed: ' + err);
-    res.status(500).json({ error: 'Tournament creation failed' });
-  }
-});
+router.post(
+  '/tournaments',
+  authMiddleware,
+  banCheckMiddleware,
+  rateLimitMiddleware,
+  async (req: Request, res: Response) => {
+    if (!req.player.isRegistered) {
+      res.status(403).json({ error: 'Only registered users can create tournaments' });
+      return;
+    }
+    const parsed = z
+      .object({
+        name: tournamentNameSchema,
+        maxPlayers: z.union([z.string(), z.number()]).optional(),
+        isPrivate: z.boolean().optional(),
+      })
+      .safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const { name, maxPlayers: maxPlayersRaw, isPrivate } = parsed.data;
+    const maxPlayersStr = typeof maxPlayersRaw === 'number' ? String(maxPlayersRaw) : maxPlayersRaw || '8';
+    const maxPlayers = Math.max(2, Math.min(64, parseInt(maxPlayersStr, 10) || 8));
+    try {
+      const t = await db.createTournament(name, req.player.id, maxPlayers, isPrivate);
+      await db.addTournamentParticipant(t.id, req.player.id, req.player.displayName || req.player.username, 0);
+      const tournament = await db.getTournament(t.id);
+      if (tournament && t.joinCode) tournament.join_code = t.joinCode;
+      res.status(201).json(tournament);
+    } catch (err) {
+      logger.error('Tournament creation failed: ' + err);
+      res.status(500).json({ error: 'Tournament creation failed' });
+    }
+  },
+);
 
 router.get('/tournaments', globalGetLimiter, async (_req: Request, res: Response) => {
   try {

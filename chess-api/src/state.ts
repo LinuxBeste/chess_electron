@@ -20,7 +20,7 @@ export const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS ??
 export const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10);
 export const WAITING_TTL_MS = parseInt(process.env.WAITING_TTL_MS ?? String(10 * 60 * 1000), 10);
 
-export const COMPLETED_GAME_TTL_MS = 5 * 60 * 1000;
+export const COMPLETED_GAME_TTL_MS = parseInt(process.env.COMPLETED_GAME_TTL_MS ?? String(5 * 60 * 1000), 10);
 export const gameCompletedAt = new Map<string, number>();
 
 let _sweepTimer: ReturnType<typeof setInterval> | null = null;
@@ -64,17 +64,21 @@ export async function syncPlayerIndexFromRedis(): Promise<void> {
   }
 }
 
+function redisLog(e: unknown): void {
+  logger.debug('Redis write-through failed: ' + e);
+}
+
 /* ─── Write-through helpers (call after mutating game state) ─── */
 
 export function persistGame(id: string): void {
   const g = games.get(id);
-  if (g && redis.isRedisEnabled()) redis.saveGame(id, g).catch(() => {});
+  if (g && redis.isRedisEnabled()) redis.saveGame(id, g).catch(redisLog);
 }
 
 export function persistGameAndPublish(id: string): void {
   const g = games.get(id);
   if (!g || !redis.isRedisEnabled()) return;
-  redis.saveGame(id, g).catch(() => {});
+  redis.saveGame(id, g).catch(redisLog);
   redis.publishGameEvent(id, 'game_updated', {});
 }
 
@@ -83,10 +87,10 @@ export function removeGameById(id: string): void {
   chatHistory.delete(id);
   gameCompletedAt.delete(id);
   if (redis.isRedisEnabled()) {
-    redis.deleteGame(id).catch(() => {});
-    redis.deleteChatHistory(id).catch(() => {});
-    redis.deleteGameCompletedAt(id).catch(() => {});
-    redis.deleteUciHistory(id).catch(() => {});
+    redis.deleteGame(id).catch(redisLog);
+    redis.deleteChatHistory(id).catch(redisLog);
+    redis.deleteGameCompletedAt(id).catch(redisLog);
+    redis.deleteUciHistory(id).catch(redisLog);
   }
 }
 
@@ -97,27 +101,27 @@ export function addPlayerGameIndex(playerId: string, gameId: string): void {
     playerGameIndex.set(playerId, set);
   }
   set.add(gameId);
-  if (redis.isRedisEnabled()) redis.addPlayerGame(playerId, gameId).catch(() => {});
+  if (redis.isRedisEnabled()) redis.addPlayerGame(playerId, gameId).catch(redisLog);
 }
 
 export function setDrawOfferEntry(gameId: string, playerId: string): void {
   drawOffers.set(gameId, playerId);
-  if (redis.isRedisEnabled()) redis.setDrawOffer(gameId, playerId).catch(() => {});
+  if (redis.isRedisEnabled()) redis.setDrawOffer(gameId, playerId).catch(redisLog);
 }
 
 export function deleteDrawOfferEntry(gameId: string): void {
   drawOffers.delete(gameId);
-  if (redis.isRedisEnabled()) redis.deleteDrawOffer(gameId).catch(() => {});
+  if (redis.isRedisEnabled()) redis.deleteDrawOffer(gameId).catch(redisLog);
 }
 
 export function setRematchOfferEntry(gameId: string, playerId: string): void {
   rematchOffers.set(gameId, playerId);
-  if (redis.isRedisEnabled()) redis.setRematchOffer(gameId, playerId).catch(() => {});
+  if (redis.isRedisEnabled()) redis.setRematchOffer(gameId, playerId).catch(redisLog);
 }
 
 export function deleteRematchOfferEntry(gameId: string): void {
   rematchOffers.delete(gameId);
-  if (redis.isRedisEnabled()) redis.deleteRematchOffer(gameId).catch(() => {});
+  if (redis.isRedisEnabled()) redis.deleteRematchOffer(gameId).catch(redisLog);
 }
 
 export function addChatMessageEntry(
@@ -130,12 +134,12 @@ export function addChatMessageEntry(
     chatHistory.set(gameId, arr);
   }
   arr.push(msg);
-  if (redis.isRedisEnabled()) redis.addChatMessage(gameId, msg).catch(() => {});
+  if (redis.isRedisEnabled()) redis.addChatMessage(gameId, msg).catch(redisLog);
 }
 
 export function setGameCompletedAtEntry(gameId: string): void {
   gameCompletedAt.set(gameId, Date.now());
-  if (redis.isRedisEnabled()) redis.setGameCompletedAt(gameId).catch(() => {});
+  if (redis.isRedisEnabled()) redis.setGameCompletedAt(gameId).catch(redisLog);
 }
 
 /* ─── WS messaging ─── */

@@ -5,7 +5,7 @@ import type { Color, GameState } from './types.js';
 export function calculateElo(ratingA: number, ratingB: number, scoreA: number): [number, number] {
   const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
   const expectedB = 1 - expectedA;
-  const k = 32; // Standard Elo K-factor for chess
+  const k = parseInt(process.env.ELO_K_FACTOR ?? '32', 10);
   return [Math.round(ratingA + k * (scoreA - expectedA)), Math.round(ratingB + k * (1 - scoreA - expectedB))];
 }
 

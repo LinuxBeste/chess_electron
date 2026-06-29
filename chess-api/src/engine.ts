@@ -2,6 +2,10 @@ import { fileURLToPath } from 'url';
 import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
 import logger from './logger.js';
+
+const ENGINE_POLL_INTERVAL_MS = parseInt(process.env.ENGINE_POLL_INTERVAL_MS ?? '100', 10);
+const ENGINE_DEFAULT_MOVETIME_MS = parseInt(process.env.ENGINE_DEFAULT_MOVETIME_MS ?? '500', 10);
+const ENGINE_TIMEOUT_BUFFER_MS = parseInt(process.env.ENGINE_TIMEOUT_BUFFER_MS ?? '10000', 10);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -150,7 +154,7 @@ class EngineManager {
         const inst = this.instances.get(gameId);
         if (!inst || inst.settled) return;
         if (condition()) return resolve();
-        inst.waitTimer = setTimeout(check, 100);
+        inst.waitTimer = setTimeout(check, ENGINE_POLL_INTERVAL_MS);
       };
       check();
     });
@@ -170,7 +174,7 @@ class EngineManager {
     }
   }
 
-  async getBestMove(gameId: string, movetime = 500): Promise<BestMoveResult> {
+  async getBestMove(gameId: string, movetime = ENGINE_DEFAULT_MOVETIME_MS): Promise<BestMoveResult> {
     const inst = this.instances.get(gameId);
     if (!inst) {
       logger.warn('Engine not found for game', gameId);
@@ -185,7 +189,7 @@ class EngineManager {
       inst.bestMovePromise = { resolve, reject };
       this.send(gameId, `go movetime ${movetime}`);
 
-      const timeoutMs = movetime + 10000;
+      const timeoutMs = movetime + ENGINE_TIMEOUT_BUFFER_MS;
       const timer = setTimeout(() => {
         if (inst.bestMovePromise) {
           inst.bestMovePromise = null;

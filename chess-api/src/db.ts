@@ -4,6 +4,10 @@ import pg from 'pg';
 import path from 'path';
 import fs from 'fs';
 import logger from './logger.js';
+
+const DB_POOL_MAX = parseInt(process.env.DB_POOL_MAX ?? '20', 10);
+const DB_POOL_IDLE_TIMEOUT_MS = parseInt(process.env.DB_POOL_IDLE_TIMEOUT_MS ?? '30000', 10);
+const DB_POOL_CONNECTION_TIMEOUT_MS = parseInt(process.env.DB_POOL_CONNECTION_TIMEOUT_MS ?? '5000', 10);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -38,9 +42,9 @@ function getPool(): pg.Pool {
     // Lazy singleton: pool created on first query
     _pool = new pg.Pool({
       connectionString: process.env.DATABASE_URL || 'postgresql://chess:chess@localhost:5432/chess',
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
+      max: DB_POOL_MAX,
+      idleTimeoutMillis: DB_POOL_IDLE_TIMEOUT_MS,
+      connectionTimeoutMillis: DB_POOL_CONNECTION_TIMEOUT_MS,
     });
     pg.types.setTypeParser(pg.types.builtins.INT8, (val: string) => parseInt(val, 10)); // Auto-parse INT8/NUMERIC to JS numbers
     pg.types.setTypeParser(pg.types.builtins.NUMERIC, (val: string) => parseFloat(val));
