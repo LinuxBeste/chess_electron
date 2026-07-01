@@ -2,6 +2,8 @@ import { GameState } from './types.js';
 import { WebSocket } from 'ws';
 import * as redis from './redis.js';
 import logger from './logger.js';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 export const games = new Map<string, GameState>();
 export const uciHistory = new Map<string, string[]>();
@@ -68,18 +70,89 @@ function redisLog(e: unknown): void {
   logger.debug('Redis write-through failed: ' + e);
 }
 
+/* ─── File-based persistence (fallback when Redis is not enabled) ─── */
+
+const ACTIVE_GAMES_FILE = process.env.ACTIVE_GAMES_FILE || path.join(process.cwd(), 'data', 'active_games.json');
+
+let _fileDirty = false;
+
+function activeGameFilter(g: GameState): boolean {
+  return g.status === 'waiting' || g.status === 'active';
+}
+
+export async function saveActiveGamesToFile(): Promise<void> {
+  if (redis.isRedisEnabled()) return;
+  try {
+    const data: Record<string, GameState> = {};
+    for (const [id, g] of games) {
+      if (activeGameFilter(g)) {
+        data[id] = g;
+      }
+    }
+    await fs.mkdir(path.dirname(ACTIVE_GAMES_FILE), { recursive: true });
+    await fs.writeFile(ACTIVE_GAMES_FILE + '.tmp', JSON.stringify(data), 'utf-8');
+    await fs.rename(ACTIVE_GAMES_FILE + '.tmp', ACTIVE_GAMES_FILE);
+    _fileDirty = false;
+    logger.debug('Saved ' + Object.keys(data).length + ' active games to ' + ACTIVE_GAMES_FILE);
+  } catch (err) {
+    logger.error('Failed to save active games: ' + err);
+  }
+}
+
+export async function loadActiveGamesFromFile(): Promise<void> {
+  if (redis.isRedisEnabled()) return;
+  try {
+    const raw = await fs.readFile(ACTIVE_GAMES_FILE, 'utf-8');
+    const data = JSON.parse(raw) as Record<string, GameState>;
+    let loaded = 0;
+    for (const [id, g] of Object.entries(data)) {
+      if (activeGameFilter(g)) {
+        games.set(id, g);
+        uciHistory.set(id, []);
+        if (g.players.white) addPlayerGameIndex(g.players.white, id);
+        if (g.players.black) addPlayerGameIndex(g.players.black, id);
+        loaded++;
+      }
+    }
+    logger.info('Loaded ' + loaded + ' active games from ' + ACTIVE_GAMES_FILE);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      logger.error('Failed to load active games: ' + err);
+    }
+  }
+}
+
+export function markGamesDirty(): void {
+  if (!redis.isRedisEnabled()) {
+    _fileDirty = true;
+  }
+}
+
+export function isFileDirty(): boolean {
+  return _fileDirty;
+}
+
 /* ─── Write-through helpers (call after mutating game state) ─── */
 
 export function persistGame(id: string): void {
   const g = games.get(id);
-  if (g && redis.isRedisEnabled()) redis.saveGame(id, g).catch(redisLog);
+  if (!g) return;
+  if (redis.isRedisEnabled()) {
+    redis.saveGame(id, g).catch(redisLog);
+  } else {
+    markGamesDirty();
+  }
 }
 
 export function persistGameAndPublish(id: string): void {
   const g = games.get(id);
-  if (!g || !redis.isRedisEnabled()) return;
-  redis.saveGame(id, g).catch(redisLog);
-  redis.publishGameEvent(id, 'game_updated', {});
+  if (!g) return;
+  if (redis.isRedisEnabled()) {
+    redis.saveGame(id, g).catch(redisLog);
+    redis.publishGameEvent(id, 'game_updated', {});
+  } else {
+    markGamesDirty();
+  }
 }
 
 export function removeGameById(id: string): void {

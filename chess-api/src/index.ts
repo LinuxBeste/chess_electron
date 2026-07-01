@@ -295,13 +295,17 @@ export function createServer(): http.Server {
         } else if (msg.type === 'offer_draw' && typeof msg.gameId === 'string') {
           game.offerDraw(msg.gameId as string, player.id);
         } else if (msg.type === 'accept_draw' && typeof msg.gameId === 'string') {
-          game.acceptDraw(msg.gameId as string, player.id).catch(() => {});
+          game
+            .acceptDraw(msg.gameId as string, player.id)
+            .catch((err: unknown) => logger.error('acceptDraw failed: ' + err));
         } else if (msg.type === 'decline_draw' && typeof msg.gameId === 'string') {
           game.declineDraw(msg.gameId as string, player.id);
         } else if (msg.type === 'rematch_offer' && typeof msg.gameId === 'string') {
           game.offerRematch(msg.gameId as string, player.id);
         } else if (msg.type === 'rematch_accept' && typeof msg.gameId === 'string') {
-          game.acceptRematch(msg.gameId as string, player.id).catch(() => {});
+          game
+            .acceptRematch(msg.gameId as string, player.id)
+            .catch((err: unknown) => logger.error('acceptRematch failed: ' + err));
         } else if (msg.type === 'challenge' && typeof msg.toPlayerId === 'string' && typeof msg.gameId === 'string') {
           game.sendToPlayer(msg.toPlayerId as string, {
             type: 'challenge',
@@ -550,6 +554,7 @@ if (!isTestEnv) {
   });
 
   async function startApp(): Promise<void> {
+    await game.loadPersistedUsers().catch((err) => logger.error('Failed to load persisted users: ' + err));
     try {
       await redis.initRedis();
     } catch (e) {
@@ -585,6 +590,15 @@ if (!isTestEnv) {
       redis.psubscribe('spectate:*');
       await state.syncGamesFromRedis();
       await state.syncPlayerIndexFromRedis();
+    } else {
+      await state.loadActiveGamesFromFile();
+      const FILE_SAVE_INTERVAL_MS = parseInt(process.env.FILE_SAVE_INTERVAL_MS ?? '30000', 10);
+      const fileSaveTimer = setInterval(() => {
+        if (state.isFileDirty()) {
+          state.saveActiveGamesToFile().catch((err) => logger.error('Periodic save failed: ' + err));
+        }
+      }, FILE_SAVE_INTERVAL_MS);
+      timers.push(fileSaveTimer);
     }
     await chat.ensureLobbyConversation().catch((e) => logger.error('Failed to ensure lobby conversation: ' + e));
     server.listen(PORT, HOST, () => {
@@ -628,14 +642,16 @@ if (!isTestEnv) {
     for (const timer of timers) clearInterval(timer);
     game.killAllEngines();
     closeLogStreams();
+    state.saveActiveGamesToFile().catch((err) => logger.error('Final save failed: ' + err));
     server.close(() => {
       logger.info('HTTP server closed');
       const wss = (server as http.Server & { __wss: WebSocketServer | undefined }).__wss;
       if (wss) {
         wss.clients.forEach((client) => client.close(1001, 'Server shutting down'));
       }
-      if (typeof db.closeDb === 'function') db.closeDb().catch(() => {});
-      redis.closeRedis().catch(() => {});
+      if (typeof db.closeDb === 'function')
+        db.closeDb().catch((err: unknown) => logger.error('DB close failed: ' + err));
+      redis.closeRedis().catch((err: unknown) => logger.error('Redis close failed: ' + err));
       logger.info('Shutdown complete');
       process.exit(0);
     });

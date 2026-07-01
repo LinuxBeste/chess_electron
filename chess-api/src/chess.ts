@@ -690,8 +690,16 @@ export function moveToAlgebraic(move: Move, capturedPiece: Piece | undefined, le
   /* Disambiguation: two identical pieces can reach the same square */
   let disambig = '';
   const ambiguous = legalMoves.filter(
-    // Disambiguate when multiple pieces can reach same target
-    (m) => m !== move && m.piece.type === move.piece.type && m.piece.color === move.piece.color && m.to === move.to,
+    (m) =>
+      !(
+        m.from === move.from &&
+        m.to === move.to &&
+        m.piece.type === move.piece.type &&
+        m.piece.color === move.piece.color
+      ) &&
+      m.piece.type === move.piece.type &&
+      m.piece.color === move.piece.color &&
+      m.to === move.to,
   );
   if (ambiguous.length > 0) {
     const sameFile = ambiguous.some((m) => m.from[0] === move.from[0]);

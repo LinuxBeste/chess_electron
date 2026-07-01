@@ -37,6 +37,7 @@ const BoardEditorPage = lazy(() => import('./pages/BoardEditorPage'));
 export default function App() {
   const navigate = useNavigate();
   const [langKey, setLangKey] = useState(0);
+  const challengeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pendingChallenge, setPendingChallenge] = useState<{
     gameId: string;
     fromPlayerId: string;
@@ -238,7 +239,10 @@ export default function App() {
       store.set('unreadCount', store.get('unreadCount') + 1);
       store.set('sidebarOpen', true);
       setPendingChallenge({ gameId: msg.gameId, fromPlayerId: msg.fromPlayerId, fromDisplayName: msg.fromDisplayName });
-      setTimeout(() => setPendingChallenge(null), 10000);
+      challengeTimerRef.current = setTimeout(() => {
+        setPendingChallenge(null);
+        challengeTimerRef.current = null;
+      }, 10000);
     });
     const unsubChallengeAccept = socketManager.onChallengeAccept((msg) => {
       logger.info('Challenge accepted, navigating to game', { gameId: msg.gameId });
@@ -251,6 +255,7 @@ export default function App() {
     });
 
     return () => {
+      if (challengeTimerRef.current) clearTimeout(challengeTimerRef.current);
       unsubLang();
       unsubToken();
       unsubLobbyChat();

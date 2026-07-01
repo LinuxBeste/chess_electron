@@ -3774,3 +3774,152 @@ describe('insufficient material', () => {
     expect(status).toBe('draw');
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  Triple check                                                        */
+/* ------------------------------------------------------------------ */
+
+describe('triple check (only king moves are legal)', () => {
+  test('king must move when attacked by rook, bishop, and knight simultaneously', () => {
+    const board = boardFromFenLike([
+      '.......B',
+      '........',
+      '......N.',
+      '....k...',
+      '........',
+      '........',
+      '....R...',
+      '........',
+    ]);
+    const moves = chess.getLegalMoves(board, 'black', null, {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    });
+    expect(chess.isInCheck(board, 'black')).toBe(true);
+    expect(moves.every((m) => m.piece.type === 'king')).toBe(true);
+    expect(moves.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Promotion on corner squares                                         */
+/* ------------------------------------------------------------------ */
+
+describe('promotion on corner squares', () => {
+  test('pawn captures on b8 and promotes', () => {
+    const board = boardFromFenLike([
+      '.n......',
+      'P.......',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+    ]);
+    const moves = chess.getLegalMoves(board, 'white', null, {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    });
+    const b8capture = moves.find((m) => m.from === 'a7' && m.to === 'b8' && m.promotion === 'queen')!;
+    expect(b8capture).toBeDefined();
+    expect(b8capture.captured?.type).toBe('knight');
+    const a8push = moves.find((m) => m.from === 'a7' && m.to === 'a8' && m.promotion === 'queen')!;
+    expect(a8push).toBeDefined();
+  });
+
+  test('pawn captures on h1 and promotes (black)', () => {
+    const board = boardFromFenLike([
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '.......p',
+      '......N.',
+    ]);
+    const moves = chess.getLegalMoves(board, 'black', null, {
+      white: { kingside: false, queenside: false },
+      black: { kingside: false, queenside: false },
+    });
+    const h1capture = moves.find((m) => m.from === 'h2' && m.to === 'g1' && m.promotion === 'queen')!;
+    expect(h1capture).toBeDefined();
+    expect(h1capture.captured?.type).toBe('knight');
+    const h1push = moves.find((m) => m.from === 'h2' && m.to === 'h1' && m.promotion === 'queen')!;
+    expect(h1push).toBeDefined();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  FEN round-trip (boardToFen <-> fenToBoard)                         */
+/* ------------------------------------------------------------------ */
+
+describe('FEN round-trip', () => {
+  const initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+  test('boardToFen(fenToBoard(fen)) produces matching board part', () => {
+    const parsed = chess.fenToBoard(initialFen);
+    expect(parsed).not.toBeNull();
+    if (!parsed) return;
+    const reconstructed = chess.boardToFen(
+      parsed.board,
+      parsed.color,
+      parsed.castlingRights,
+      parsed.enPassantTarget,
+      parsed.halfMoveClock,
+      parsed.fullMoveNumber,
+    );
+    expect(reconstructed).toBe(initialFen);
+  });
+
+  test('fenToBoard returns null for malformed FEN', () => {
+    expect(chess.fenToBoard('')).toBeNull();
+    expect(chess.fenToBoard('not/a/valid/fen/string')).toBeNull();
+    expect(chess.fenToBoard('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR')).not.toBeNull();
+  });
+
+  test('boardToFen matches starting position fields individually', () => {
+    const board = chess.createInitialBoard();
+    const rights = {
+      white: { kingside: true, queenside: true },
+      black: { kingside: true, queenside: true },
+    };
+    const fen = chess.boardToFen(board, 'white', rights, null, 0, 1);
+    const fields = fen.split(' ');
+    expect(fields[0]).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR');
+    expect(fields[1]).toBe('w');
+    expect(fields[2]).toBe('KQkq');
+    expect(fields[3]).toBe('-');
+    expect(fields[4]).toBe('0');
+    expect(fields[5]).toBe('1');
+  });
+
+  test('fenToBoard correctly parses en passant, half-move, and full-move fields', () => {
+    const fen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1';
+    const parsed = chess.fenToBoard(fen);
+    expect(parsed).not.toBeNull();
+    if (!parsed) return;
+    expect(parsed.color).toBe('black');
+    expect(parsed.enPassantTarget).toBe('e3');
+    expect(parsed.halfMoveClock).toBe(0);
+    expect(parsed.fullMoveNumber).toBe(1);
+    expect(parsed.castlingRights.white.kingside).toBe(true);
+    expect(parsed.castlingRights.black.kingside).toBe(true);
+  });
+
+  test('fenToBoard returns null for incorrect rank count', () => {
+    expect(chess.fenToBoard('rnbqkbnr/pppppppp/8/8/8/8/8 w KQkq - 0 1')).toBeNull();
+  });
+
+  test('fenToBoard handles no castling rights', () => {
+    const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1';
+    const parsed = chess.fenToBoard(fen);
+    expect(parsed).not.toBeNull();
+    if (!parsed) return;
+    expect(parsed.castlingRights.white.kingside).toBe(false);
+    expect(parsed.castlingRights.white.queenside).toBe(false);
+    expect(parsed.castlingRights.black.kingside).toBe(false);
+    expect(parsed.castlingRights.black.queenside).toBe(false);
+  });
+});

@@ -100,7 +100,10 @@ export default function GamePage() {
           }
           return next;
         });
-        if (timedOut) setTimeout_('black');
+        if (timedOut) {
+          setTimeout_('black');
+          if (gameRef.current && !mountedRef.current) return;
+        }
       } else {
         let timedOut = false;
         setBlackTime((t) => {
@@ -111,11 +114,42 @@ export default function GamePage() {
           }
           return next;
         });
-        if (timedOut) setTimeout_('white');
+        if (timedOut) {
+          setTimeout_('white');
+          if (gameRef.current && !mountedRef.current) return;
+        }
       }
     }, 50);
     return () => clearInterval(interval);
   }, [game, timeout]);
+
+  /* Handle timeout: resign if the local player timed out, navigate to result */
+  useEffect(() => {
+    if (!timeout || !gameId) return;
+    const myId = store.get('playerId');
+    if (!myId) return;
+    const winner = timeout;
+    const loser = winner === 'white' ? 'black' : 'white';
+    const iTimedOut = playerColorRef.current === loser;
+    if (iTimedOut) {
+      api
+        .resignGame(gameId)
+        .then((updated) => {
+          store.set('currentGame', updated);
+          navigate(`/result/${updated.id}`);
+        })
+        .catch((err: unknown) => {
+          logger.error('Auto-resign after timeout failed', { error: err });
+        });
+    } else {
+      const g = gameRef.current;
+      if (g) {
+        const updated = { ...g, status: 'resigned' as GameStatus, winner };
+        store.set('currentGame', updated);
+        setTimeout(() => navigate(`/result/${gameId}`), 500);
+      }
+    }
+  }, [timeout]);
 
   /* Composite condition: must be player's turn, game active, not spectating, no timeout */
   const isActive = !!game && game.turn === playerColor && game.status === 'active' && !isSpectator && !timeout;

@@ -275,19 +275,19 @@ export function setPlayerIp(playerId: string, ip: string): void {
 
 export function getPlayerIp(playerId: string): string | undefined {
   const ip = playerIps.get(playerId);
-  logger.info('getPlayerIp: playerId=' + playerId + (ip ? ' ip=' + ip : ' no IP'));
+  logger.debug('getPlayerIp: playerId=' + playerId + (ip ? ' ip=' + ip : ' no IP'));
   return ip;
 }
 
 export function getPlayerById(playerId: string): Player | undefined {
   const player = players.get(playerId);
-  logger.info('getPlayerById: playerId=' + playerId + (player ? ' found' : ' not found'));
+  logger.debug('getPlayerById: playerId=' + playerId + (player ? ' found' : ' not found'));
   return player;
 }
 
 export function getAllPlayers(): Player[] {
   const result = Array.from(players.values());
-  logger.info('getAllPlayers: count=' + result.length);
+  logger.debug('getAllPlayers: count=' + result.length);
   return result;
 }
 
@@ -330,6 +330,5 @@ export function cleanupExpiredTokens(): void {
 
 const isTestEnv = typeof process.env.JEST_WORKER_ID !== 'undefined' || process.env.NODE_ENV === 'test';
 if (!isTestEnv) {
-  loadPersistedUsers().catch((err) => logger.error('Failed to load persisted users:', err));
   setInterval(cleanupExpiredTokens, Math.min(PLAYER_TOKEN_TTL, 300000));
 }

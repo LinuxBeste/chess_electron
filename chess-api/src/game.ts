@@ -31,6 +31,10 @@ import {
   sendToSpectators,
   persistGame,
   persistGameAndPublish,
+  setDrawOfferEntry,
+  deleteDrawOfferEntry,
+  setRematchOfferEntry,
+  deleteRematchOfferEntry,
 } from './state.js';
 import { updateEloRatings } from './elo.js';
 import { sendChatHistory } from './chat.js';
@@ -121,17 +125,21 @@ export function registerWSConnection(playerId: string, ws: WebSocket): void {
   wsConnections.get(playerId)!.add(ws);
   if (wasOffline) {
     // Notify friends only on first connection
-    notifyFriendsOnline(playerId).catch(() => {});
+    notifyFriendsOnline(playerId).catch((err: unknown) => logger.error('Failed to notify friends online: ' + err));
     notifyOpponentReconnected(playerId);
   }
   logger.info('WS connected: playerId=' + playerId);
 }
 
 export function removeWSConnection(playerId: string, ws: WebSocket): void {
-  wsConnections.get(playerId)?.delete(ws);
-  const isNowOffline = !wsConnections.has(playerId) || wsConnections.get(playerId)!.size === 0;
+  const conns = wsConnections.get(playerId);
+  if (conns) {
+    conns.delete(ws);
+    if (conns.size === 0) wsConnections.delete(playerId);
+  }
+  const isNowOffline = !wsConnections.has(playerId);
   if (isNowOffline && players.has(playerId)) {
-    notifyFriendsOffline(playerId).catch(() => {});
+    notifyFriendsOffline(playerId).catch((err: unknown) => logger.error('Failed to notify friends offline: ' + err));
     notifyOpponentDisconnected(playerId);
   }
   logger.info('WS disconnected: playerId=' + playerId);
@@ -778,7 +786,7 @@ export function offerDraw(gameId: string, playerId: string): boolean {
   if (!isPlayer) return false;
   if (drawOffers.has(gameId)) return false;
 
-  drawOffers.set(gameId, playerId);
+  setDrawOfferEntry(gameId, playerId);
   const message = { type: 'draw_offered', gameId, byPlayerId: playerId };
   broadcastToGame(gameId, message);
   logger.info('Draw offered: gameId=' + gameId + ' by playerId=' + playerId);
@@ -792,7 +800,7 @@ export async function acceptDraw(gameId: string, playerId: string): Promise<{ su
 
   const game = games.get(gameId);
   if (!game || game.status !== 'active') {
-    drawOffers.delete(gameId);
+    deleteDrawOfferEntry(gameId);
     return { success: false, error: 'Game is not active' };
   }
 
@@ -802,7 +810,7 @@ export async function acceptDraw(gameId: string, playerId: string): Promise<{ su
   game.status = 'draw';
   game.winner = null;
   game.reason = 'Draw by agreement';
-  drawOffers.delete(gameId);
+  deleteDrawOfferEntry(gameId);
   persistGameAndPublish(gameId);
 
   await recordGameResult(game, null);
@@ -830,14 +838,14 @@ export function declineDraw(gameId: string, playerId: string): boolean {
 
   const game = games.get(gameId);
   if (!game) {
-    drawOffers.delete(gameId);
+    deleteDrawOfferEntry(gameId);
     return false;
   }
 
   const isPlayer = game.players.black === playerId || game.players.white === playerId;
   if (!isPlayer) return false;
 
-  drawOffers.delete(gameId);
+  deleteDrawOfferEntry(gameId);
   sendToPlayer(offererId, { type: 'draw_declined', gameId });
   logger.info('Draw declined: gameId=' + gameId + ' by playerId=' + playerId);
   return true;
@@ -852,7 +860,7 @@ export function offerRematch(gameId: string, playerId: string): boolean {
   if (!isPlayer) return false;
   if (rematchOffers.has(gameId)) return false;
 
-  rematchOffers.set(gameId, playerId);
+  setRematchOfferEntry(gameId, playerId);
   const otherPlayerId = game.players.white === playerId ? game.players.black : game.players.white;
   if (otherPlayerId) {
     sendToPlayer(otherPlayerId, { type: 'rematch_offered', gameId, byPlayerId: playerId });
@@ -871,7 +879,7 @@ export async function acceptRematch(
 
   const game = games.get(gameId);
   if (!game) {
-    rematchOffers.delete(gameId);
+    deleteRematchOfferEntry(gameId);
     return { success: false, error: 'Game not found' };
   }
 
@@ -905,7 +913,7 @@ export async function acceptRematch(
   };
   games.set(newId, newGame);
   persistGameAndPublish(newId);
-  rematchOffers.delete(gameId);
+  deleteRematchOfferEntry(gameId);
   await broadcastGameListUpdate();
 
   const enriched = await enrichNames(newGame);
@@ -924,7 +932,7 @@ export async function acceptRematch(
 
 export function cancelDrawOffer(gameId: string): void {
   if (drawOffers.has(gameId)) {
-    drawOffers.delete(gameId);
+    deleteDrawOfferEntry(gameId);
     logger.info('Draw offer cancelled: gameId=' + gameId);
   }
 }
@@ -969,7 +977,7 @@ export async function getPlayerStats(
   const user = await db.getUserById(playerId);
   if (!user) return null;
   const stats = { wins: user.wins, losses: user.losses, draws: user.draws };
-  logger.info(
+  logger.debug(
     'getPlayerStats: playerId=' +
       playerId +
       ' wins=' +
@@ -1046,13 +1054,13 @@ export function endGame(gameId: string): { success: true } | { success: false; e
 
 export async function getAllGames(): Promise<GameState[]> {
   const result = await Promise.all(Array.from(games.values()).map(enrichNames));
-  logger.info('getAllGames: count=' + result.length);
+  logger.debug('getAllGames: count=' + result.length);
   return result;
 }
 
 export function getOnlinePlayerIds(): Set<string> {
   const result = new Set(wsConnections.keys());
-  logger.info('getOnlinePlayerIds: count=' + result.size);
+  logger.debug('getOnlinePlayerIds: count=' + result.size);
   return result;
 }
 
@@ -1062,7 +1070,7 @@ export function getStats(): { gamesActive: number; playersOnline: number } {
     if (g.status === 'active') gamesActive++;
   }
   const stats = { gamesActive, playersOnline: wsConnections.size };
-  logger.info('getStats: gamesActive=' + stats.gamesActive + ' playersOnline=' + stats.playersOnline);
+  logger.debug('getStats: gamesActive=' + stats.gamesActive + ' playersOnline=' + stats.playersOnline);
   return stats;
 }
 

@@ -1,4 +1,5 @@
 import { WebSocket } from 'ws';
+import crypto from 'crypto';
 import logger from './logger.js';
 import { players } from './player.js';
 
@@ -30,8 +31,6 @@ function now(): number {
 function makeId(): string {
   return crypto.randomUUID();
 }
-
-import crypto from 'crypto';
 
 export async function ensureLobbyConversation(): Promise<void> {
   const db = getDb();

@@ -351,7 +351,10 @@ router.put(
     /* Invalidate all other tokens, keep current session alive */
     const currentToken = req.headers.authorization!.slice(7); // Revoke all sessions except current
     for (const t of req.player.tokens) {
-      if (t !== currentToken) game.deleteToken(t);
+      if (t !== currentToken) {
+        game.deleteToken(t);
+        db.deleteToken(t).catch((err: unknown) => logger.error('Failed to delete token from DB: ' + err));
+      }
     }
     req.player.tokens = [currentToken];
     logger.audit('password_changed', `playerId="${req.player.id}"`);
