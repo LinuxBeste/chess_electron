@@ -87,3 +87,5 @@ export const broadcastMessageSchema = z
   .trim()
   .min(1, 'Message is required')
   .max(5000, 'Message must be at most 5000 characters');
+
+export const captchaTokenSchema = z.string().trim().min(1, 'CAPTCHA token is required');

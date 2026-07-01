@@ -6,8 +6,7 @@ import { PieceType } from './types.js';
 import * as game from './game.js';
 import * as db from './db.js';
 import * as chess from './chess.js';
-import * as redis from './redis.js';
-import * as state from './state.js';
+import * as monitoring from './monitoring.js';
 import { engineManager } from './engine.js';
 import logger from './logger.js';
 import fs from 'fs';
@@ -21,6 +20,7 @@ import {
   promotionSchema,
   tournamentNameSchema,
   joinCodeSchema,
+  captchaTokenSchema,
 } from './validation.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -185,43 +185,14 @@ export function banCheckMiddleware(req: Request, res: Response, next: () => void
 }
 
 router.get('/health', healthLimiter, async (_req: Request, res: Response) => {
-  const { gamesActive, playersOnline } = game.getStats();
-  const memUsage = process.memoryUsage();
-  let dbConnected = false;
-  let dbLatency = -1;
   try {
-    const pool = db.getDb();
-    const start = Date.now();
-    await pool.query('SELECT 1');
-    dbLatency = Date.now() - start;
-    dbConnected = true;
-  } catch {}
-  const redisEnabled = redis.isRedisEnabled();
-  const wsConnCount = Array.from(state.wsConnections.values()).reduce((s, set) => s + set.size, 0);
-  logger.debug(
-    'GET /health: gamesActive=' +
-      gamesActive +
-      ' playersOnline=' +
-      playersOnline +
-      ' wsConns=' +
-      wsConnCount +
-      ' db=' +
-      dbConnected +
-      ' redis=' +
-      redisEnabled,
-  );
-  res.json({
-    status: 'ok',
-    uptime: process.uptime(),
-    gamesActive,
-    playersOnline,
-    wsConnections: wsConnCount,
-    database: { connected: dbConnected, latencyMs: dbLatency },
-    redis: { enabled: redisEnabled },
-    memory: { rss: memUsage.rss, heapUsed: memUsage.heapUsed, heapTotal: memUsage.heapTotal },
-    nodeVersion: process.version,
-    timestamp: Date.now(),
-  });
+    const details = await monitoring.getHealthDetails();
+    logger.debug('GET /health: status=' + details.status);
+    res.json(details);
+  } catch (err) {
+    logger.error('Health check failed: ' + err);
+    res.status(500).json({ status: 'error', error: 'Health check failed' });
+  }
 });
 
 router.post('/auth/register', ipRateLimitMiddleware, regRateLimit, async (req: Request, res: Response) => {
@@ -234,13 +205,26 @@ router.post('/auth/register', ipRateLimitMiddleware, regRateLimit, async (req: R
     .object({
       username: usernameSchema,
       password: passwordSchema.optional(),
+      captchaToken: captchaTokenSchema.optional(),
     })
     .safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message });
     return;
   }
-  const { username, password } = parsed.data;
+  const { username, password, captchaToken } = parsed.data;
+  const captchaSecret = process.env.CAPTCHA_SECRET_KEY;
+  if (captchaSecret) {
+    if (!captchaToken) {
+      res.status(400).json({ error: 'CAPTCHA verification required' });
+      return;
+    }
+    const verified = await monitoring.verifyCaptchaToken(captchaToken, ip);
+    if (!verified) {
+      res.status(400).json({ error: 'CAPTCHA verification failed' });
+      return;
+    }
+  }
   try {
     const result = await game.registerPlayer(username, password);
     game.setPlayerIp(result.playerId, ip);

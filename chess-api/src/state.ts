@@ -238,6 +238,52 @@ export function sendToPlayer(playerId: string, message: Record<string, unknown>)
   sendToPlayerRaw(playerId, JSON.stringify(message));
 }
 
+/* ─── Event Buffer for WS reconnection replay ─── */
+
+const GAME_EVENT_BUFFER_TTL_MS = parseInt(process.env.GAME_EVENT_BUFFER_TTL_MS ?? '60000', 10);
+const GAME_EVENT_BUFFER_MAX = parseInt(process.env.GAME_EVENT_BUFFER_MAX ?? '50', 10);
+const eventBuffer = new Map<string, Array<{ timestamp: number; event: Record<string, unknown> }>>();
+
+export function addGameEvent(gameId: string, event: Record<string, unknown>): void {
+  const now = Date.now();
+  let arr = eventBuffer.get(gameId);
+  if (!arr) {
+    arr = [];
+    eventBuffer.set(gameId, arr);
+  }
+  arr.push({ timestamp: now, event });
+  if (arr.length > GAME_EVENT_BUFFER_MAX) {
+    arr.splice(0, arr.length - GAME_EVENT_BUFFER_MAX);
+  }
+  const cutoff = now - GAME_EVENT_BUFFER_TTL_MS;
+  while (arr.length > 0 && arr[0].timestamp < cutoff) {
+    arr.shift();
+  }
+}
+
+export function getBufferedEvents(gameId: string, sinceTimestamp?: number): Record<string, unknown>[] {
+  const arr = eventBuffer.get(gameId);
+  if (!arr) return [];
+  if (sinceTimestamp) {
+    return arr.filter((e) => e.timestamp > sinceTimestamp).map((e) => e.event);
+  }
+  return arr.map((e) => e.event);
+}
+
+export function cleanupEventBuffer(): void {
+  const cutoff = Date.now() - GAME_EVENT_BUFFER_TTL_MS;
+  for (const [gameId, arr] of eventBuffer) {
+    while (arr.length > 0 && arr[0].timestamp < cutoff) {
+      arr.shift();
+    }
+    if (arr.length === 0) eventBuffer.delete(gameId);
+  }
+}
+
+export function deleteEventBuffer(gameId: string): void {
+  eventBuffer.delete(gameId);
+}
+
 export function sendToSpectators(gameId: string, dataOrMessage: Record<string, unknown> | string): void {
   if (redis.isRedisEnabled()) {
     redis.publish('spectate:' + gameId, JSON.stringify({ type: 'ws_message', data: dataOrMessage, gameId }));

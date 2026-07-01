@@ -15,6 +15,7 @@ Multiplayer chess server with REST + WebSocket, a hand-rolled FIDE engine (no ch
 - [Chat System](chat.md) — Lobby, private, group chat architecture and WebSocket events
 - [Tournaments](tournaments.md) — Lifecycle, seeding, bracket structure, REST endpoints
 - [Development Guide](development.md) — Setup, debugging, testing, adding features
+- [CLI Reference](cli.md) — `chess-admin` command-line tool for user/game/ban/db management
 - [Troubleshooting](troubleshooting.md) — FAQ, common errors, performance tips
 - [Examples](examples.md) — curl examples with a complete Scholar's Mate game
 - [Environment Variables](/docs/environment.md) — Full reference for both packages

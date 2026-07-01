@@ -74,6 +74,7 @@ const CONSOLE_COLORS: Record<LogLevel, string> = {
 const CONSOLE_RESET = '\x1b[0m';
 
 const configuredLevel: number = LEVEL_NUM[(process.env.LOG_LEVEL as LogLevel) || 'info'] ?? 2;
+const LOG_FORMAT_JSON = process.env.LOG_FORMAT === 'json';
 
 function shouldLog(level: LogLevel): boolean {
   return LEVEL_NUM[level] <= configuredLevel;
@@ -82,21 +83,32 @@ function shouldLog(level: LogLevel): boolean {
 function log(level: LogLevel, message: string, ...args: unknown[]): void {
   if (!shouldLog(level)) return;
   const ts = timestamp();
-  const line =
-    args.length > 0
-      ? `${message} ${args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')}`
-      : message;
-  if (!isTest) {
-    console.log(`${CONSOLE_COLORS[level]}[${level.toUpperCase()}]${CONSOLE_RESET} ${line}`); // ANSI-colored console output
+  const formattedArgs =
+    args.length > 0 ? args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ') : '';
+  const line = formattedArgs ? `${message} ${formattedArgs}` : message;
+  if (LOG_FORMAT_JSON) {
+    const entry = JSON.stringify({ timestamp: ts, level, message, args: args.length > 0 ? args : undefined });
+    if (!isTest) console.log(entry);
+    appendLine(`app-{date}.log`, entry);
+  } else {
+    if (!isTest) {
+      console.log(`${CONSOLE_COLORS[level]}[${level.toUpperCase()}]${CONSOLE_RESET} ${line}`);
+    }
+    appendLine(`app-{date}.log`, `[${ts}] [${level.toUpperCase()}] ${line}`);
   }
-  appendLine(`app-{date}.log`, `[${ts}] [${level.toUpperCase()}] ${line}`);
 }
 
 export function audit(action: string, detail: string): void {
   const ts = timestamp();
-  const line = `[AUDIT] ${action} — ${detail}`;
-  if (!isTest) console.log(`\x1b[35m${line}\x1b[0m`);
-  appendLine(`audit-{date}.log`, `[${ts}] ${line}`);
+  if (LOG_FORMAT_JSON) {
+    const entry = JSON.stringify({ timestamp: ts, level: 'audit', action, detail });
+    if (!isTest) console.log(entry);
+    appendLine(`audit-{date}.log`, entry);
+  } else {
+    const line = `[AUDIT] ${action} — ${detail}`;
+    if (!isTest) console.log(`\x1b[35m${line}\x1b[0m`);
+    appendLine(`audit-{date}.log`, `[${ts}] ${line}`);
+  }
 }
 
 export function morganStream(): { write: (msg: string) => void } {

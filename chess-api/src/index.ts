@@ -16,6 +16,7 @@ import * as db from './db.js';
 import * as chat from './chat.js';
 import * as redis from './redis.js';
 import * as state from './state.js';
+import * as monitoring from './monitoring.js';
 import { players } from './player.js';
 import logger, { closeAllStreams as closeLogStreams } from './logger.js';
 import { cleanupIpRateBuckets, cleanupRegBuckets, cleanupHealthBuckets } from './routes.js';
@@ -111,6 +112,33 @@ app.use((req, res, next) => {
   next();
 });
 
+const ENABLE_METRICS = process.env.DISABLE_METRICS !== 'true';
+const metricsInstrumentation = monitoring.registerMetrics(ENABLE_METRICS);
+
+if (metricsInstrumentation) {
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      const route = req.route?.path || req.path;
+      metricsInstrumentation.httpRequestDuration.observe(
+        { method: req.method, route, status: res.statusCode },
+        duration,
+      );
+      metricsInstrumentation.httpRequestTotal.inc({ method: req.method, route, status: res.statusCode });
+    });
+    next();
+  });
+}
+
+app.get('/metrics', async (_req: express.Request, res: express.Response) => {
+  const result = await monitoring.getMetricsResponse();
+  res.setHeader('Content-Type', 'text/plain');
+  res.send(result);
+});
+
+const API_PREFIX = process.env.API_PREFIX || '/v1';
+app.use(API_PREFIX, routes);
 app.use(routes);
 
 const avatarDir = path.join(path.resolve(__dirname, '..'), 'data', 'avatars');
@@ -126,12 +154,23 @@ app.get('/admin/*', (_req, res) => {
 });
 app.use(friendsRouter);
 
-app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+const sentryRequestHandler = monitoring.getSentryRequestHandler();
+if (sentryRequestHandler) app.use(sentryRequestHandler);
+
+const sentryErrorHandler = monitoring.getSentryErrorHandler();
+const originalErrorHandler: express.ErrorRequestHandler = (
+  err: unknown,
+  _req: express.Request,
+  res: express.Response,
+  _next: express.NextFunction,
+) => {
   const msg = err instanceof Error ? err.message : String(err);
   const stack = err instanceof Error ? err.stack : undefined;
   logger.error('Unhandled error:', msg, stack ? '\n' + stack : '');
   res.status(500).json({ error: 'Internal server error' });
-});
+};
+app.use(originalErrorHandler);
+if (sentryErrorHandler) app.use(sentryErrorHandler);
 
 const wsIpCount = new Map<string, number>();
 const wsAuthAttempts = new Map<string, { count: number; blockedUntil: number }>();
@@ -214,6 +253,20 @@ export function createServer(): http.Server {
     game.registerWSConnection(player.id, ws);
     logger.info('WS connection established: playerId=' + player.id);
 
+    /* Replay buffered events for reconnection */
+    const playerGameIds = state.playerGameIndex.get(player.id);
+    if (playerGameIds) {
+      for (const gid of playerGameIds) {
+        const events = state.getBufferedEvents(gid);
+        if (events.length > 0) {
+          for (const evt of events) {
+            if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(evt));
+          }
+          logger.debug('Replayed ' + events.length + ' events for game ' + gid + ' to player ' + player.id);
+        }
+      }
+    }
+
     let spectatingGameId: string | null = null;
 
     /* ---- WS rate limiting ---- */
@@ -265,6 +318,10 @@ export function createServer(): http.Server {
           if (trimmed) chat.handlePrivateChat(player.id, msg.toPlayerId as string, trimmed);
         } else if (msg.type === 'get_private_chat_history' && typeof msg.conversationId === 'string') {
           chat.sendPrivateChatHistory(msg.conversationId as string, ws);
+        } else if (msg.type === 'mark_conversation_read' && typeof msg.conversationId === 'string') {
+          chat.markConversationRead(msg.conversationId as string, player.id).catch((err: Error) => {
+            logger.error('markConversationRead failed: ' + err);
+          });
         } else if (msg.type === 'get_conversations') {
           chat.getConversationsForUser(player.id).then(
             (
@@ -560,12 +617,15 @@ if (!isTestEnv) {
   });
 
   async function startApp(): Promise<void> {
+    await monitoring.initSentry();
     await game.loadPersistedUsers().catch((err) => logger.error('Failed to load persisted users: ' + err));
     try {
       await redis.initRedis();
     } catch (e) {
       logger.error('Redis init failed — continuing with in-memory state: ' + e);
     }
+    const EVENT_BUFFER_CLEANUP_INTERVAL = parseInt(process.env.EVENT_BUFFER_CLEANUP_INTERVAL ?? '30000', 10);
+    timers.push(setInterval(() => state.cleanupEventBuffer(), EVENT_BUFFER_CLEANUP_INTERVAL));
     if (redis.isRedisEnabled()) {
       redis.setMessageHandler((channel, message) => {
         try {

@@ -189,6 +189,14 @@ export async function sendPrivateChatHistory(convId: string, ws: WebSocket): Pro
   );
 }
 
+export async function markConversationRead(conversationId: string, userId: string): Promise<void> {
+  const dbPool = getDb();
+  await dbPool.query(
+    'UPDATE chat_conversation_members SET last_read_at = $1 WHERE conversation_id = $2 AND user_id = $3',
+    [Date.now(), conversationId, userId],
+  );
+}
+
 export async function getConversationsForUser(
   userId: string,
 ): Promise<
@@ -203,6 +211,25 @@ export async function getConversationsForUser(
      ORDER BY c.last_message_at DESC`,
     [userId],
   );
+
+  const convIds = rows.map((r: { id: string }) => r.id);
+  const unreadMap = new Map<string, number>();
+  if (convIds.length > 0) {
+    const placeholders = convIds.map((_: string, i: number) => '$' + (i + 2)).join(',');
+    const { rows: unreadRows } = await dbPool.query(
+      `SELECT m.conversation_id, COUNT(*) AS cnt
+       FROM chat_messages m
+       JOIN chat_conversation_members cm ON cm.conversation_id = m.conversation_id AND cm.user_id = $1
+       WHERE m.conversation_id IN (` +
+        placeholders +
+        `) AND (cm.last_read_at IS NULL OR m.created_at > cm.last_read_at)
+       GROUP BY m.conversation_id`,
+      [userId, ...convIds],
+    );
+    for (const ur of unreadRows as { conversation_id: string; cnt: number }[]) {
+      unreadMap.set(ur.conversation_id, ur.cnt);
+    }
+  }
 
   const results: {
     id: string;
@@ -233,7 +260,7 @@ export async function getConversationsForUser(
       type: r.type,
       name,
       lastMessageAt: r.last_message_at,
-      unread: 0,
+      unread: unreadMap.get(r.id) ?? 0,
     };
     if (r.type === 'group' && r.owner_id) {
       result.ownerId = r.owner_id;

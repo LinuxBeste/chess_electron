@@ -136,6 +136,7 @@
 - **Cloudflare Tunnel** - public HTTPS with zero open ports (quick tunnel or named tunnel)
 - **PostgreSQL backups** - automatic backup via pg_dump every 6 hours (configurable), prune after 7 days
 - **Game state persistence** - active games can persist across restarts via Redis or JSON file fallback
+- **CLI admin tool** - `chess-admin` for user/game/ban/db management from the terminal
 - **Graceful shutdown** - SIGTERM/SIGINT saves active games to file, kills engines, closes WS connections, closes DB
 - **Health check** - Docker HEALTHCHECK pinging `/health`
 - **Non-root container** - runs as `chess` user via `su-exec`
@@ -297,8 +298,10 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 │   │   ├── chess.ts                # FIDE chess engine (pure, ~715 lines)
 │   │   ├── engine.ts               # Stockfish bot engine manager
 │   │   ├── admin.ts                # Admin API routes
+│   │   ├── cli.ts                  # CLI admin tool (commander-based)
 │   │   ├── db.ts                   # PostgreSQL helpers (pool, queries, migrations)
 │   │   ├── logger.ts               # File + console logger
+│   │   ├── monitoring.ts           # Prometheus, Sentry, CAPTCHA, health
 │   │   └── types.ts                # Shared interfaces
 │   ├── admin-frontend/             # React admin dashboard (Vite + Tailwind)
 │   │   └── src/
@@ -315,7 +318,10 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 │   │   ├── architecture.md         # Layering & design decisions
 │   │   ├── chess-logic.md          # Engine internals
 │   │   ├── deployment.md           # Docker & deployment
-│   │   └── examples.md             # curl examples
+│   │   ├── examples.md             # curl examples
+│   │   └── cli.md                  # CLI reference
+│   ├── bin/
+│   │   └── chess-admin.mjs         # CLI bootstrap (global `chess-admin` command)
 │   ├── Dockerfile                  # Multi-stage build (node:20-alpine)
 │   ├── docker-compose.yml          # Compose with cloudflared + health check
 │   ├── docker-entrypoint.sh        # Volume permission fix + user drop
@@ -379,19 +385,21 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 
 ## Scripts
 
-| Command                              | Description                                     |
-| ------------------------------------ | ----------------------------------------------- |
-| `pnpm install`                       | Install all dependencies (both packages)        |
-| `pnpm dev`                           | Start API + build client concurrently           |
-| `pnpm build`                         | Compile all packages                            |
-| `pnpm test`                          | Run all test suites (1069 tests)                |
-| `pnpm --filter chess-api test`       | Run API tests (837 tests)                       |
-| `pnpm --filter chess-client test`    | Run client tests (232 tests)                    |
-| `pnpm --filter chess-client package` | Package platform installer via electron-builder |
-| `pnpm format`                        | Format all source files with Prettier           |
-| `pnpm format:check`                  | Check formatting without writing (CI use)       |
-| `pnpm lint`                          | Lint all source files with ESLint               |
-| `pnpm lint:fix`                      | Lint and auto-fix where possible                |
+| Command                                                    | Description                                     |
+| ---------------------------------------------------------- | ----------------------------------------------- |
+| `pnpm install`                                             | Install all dependencies (both packages)        |
+| `pnpm dev`                                                 | Start API + build client concurrently           |
+| `pnpm build`                                               | Compile all packages                            |
+| `pnpm test`                                                | Run all test suites (1069 tests)                |
+| `pnpm --filter chess-api test`                             | Run API tests (837 tests)                       |
+| `pnpm --filter chess-client test`                          | Run client tests (232 tests)                    |
+| `pnpm --filter chess-client package`                       | Package platform installer via electron-builder |
+| `cd chess-api && pnpm cli --help`                          | Run the CLI admin tool                          |
+| `cd chess-api && pnpm link --global && chess-admin --help` | Install CLI globally                            |
+| `pnpm format`                                              | Format all source files with Prettier           |
+| `pnpm format:check`                                        | Check formatting without writing (CI use)       |
+| `pnpm lint`                                                | Lint all source files with ESLint               |
+| `pnpm lint:fix`                                            | Lint and auto-fix where possible                |
 
 ---
 
@@ -560,6 +568,7 @@ Configuration:
 - [`chess-api/docs/development.md`](./chess-api/docs/development.md) — Dev setup, debugging, testing, adding features
 - [`chess-api/docs/troubleshooting.md`](./chess-api/docs/troubleshooting.md) — FAQ, common errors, performance tips
 - [`chess-api/docs/examples.md`](./chess-api/docs/examples.md) — curl examples with a complete Scholar's Mate game
+- [`chess-api/docs/cli.md`](./chess-api/docs/cli.md) — CLI reference for the `chess-admin` admin tool
 - [`chess-api/docs/README.md`](./chess-api/docs/README.md) — API docs index
 - [`docs/environment.md`](./docs/environment.md) — Full environment variable reference for both packages
 

@@ -50,6 +50,8 @@ import {
   deleteDrawOfferEntry,
   setRematchOfferEntry,
   deleteRematchOfferEntry,
+  addGameEvent,
+  deleteEventBuffer,
 } from './state.js';
 import { updateEloRatings } from './elo.js';
 import { sendChatHistory } from './chat.js';
@@ -247,6 +249,7 @@ function broadcastToGame(gameId: string, message: Record<string, unknown>): void
   const data = JSON.stringify(message);
   const game = games.get(gameId);
   if (!game) return;
+  addGameEvent(gameId, message);
   const { white, black } = game.players;
   if (white) sendToPlayerRaw(white, data);
   if (black) sendToPlayerRaw(black, data);
@@ -793,9 +796,76 @@ async function recordGameResult(game: GameState, winner: Color | null): Promise<
     '5+0', // Hardcoded default time control
   );
   uciHistory.delete(game.id);
+  deleteEventBuffer(game.id);
   if (isBotGame(game)) {
     engineManager.destroyInstance(game.id);
   }
+
+  /* Advance tournament bracket if this game is a tournament match */
+  try {
+    const matchRows = await db
+      .getDb()
+      .query(
+        'SELECT tm.*, t.status as t_status, t.max_players FROM tournament_matches tm JOIN tournaments t ON t.id = tm.tournament_id WHERE tm.game_id = $1',
+        [game.id],
+      );
+    if (matchRows.rows.length > 0) {
+      const match = matchRows.rows[0] as {
+        id: string;
+        tournament_id: string;
+        round: number;
+        position: number;
+        white_player_id: string | null;
+        black_player_id: string | null;
+        status: string;
+        t_status: string;
+        max_players: number;
+      };
+      if (match.status === 'completed') {
+        logger.debug('Tournament match already completed: matchId=' + match.id);
+      } else {
+        const matchWinnerId = winner ? (game.players[winner] ?? null) : null;
+        await db.updateTournamentMatch(match.id, game.id, matchWinnerId, 'completed');
+
+        const allMatches = await db.getTournamentMatches(match.tournament_id);
+        const totalRounds = Math.log2(match.max_players);
+        const currentRoundMatches = allMatches.filter((m) => m.round === match.round);
+        const allCompleted = currentRoundMatches.every((m) => m.status === 'completed');
+        if (allCompleted && match.round < totalRounds) {
+          const nextRound = match.round + 1;
+          const existingNext = allMatches.filter((m) => m.round === nextRound);
+          if (existingNext.length === 0) {
+            const nextMatches = [];
+            for (let i = 0; i < Math.pow(2, totalRounds - nextRound); i++) {
+              const prevMatch1 = allMatches.find((m) => m.round === match.round && m.position === i * 2);
+              const prevMatch2 = allMatches.find((m) => m.round === match.round && m.position === i * 2 + 1);
+              const whiteId = prevMatch1?.winner_id || null;
+              const blackId = prevMatch2?.winner_id || null;
+              nextMatches.push({ round: nextRound, position: i, white: whiteId, black: blackId });
+            }
+            for (const nm of nextMatches) {
+              await db.createTournamentMatch(match.tournament_id, nm.round, nm.position, nm.white, nm.black);
+            }
+            logger.info('Tournament advanced to round ' + nextRound + ' for tournament ' + match.tournament_id);
+          }
+        }
+
+        if (allCompleted && match.round === totalRounds) {
+          await db.updateTournamentStatus(
+            match.tournament_id,
+            'completed',
+            undefined,
+            Date.now(),
+            matchWinnerId ?? undefined,
+          );
+          logger.info('Tournament completed: tournamentId=' + match.tournament_id + ' winner=' + matchWinnerId);
+        }
+      }
+    }
+  } catch (err) {
+    logger.error('Failed to advance tournament bracket: ' + err);
+  }
+
   logger.info('Game result recorded: gameId=' + game.id + ' winner=' + winner);
   gameCompletedAt.set(game.id, Date.now());
 }

@@ -45,6 +45,7 @@
 | `ACTIVE_GAMES_FILE`             | `data/active_games.json`                        | no       | string | File path for game persistence fallback (no-Redis mode)         |
 | `FILE_SAVE_INTERVAL_MS`         | `30000`                                         | no       | number | Interval for saving active games to file (ms)                   |
 | `DISABLE_FILE_PERSISTENCE`      | `false`                                         | no       | bool   | Disable JSON file persistence fallback                          |
+| `DISABLE_CLI`                   | `false`                                         | no       | bool   | When `true`, prevents the chess-admin CLI from executing        |
 | `CHAT_MAX_LENGTH`               | `500`                                           | no       | number | Max characters per chat message                                 |
 | `CHAT_HISTORY_MAX`              | `50`                                            | no       | number | Max in-memory chat messages per game                            |
 | `GROUP_NAME_MAX_LENGTH`         | `50`                                            | no       | number | Max group conversation name length                              |

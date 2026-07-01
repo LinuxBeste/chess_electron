@@ -26,6 +26,8 @@ COPY package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 RUN corepack enable && corepack prepare pnpm@9 --activate && pnpm prune --prod
 COPY --from=builder /app/dist ./dist
+COPY bin/ ./bin/
+RUN ln -s /app/bin/chess-admin.mjs /usr/local/bin/chess-admin
 RUN mkdir -p /app/data /app/logs /app/backups && chown chess:chess /app/data /app/logs /app/backups
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh

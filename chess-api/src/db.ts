@@ -254,6 +254,12 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       ALTER TABLE chat_conversation_members ADD COLUMN role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member'));
     `,
   },
+  {
+    version: 6,
+    sql: `
+      ALTER TABLE chat_conversation_members ADD COLUMN last_read_at BIGINT DEFAULT 0;
+    `,
+  },
 ];
 
 let migrated = false;
