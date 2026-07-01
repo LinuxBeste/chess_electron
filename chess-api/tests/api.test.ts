@@ -2273,6 +2273,248 @@ describe('Admin actions', () => {
   });
 });
 
+describe('Admin API — toggle-admin', () => {
+  let adminAuth: string;
+  let testUserId: string;
+  let testUserAuth: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' }).expect(200);
+    adminAuth = 'Bearer ' + res.body.token;
+    const reg = await registerPlayer('toggle-admin-test');
+    testUserId = reg.playerId;
+    testUserAuth = reg.authHeader;
+  });
+
+  test('PUT /admin/api/accounts/:id/toggle-admin makes user admin', async () => {
+    const res = await request
+      .put('/admin/api/accounts/' + testUserId + '/toggle-admin')
+      .set('Authorization', adminAuth)
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.isAdmin).toBe(true);
+  });
+
+  test('PUT /admin/api/accounts/:id/toggle-admin removes admin status', async () => {
+    const res = await request
+      .put('/admin/api/accounts/' + testUserId + '/toggle-admin')
+      .set('Authorization', adminAuth)
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.isAdmin).toBe(false);
+  });
+
+  test('PUT /admin/api/accounts/:id/toggle-admin rejects non-existent account', async () => {
+    await request.put('/admin/api/accounts/no-such-id/toggle-admin').set('Authorization', adminAuth).expect(404);
+  });
+
+  test('PUT /admin/api/accounts/:id/toggle-admin rejects missing auth', async () => {
+    await request.put('/admin/api/accounts/' + testUserId + '/toggle-admin').expect(401);
+  });
+});
+
+describe('Reports — player submission', () => {
+  let reporterAuth: string;
+  let reporterId: string;
+  let targetId: string;
+
+  beforeAll(async () => {
+    const r1 = await registerPlayer('report-player-1');
+    reporterAuth = r1.authHeader;
+    reporterId = r1.playerId;
+    const r2 = await registerPlayer('report-player-2');
+    targetId = r2.playerId;
+  });
+
+  test('POST /reports creates a report', async () => {
+    const res = await request
+      .post('/reports')
+      .set('Authorization', reporterAuth)
+      .send({ targetId, reason: 'Cheating during game' })
+      .expect(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body).toHaveProperty('id');
+  });
+
+  test('POST /reports with gameId creates a report', async () => {
+    const gameId = await createGame(reporterAuth);
+    await joinGame(gameId, (await registerPlayer('report-player-3')).authHeader);
+    const res = await request
+      .post('/reports')
+      .set('Authorization', reporterAuth)
+      .send({ targetId, reason: 'Stalling', gameId })
+      .expect(201);
+    expect(res.body.success).toBe(true);
+  });
+
+  test('POST /reports rejects self-reporting', async () => {
+    await request
+      .post('/reports')
+      .set('Authorization', reporterAuth)
+      .send({ targetId: reporterId, reason: 'Test' })
+      .expect(400);
+  });
+
+  test('POST /reports rejects non-existent target', async () => {
+    await request
+      .post('/reports')
+      .set('Authorization', reporterAuth)
+      .send({ targetId: '00000000-0000-0000-0000-000000000000', reason: 'Test' })
+      .expect(404);
+  });
+
+  test('POST /reports rejects missing auth', async () => {
+    await request.post('/reports').send({ targetId, reason: 'Test' }).expect(401);
+  });
+
+  test('POST /reports rejects empty reason', async () => {
+    await request.post('/reports').set('Authorization', reporterAuth).send({ targetId, reason: '' }).expect(400);
+  });
+});
+
+describe('Admin API — reports management', () => {
+  let adminAuth: string;
+  let reportId: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' }).expect(200);
+    adminAuth = 'Bearer ' + res.body.token;
+    const r1 = await registerPlayer('admin-reports-reporter');
+    const r2 = await registerPlayer('admin-reports-target');
+    const rep = await request
+      .post('/reports')
+      .set('Authorization', r1.authHeader)
+      .send({ targetId: r2.playerId, reason: 'Abusive chat' })
+      .expect(201);
+    reportId = rep.body.id;
+  });
+
+  test('GET /admin/api/reports lists reports', async () => {
+    const res = await request.get('/admin/api/reports').set('Authorization', adminAuth).expect(200);
+    expect(res.body).toHaveProperty('reports');
+    expect(Array.isArray(res.body.reports)).toBe(true);
+    expect(res.body.reports.length).toBeGreaterThanOrEqual(1);
+    expect(res.body).toHaveProperty('total');
+    expect(res.body).toHaveProperty('page');
+    expect(res.body).toHaveProperty('limit');
+  });
+
+  test('GET /admin/api/reports?status=open filters by status', async () => {
+    const res = await request.get('/admin/api/reports?status=open').set('Authorization', adminAuth).expect(200);
+    for (const r of res.body.reports) {
+      expect(r.status).toBe('open');
+    }
+  });
+
+  test('PUT /admin/api/reports/:id/status dismisses a report', async () => {
+    const res = await request
+      .put('/admin/api/reports/' + reportId + '/status')
+      .set('Authorization', adminAuth)
+      .send({ status: 'dismissed' })
+      .expect(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  test('PUT /admin/api/reports/:id/status resolves a report', async () => {
+    const r1 = await registerPlayer('resolve-test-report');
+    const r2 = await registerPlayer('resolve-test-target');
+    const rep = await request
+      .post('/reports')
+      .set('Authorization', r1.authHeader)
+      .send({ targetId: r2.playerId, reason: 'Test for resolve' })
+      .expect(201);
+    const res = await request
+      .put('/admin/api/reports/' + rep.body.id + '/status')
+      .set('Authorization', adminAuth)
+      .send({ status: 'resolved' })
+      .expect(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  test('PUT /admin/api/reports/:id/status rejects invalid status', async () => {
+    await request
+      .put('/admin/api/reports/' + reportId + '/status')
+      .set('Authorization', adminAuth)
+      .send({ status: 'invalid' })
+      .expect(400);
+  });
+
+  test('PUT /admin/api/reports/:id/status rejects non-existent report', async () => {
+    await request
+      .put('/admin/api/reports/no-such-report/status')
+      .set('Authorization', adminAuth)
+      .send({ status: 'dismissed' })
+      .expect(404);
+  });
+
+  test('POST /admin/api/reports/:id/ban-target bans the reported player', async () => {
+    const r1 = await registerPlayer('ban-target-reporter');
+    const r2 = await registerPlayer('ban-target-victim');
+    const rep = await request
+      .post('/reports')
+      .set('Authorization', r1.authHeader)
+      .send({ targetId: r2.playerId, reason: 'Botting' })
+      .expect(201);
+    const res = await request
+      .post('/admin/api/reports/' + rep.body.id + '/ban-target')
+      .set('Authorization', adminAuth)
+      .expect(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  test('POST /admin/api/reports/:id/ban-target rejects non-existent report', async () => {
+    await request.post('/admin/api/reports/no-such-report/ban-target').set('Authorization', adminAuth).expect(404);
+  });
+});
+
+describe('Admin API — warn', () => {
+  let adminAuth: string;
+  let targetId: string;
+  let targetAuth: string;
+
+  beforeAll(async () => {
+    const res = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' }).expect(200);
+    adminAuth = 'Bearer ' + res.body.token;
+    const reg = await registerPlayer('warn-target');
+    targetId = reg.playerId;
+    targetAuth = reg.authHeader;
+  });
+
+  test('POST /admin/api/warn sends warning', async () => {
+    const res = await request
+      .post('/admin/api/warn')
+      .set('Authorization', adminAuth)
+      .send({ userId: targetId, message: 'Please follow the rules' })
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body).toHaveProperty('warningId');
+  });
+
+  test('POST /admin/api/warn rejects non-existent user', async () => {
+    await request
+      .post('/admin/api/warn')
+      .set('Authorization', adminAuth)
+      .send({ userId: '00000000-0000-0000-0000-000000000000', message: 'Test' })
+      .expect(404);
+  });
+
+  test('POST /admin/api/warn rejects empty message', async () => {
+    await request
+      .post('/admin/api/warn')
+      .set('Authorization', adminAuth)
+      .send({ userId: targetId, message: '' })
+      .expect(400);
+  });
+
+  test('POST /admin/api/warn rejects missing fields', async () => {
+    await request.post('/admin/api/warn').set('Authorization', adminAuth).send({ userId: targetId }).expect(400);
+  });
+
+  test('POST /admin/api/warn rejects missing auth', async () => {
+    await request.post('/admin/api/warn').send({ userId: targetId, message: 'Test' }).expect(401);
+  });
+});
+
 describe('Rate limiting', () => {
   test('checkRateLimit returns true initially', () => {
     expect(game.checkRateLimit('rate-test-player')).toBe(true);

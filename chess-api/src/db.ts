@@ -260,6 +260,50 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       ALTER TABLE chat_conversation_members ADD COLUMN last_read_at BIGINT DEFAULT 0;
     `,
   },
+  {
+    version: 7,
+    sql: `
+      ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT false;
+
+      CREATE TABLE IF NOT EXISTS reports (
+        id TEXT PRIMARY KEY,
+        reporter_id TEXT NOT NULL REFERENCES users(id),
+        target_id TEXT NOT NULL REFERENCES users(id),
+        game_id TEXT,
+        reason TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'dismissed', 'resolved')),
+        created_at BIGINT NOT NULL,
+        reviewed_by TEXT,
+        reviewed_at BIGINT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+      CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_id);
+    `,
+  },
+  {
+    version: 8,
+    sql: `
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at BIGINT NOT NULL
+      );
+    `,
+  },
+  {
+    version: 9,
+    sql: `
+      CREATE TABLE IF NOT EXISTS warnings (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        message TEXT NOT NULL,
+        created_at BIGINT NOT NULL,
+        read_at BIGINT
+      );
+      CREATE INDEX IF NOT EXISTS idx_warnings_user ON warnings(user_id);
+    `,
+  },
 ];
 
 let migrated = false;
@@ -303,6 +347,7 @@ export interface DbUser {
   draws: number;
   avatar_url: string | null;
   rating: number;
+  is_admin?: boolean;
 }
 
 interface CompletedGameRow {
@@ -1208,6 +1253,117 @@ export async function disbandGroupConversation(conversationId: string): Promise<
   await getPool().query('DELETE FROM chat_conversation_members WHERE conversation_id = $1', [conversationId]);
   await getPool().query('DELETE FROM chat_conversations WHERE id = $1', [conversationId]);
   logger.debug('DB: group conversation disbanded id=' + conversationId);
+}
+
+/* ─── Reports ─── */
+
+export interface ReportRow {
+  id: string;
+  reporter_id: string;
+  target_id: string;
+  game_id: string | null;
+  reason: string;
+  status: 'open' | 'dismissed' | 'resolved';
+  created_at: number;
+  reviewed_by: string | null;
+  reviewed_at: number | null;
+}
+
+export async function createReport(
+  id: string,
+  reporterId: string,
+  targetId: string,
+  reason: string,
+  gameId?: string,
+): Promise<void> {
+  await getPool().query(
+    'INSERT INTO reports (id, reporter_id, target_id, game_id, reason, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+    [id, reporterId, targetId, gameId ?? null, reason, 'open', Date.now()],
+  );
+  logger.info('DB: report created id=' + id + ' target=' + targetId);
+}
+
+export async function getReports(status?: string, page = 1, limit = 50): Promise<{ rows: ReportRow[]; total: number }> {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (status) {
+    params.push(status);
+    conditions.push('status = $1');
+  }
+  const where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+  const { rows: countRows } = await getPool().query('SELECT COUNT(*) as c FROM reports' + where, params);
+  const total = (countRows[0] as { c: number }).c;
+  const offset = (page - 1) * limit;
+  const idx = params.length + 1;
+  const { rows } = await getPool().query(
+    'SELECT * FROM reports' + where + ' ORDER BY created_at DESC LIMIT $' + idx + ' OFFSET $' + (idx + 1),
+    [...params, limit, offset],
+  );
+  return { rows: rows as ReportRow[], total };
+}
+
+export async function getReportById(id: string): Promise<ReportRow | undefined> {
+  const { rows } = await getPool().query('SELECT * FROM reports WHERE id = $1', [id]);
+  return rows[0] as ReportRow | undefined;
+}
+
+export async function updateReportStatus(
+  id: string,
+  status: 'open' | 'dismissed' | 'resolved',
+  reviewedBy: string,
+): Promise<void> {
+  await getPool().query('UPDATE reports SET status = $1, reviewed_by = $2, reviewed_at = $3 WHERE id = $4', [
+    status,
+    reviewedBy,
+    Date.now(),
+    id,
+  ]);
+  logger.info('DB: report status updated id=' + id + ' status=' + status);
+}
+
+export async function getReportCountByStatus(status: string): Promise<number> {
+  const { rows } = await getPool().query('SELECT COUNT(*) as c FROM reports WHERE status = $1', [status]);
+  return (rows[0] as { c: number }).c;
+}
+
+/* ─── Admin toggle ─── */
+
+export async function setUserAdmin(id: string, isAdmin: boolean): Promise<void> {
+  await getPool().query('UPDATE users SET is_admin = $1 WHERE id = $2', [isAdmin, id]);
+  logger.info('DB: admin status updated id=' + id + ' isAdmin=' + isAdmin);
+}
+
+export async function isUserAdmin(id: string): Promise<boolean> {
+  const { rows } = await getPool().query('SELECT is_admin FROM users WHERE id = $1', [id]);
+  const row = rows[0] as { is_admin: boolean } | undefined;
+  return row?.is_admin ?? false;
+}
+
+export async function getSetting(key: string): Promise<string | undefined> {
+  const { rows } = await getPool().query('SELECT value FROM settings WHERE key = $1', [key]);
+  const row = rows[0] as { value: string } | undefined;
+  return row?.value;
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  await getPool().query(
+    'INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = $3',
+    [key, value, Date.now()],
+  );
+}
+
+export async function createWarning(id: string, userId: string, message: string): Promise<void> {
+  await getPool().query('INSERT INTO warnings (id, user_id, message, created_at) VALUES ($1, $2, $3, $4)', [
+    id,
+    userId,
+    message,
+    Date.now(),
+  ]);
+}
+
+export async function isMaintenanceMode(): Promise<boolean> {
+  const val = await getSetting('maintenance_mode');
+  return val === 'true' || val === '1';
 }
 
 export async function closeDb(): Promise<void> {

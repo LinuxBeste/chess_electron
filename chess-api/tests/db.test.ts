@@ -385,4 +385,33 @@ describe('db — migrations and utilities', () => {
     const lb = await db.getLeaderboard(10, 0);
     expect(lb.rows.length).toBeGreaterThanOrEqual(1);
   });
+
+  test('setSetting / getSetting round-trip', async () => {
+    await db.setSetting('test_key', 'test_value');
+    const val = await db.getSetting('test_key');
+    expect(val).toBe('test_value');
+  });
+
+  test('getSetting returns undefined for missing key', async () => {
+    const val = await db.getSetting('no_such_key_' + Date.now());
+    expect(val).toBeUndefined();
+  });
+
+  test('setSetting overwrites existing value', async () => {
+    await db.setSetting('overwrite_key', 'first');
+    await db.setSetting('overwrite_key', 'second');
+    const val = await db.getSetting('overwrite_key');
+    expect(val).toBe('second');
+  });
+
+  test('createWarning stores and retrieves warning', async () => {
+    const userId = await makeUser('warn_user');
+    const wid = 'w-test-' + Date.now();
+    await db.createWarning(wid, userId, 'Test warning');
+    const pool = db.getDb();
+    const { rows } = await pool.query('SELECT * FROM warnings WHERE id = $1', [wid]);
+    expect(rows.length).toBe(1);
+    expect(rows[0].user_id).toBe(userId);
+    expect(rows[0].message).toBe('Test warning');
+  });
 });

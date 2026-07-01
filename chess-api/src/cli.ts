@@ -101,6 +101,11 @@ EXAMPLES BY CATEGORY
     chess-admin health
     chess-admin stats
     chess-admin config
+    chess-admin maintenance on
+    chess-admin maintenance off
+    chess-admin announce --message "..."
+    chess-admin warn --id <uuid> --message "..."
+    chess-admin set env --key MAX_GAMES_PER_PLAYER --value 10
 
 Run 'chess-admin <command> --help' for details on each command and its options.
 `,
@@ -1191,8 +1196,9 @@ dbCmd
 Example:
   chess-admin db migrate
 
-Runs migrations 1-6: schema creation, indexes, chat tables, group ownership,
-and unread message tracking. Each migration runs only if not yet applied.
+Runs migrations 1-8: schema creation, indexes, chat tables, group ownership,
+unread message tracking, reports/admin, and settings. Each migration runs
+only if not yet applied.
 
 Output:
   1 (schema)
@@ -1201,7 +1207,9 @@ Output:
   4 (chat-schema)
   5 (group-owner)
   6 (unread-read-at)
-  All 6 migrations applied
+  7 (reports)
+  8 (settings)
+  All 8 migrations applied
 `,
   )
   .action(async () => {
@@ -1246,6 +1254,16 @@ Output:
           version: 7,
           name: 'reports',
           sql: `ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT false; CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, reporter_id TEXT NOT NULL REFERENCES users(id), target_id TEXT NOT NULL REFERENCES users(id), game_id TEXT, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'dismissed', 'resolved')), created_at BIGINT NOT NULL, reviewed_by TEXT, reviewed_at BIGINT); CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status); CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_id);`,
+        },
+        {
+          version: 8,
+          name: 'settings',
+          sql: `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at BIGINT NOT NULL);`,
+        },
+        {
+          version: 9,
+          name: 'warnings',
+          sql: `CREATE TABLE IF NOT EXISTS warnings (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), message TEXT NOT NULL, created_at BIGINT NOT NULL, read_at BIGINT); CREATE INDEX IF NOT EXISTS idx_warnings_user ON warnings(user_id);`,
         },
       ];
       for (const m of migrations) {
@@ -1445,6 +1463,194 @@ Secrets (keys containing SECRET or PASSWORD) are masked as "***".
       const display = val ? (k.includes('SECRET') || k.includes('PASSWORD') ? '***' : val) : '(not set)';
       console.log('  ' + k.padEnd(max + 1) + '= ' + display);
     }
+  });
+
+/* ─── MAINTENANCE ─── */
+
+program
+  .command('maintenance')
+  .description('Toggle maintenance mode (on/off)')
+  .argument('<state>', 'on or off')
+  .addHelpText(
+    'after',
+    `
+Examples:
+  chess-admin maintenance on
+  chess-admin maintenance off
+
+Output:
+  Maintenance mode enabled
+  Maintenance mode disabled
+`,
+  )
+  .action(async (state: string) => {
+    if (state !== 'on' && state !== 'off') {
+      console.error('Usage: chess-admin maintenance <on|off>');
+      process.exit(1);
+    }
+    const value = state === 'on' ? 'true' : 'false';
+    await withDb(async (pool) => {
+      await pool.query(
+        'INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = $3',
+        ['maintenance_mode', value, Date.now()],
+      );
+      console.log('Maintenance mode ' + (state === 'on' ? 'enabled' : 'disabled'));
+    });
+  });
+
+/* ─── ANNOUNCE ─── */
+
+program
+  .command('announce')
+  .description('Broadcast a message to all connected players via the running server')
+  .requiredOption('-m, --message <text>', 'Message text to broadcast')
+  .option('-s, --server <url>', 'Server URL (default: http://localhost:25565)', 'http://localhost:25565')
+  .option('-p, --password <password>', 'Admin password (defaults to ADMIN_PASSWORD env var)')
+  .addHelpText(
+    'after',
+    `
+Examples:
+  chess-admin announce --message "Server restart in 5 minutes"
+  chess-admin announce --message "Maintenance tonight at 2am" --password mypass
+
+Output:
+  Login OK — broadcasting message...
+  Sent to 12 players
+
+Requires: Chess API server running on the configured port (default 25565).
+Uses /admin/api/login and /admin/api/broadcast endpoints.
+`,
+  )
+  .action(async (opts: { message: string; server: string; password?: string }) => {
+    const password = opts.password || process.env.ADMIN_PASSWORD;
+    if (!password) {
+      console.error('Admin password required via --password or ADMIN_PASSWORD env var');
+      process.exit(1);
+    }
+    const baseUrl = opts.server.replace(/\/+$/, '');
+    try {
+      const loginRes = await fetch(baseUrl + '/admin/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: process.env.ADMIN_USERNAME || 'admin', password }),
+      });
+      if (!loginRes.ok) {
+        console.error('Login failed (HTTP ' + loginRes.status + '): ' + (await loginRes.text()));
+        process.exit(1);
+      }
+      const { token } = (await loginRes.json()) as { token: string };
+      const broadcastRes = await fetch(baseUrl + '/admin/api/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ message: opts.message }),
+      });
+      if (!broadcastRes.ok) {
+        console.error('Broadcast failed (HTTP ' + broadcastRes.status + '): ' + (await broadcastRes.text()));
+        process.exit(1);
+      }
+      const result = (await broadcastRes.json()) as { recipientCount?: number };
+      console.log('Sent to ' + (result.recipientCount ?? '?') + ' players');
+    } catch (err) {
+      console.error(
+        'Failed to connect to server at ' + baseUrl + ': ' + (err instanceof Error ? err.message : String(err)),
+      );
+      process.exit(1);
+    }
+  });
+
+/* ─── WARN ─── */
+
+program
+  .command('warn')
+  .description('Send an in-app warning notification to a player via the running server')
+  .requiredOption('-i, --id <userId>', 'User ID to warn')
+  .requiredOption('-m, --message <text>', 'Warning message')
+  .option('-s, --server <url>', 'Server URL (default: http://localhost:25565)', 'http://localhost:25565')
+  .option('-p, --password <password>', 'Admin password (defaults to ADMIN_PASSWORD env var)')
+  .addHelpText(
+    'after',
+    `
+Examples:
+  chess-admin warn --id abc123 --message "Please follow the rules"
+  chess-admin warn --id abc123 --message "Warning: unsportsmanlike conduct" --password mypass
+
+Output:
+  Warning sent to user abc123...
+
+Requires: Chess API server running. Uses /admin/api/warn endpoint.
+`,
+  )
+  .action(async (opts: { id: string; message: string; server: string; password?: string }) => {
+    const password = opts.password || process.env.ADMIN_PASSWORD;
+    if (!password) {
+      console.error('Admin password required via --password or ADMIN_PASSWORD env var');
+      process.exit(1);
+    }
+    const baseUrl = opts.server.replace(/\/+$/, '');
+    try {
+      const loginRes = await fetch(baseUrl + '/admin/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: process.env.ADMIN_USERNAME || 'admin', password }),
+      });
+      if (!loginRes.ok) {
+        console.error('Login failed (HTTP ' + loginRes.status + ')' + (await loginRes.text()));
+        process.exit(1);
+      }
+      const { token } = (await loginRes.json()) as { token: string };
+      const warnRes = await fetch(baseUrl + '/admin/api/warn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ userId: opts.id, message: opts.message }),
+      });
+      if (!warnRes.ok) {
+        const body = await warnRes.text();
+        console.error('Warn failed (HTTP ' + warnRes.status + '): ' + body);
+        process.exit(1);
+      }
+      console.log('Warning sent to user ' + opts.id.slice(0, 8) + '…');
+    } catch (err) {
+      console.error(
+        'Failed to connect to server at ' + baseUrl + ': ' + (err instanceof Error ? err.message : String(err)),
+      );
+      process.exit(1);
+    }
+  });
+
+/* ─── SET ENV ─── */
+
+const setCmd = program
+  .command('set')
+  .description('Set runtime configuration values (temporary — does not survive restart)');
+
+setCmd
+  .command('env')
+  .description('Set a runtime env override stored in DB. Use actual env vars for permanent changes.')
+  .requiredOption('-k, --key <key>', 'Configuration key (e.g. MAX_GAMES_PER_PLAYER)')
+  .requiredOption('-v, --value <value>', 'Configuration value')
+  .addHelpText(
+    'after',
+    `
+Examples:
+  chess-admin set env --key MAX_GAMES_PER_PLAYER --value 10
+  chess-admin set env --key CHAT_MAX_LENGTH --value 200
+
+Output:
+  MAX_GAMES_PER_PLAYER = 10 (runtime override set)
+
+Note: This stores the value in the database as a runtime override.
+It does NOT change the actual environment — permanent changes must
+be made via the .env file or the process environment.
+`,
+  )
+  .action(async (opts: { key: string; value: string }) => {
+    await withDb(async (pool) => {
+      await pool.query(
+        'INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = $3',
+        ['config.' + opts.key, opts.value, Date.now()],
+      );
+      console.log(opts.key + ' = ' + opts.value + ' (runtime override set)');
+    });
   });
 
 /* ─── Parse ─── */

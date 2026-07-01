@@ -448,6 +448,7 @@ router.get('/admin/api/accounts', adminAuthMiddleware, async (_req: Request, res
       losses: u.losses,
       draws: u.draws,
       rating: u.rating,
+      isAdmin: u.is_admin === true,
     }));
     logger.info('Admin accounts listed: count=' + list.length);
     res.json(list);
@@ -912,6 +913,37 @@ router.post('/admin/api/broadcast', adminAuthMiddleware, (req: Request, res: Res
   }
 });
 
+/* ─── Admin: Warn a player ─── */
+
+router.post('/admin/api/warn', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const parsed = z
+      .object({
+        userId: z.string().uuid(),
+        message: z.string().min(1).max(500),
+      })
+      .safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const { userId, message } = parsed.data;
+    const user = await db.getUserById(userId);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const id = crypto.randomUUID();
+    await db.createWarning(id, userId, message);
+    game.sendToPlayer(userId, { type: 'admin_warning', warningId: id, message, timestamp: Date.now() });
+    logger.audit('admin_warn', `user="${userId}" message="${message}" by admin`);
+    res.json({ success: true, warningId: id });
+  } catch (err) {
+    logger.error('Admin warn failed: ' + err);
+    res.status(500).json({ error: 'Failed to send warning' });
+  }
+});
+
 /* ─── Admin: Server config ─── */
 
 router.get('/admin/api/config', adminAuthMiddleware, (_req: Request, res: Response) => {
@@ -967,6 +999,103 @@ router.post('/admin/api/accounts', adminAuthMiddleware, async (req: Request, res
   } catch (err) {
     logger.error('Admin create account failed: ' + err);
     res.status(500).json({ error: 'Failed to create account' });
+  }
+});
+
+/* ─── Admin: Toggle Admin ─── */
+
+router.put('/admin/api/accounts/:id/toggle-admin', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = await db.getUserById(req.params.id);
+    if (!user) {
+      res.status(404).json({ error: 'Account not found' });
+      return;
+    }
+    const isAdmin = await db.isUserAdmin(req.params.id);
+    await db.setUserAdmin(req.params.id, !isAdmin);
+    logger.audit('admin_toggled_admin', `account="${req.params.id}" isAdmin="${!isAdmin}" by admin`);
+    res.json({ success: true, isAdmin: !isAdmin });
+  } catch (err) {
+    logger.error('Admin toggle failed: ' + err);
+    res.status(500).json({ error: 'Failed to toggle admin status' });
+  }
+});
+
+/* ─── Admin: Reports ─── */
+
+router.get('/admin/api/reports', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+    const status = req.query.status as string | undefined;
+    const result = await db.getReports(status, page, limit);
+
+    const userIds = new Set<string>();
+    for (const r of result.rows) {
+      if (r.reporter_id) userIds.add(r.reporter_id);
+      if (r.target_id) userIds.add(r.target_id);
+    }
+    const users = await db.getUsersByIds(Array.from(userIds));
+    const reports = result.rows.map((r) => ({
+      id: r.id,
+      reporterId: r.reporter_id,
+      reporterName: users.get(r.reporter_id)?.display_name ?? r.reporter_id,
+      targetId: r.target_id,
+      targetName: users.get(r.target_id)?.display_name ?? r.target_id,
+      gameId: r.game_id,
+      reason: r.reason,
+      status: r.status,
+      createdAt: r.created_at,
+      reviewedBy: r.reviewed_by,
+      reviewedAt: r.reviewed_at,
+    }));
+
+    res.json({ reports, total: result.total, page, limit });
+  } catch (err) {
+    logger.error('Admin reports query failed: ' + err);
+    res.status(500).json({ error: 'Failed to load reports' });
+  }
+});
+
+router.put('/admin/api/reports/:id/status', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const report = await db.getReportById(req.params.id);
+    if (!report) {
+      res.status(404).json({ error: 'Report not found' });
+      return;
+    }
+    const parsed = z.object({ status: z.enum(['open', 'dismissed', 'resolved']) }).safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    await db.updateReportStatus(req.params.id, parsed.data.status, 'admin');
+    logger.audit('admin_report_status', `report="${req.params.id}" status="${parsed.data.status}" by admin`);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Admin report status update failed: ' + err);
+    res.status(500).json({ error: 'Failed to update report status' });
+  }
+});
+
+router.post('/admin/api/reports/:id/ban-target', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const report = await db.getReportById(req.params.id);
+    if (!report) {
+      res.status(404).json({ error: 'Report not found' });
+      return;
+    }
+    const result = await game.banPlayer(report.target_id);
+    if (!result.success) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    await db.updateReportStatus(req.params.id, 'resolved', 'admin');
+    logger.audit('admin_report_banned', `report="${req.params.id}" target="${report.target_id}" by admin`);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Admin report ban failed: ' + err);
+    res.status(500).json({ error: 'Failed to ban report target' });
   }
 });
 

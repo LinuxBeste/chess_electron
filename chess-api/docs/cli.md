@@ -56,12 +56,14 @@ chess-admin create user --username <username> [options]
 | `-p, --password <pwd>`      | no       | Min 8 chars, stored as SHA-256 hash. If omitted, the user cannot login (admin-created placeholder) |
 | `-d, --display-name <name>` | no       | Display name (defaults to username)                                                                |
 | `-r, --rating <number>`     | no       | Initial Elo rating (default: 1200)                                                                 |
+| `-a, --admin`               | no       | Create as admin user (`is_admin = true`)                                                           |
 
 **Example:**
 
 ```bash
 chess-admin create user --username alice --password s3cret
 chess-admin create user --username bob --display-name "Bobby" --rating 1500
+chess-admin create user --username admin2 --password s3cret --admin
 ```
 
 **Output:**
@@ -73,6 +75,7 @@ User created:
   Name:     Alice
   Rating:   1200
   Has pwd:  true
+  Admin:    false
 ```
 
 **Notes:**
@@ -148,11 +151,13 @@ chess-admin list users [options]
 | -------------------- | ------------------------------------------------------------ |
 | `--json`             | Raw JSON output                                              |
 | `-l, --limit <N>`    | Max results (default: 100, max: 1000)                        |
+| `-a, --admin`        | Show only admin users                                        |
 | `-s, --sort <field>` | Sort field: `rating`, `username`, `wins` (default: `rating`) |
 
-**Example:**
+**Examples:**
 
 ```bash
+chess-admin list users --admin
 chess-admin list users --limit 5 --sort wins
 ```
 
@@ -160,13 +165,13 @@ chess-admin list users --limit 5 --sort wins
 
 ```
 Users (5):
-+----------+--------------+--------+------+--------+-------+
-| Username | Display Name | Rating | Wins | Losses | Draws |
-+----------+--------------+--------+------+--------+-------+
-| alice    | Alice        | 1500   | 42   | 3      | 12    |
-| bob      | Bobby        | 1350   | 30   | 15     | 5     |
-| ...      | ...          | ...    | ...  | ...    | ...   |
-+----------+--------------+--------+------+--------+-------+
++----------+--------------+--------+------+--------+-------+-------+
+| Username | Display Name | Rating | Wins | Losses | Draws | Admin |
++----------+--------------+--------+------+--------+-------+-------+
+| alice    | Alice        | 1500   | 42   | 3      | 12    | yes   |
+| bob      | Bobby        | 1350   | 30   | 15     | 5     |       |
+| ...      | ...          | ...    | ...  | ...    | ...   | ...   |
++----------+--------------+--------+------+--------+-------+-------+
 ```
 
 ---
@@ -293,6 +298,7 @@ User: alice
   ID:      a1b2c3d4-e5f6-7890-abcd-ef1234567890
   Name:    Alice
   Rating:  1500
+  Admin:   yes
   Record:  42W / 3L / 12D
   Avatar:  https://example.com/avatar.png
   Created: 2024-01-01T12:00:00.000Z
@@ -333,6 +339,216 @@ Game: abc123
     1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6
     5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O
     ...
+```
+
+---
+
+## `edit user`
+
+Update one or more fields on an existing user account: wins, losses, draws, admin status, username, display name, or rating.
+
+```
+chess-admin edit user --id <userId> [options]
+```
+
+| Option                      | Description                          |
+| --------------------------- | ------------------------------------ |
+| `-i, --id <userId>`         | User ID (required)                   |
+| `-w, --wins <N>`            | Set win count                        |
+| `-l, --losses <N>`          | Set loss count                       |
+| `-d, --draws <N>`           | Set draw count                       |
+| `-a, --admin <bool>`        | Set admin status (`true` or `false`) |
+| `-u, --username <name>`     | Change username (2-30 chars)         |
+| `-n, --display-name <name>` | Change display name                  |
+| `-r, --rating <N>`          | Set Elo rating (0+)                  |
+
+**Examples:**
+
+```bash
+chess-admin edit user --id a1b2c3d4-... --wins 10 --losses 2 --draws 1
+chess-admin edit user --id a1b2c3d4-... --admin true
+chess-admin edit user --id a1b2c3d4-... --username newname --display-name "New Name"
+chess-admin edit user --id a1b2c3d4-... --rating 1500
+```
+
+**Output:**
+
+```
+User a1b2c3d4-e5f6-7890-abcd-ef1234567890 updated: wins=10 losses=2 draws=1
+```
+
+---
+
+## `list reports`
+
+List player reports with status (open, dismissed, resolved). Requires the `reports` table (migration 7).
+
+```
+chess-admin list reports [options]
+```
+
+| Option                  | Description                             |
+| ----------------------- | --------------------------------------- |
+| `--json`                | Raw JSON output                         |
+| `-s, --status <status>` | Filter: `open`, `dismissed`, `resolved` |
+
+**Examples:**
+
+```bash
+chess-admin list reports
+chess-admin list reports --status open
+```
+
+**Output:**
+
+```
+Reports (3):
++----------+----------+----------+--------------------------+--------+------------+
+| ID       | Reporter | Target   | Reason                   | Status | Date       |
++----------+----------+----------+--------------------------+--------+------------+
+| abc123…  | Alice    | Bob      | Cheating during game     | open   | 2024-01-15 |
+| def456…  | Bob      | Charlie  | Abusive chat             | open   | 2024-01-14 |
+| ghi789…  | Charlie  | Alice    | Stalling                 | dismissed | 2024-01-13 |
++----------+----------+----------+--------------------------+--------+------------+
+```
+
+---
+
+## `show report`
+
+Show full details of a single player report.
+
+```
+chess-admin show report --id <reportId> [options]
+```
+
+| Option                | Required | Description     |
+| --------------------- | -------- | --------------- |
+| `-i, --id <reportId>` | yes      | Report ID       |
+| `--json`              | no       | Raw JSON output |
+
+**Example:**
+
+```bash
+chess-admin show report --id abc123
+```
+
+**Output:**
+
+```
+Report: abc123...
+  Reporter: Alice
+  Target:   Bob
+  Reason:   Cheating during game
+  Game ID:  game-uuid (none)
+  Status:   open
+  Created:  2024-01-15T12:00:00.000Z
+  Reviewed: (not yet)
+```
+
+---
+
+## `report dismiss`
+
+Dismiss a player report without taking action.
+
+```
+chess-admin report dismiss --id <reportId>
+```
+
+| Option                | Required | Description |
+| --------------------- | -------- | ----------- |
+| `-i, --id <reportId>` | yes      | Report ID   |
+
+**Example:**
+
+```bash
+chess-admin report dismiss --id abc123
+```
+
+**Output:**
+
+```
+Report abc12345… dismissed
+```
+
+---
+
+## `report resolve`
+
+Mark a report as resolved (action taken).
+
+```
+chess-admin report resolve --id <reportId>
+```
+
+| Option                | Required | Description |
+| --------------------- | -------- | ----------- |
+| `-i, --id <reportId>` | yes      | Report ID   |
+
+**Example:**
+
+```bash
+chess-admin report resolve --id def456
+```
+
+**Output:**
+
+```
+Report def45678… resolved
+```
+
+---
+
+## `report ban`
+
+Ban the reported player and mark the report as resolved in one step.
+
+```
+chess-admin report ban --id <reportId>
+```
+
+| Option                | Required | Description |
+| --------------------- | -------- | ----------- |
+| `-i, --id <reportId>` | yes      | Report ID   |
+
+**Example:**
+
+```bash
+chess-admin report ban --id ghi789
+```
+
+**Output:**
+
+```
+Report ghi78901… banned target and resolved
+```
+
+---
+
+## `purge completed-games`
+
+Delete completed game records older than a given number of days. Useful for long-running servers to keep the archive lean.
+
+```
+chess-admin purge completed-games --before <days>
+```
+
+| Option                | Required | Description                            |
+| --------------------- | -------- | -------------------------------------- |
+| `-b, --before <days>` | yes      | Delete games older than this many days |
+
+**Examples:**
+
+```bash
+chess-admin purge completed-games --before 90
+chess-admin purge completed-games --before 365
+```
+
+**Output:**
+
+```
+Purged 42 completed games older than 90 days
 ```
 
 ---
@@ -592,7 +808,7 @@ Restored from: /home/user/chess-api/backups/chess-2024-01-01.dump
 
 Run all pending database migrations. Idempotent — safe to run multiple times. Each migration runs only if not yet applied.
 
-Tracked migrations (1-6):
+Tracked migrations (1-9):
 
 | Version | Name             | Description                                                         |
 | ------- | ---------------- | ------------------------------------------------------------------- |
@@ -602,6 +818,9 @@ Tracked migrations (1-6):
 | 4       | `chat-schema`    | Chat conversations, members, messages tables                        |
 | 5       | `group-owner`    | Group chat ownership and member roles                               |
 | 6       | `unread-read-at` | Unread message tracking (`last_read_at` column)                     |
+| 7       | `reports`        | Admin flag on users + reports table for player moderation           |
+| 8       | `settings`       | Key-value settings table for maintenance mode, feature flags        |
+| 9       | `warnings`       | Player warnings table for in-app moderation warnings                |
 
 **Example:**
 
@@ -618,7 +837,10 @@ chess-admin db migrate
   4 (chat-schema)
   5 (group-owner)
   6 (unread-read-at)
-  All 6 migrations applied
+  7 (reports)
+  8 (settings)
+  9 (warnings)
+  All 9 migrations applied
 ```
 
 ---
@@ -695,6 +917,123 @@ Top 5 players:
 | 5 | carl     | 1200   | 0/0/0     |
 +---+----------+--------+-----------+
 ```
+
+---
+
+## `maintenance`
+
+Toggle maintenance mode on or off. When enabled, new registrations and game creation are rejected with `503 Service Unavailable`. Active games continue running.
+
+```
+chess-admin maintenance <on|off>
+```
+
+**Examples:**
+
+```bash
+chess-admin maintenance on
+chess-admin maintenance off
+```
+
+**Output:**
+
+```
+Maintenance mode enabled
+Maintenance mode disabled
+```
+
+---
+
+## `announce`
+
+Broadcast a message to all connected players. Logs in to the admin API and uses the `/admin/api/broadcast` endpoint.
+
+```
+chess-admin announce --message <text> [options]
+```
+
+| Option                 | Description                                           |
+| ---------------------- | ----------------------------------------------------- |
+| `-m, --message <text>` | Message text to broadcast                             |
+| `-s, --server <url>`   | Server URL (default: `http://localhost:25565`)        |
+| `-p, --password <pwd>` | Admin password (defaults to `ADMIN_PASSWORD` env var) |
+
+**Example:**
+
+```bash
+chess-admin announce --message "Server restart in 5 minutes"
+chess-admin announce --message "Maintenance tonight" --password mypass
+```
+
+**Output:**
+
+```
+Sent to 12 players
+```
+
+**Requires:** Chess API server running on the configured `PORT` (default 25565).
+
+---
+
+## `warn`
+
+Send an in-app warning notification to a specific player. The warning is stored in the `warnings` table and delivered via WebSocket if the player is currently connected.
+
+```
+chess-admin warn --id <userId> --message <text> [options]
+```
+
+| Option                 | Required | Description                                           |
+| ---------------------- | -------- | ----------------------------------------------------- |
+| `-i, --id <userId>`    | yes      | User ID to warn                                       |
+| `-m, --message <text>` | yes      | Warning message                                       |
+| `-s, --server <url>`   | no       | Server URL (default: `http://localhost:25565`)        |
+| `-p, --password <pwd>` | no       | Admin password (defaults to `ADMIN_PASSWORD` env var) |
+
+**Example:**
+
+```bash
+chess-admin warn --id a1b2c3d4-... --message "Please follow the rules"
+chess-admin warn --id a1b2c3d4-... --message "Unsportsmanlike conduct" --password mypass
+```
+
+**Output:**
+
+```
+Warning sent to user a1b2c3d4…
+```
+
+**Requires:** Chess API server running, migrations 7+ applied.
+
+---
+
+## `set env`
+
+Set a runtime configuration override stored in the database. This does **not** change the actual process environment — it writes to the `settings` table under the `config.` key prefix. The server reads these overrides at runtime; for permanent changes, edit `.env` or the process environment directly.
+
+```
+chess-admin set env --key <key> --value <value>
+```
+
+| Option                | Required | Description                                     |
+| --------------------- | -------- | ----------------------------------------------- |
+| `-k, --key <key>`     | yes      | Configuration key (e.g. `MAX_GAMES_PER_PLAYER`) |
+| `-v, --value <value>` | yes      | Configuration value                             |
+
+**Example:**
+
+```bash
+chess-admin set env --key MAX_GAMES_PER_PLAYER --value 10
+chess-admin set env --key CHAT_MAX_LENGTH --value 200
+```
+
+**Output:**
+
+```
+MAX_GAMES_PER_PLAYER = 10 (runtime override set)
+```
+
+**Note:** These overrides are lost if the database is rebuilt. They are intended for temporary tuning without restarting the server.
 
 ---
 
