@@ -72,7 +72,9 @@ function redisLog(e: unknown): void {
 
 /* ─── File-based persistence (fallback when Redis is not enabled) ─── */
 
-const ACTIVE_GAMES_FILE = process.env.ACTIVE_GAMES_FILE || path.join(process.cwd(), 'data', 'active_games.json');
+const ACTIVE_GAMES_FILE_ENV = process.env.ACTIVE_GAMES_FILE ?? '';
+const _filePersistenceEnabled = ACTIVE_GAMES_FILE_ENV.length > 0 || process.env.DISABLE_FILE_PERSISTENCE !== 'true';
+const ACTIVE_GAMES_FILE = ACTIVE_GAMES_FILE_ENV || path.join(process.cwd(), 'data', 'active_games.json');
 
 let _fileDirty = false;
 
@@ -80,8 +82,12 @@ function activeGameFilter(g: GameState): boolean {
   return g.status === 'waiting' || g.status === 'active';
 }
 
+function fileEnabled(): boolean {
+  return !redis.isRedisEnabled() && _filePersistenceEnabled;
+}
+
 export async function saveActiveGamesToFile(): Promise<void> {
-  if (redis.isRedisEnabled()) return;
+  if (!fileEnabled()) return;
   try {
     const data: Record<string, GameState> = {};
     for (const [id, g] of games) {
@@ -100,7 +106,7 @@ export async function saveActiveGamesToFile(): Promise<void> {
 }
 
 export async function loadActiveGamesFromFile(): Promise<void> {
-  if (redis.isRedisEnabled()) return;
+  if (!fileEnabled()) return;
   try {
     const raw = await fs.readFile(ACTIVE_GAMES_FILE, 'utf-8');
     const data = JSON.parse(raw) as Record<string, GameState>;
@@ -123,7 +129,7 @@ export async function loadActiveGamesFromFile(): Promise<void> {
 }
 
 export function markGamesDirty(): void {
-  if (!redis.isRedisEnabled()) {
+  if (fileEnabled()) {
     _fileDirty = true;
   }
 }
