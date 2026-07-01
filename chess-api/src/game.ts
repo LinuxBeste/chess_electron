@@ -2,6 +2,21 @@ import { v4 as uuidv4 } from 'uuid';
 import { WebSocket } from 'ws';
 import { GameState, Color, PieceType } from './types.js';
 import type { GameStatus } from './types.js';
+
+/* Per-game mutex: serializes state-mutating operations on the same game.
+ * Each function chains onto a promise so the next call waits for the previous
+ * one to complete before reading/modifying the game object. */
+const gameLocks = new Map<string, Promise<void>>();
+function withGameLock<T>(gameId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = gameLocks.get(gameId) ?? (Promise.resolve() as Promise<unknown>);
+  const next = prev.then(fn, fn).finally(() => {
+    if (gameLocks.get(gameId) === next) {
+      gameLocks.delete(gameId);
+    }
+  }) as Promise<T>;
+  gameLocks.set(gameId, next as unknown as Promise<void>);
+  return next;
+}
 import * as chess from './chess.js';
 import * as db from './db.js';
 import { engineManager } from './engine.js';
@@ -493,49 +508,53 @@ export async function getGame(gameId: string): Promise<GameState | null> {
   return g ? sanitizeForClient(await enrichNames(g)) : null;
 }
 
-export function abortGame(gameId: string, playerId: string): { success: boolean; error?: string } {
-  const game = games.get(gameId);
-  if (!game) return { success: false, error: 'Game not found' };
-  if (game.status !== 'waiting') return { success: false, error: 'Can only abort a waiting game' };
-  if (game.players.white !== playerId) return { success: false, error: 'Only the creator can abort the game' };
+export async function abortGame(gameId: string, playerId: string): Promise<{ success: boolean; error?: string }> {
+  return withGameLock(gameId, async () => {
+    const game = games.get(gameId);
+    if (!game) return { success: false, error: 'Game not found' };
+    if (game.status !== 'waiting') return { success: false, error: 'Can only abort a waiting game' };
+    if (game.players.white !== playerId) return { success: false, error: 'Only the creator can abort the game' };
 
-  if (game.players.white) sendToPlayer(game.players.white, { type: 'game_aborted', gameId });
-  if (game.players.black) sendToPlayer(game.players.black, { type: 'game_aborted', gameId });
-  sendToSpectators(gameId, { type: 'game_aborted', gameId });
-  spectatorConnections.delete(gameId);
-  removeGame(gameId);
-  broadcastGameListUpdate();
-  logger.info('Game aborted: gameId=' + gameId + ' by playerId=' + playerId);
-  return { success: true };
+    if (game.players.white) sendToPlayer(game.players.white, { type: 'game_aborted', gameId });
+    if (game.players.black) sendToPlayer(game.players.black, { type: 'game_aborted', gameId });
+    sendToSpectators(gameId, { type: 'game_aborted', gameId });
+    spectatorConnections.delete(gameId);
+    removeGame(gameId);
+    broadcastGameListUpdate();
+    logger.info('Game aborted: gameId=' + gameId + ' by playerId=' + playerId);
+    return { success: true };
+  });
 }
 
 export async function joinGame(
   gameId: string,
   playerId: string,
 ): Promise<{ success: boolean; error?: string; game?: GameState }> {
-  const game = games.get(gameId);
-  if (!game) return { success: false, error: 'Game not found' };
-  if (game.status !== 'waiting') return { success: false, error: 'Game is not open for joining' };
-  if (game.players.white === playerId) return { success: false, error: 'Cannot join your own game' };
-  const activeCount = countActiveGamesForPlayer(playerId);
-  if (activeCount >= MAX_GAMES_PER_PLAYER)
-    return { success: false, error: `Already in ${activeCount} active game(s) (max ${MAX_GAMES_PER_PLAYER})` };
+  return withGameLock(gameId, async () => {
+    const game = games.get(gameId);
+    if (!game) return { success: false, error: 'Game not found' };
+    if (game.status !== 'waiting') return { success: false, error: 'Game is not open for joining' };
+    if (game.players.white === playerId) return { success: false, error: 'Cannot join your own game' };
+    const activeCount = countActiveGamesForPlayer(playerId);
+    if (activeCount >= MAX_GAMES_PER_PLAYER)
+      return { success: false, error: `Already in ${activeCount} active game(s) (max ${MAX_GAMES_PER_PLAYER})` };
 
-  game.players.black = playerId;
-  game.status = 'active';
-  persistGameAndPublish(gameId);
-  addPlayerGameIndex(playerId, gameId);
+    game.players.black = playerId;
+    game.status = 'active';
+    persistGameAndPublish(gameId);
+    addPlayerGameIndex(playerId, gameId);
 
-  logger.info('Game joined: gameId=' + gameId + ' white=' + game.players.white + ' black=' + playerId);
+    logger.info('Game joined: gameId=' + gameId + ' white=' + game.players.white + ' black=' + playerId);
 
-  const enriched = await enrichNames(game);
-  broadcastToGame(gameId, {
-    type: 'game_started',
-    gameId,
-    game: enriched,
+    const enriched = await enrichNames(game);
+    broadcastToGame(gameId, {
+      type: 'game_started',
+      gameId,
+      game: enriched,
+    });
+    await broadcastGameListUpdate();
+    return { success: true, game: enriched };
   });
-  await broadcastGameListUpdate();
-  return { success: true, game: enriched };
 }
 
 export async function makeMove(
@@ -545,153 +564,157 @@ export async function makeMove(
   to: string,
   promotion?: PieceType,
 ): Promise<{ success: boolean; error?: string; state?: GameState }> {
-  const game = games.get(gameId);
-  if (!game) return { success: false, error: 'Game not found' };
-  if (game.status !== 'active') return { success: false, error: 'Game is not active' };
+  return withGameLock(gameId, async () => {
+    const game = games.get(gameId);
+    if (!game) return { success: false, error: 'Game not found' };
+    if (game.status !== 'active') return { success: false, error: 'Game is not active' };
 
-  let playerColor: Color | null = null;
-  if (game.players.white === playerId) playerColor = 'white';
-  else if (game.players.black === playerId) playerColor = 'black';
-  if (!playerColor) return { success: false, error: 'You are not a player in this game' };
-  if (game.turn !== playerColor) return { success: false, error: 'Not your turn' };
-  if (!/^[a-h][1-8]$/.test(from) || !/^[a-h][1-8]$/.test(to)) {
-    // Validate algebraic notation format
-    return { success: false, error: 'Invalid square format' };
-  }
+    let playerColor: Color | null = null;
+    if (game.players.white === playerId) playerColor = 'white';
+    else if (game.players.black === playerId) playerColor = 'black';
+    if (!playerColor) return { success: false, error: 'You are not a player in this game' };
+    if (game.turn !== playerColor) return { success: false, error: 'Not your turn' };
+    if (!/^[a-h][1-8]$/.test(from) || !/^[a-h][1-8]$/.test(to)) {
+      return { success: false, error: 'Invalid square format' };
+    }
 
-  const [fromRank, fromFile] = chess.squareToIndices(from);
-  const piece = game.board[fromRank][fromFile];
-  if (!piece) return { success: false, error: 'No piece at source square' };
-  if (piece.color !== playerColor) return { success: false, error: 'That is not your piece' };
+    const [fromRank, fromFile] = chess.squareToIndices(from);
+    const piece = game.board[fromRank][fromFile];
+    if (!piece) return { success: false, error: 'No piece at source square' };
+    if (piece.color !== playerColor) return { success: false, error: 'That is not your piece' };
 
-  const legalMoves = chess.getLegalMoves(game.board, playerColor, game.enPassantTarget, game.castlingRights);
+    const legalMoves = chess.getLegalMoves(game.board, playerColor, game.enPassantTarget, game.castlingRights);
 
-  const matchedMove = legalMoves.find((m) => {
-    if (m.from !== from || m.to !== to) return false;
-    if (promotion && m.promotion !== promotion) return false;
-    if (!promotion && m.promotion && m.promotion !== 'queen') return false; // Default promotion to queen
-    return true;
+    const matchedMove = legalMoves.find((m) => {
+      if (m.from !== from || m.to !== to) return false;
+      if (promotion && m.promotion !== promotion) return false;
+      if (!promotion && m.promotion && m.promotion !== 'queen') return false;
+      return true;
+    });
+
+    if (!matchedMove) return { success: false, error: 'Illegal move' };
+
+    const { newBoard, enPassantTarget, castlingRights } = chess.applyMove(game.board, matchedMove, game.castlingRights);
+    const notation = chess.moveToAlgebraic(matchedMove, matchedMove.captured, legalMoves);
+    const newHalfMoveClock = chess.updateHalfMoveClock(matchedMove, game.halfMoveClock);
+    const nextTurn: Color = game.turn === 'white' ? 'black' : 'white';
+    const { status: rawStatus } = chess.getGameStatus(
+      newBoard,
+      nextTurn,
+      enPassantTarget,
+      castlingRights,
+      newHalfMoveClock,
+    );
+
+    let newStatus: GameStatus;
+    let winner: Color | null = null;
+
+    if (rawStatus === 'checkmate') {
+      newStatus = 'checkmate';
+      winner = game.turn;
+    } else if (rawStatus === 'stalemate' || rawStatus === 'draw') {
+      newStatus = rawStatus;
+    } else {
+      newStatus = 'active';
+    }
+
+    game.board = newBoard;
+    game.turn = nextTurn;
+    game.status = newStatus;
+    game.moveHistory.push(notation);
+    game.boardHistory.push({ board: chess.serializeBoard(newBoard), move: notation });
+    game.enPassantTarget = enPassantTarget;
+    game.castlingRights = castlingRights;
+    game.lastMove = { from, to };
+    game.halfMoveClock = newHalfMoveClock;
+    if (winner) game.winner = winner;
+    persistGameAndPublish(gameId);
+
+    if (!uciHistory.has(gameId)) uciHistory.set(gameId, []);
+    uciHistory.get(gameId)!.push(from + to + (matchedMove.promotion ? matchedMove.promotion[0] : ''));
+
+    cancelDrawOffer(gameId);
+
+    const isTerminal = newStatus === 'checkmate' || newStatus === 'stalemate' || newStatus === 'draw';
+    const message: Record<string, unknown> = {
+      type: isTerminal ? 'game_over' : 'move',
+      gameId,
+      board: chess.serializeBoard(newBoard),
+      turn: nextTurn,
+      lastMove: { from, to },
+      status: newStatus,
+    };
+
+    if (newStatus === 'checkmate') {
+      message.result = 'checkmate';
+      message.reason = `${winner} wins by checkmate`;
+      message.winner = winner;
+    } else if (newStatus === 'stalemate') {
+      message.result = 'stalemate';
+      message.reason = 'Draw by stalemate';
+    } else if (newStatus === 'draw') {
+      game.reason = 'Draw by 50-move rule';
+      message.result = 'draw';
+      message.reason = game.reason;
+    }
+
+    broadcastToGame(gameId, message);
+
+    if (isTerminal) {
+      await recordGameResult(game, winner);
+      await broadcastGameListUpdate();
+    } else if (isBotGame(game)) {
+      setTimeout(() => {
+        withGameLock(gameId, async () => {
+          triggerBotMove(gameId);
+        });
+      }, 100);
+    }
+
+    const moveLog = notation || from + '-' + to;
+    logger.info('Move: gameId=' + gameId + ' player=' + playerId + ' move=' + moveLog + ' status=' + newStatus);
+    return { success: true, state: await enrichNames(game) };
   });
-
-  if (!matchedMove) return { success: false, error: 'Illegal move' };
-
-  const { newBoard, enPassantTarget, castlingRights } = chess.applyMove(game.board, matchedMove, game.castlingRights);
-  const notation = chess.moveToAlgebraic(matchedMove, matchedMove.captured, legalMoves);
-  const newHalfMoveClock = chess.updateHalfMoveClock(matchedMove, game.halfMoveClock);
-  const nextTurn: Color = game.turn === 'white' ? 'black' : 'white';
-  const { status: rawStatus } = chess.getGameStatus(
-    newBoard,
-    nextTurn,
-    enPassantTarget,
-    castlingRights,
-    newHalfMoveClock,
-  );
-
-  let newStatus: GameStatus;
-  let winner: Color | null = null;
-
-  if (rawStatus === 'checkmate') {
-    newStatus = 'checkmate';
-    winner = game.turn;
-  } else if (rawStatus === 'stalemate' || rawStatus === 'draw') {
-    newStatus = rawStatus;
-  } else {
-    newStatus = 'active';
-  }
-
-  game.board = newBoard;
-  game.turn = nextTurn;
-  game.status = newStatus;
-  game.moveHistory.push(notation);
-  game.boardHistory.push({ board: chess.serializeBoard(newBoard), move: notation });
-  game.enPassantTarget = enPassantTarget;
-  game.castlingRights = castlingRights;
-  game.lastMove = { from, to };
-  game.halfMoveClock = newHalfMoveClock;
-  if (winner) game.winner = winner;
-  persistGameAndPublish(gameId);
-
-  if (!uciHistory.has(gameId)) uciHistory.set(gameId, []);
-  uciHistory.get(gameId)!.push(from + to + (matchedMove.promotion ? matchedMove.promotion[0] : ''));
-
-  cancelDrawOffer(gameId); // Cancel any pending draw offer on move
-
-  const isTerminal = newStatus === 'checkmate' || newStatus === 'stalemate' || newStatus === 'draw';
-  const message: Record<string, unknown> = {
-    type: isTerminal ? 'game_over' : 'move',
-    gameId,
-    board: chess.serializeBoard(newBoard),
-    turn: nextTurn,
-    lastMove: { from, to },
-    status: newStatus,
-  };
-
-  if (newStatus === 'checkmate') {
-    message.result = 'checkmate';
-    message.reason = `${winner} wins by checkmate`;
-    message.winner = winner;
-  } else if (newStatus === 'stalemate') {
-    message.result = 'stalemate';
-    message.reason = 'Draw by stalemate';
-  } else if (newStatus === 'draw') {
-    game.reason = 'Draw by 50-move rule';
-    message.result = 'draw';
-    message.reason = game.reason;
-  }
-
-  broadcastToGame(gameId, message);
-
-  if (isTerminal) {
-    await recordGameResult(game, winner);
-    await broadcastGameListUpdate();
-  } else if (isBotGame(game)) {
-    setTimeout(() => {
-      // 100ms delay gives WS time to flush
-      triggerBotMove(gameId);
-    }, 100);
-  }
-
-  const moveLog = notation || from + '-' + to;
-  logger.info('Move: gameId=' + gameId + ' player=' + playerId + ' move=' + moveLog + ' status=' + newStatus);
-  return { success: true, state: await enrichNames(game) };
 }
 
 export async function resignGame(
   gameId: string,
   playerId: string,
 ): Promise<{ success: boolean; error?: string; state?: GameState }> {
-  const game = games.get(gameId);
-  if (!game) return { success: false, error: 'Game not found' };
+  return withGameLock(gameId, async () => {
+    const game = games.get(gameId);
+    if (!game) return { success: false, error: 'Game not found' };
 
-  let resigningColor: Color | null = null;
-  if (game.players.white === playerId) resigningColor = 'white';
-  else if (game.players.black === playerId) resigningColor = 'black';
-  if (!resigningColor) return { success: false, error: 'You are not a player in this game' };
-  if (game.status !== 'active') return { success: false, error: 'Game is not active' };
+    let resigningColor: Color | null = null;
+    if (game.players.white === playerId) resigningColor = 'white';
+    else if (game.players.black === playerId) resigningColor = 'black';
+    if (!resigningColor) return { success: false, error: 'You are not a player in this game' };
+    if (game.status !== 'active') return { success: false, error: 'Game is not active' };
 
-  const winner: Color = resigningColor === 'white' ? 'black' : 'white';
-  game.status = 'resigned';
-  game.winner = winner;
-  persistGameAndPublish(gameId);
+    const winner: Color = resigningColor === 'white' ? 'black' : 'white';
+    game.status = 'resigned';
+    game.winner = winner;
+    persistGameAndPublish(gameId);
 
-  broadcastToGame(gameId, {
-    type: 'game_over',
-    gameId,
-    board: chess.serializeBoard(game.board),
-    turn: game.turn,
-    lastMove: game.lastMove,
-    status: 'resigned',
-    result: 'resigned',
-    reason: `${resigningColor} resigned`,
-    winner,
+    broadcastToGame(gameId, {
+      type: 'game_over',
+      gameId,
+      board: chess.serializeBoard(game.board),
+      turn: game.turn,
+      lastMove: game.lastMove,
+      status: 'resigned',
+      result: 'resigned',
+      reason: `${resigningColor} resigned`,
+      winner,
+    });
+
+    await recordGameResult(game, winner === 'white' ? 'white' : winner === 'black' ? 'black' : null);
+    if (isBotGame(game)) engineManager.destroyInstance(gameId);
+    await broadcastGameListUpdate();
+
+    logger.info('Resign: gameId=' + gameId + ' player=' + playerId + ' winner=' + winner);
+    return { success: true, state: await enrichNames(game) };
   });
-
-  await recordGameResult(game, winner === 'white' ? 'white' : winner === 'black' ? 'black' : null);
-  if (isBotGame(game)) engineManager.destroyInstance(gameId);
-  await broadcastGameListUpdate();
-
-  logger.info('Resign: gameId=' + gameId + ' player=' + playerId + ' winner=' + winner);
-  return { success: true, state: await enrichNames(game) };
 }
 
 async function recordGameResult(game: GameState, winner: Color | null): Promise<void> {
@@ -793,141 +816,156 @@ export function offerDraw(gameId: string, playerId: string): boolean {
   return true;
 }
 
+/* Same as offerDraw but queued behind the per-game mutex.
+ * Call this instead of offerDraw when the operation should be serialized
+ * with other game-state mutations (e.g., from within withGameLock). */
+export async function offerDrawSafe(gameId: string, playerId: string): Promise<boolean> {
+  return withGameLock(gameId, async () => offerDraw(gameId, playerId));
+}
+
 export async function acceptDraw(gameId: string, playerId: string): Promise<{ success: boolean; error?: string }> {
-  const offererId = drawOffers.get(gameId);
-  if (!offererId) return { success: false, error: 'No pending draw offer' };
-  if (offererId === playerId) return { success: false, error: 'Cannot accept your own draw offer' };
+  return withGameLock(gameId, async () => {
+    const offererId = drawOffers.get(gameId);
+    if (!offererId) return { success: false, error: 'No pending draw offer' };
+    if (offererId === playerId) return { success: false, error: 'Cannot accept your own draw offer' };
 
-  const game = games.get(gameId);
-  if (!game || game.status !== 'active') {
+    const game = games.get(gameId);
+    if (!game || game.status !== 'active') {
+      deleteDrawOfferEntry(gameId);
+      return { success: false, error: 'Game is not active' };
+    }
+
+    const isPlayer = game.players.white === playerId || game.players.black === playerId;
+    if (!isPlayer) return { success: false, error: 'You are not a player in this game' };
+
+    game.status = 'draw';
+    game.winner = null;
+    game.reason = 'Draw by agreement';
     deleteDrawOfferEntry(gameId);
-    return { success: false, error: 'Game is not active' };
-  }
+    persistGameAndPublish(gameId);
 
-  const isPlayer = game.players.white === playerId || game.players.black === playerId;
-  if (!isPlayer) return { success: false, error: 'You are not a player in this game' };
+    await recordGameResult(game, null);
 
-  game.status = 'draw';
-  game.winner = null;
-  game.reason = 'Draw by agreement';
-  deleteDrawOfferEntry(gameId);
-  persistGameAndPublish(gameId);
+    broadcastToGame(gameId, {
+      type: 'game_over',
+      gameId,
+      board: chess.serializeBoard(game.board),
+      turn: game.turn,
+      lastMove: game.lastMove,
+      status: 'draw',
+      result: 'draw',
+      reason: game.reason,
+    });
+    await broadcastGameListUpdate();
 
-  await recordGameResult(game, null);
-
-  broadcastToGame(gameId, {
-    type: 'game_over',
-    gameId,
-    board: chess.serializeBoard(game.board),
-    turn: game.turn,
-    lastMove: game.lastMove,
-    status: 'draw',
-    result: 'draw',
-    reason: game.reason,
+    logger.info('Draw accepted: gameId=' + gameId + ' by playerId=' + playerId);
+    return { success: true };
   });
-  await broadcastGameListUpdate();
-
-  logger.info('Draw accepted: gameId=' + gameId + ' by playerId=' + playerId);
-  return { success: true };
 }
 
-export function declineDraw(gameId: string, playerId: string): boolean {
-  const offererId = drawOffers.get(gameId);
-  if (!offererId) return false;
-  if (offererId === playerId) return false;
+export async function declineDraw(gameId: string, playerId: string): Promise<boolean> {
+  return withGameLock(gameId, async () => {
+    const offererId = drawOffers.get(gameId);
+    if (!offererId) return false;
+    if (offererId === playerId) return false;
 
-  const game = games.get(gameId);
-  if (!game) {
+    const game = games.get(gameId);
+    if (!game) {
+      deleteDrawOfferEntry(gameId);
+      return false;
+    }
+
+    const isPlayer = game.players.black === playerId || game.players.white === playerId;
+    if (!isPlayer) return false;
+
     deleteDrawOfferEntry(gameId);
-    return false;
-  }
-
-  const isPlayer = game.players.black === playerId || game.players.white === playerId;
-  if (!isPlayer) return false;
-
-  deleteDrawOfferEntry(gameId);
-  sendToPlayer(offererId, { type: 'draw_declined', gameId });
-  logger.info('Draw declined: gameId=' + gameId + ' by playerId=' + playerId);
-  return true;
+    sendToPlayer(offererId, { type: 'draw_declined', gameId });
+    logger.info('Draw declined: gameId=' + gameId + ' by playerId=' + playerId);
+    return true;
+  });
 }
 
-export function offerRematch(gameId: string, playerId: string): boolean {
-  const game = games.get(gameId);
-  if (!game) return false;
-  const isFinished: ReadonlyArray<string> = ['checkmate', 'stalemate', 'resigned', 'draw']; // Const array for type safety
-  if (!isFinished.includes(game.status)) return false;
-  const isPlayer = game.players.white === playerId || game.players.black === playerId;
-  if (!isPlayer) return false;
-  if (rematchOffers.has(gameId)) return false;
+export async function offerRematch(gameId: string, playerId: string): Promise<boolean> {
+  return withGameLock(gameId, async () => {
+    const game = games.get(gameId);
+    if (!game) return false;
+    const isFinished: ReadonlyArray<string> = ['checkmate', 'stalemate', 'resigned', 'draw'];
+    if (!isFinished.includes(game.status)) return false;
+    const isPlayer = game.players.white === playerId || game.players.black === playerId;
+    if (!isPlayer) return false;
+    if (rematchOffers.has(gameId)) return false;
 
-  setRematchOfferEntry(gameId, playerId);
-  const otherPlayerId = game.players.white === playerId ? game.players.black : game.players.white;
-  if (otherPlayerId) {
-    sendToPlayer(otherPlayerId, { type: 'rematch_offered', gameId, byPlayerId: playerId });
-  }
-  logger.info('Rematch offered: gameId=' + gameId + ' by playerId=' + playerId);
-  return true;
+    setRematchOfferEntry(gameId, playerId);
+    const otherPlayerId = game.players.white === playerId ? game.players.black : game.players.white;
+    if (otherPlayerId) {
+      sendToPlayer(otherPlayerId, { type: 'rematch_offered', gameId, byPlayerId: playerId });
+    }
+    logger.info('Rematch offered: gameId=' + gameId + ' by playerId=' + playerId);
+    return true;
+  });
 }
 
 export async function acceptRematch(
   gameId: string,
   playerId: string,
 ): Promise<{ success: boolean; error?: string; newGameId?: string }> {
-  const offererId = rematchOffers.get(gameId);
-  if (!offererId) return { success: false, error: 'No pending rematch offer' };
-  if (offererId === playerId) return { success: false, error: 'Cannot accept your own rematch offer' };
+  return withGameLock(gameId, async () => {
+    const offererId = rematchOffers.get(gameId);
+    if (!offererId) return { success: false, error: 'No pending rematch offer' };
+    if (offererId === playerId) return { success: false, error: 'Cannot accept your own rematch offer' };
 
-  const game = games.get(gameId);
-  if (!game) {
+    const game = games.get(gameId);
+    if (!game) {
+      deleteRematchOfferEntry(gameId);
+      return { success: false, error: 'Game not found' };
+    }
+
+    const isPlayer = game.players.white === playerId || game.players.black === playerId;
+    if (!isPlayer) return { success: false, error: 'You are not a player in this game' };
+
+    const newWhite = offererId === game.players.white ? game.players.black : game.players.white;
+    const newBlack = offererId === game.players.white ? game.players.white : game.players.black;
+
+    const newId = uuidv4();
+    const newGame: GameState = {
+      id: newId,
+      board: chess.createInitialBoard(),
+      turn: 'white',
+      status: 'active',
+      players: { white: newWhite!, black: newBlack! },
+      moveHistory: [],
+      boardHistory: [],
+      enPassantTarget: null,
+      castlingRights: {
+        white: { kingside: true, queenside: true },
+        black: { kingside: true, queenside: true },
+      },
+      lastMove: null,
+      winner: null,
+      createdAt: Date.now(),
+      visibility: game.visibility,
+      spectateMode: game.spectateMode,
+      spectateCode: game.spectateMode === 'code' ? uuidv4() : undefined,
+      halfMoveClock: 0,
+    };
+    games.set(newId, newGame);
+    persistGameAndPublish(newId);
     deleteRematchOfferEntry(gameId);
-    return { success: false, error: 'Game not found' };
-  }
+    await broadcastGameListUpdate();
 
-  const isPlayer = game.players.white === playerId || game.players.black === playerId;
-  if (!isPlayer) return { success: false, error: 'You are not a player in this game' };
+    const enriched = await enrichNames(newGame);
+    broadcastToGame(newId, { type: 'game_started', gameId: newId, game: enriched });
 
-  const newWhite = offererId === game.players.white ? game.players.black : game.players.white;
-  const newBlack = offererId === game.players.white ? game.players.white : game.players.black;
+    const redirectMsg = { type: 'rematch_accepted', gameId, newGameId: newId };
+    const oldPlayers = game.players;
+    if (oldPlayers.white) sendToPlayer(oldPlayers.white, redirectMsg);
+    if (oldPlayers.black) sendToPlayer(oldPlayers.black, redirectMsg);
 
-  const newId = uuidv4();
-  const newGame: GameState = {
-    id: newId,
-    board: chess.createInitialBoard(),
-    turn: 'white',
-    status: 'active',
-    players: { white: newWhite!, black: newBlack! },
-    moveHistory: [],
-    boardHistory: [],
-    enPassantTarget: null,
-    castlingRights: {
-      white: { kingside: true, queenside: true },
-      black: { kingside: true, queenside: true },
-    },
-    lastMove: null,
-    winner: null,
-    createdAt: Date.now(),
-    visibility: game.visibility,
-    spectateMode: game.spectateMode,
-    spectateCode: game.spectateMode === 'code' ? uuidv4() : undefined,
-    halfMoveClock: 0,
-  };
-  games.set(newId, newGame);
-  persistGameAndPublish(newId);
-  deleteRematchOfferEntry(gameId);
-  await broadcastGameListUpdate();
-
-  const enriched = await enrichNames(newGame);
-  broadcastToGame(newId, { type: 'game_started', gameId: newId, game: enriched });
-
-  const redirectMsg = { type: 'rematch_accepted', gameId, newGameId: newId };
-  const oldPlayers = game.players;
-  if (oldPlayers.white) sendToPlayer(oldPlayers.white, redirectMsg);
-  if (oldPlayers.black) sendToPlayer(oldPlayers.black, redirectMsg);
-
-  logger.info(
-    'Rematch accepted: oldGameId=' + gameId + ' newGameId=' + newId + ' white=' + newWhite + ' black=' + newBlack,
-  );
-  return { success: true, newGameId: newId };
+    logger.info(
+      'Rematch accepted: oldGameId=' + gameId + ' newGameId=' + newId + ' white=' + newWhite + ' black=' + newBlack,
+    );
+    return { success: true, newGameId: newId };
+  });
 }
 
 export function cancelDrawOffer(gameId: string): void {

@@ -581,8 +581,8 @@ router.get('/games/:gameId', globalGetLimiter, async (req: Request, res: Respons
   res.json(g);
 });
 
-router.post('/games/:gameId/abort', authMiddleware, banCheckMiddleware, (req: Request, res: Response) => {
-  const result = game.abortGame(req.params.gameId, req.player.id);
+router.post('/games/:gameId/abort', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
+  const result = await game.abortGame(req.params.gameId, req.player.id);
   if (!result.success) {
     logger.info('Abort failed: gameId=' + req.params.gameId + ' playerId=' + req.player.id + ' error=' + result.error);
     res.status(400).json({ error: result.error });

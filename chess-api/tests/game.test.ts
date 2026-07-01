@@ -940,7 +940,7 @@ describe('draw offers', () => {
     const g = await game.createGame(host);
     await game.joinGame(g.id, joiner);
     game.offerDraw(g.id, host);
-    expect(game.declineDraw(g.id, joiner)).toBe(true);
+    expect(await game.declineDraw(g.id, joiner)).toBe(true);
     /* Offer should be cleared — accept should now fail */
     const result = await game.acceptDraw(g.id, joiner);
     expect(result.success).toBe(false);
@@ -969,12 +969,12 @@ describe('rematch', () => {
     const g = await game.createGame(host);
     await game.joinGame(g.id, joiner);
     await game.resignGame(g.id, host);
-    expect(game.offerRematch(g.id, host)).toBe(true);
+    expect(await game.offerRematch(g.id, host)).toBe(true);
   });
 
   test('offerRematch fails for non-existent game', async () => {
     const pid = await registerPlayer('rem_nonexist');
-    expect(game.offerRematch('fake-id', pid)).toBe(false);
+    expect(await game.offerRematch('fake-id', pid)).toBe(false);
   });
 
   test('acceptRematch creates a new game', async () => {
@@ -983,7 +983,7 @@ describe('rematch', () => {
     const g = await game.createGame(host);
     await game.joinGame(g.id, joiner);
     await game.resignGame(g.id, host);
-    game.offerRematch(g.id, host);
+    await game.offerRematch(g.id, host);
     const result = await game.acceptRematch(g.id, joiner);
     expect(result.success).toBe(true);
     expect(result.newGameId).toBeDefined();
@@ -1011,14 +1011,13 @@ describe('rematch', () => {
     /* Read spectateCode from in-memory map (getGame strips it) */
     const origSpectateCode = games.get(g.id)?.spectateCode;
 
-    game.offerRematch(g.id, host);
+    await game.offerRematch(g.id, host);
     const result = await game.acceptRematch(g.id, joiner);
     expect(result.success).toBe(true);
 
     const newGame = games.get(result.newGameId!);
     expect(newGame).not.toBeUndefined();
     expect(newGame!.spectateMode).toBe('code');
-    /* A new spectateCode should be generated (different from original) */
     expect(newGame!.spectateCode).toBeDefined();
     expect(newGame!.spectateCode).not.toBe(origSpectateCode);
   });
@@ -1090,9 +1089,8 @@ describe('abortGame', () => {
   test('abortGame succeeds for waiting game host', async () => {
     const host = await registerPlayer('abort_host');
     const g = await game.createGame(host);
-    const result = game.abortGame(g.id, host);
+    const result = await game.abortGame(g.id, host);
     expect(result.success).toBe(true);
-    /* abortGame removes the game from the map */
     expect(await game.getGame(g.id)).toBeNull();
   });
 
@@ -1100,7 +1098,7 @@ describe('abortGame', () => {
     const host = await registerPlayer('abort_host2');
     const outsider = await registerPlayer('abort_out');
     const g = await game.createGame(host);
-    const result = game.abortGame(g.id, outsider);
+    const result = await game.abortGame(g.id, outsider);
     expect(result.success).toBe(false);
   });
 
@@ -1109,7 +1107,7 @@ describe('abortGame', () => {
     const joiner = await registerPlayer('abort_join3');
     const g = await game.createGame(host);
     await game.joinGame(g.id, joiner);
-    const result = game.abortGame(g.id, host);
+    const result = await game.abortGame(g.id, host);
     expect(result.success).toBe(false);
   });
 });
@@ -1278,7 +1276,7 @@ describe('edge cases', () => {
     const joiner = await registerPlayer('ec_abort_join_j');
     const g = await game.createGame(host);
 
-    game.abortGame(g.id, host);
+    await game.abortGame(g.id, host);
 
     const result = await game.joinGame(g.id, joiner);
     expect(result.success).toBe(false);

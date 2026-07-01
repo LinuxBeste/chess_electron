@@ -28,16 +28,44 @@ pnpm dev
 Or separately:
 
 ```bash
-pnpm --filter chess-api dev    # API server on :25565
-pnpm --filter chess-client dev:web  # webpack dev server on :3000
+pnpm --filter chess-api dev            # API server on :25565
+pnpm --filter chess-client dev:web     # webpack dev server on :3000
 ```
+
+The webpack dev server proxies API calls to `:25565` and WebSocket connections to `/chess-ws`.
 
 ## Project Structure
 
 ```
-chess-api/          Backend (Express + WebSocket + Postgres)
-chess-client/       Electron desktop app
-docs/               Shared documentation
+chess-api/           Backend (Express + WebSocket + Postgres + Redis)
+  src/               TypeScript source
+    index.ts         Express app + WebSocket server bootstrap
+    routes.ts        Player API route handlers
+    admin.ts         Admin API route handlers
+    game.ts          Game orchestration, auth, WS broadcasting, per-game mutex
+    chess.ts         Pure chess engine (FIDE rules, ~715 lines)
+    engine.ts        Stockfish engine manager (child process spawn + UCI)
+    state.ts         In-memory state maps + Redis/file write-through
+    db.ts            PostgreSQL helpers (pool, migrations, queries)
+    redis.ts         Redis client for cross-instance state + pub/sub
+    chat.ts          Chat logic (lobby, private, group)
+    friends.ts       Friend request/management
+    player.ts        Player state, token management, login lockout
+    elo.ts           Elo rating calculation
+    bans.ts          Ban system (player + IP)
+    validation.ts    Zod schemas
+    types.ts         Shared interfaces
+    logger.ts        File + console logger with rotation
+  admin-frontend/    React admin dashboard (Vite + TailwindCSS + lucide-react)
+  tests/             Jest test suites
+  docs/              API documentation
+chess-client/        Electron desktop app (React + Webpack)
+  src/
+    main/            Electron main process (window, IPC, .env)
+    renderer/        React app (pages, components, store, socket, api)
+  tests/             Jest test suites (232 tests)
+  docs/              Client documentation
+docs/                Shared documentation (environment variables)
 ```
 
 ## Code Style
@@ -48,23 +76,44 @@ docs/               Shared documentation
 - Prefer `Map` over objects for dynamic dictionaries
 - Pure functions in the chess engine (no I/O, no side effects)
 
-Run the formatter and linter before committing:
+Run before committing:
 
 ```bash
 pnpm format
 pnpm lint
-pnpm typecheck
+pnpm typecheck          # tsc --noEmit on all packages
 ```
 
 ## Testing
 
 ```bash
-pnpm test                     # All tests (API + client)
-pnpm --filter chess-api test  # API tests only (828 tests)
-pnpm --filter chess-client test  # Client tests only (232 tests)
+pnpm test                          # All tests (837 API + 232 client = 1069)
+pnpm --filter chess-api test       # API tests only
+pnpm --filter chess-client test    # Client tests only
 ```
 
-The test database is configured via `DATABASE_URL` (defaults to `postgresql://chess:chess@localhost:5432/chess_test`). Tests create and tear down tables automatically.
+### Test suites (chess-api)
+
+| Test file                | Count | What it covers                                   |
+| ------------------------ | ----- | ------------------------------------------------ |
+| `api.test.ts`            | 186   | Integration tests via supertest                  |
+| `chess.test.ts`          | 191   | Chess engine unit tests (pure functions, no I/O) |
+| `game.test.ts`           | 126   | Game logic state transitions, validation         |
+| `validation.test.ts`     | 41    | Zod schemas                                      |
+| `db.test.ts`             | 39    | Database helpers                                 |
+| `state.test.ts`          | 37    | State management, file persistence               |
+| `chat.test.ts`           | 38    | Chat logic                                       |
+| `player.test.ts`         | 32    | Player management, tokens                        |
+| `engine.test.ts`         | 28    | Stockfish engine                                 |
+| `redis.test.ts`          | 23    | Redis integration                                |
+| `friends.test.ts`        | 21    | Friend system                                    |
+| `ws.test.ts`             | 20    | WebSocket end-to-end                             |
+| `bans.test.ts`           | 17    | Ban system                                       |
+| `redis-disabled.test.ts` | 17    | Redis fallback                                   |
+| `elo.test.ts`            | 11    | Elo rating                                       |
+| `logger.test.ts`         | 10    | Logger                                           |
+
+The test database is configured via `DATABASE_URL` (defaults to `postgresql://chess:chess@localhost:5432/chess_test`). Tests create and tear down tables automatically via `setupAfterEnv.ts`.
 
 ## Pull Requests
 
@@ -72,6 +121,7 @@ The test database is configured via `DATABASE_URL` (defaults to `postgresql://ch
 2. Run `pnpm format && pnpm lint && pnpm typecheck` — CI will reject if any fail
 3. Keep changes focused — one feature/fix per PR
 4. Update docs if adding or changing environment variables
+5. If adding a new state-mutating game function, wrap it with `withGameLock` in `game.ts`
 
 ## Adding Environment Variables
 
@@ -79,3 +129,26 @@ The test database is configured via `DATABASE_URL` (defaults to `postgresql://ch
 2. Add the variable to `chess-api/.env.example` with a comment
 3. Add it to `docs/environment.md` with default, type, and description
 4. If it's user-facing, add a note in the root `README.md`
+
+## Adding Tests
+
+- **Chess engine**: add to `tests/chess.test.ts` using `boardFromFenLike` helper and existing test patterns
+- **Game logic**: add to `tests/game.test.ts` using the register/create/join/move pattern
+- **API integration**: add to `tests/api.test.ts` using supertest
+- **WebSocket**: add to `tests/ws.test.ts` using the WS test helpers
+
+## Race Conditions
+
+Game-state-mutating functions must be serialized per game. Use the `withGameLock(gameId, async () => { ... })` wrapper from `game.ts`. This ensures that concurrent requests for the same game execute sequentially. Currently wrapped functions:
+
+- `makeMove`
+- `resignGame`
+- `joinGame`
+- `abortGame`
+- `acceptDraw`
+- `declineDraw`
+- `acceptRematch`
+- `offerRematch`
+- `offerDrawSafe`
+
+If you add a new function that reads + writes game state, wrap it with `withGameLock`.

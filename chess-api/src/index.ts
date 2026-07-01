@@ -293,15 +293,21 @@ export function createServer(): http.Server {
             );
           });
         } else if (msg.type === 'offer_draw' && typeof msg.gameId === 'string') {
-          game.offerDraw(msg.gameId as string, player.id);
+          game
+            .offerDrawSafe(msg.gameId as string, player.id)
+            .catch((err: unknown) => logger.error('offerDraw failed: ' + err));
         } else if (msg.type === 'accept_draw' && typeof msg.gameId === 'string') {
           game
             .acceptDraw(msg.gameId as string, player.id)
             .catch((err: unknown) => logger.error('acceptDraw failed: ' + err));
         } else if (msg.type === 'decline_draw' && typeof msg.gameId === 'string') {
-          game.declineDraw(msg.gameId as string, player.id);
+          game
+            .declineDraw(msg.gameId as string, player.id)
+            .catch((err: unknown) => logger.error('declineDraw failed: ' + err));
         } else if (msg.type === 'rematch_offer' && typeof msg.gameId === 'string') {
-          game.offerRematch(msg.gameId as string, player.id);
+          game
+            .offerRematch(msg.gameId as string, player.id)
+            .catch((err: unknown) => logger.error('offerRematch failed: ' + err));
         } else if (msg.type === 'rematch_accept' && typeof msg.gameId === 'string') {
           game
             .acceptRematch(msg.gameId as string, player.id)

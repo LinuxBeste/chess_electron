@@ -157,6 +157,77 @@ The `start.sh` script orchestrates both Docker and native modes with optional tu
 ./start.sh --native --tunnel cloudflared
 ```
 
+## Backup & Recovery
+
+### Automatic backups
+
+The server creates PostgreSQL backups automatically at `DB_BACKUP_INTERVAL_MS` intervals
+(default 6h, set `0` to disable). Backups are stored in `data/backups/` as custom-format
+`pg_dump` files named `chess_<timestamp>.dump`. Backups older than 7 days are pruned.
+
+### Manual backup
+
+```bash
+pg_dump --dbname="postgresql://chess:chess@localhost:5432/chess" -Fc -f backup.dump
+```
+
+### Restore
+
+```bash
+# Drop and recreate the database (warning: destroys all data)
+dropdb --if-exists chess
+createdb chess
+
+# Restore from custom-format dump
+pg_restore --dbname="postgresql://chess:chess@localhost:5432/chess" --clean --if-exists backup.dump
+
+# Or restore to a different database name
+pg_restore --dbname="postgresql://chess:chess@localhost:5432/chess_new" --clean --if-exists backup.dump
+```
+
+### Active game recovery
+
+Active (in-progress) games are stored in memory only by default. To preserve them
+across restarts:
+
+1. **With Redis** (`REDIS_URL` set) — games are persisted in Redis automatically and
+   restored on startup via `syncGamesFromRedis()`.
+2. **Without Redis** — the server periodically saves active games to
+   `data/active_games.json` (every `FILE_SAVE_INTERVAL_MS`, default 30s) and loads
+   them on startup. Set `DISABLE_FILE_PERSISTENCE=true` or leave `ACTIVE_GAMES_FILE`
+   unset to disable.
+3. In either mode, completed games are saved to PostgreSQL and survive restarts.
+
+### Disaster recovery steps
+
+1. Stop the server (`SIGTERM` — triggers graceful shutdown with final game save)
+2. Restore PostgreSQL from the latest backup (see above)
+3. Restore `data/active_games.json` if available (from backup or surviving filesystem)
+4. Start the server — it loads active games from Redis/file and completed games from PostgreSQL
+5. Verify with `GET /health` and `GET /admin/api/stats`
+
+## Persistence architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     Server Process                       │
+│                                                          │
+│  ┌──────────────┐    ┌──────────────────────────────┐    │
+│  │ In-memory    │    │  File (no Redis fallback)     │    │
+│  │ GameState    │◄──►│  data/active_games.json       │    │
+│  │ Map          │    │  (periodic + shutdown save)   │    │
+│  └──────┬───────┘    └──────────────────────────────┘    │
+│         │                                                │
+│         │ optional                                       │
+│         ▼                                                │
+│  ┌──────────────┐    ┌──────────────────────────────┐    │
+│  │ Redis        │    │  PostgreSQL                   │    │
+│  │ game:<id>    │    │  users, tokens, tournaments,  │    │
+│  │ (TTL 1h)     │    │  chat, completed_games        │    │
+│  └──────────────┘    └──────────────────────────────┘    │
+└─────────────────────────────────────────────────────────┘
+```
+
 ## Testing
 
 ```bash

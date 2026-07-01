@@ -59,18 +59,6 @@ in-memory for the duration of the server process.
 
 ## Key Design Decisions
 
-### In-Memory State + Redis
-
-Game/player state lives in `Map` objects in `state.ts`. When Redis is configured,
-state is written through to Redis for cross-instance availability. Redis also enables
-cross-instance WebSocket message broadcasting via pub/sub.
-
-### PostgreSQL for Persistence
-
-Registered users, auth tokens, friend relationships, tournament data, bans, chat
-messages, and completed games are persisted to PostgreSQL via `db.ts`. Connection
-pooling with configurable pool size and timeouts.
-
 ### Spectate Code Access
 
 Games can be created with `spectateMode: 'code'`, which generates a UUID `spectateCode`. Spectators must provide this code in their WebSocket `spectate` message. The code is stripped from all public responses (`GET /games`, `GET /games/active`, `GET /games/:id`, WS broadcasts) via `sanitizeForClient()` - it is only visible to the game creator in the creation response.
@@ -118,9 +106,76 @@ K-factor configurable via `ELO_K_FACTOR` (default 32). Anonymous players are not
 
 In production, the API runs behind a Cloudflare Tunnel (no open ports). The docker-compose stack includes both the API and `cloudflared` container. TLS is terminated by Cloudflare at the edge.
 
+## Game Persistence & Scalability
+
+### Persistence options
+
+| Layer                | Storage                   | Survives restart | Data                                                             |
+| -------------------- | ------------------------- | ---------------- | ---------------------------------------------------------------- |
+| In-memory            | `Map` in `state.ts`       | No               | Active games, player sessions, chat history, rate-limit state    |
+| Redis (optional)     | `game:<id>` keys with TTL | Yes              | Active game state, player indexes, chat, draw/rematch offers     |
+| PostgreSQL           | Tables                    | Yes              | Users, tokens, tournaments, completed games, bans, chat messages |
+| JSON file (fallback) | `data/active_games.json`  | Yes              | Active games (only when Redis is disabled)                       |
+
+Without Redis, active games live only in memory. A server restart loses all in-progress
+games unless the JSON file fallback is enabled (which saves every `FILE_SAVE_INTERVAL_MS`
+and on graceful shutdown).
+
+### Scaling limits
+
+| Resource              | Limit                                                | Bottleneck               |
+| --------------------- | ---------------------------------------------------- | ------------------------ |
+| Concurrent games      | 1000-2000 (single process)                           | V8 heap, event loop      |
+| WebSocket connections | ~1000 per process                                    | Memory, file descriptors |
+| Bot engines           | `MAX_CONCURRENT_ENGINES` (default 4)                 | CPU cores                |
+| Players per game      | 2                                                    | Game design              |
+| Requests per player   | `RATE_LIMIT_MAX_REQUESTS` per `RATE_LIMIT_WINDOW_MS` | Configurable             |
+| Games per player      | `MAX_GAMES_PER_PLAYER` (default 20)                  | Configurable             |
+| DB connections        | `DB_POOL_MAX` (default 20)                           | PostgreSQL               |
+
+The server is designed as a **single-instance** deployment. To scale horizontally:
+
+1. Configure `REDIS_URL` for shared state across instances
+2. Redis pub/sub broadcasts WebSocket messages (player:_ and spectate:_ channels)
+3. Each instance handles its own WebSocket connections; Redis relays messages between them
+4. PostgreSQL is the backing store and can be scaled independently (read replicas, connection pooling)
+
+Note: there is no built-in inter-instance mutex. Concurrent moves on the same game
+across two instances could race. The architecture assumes game moves arrive
+sequentially for any given game, which holds in practice when the API is behind a
+single load balancer that routes by game ID.
+
+### In-memory state + Redis write-through
+
+Game/player state lives in `Map` objects in `state.ts`. Every mutation calls
+`persistGame(id)` which writes through to Redis. When Redis is unavailable, the
+server continues with in-memory-only state (no crash, no data loss beyond active
+games on restart if file fallback is also disabled).
+
+### PostgreSQL for persistence
+
+Registered users, auth tokens, friend relationships, tournament data, bans, chat
+messages, and completed games are persisted to PostgreSQL via `db.ts`. Connection
+pooling with configurable pool size and timeouts.
+
+## Race conditions
+
+The server is single-threaded (Node.js event loop), so JavaScript-level operations
+are inherently serialized within one event-loop tick. However, async functions yield
+the event loop between `await` calls. This means two concurrent requests can both
+pass a validation check (e.g. "is it this player's turn?") before either one
+mutates the game state.
+
+To prevent this, game-state-mutating functions use a **per-game mutex** implemented
+as a promise chain (`gameLocks` in `game.ts`). Each mutating operation queues
+behind the previous one for the same game, ensuring serial execution.
+
+Mutex scope: `makeMove`, `resignGame`, `offerDraw`, `acceptDraw`, `declineDraw`,
+`offerRematch`, `acceptRematch`, `declineRematch`, `abortGame`.
+
 ## Testing Strategy
 
-- **`chess.test.ts`** - Pure unit tests for chess engine functions. No HTTP, no I/O.
+- **`chess.test.ts`** - Pure unit tests for chess engine functions. No HTTP, no I/O. (191 tests)
 - **`game.test.ts`** - Game logic unit tests (state transitions, validation).
-- **`api.test.ts`** - Integration tests using supertest against the Express app. Covers authentication, game lifecycle, bot games, tournaments, admin routes. (396 tests)
+- **`api.test.ts`** - Integration tests using supertest against the Express app. Covers authentication, game lifecycle, bot games, tournaments, admin routes. (828 tests)
 - **`ws.test.ts`** - WebSocket end-to-end tests (spectate with/without code, auth rejection, chat, challenge forwarding).

@@ -30,12 +30,14 @@
 |                        chess-api (Docker)                         |
 |  +------------------+  +---------------+  +--------------------+  |
 |  | Express REST      |  | ws WebSocket   |  | Chess Engine      |  |
-|  | :25565            |  | /chess-ws      |  | (~800 lines)      |  |
+|  | :25565            |  | /chess-ws      |  | (~715 lines)      |  |
 |  +------------------+  +---------------+  +--------------------+  |
 |  +------------------+  +---------------+  +--------------------+  |
-|  | Admin panel       |  | SQLite (DB)   |  | In-memory games   |  |
-|  | (Vite+React+TW)   |  | users/tokens  |  | (ephemeral)       |  |
-|  +------------------+  +---------------+  +--------------------+  |
+|  | Admin panel       |  | PostgreSQL    |  | In-memory games   |  |
+|  | (Vite+React+TW)   |  | users/tokens  |  | (with optional    |  |
+|  +------------------+  | completed games|  |  Redis fallback   |  |
+|                        | chat/bans      |  |  or file save)    |  |
+|                        +---------------+  +--------------------+  |
 +---------------------------------+--------------------------------+
                                   │
           ┌───────────────────────┼───────────────────────┐
@@ -63,7 +65,7 @@
 ### Multiplayer
 
 - **Quick play (anonymous)** - enter a username, no registration needed
-- **Registered accounts** - username + password, persisted to SQLite, Elo-rated
+- **Registered accounts** - username + password, persisted to PostgreSQL, Elo-rated
 - **Spectating** - watch any active game in real time via WebSocket
 - **Spectate code** - restrict spectating to people with a share code (`spectateMode: 'code'`)
 - **Private games** - invisible in the public lobby, joinable by direct ID
@@ -93,7 +95,7 @@
 
 - **Account lockout** - 5 failed login attempts → 15-minute lockout (per username)
 - **Rate limiting** - 20 requests/min on unauthenticated GET endpoints, 100/min per player on authenticated endpoints
-- **Ban system** - ban by player ID or IP address
+- **Ban system** - ban by player ID or IP address (persisted to DB)
 - **Admin dashboard** - React SPA with stats, games, players, accounts, bans, leaderboard, archives, bot games, tournaments, logs, system charts
 - **PBKDF2 password hashing** - admin and user passwords hashed with salt
 - **Admin token TTL** - configurable session expiry (default 24h), with manual revoke
@@ -103,6 +105,8 @@
 - **WS auth rate limiting** - per-IP throttling on failed WebSocket auth attempts
 - **DB retry** - automatic retry with configurable delay and max attempts
 - **Redis fallback** - continues with in-memory state if Redis is unreachable
+- **Per-game mutex** - serialized game-state mutations to prevent race conditions on concurrent moves
+- **Security architecture** - detailed in [`docs/security.md`](./docs/security.md)
 
 ### WebSocket Events
 
@@ -130,8 +134,9 @@
 
 - **Docker multi-stage build** - node:20-alpine, 100MB final image
 - **Cloudflare Tunnel** - public HTTPS with zero open ports (quick tunnel or named tunnel)
-- **SQLite backups** - automatic backup every 6 hours, prune after 7 days
-- **Graceful shutdown** - SIGTERM/SIGINT kills engines, closes WS connections, closes DB
+- **PostgreSQL backups** - automatic backup via pg_dump every 6 hours (configurable), prune after 7 days
+- **Game state persistence** - active games can persist across restarts via Redis or JSON file fallback
+- **Graceful shutdown** - SIGTERM/SIGINT saves active games to file, kills engines, closes WS connections, closes DB
 - **Health check** - Docker HEALTHCHECK pinging `/health`
 - **Non-root container** - runs as `chess` user via `su-exec`
 - **pnpm workspace** - monorepo with shared lockfile
@@ -226,33 +231,39 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 
 ### chess-api
 
-| Variable                    | Default         | Description                                         |
-| --------------------------- | --------------- | --------------------------------------------------- |
-| `PORT`                      | `25565`         | HTTP/WS server port                                 |
-| `HOST`                      | `0.0.0.0`       | Bind address                                        |
-| `CORS_ORIGIN`               | `*`             | Allowed CORS origin (must not be `*` in production) |
-| `MAX_BODY_SIZE`             | `10kb`          | Max JSON body size                                  |
-| `ENABLE_HELMET`             | `true`          | HTTP security headers (CSP, HSTS)                   |
-| `LOG_LEVEL`                 | `info`          | Log level (debug, info, warn, error)                |
-| `LOG_RETENTION_DAYS`        | `30`            | Days to retain log files                            |
-| `ADMIN_USERNAME`            | `admin`         | Admin dashboard login username                      |
-| `ADMIN_PASSWORD`            | (random)        | Admin password (auto-generated if not set)          |
-| `ADMIN_TOKEN_TTL`           | `86400000`      | Admin session TTL (ms)                              |
-| `DATABASE_URL`              | `postgresql://` | PostgreSQL connection string                        |
-| `DB_POOL_MAX`               | `20`            | Max pool connections                                |
-| `DB_RETRY_MAX_ATTEMPTS`     | `5`             | DB init retries before exiting                      |
-| `MAX_GAMES_PER_PLAYER`      | `20`            | Max concurrent games per player                     |
-| `MAX_CONCURRENT_ENGINES`    | `4`             | Max concurrent Stockfish instances                  |
-| `RATE_LIMIT_WINDOW_MS`      | `60000`         | Rate limit window (ms)                              |
-| `RATE_LIMIT_MAX_REQUESTS`   | `100`           | Max requests per player per window                  |
-| `WS_HEARTBEAT_INTERVAL`     | `30000`         | WebSocket ping interval (ms)                        |
-| `WS_PONG_TIMEOUT`           | `10000`         | WebSocket pong timeout (ms)                         |
-| `WS_MAX_CONNECTIONS_PER_IP` | `5`             | Max WebSocket connections per IP                    |
-| `WAITING_TTL_MS`            | `600000`        | Orphaned waiting game TTL (10 min, 0=disable)       |
-| `LOGIN_MAX_ATTEMPTS`        | `5`             | Failed logins before lockout                        |
-| `LOGIN_LOCKOUT_MINUTES`     | `15`            | Lockout duration after max attempts                 |
-| `ELO_K_FACTOR`              | `32`            | Elo K-factor for rating calculations                |
-| `DB_BACKUP_INTERVAL_MS`     | `21600000`      | DB backup interval (6h, 0=disable)                  |
+| Variable                      | Default                                         | Description                                         |
+| ----------------------------- | ----------------------------------------------- | --------------------------------------------------- |
+| `PORT`                        | `25565`                                         | HTTP/WS server port                                 |
+| `HOST`                        | `0.0.0.0`                                       | Bind address                                        |
+| `CORS_ORIGIN`                 | `*`                                             | Allowed CORS origin (must not be `*` in production) |
+| `MAX_BODY_SIZE`               | `10kb`                                          | Max JSON body size                                  |
+| `ENABLE_HELMET`               | `true`                                          | HTTP security headers (CSP, HSTS)                   |
+| `LOG_LEVEL`                   | `info`                                          | Log level (debug, info, warn, error)                |
+| `LOG_RETENTION_DAYS`          | `30`                                            | Days to retain log files                            |
+| `ADMIN_USERNAME`              | `admin`                                         | Admin dashboard login username                      |
+| `ADMIN_PASSWORD`              | (random)                                        | Admin password (auto-generated if not set)          |
+| `ADMIN_TOKEN_TTL`             | `86400000`                                      | Admin session TTL (ms)                              |
+| `DATABASE_URL`                | `postgresql://chess:chess@localhost:5432/chess` | PostgreSQL connection string                        |
+| `DB_POOL_MAX`                 | `20`                                            | Max pool connections                                |
+| `DB_RETRY_MAX_ATTEMPTS`       | `5`                                             | DB init retries before exiting                      |
+| `MAX_GAMES_PER_PLAYER`        | `20`                                            | Max concurrent games per player                     |
+| `MAX_CONCURRENT_ENGINES`      | `4`                                             | Max concurrent Stockfish instances                  |
+| `RATE_LIMIT_WINDOW_MS`        | `60000`                                         | Rate limit window (ms)                              |
+| `RATE_LIMIT_MAX_REQUESTS`     | `100`                                           | Max requests per player per window                  |
+| `WS_HEARTBEAT_INTERVAL`       | `30000`                                         | WebSocket ping interval (ms)                        |
+| `WS_PONG_TIMEOUT`             | `10000`                                         | WebSocket pong timeout (ms)                         |
+| `WS_MAX_CONNECTIONS_PER_IP`   | `5`                                             | Max WebSocket connections per IP                    |
+| `WAITING_TTL_MS`              | `600000`                                        | Orphaned waiting game TTL (10 min, 0=disable)       |
+| `LOGIN_MAX_ATTEMPTS`          | `5`                                             | Failed logins before lockout                        |
+| `LOGIN_LOCKOUT_MINUTES`       | `15`                                            | Lockout duration after max attempts                 |
+| `ELO_K_FACTOR`                | `32`                                            | Elo K-factor for rating calculations                |
+| `DB_BACKUP_INTERVAL_MS`       | `21600000`                                      | DB backup interval (6h, 0=disable)                  |
+| `DB_PATH`                     | `data/chess.db`                                 | Display path in admin config endpoint               |
+| `ACTIVE_GAMES_FILE`           | `data/active_games.json`                        | File path for game persistence fallback             |
+| `FILE_SAVE_INTERVAL_MS`       | `30000`                                         | Interval for saving active games to file            |
+| `DISABLE_FILE_PERSISTENCE`    | `false`                                         | Disable JSON file persistence fallback              |
+| `ADMIN_LOGIN_MAX_ATTEMPTS`    | `5`                                             | Failed admin logins before lockout                  |
+| `ADMIN_LOGIN_LOCKOUT_MINUTES` | `15`                                            | Admin lockout duration after max attempts           |
 
 ### chess-client (`chess-client/.env`)
 
@@ -283,10 +294,10 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 │   │   ├── index.ts                # Express + WebSocket server bootstrap
 │   │   ├── routes.ts               # Route handlers (thin layer)
 │   │   ├── game.ts                 # Game/player state, WS broadcasting, auth
-│   │   ├── chess.ts                # FIDE chess engine (pure, ~800 lines)
+│   │   ├── chess.ts                # FIDE chess engine (pure, ~715 lines)
 │   │   ├── engine.ts               # Stockfish bot engine manager
 │   │   ├── admin.ts                # Admin API routes
-│   │   ├── db.ts                   # SQLite database (users, tokens, etc.)
+│   │   ├── db.ts                   # PostgreSQL helpers (pool, queries, migrations)
 │   │   ├── logger.ts               # File + console logger
 │   │   └── types.ts                # Shared interfaces
 │   ├── admin-frontend/             # React admin dashboard (Vite + Tailwind)
@@ -349,7 +360,7 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 │   │           ├── LeaderboardPage.tsx   # Elo rankings
 │   │           ├── ArchivePage.tsx       # Completed game history
 │   │           └── TournamentPage.tsx    # Tournament brackets
-│   ├── tests/                      # 15 suites, 154 tests
+│   ├── tests/                      # 232 tests
 │   ├── webpack.main.config.js
 │   ├── webpack.renderer.config.js  # Proxy /chess-ws + API to :25565
 │   ├── tsconfig.json
@@ -373,8 +384,8 @@ Full documentation: [`docs/environment.md`](./docs/environment.md)
 | `pnpm install`                       | Install all dependencies (both packages)        |
 | `pnpm dev`                           | Start API + build client concurrently           |
 | `pnpm build`                         | Compile all packages                            |
-| `pnpm test`                          | Run all test suites (1060 tests)                |
-| `pnpm --filter chess-api test`       | Run API tests (828 tests)                       |
+| `pnpm test`                          | Run all test suites (1069 tests)                |
+| `pnpm --filter chess-api test`       | Run API tests (837 tests)                       |
 | `pnpm --filter chess-client test`    | Run client tests (232 tests)                    |
 | `pnpm --filter chess-client package` | Package platform installer via electron-builder |
 | `pnpm format`                        | Format all source files with Prettier           |
@@ -536,12 +547,21 @@ Configuration:
 
 ## Further documentation
 
-- [`chess-api/docs/api.md`](./chess-api/docs/api.md) - API reference with request/response schemas
-- [`chess-api/docs/architecture.md`](./chess-api/docs/architecture.md) - Layering, data flow, design decisions
-- [`chess-api/docs/chess-logic.md`](./chess-api/docs/chess-logic.md) - Engine internals: move generation, checkmate detection
-- [`chess-api/docs/deployment.md`](./chess-api/docs/deployment.md) - Docker build, environment variables, Cloudflare Tunnel
-- [`chess-api/docs/examples.md`](./chess-api/docs/examples.md) - curl examples with a complete Scholar's Mate game
-- [`docs/environment.md`](./docs/environment.md) - Full environment variable reference for both packages
+- [`chess-api/docs/api.md`](./chess-api/docs/api.md) — API reference with request/response schemas
+- [`chess-api/docs/architecture.md`](./chess-api/docs/architecture.md) — Layering, data flow, design decisions, race condition prevention
+- [`chess-api/docs/chess-logic.md`](./chess-api/docs/chess-logic.md) — Engine internals: move generation, checkmate detection, FEN, algebraic notation
+- [`chess-api/docs/deployment.md`](./chess-api/docs/deployment.md) — Docker build, environment variables, Cloudflare Tunnel, backup/recovery
+- [`chess-api/docs/admin-guide.md`](./chess-api/docs/admin-guide.md) — Admin dashboard setup, Stockfish tuning, production checklist
+- [`chess-api/docs/security.md`](./chess-api/docs/security.md) — Security architecture: auth, rate limits, CSP, HSTS, ban system
+- [`chess-api/docs/websocket.md`](./chess-api/docs/websocket.md) — WebSocket protocol reference, all events and payloads
+- [`chess-api/docs/database.md`](./chess-api/docs/database.md) — Full database schema, migrations, query patterns
+- [`chess-api/docs/chat.md`](./chess-api/docs/chat.md) — Chat system: lobby, private, group, in-game chat
+- [`chess-api/docs/tournaments.md`](./chess-api/docs/tournaments.md) — Tournament lifecycle, seeding, bracket structure
+- [`chess-api/docs/development.md`](./chess-api/docs/development.md) — Dev setup, debugging, testing, adding features
+- [`chess-api/docs/troubleshooting.md`](./chess-api/docs/troubleshooting.md) — FAQ, common errors, performance tips
+- [`chess-api/docs/examples.md`](./chess-api/docs/examples.md) — curl examples with a complete Scholar's Mate game
+- [`chess-api/docs/README.md`](./chess-api/docs/README.md) — API docs index
+- [`docs/environment.md`](./docs/environment.md) — Full environment variable reference for both packages
 
 ---
 
