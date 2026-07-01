@@ -197,6 +197,10 @@ router.get('/health', healthLimiter, async (_req: Request, res: Response) => {
 
 router.post('/auth/register', ipRateLimitMiddleware, regRateLimit, async (req: Request, res: Response) => {
   const ip = req.ip || req.socket.remoteAddress || '';
+  if (await db.isMaintenanceMode()) {
+    res.status(503).json({ error: 'Server is in maintenance mode — registrations disabled' });
+    return;
+  }
   if (game.isBanned('', ip)) {
     res.status(403).json({ error: 'Your IP has been banned' });
     return;
@@ -472,6 +476,10 @@ router.delete(
 );
 
 router.post('/games', authMiddleware, banCheckMiddleware, rateLimitMiddleware, async (req: Request, res: Response) => {
+  if (await db.isMaintenanceMode()) {
+    res.status(503).json({ error: 'Server is in maintenance mode — new games disabled' });
+    return;
+  }
   const visibility: 'public' | 'private' = req.body.visibility === 'private' ? 'private' : 'public';
   const spectateMode: 'public' | 'code' = req.body.spectateMode === 'code' ? 'code' : 'public';
   try {
@@ -494,6 +502,10 @@ router.post('/games', authMiddleware, banCheckMiddleware, rateLimitMiddleware, a
 });
 
 router.post('/games/bot', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
+  if (await db.isMaintenanceMode()) {
+    res.status(503).json({ error: 'Server is in maintenance mode — new games disabled' });
+    return;
+  }
   const skillLevel = Math.max(1, Math.min(20, parseInt(req.body.skillLevel as string, 10) || 1));
   const playerColor: 'white' | 'black' = req.body.playerColor === 'black' ? 'black' : 'white';
   try {
@@ -1059,6 +1071,47 @@ router.post('/tournaments/:id/start', authMiddleware, banCheckMiddleware, async 
   } catch (err) {
     logger.error('Failed to start tournament: ' + err);
     res.status(500).json({ error: 'Failed to start tournament' });
+  }
+});
+
+/* ─── Reports ─── */
+
+const reportReasonSchema = z.string().trim().min(1, 'Reason is required').max(500, 'Reason too long');
+
+router.post('/reports', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const parsed = z
+      .object({
+        targetId: z.string().uuid(),
+        reason: reportReasonSchema,
+        gameId: z.string().uuid().optional(),
+      })
+      .safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const { targetId, reason, gameId } = parsed.data;
+
+    const target = await db.getUserById(targetId);
+    if (!target) {
+      res.status(404).json({ error: 'Target user not found' });
+      return;
+    }
+
+    const reporterId = req.player.id;
+    if (targetId === reporterId) {
+      res.status(400).json({ error: 'You cannot report yourself' });
+      return;
+    }
+
+    const id = uuidv4();
+    await db.createReport(id, reporterId, targetId, reason, gameId);
+    logger.audit('report_created', `report="${id}" reporter="${reporterId}" target="${targetId}"`);
+    res.status(201).json({ success: true, id });
+  } catch (err) {
+    logger.error('Failed to create report: ' + err);
+    res.status(500).json({ error: 'Failed to create report' });
   }
 });
 

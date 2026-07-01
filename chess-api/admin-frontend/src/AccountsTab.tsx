@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Key, Trash2, Plus, Eye, UserCheck, X, Download, SearchX, CheckSquare, Square } from 'lucide-react';
+import { Key, Trash2, Plus, Eye, UserCheck, X, Download, SearchX, CheckSquare, Square, Shield } from 'lucide-react';
 import { api, AccountRow, UserGamesResponse, ImpersonateResponse } from './api';
 import { useToast } from './Toast';
 import SearchBar from './SearchBar';
@@ -431,6 +431,7 @@ export default function AccountsTab() {
                   <SortHeader k="rating" label="Rating" />
                   <SortHeader k="wins" label="W/L/D" />
                   <SortHeader k="createdAt" label="Created" />
+                  <th className="text-center px-4 py-2.5">Admin</th>
                   <th className="text-left px-4 py-2.5">Actions</th>
                 </tr>
               </thead>
@@ -450,6 +451,27 @@ export default function AccountsTab() {
                       {a.wins} / {a.losses} / {a.draws}
                     </td>
                     <td className="px-4 py-2.5 text-xs">{new Date(a.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-2.5 text-center">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await api('/accounts/' + a.id + '/toggle-admin', { method: 'PUT' });
+                            load();
+                          } catch (err: unknown) {
+                            addToast(err instanceof Error ? err.message : String(err), 'error');
+                          }
+                        }}
+                        className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded ${
+                          a.isAdmin
+                            ? 'bg-purple-500 text-white hover:bg-purple-600'
+                            : 'bg-[#2a2a2a] text-[#888] hover:bg-[#333]'
+                        }`}
+                        title={a.isAdmin ? 'Revoke admin' : 'Grant admin'}
+                      >
+                        <Shield size={10} />
+                        {a.isAdmin ? 'Yes' : 'No'}
+                      </button>
+                    </td>
                     <td className="px-4 py-2.5">
                       <div className="flex gap-1 flex-wrap">
                         <button

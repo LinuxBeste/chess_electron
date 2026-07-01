@@ -70,6 +70,7 @@ export interface AccountRow {
   losses: number;
   draws: number;
   rating: number;
+  isAdmin?: boolean;
 }
 
 export interface BanEntry {

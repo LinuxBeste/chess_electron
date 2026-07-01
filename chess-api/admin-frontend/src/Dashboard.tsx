@@ -17,6 +17,7 @@ import {
   Radio,
   HeartPulse,
   Database,
+  Flag,
 } from 'lucide-react';
 import { setToken } from './api';
 import { ToastProvider } from './Toast';
@@ -39,6 +40,7 @@ const GameReplayTab = lazy(() => import('./GameReplayTab'));
 const WebSocketMonitorTab = lazy(() => import('./WebSocketMonitorTab'));
 const HealthTab = lazy(() => import('./HealthTab'));
 const DbBrowserTab = lazy(() => import('./DbBrowserTab'));
+const ReportsTab = lazy(() => import('./ReportsTab'));
 
 const tabs = [
   { key: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -55,6 +57,7 @@ const tabs = [
   { key: 'broadcast', label: 'Broadcast', icon: Send },
   { key: 'config', label: 'Config', icon: Settings },
   { key: 'db', label: 'DB Browser', icon: Database },
+  { key: 'reports', label: 'Reports', icon: Flag },
   { key: 'ws', label: 'WS Monitor', icon: Radio },
   { key: 'health', label: 'Health', icon: HeartPulse },
 ];
@@ -109,6 +112,8 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
           return <ConfigTab key={navKey} />;
         case 'replay':
           return <GameReplayTab key={navKey} initialGameId={p.gameId} />;
+        case 'reports':
+          return <ReportsTab key={navKey} />;
         case 'ws':
           return <WebSocketMonitorTab key={navKey} />;
         case 'health':
