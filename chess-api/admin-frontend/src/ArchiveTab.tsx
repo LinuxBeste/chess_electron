@@ -43,7 +43,7 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
   const [sortKey, setSortKey] = useState('date');
   const [sortAsc, setSortAsc] = useState(false);
   const [debouncedPlayer, setDebouncedPlayer] = useState('');
-  const playerTimer = useRef<ReturnType<typeof setTimeout> | null>(null); 
+  const playerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigateTab();
 
   function setPlayerDebounced(val: string) {
