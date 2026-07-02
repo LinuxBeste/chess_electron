@@ -406,6 +406,71 @@ router.get('/admin/api/games', adminAuthMiddleware, async (_req: Request, res: R
   }
 });
 
+router.get('/admin/api/games/:id/replay', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const archived = await db.getArchivedGame(req.params.id);
+    if (!archived) {
+      res.status(404).json({ error: 'Game not found' });
+      return;
+    }
+    const moves = JSON.parse(archived.move_history) as string[];
+    const boardHistoryEntries = JSON.parse(archived.board_history) as {
+      board: { piece: string; color: string; square: string }[];
+      move: string;
+    }[];
+    const PIECE_TO_FEN: Record<string, string> = {
+      king: 'k',
+      queen: 'q',
+      rook: 'r',
+      bishop: 'b',
+      knight: 'n',
+      pawn: 'p',
+    };
+    const boardHistory = boardHistoryEntries.map((entry) => {
+      const grid: string[][] = Array.from({ length: 8 }, () => Array(8).fill(''));
+      for (const { piece, color, square } of entry.board) {
+        const f = square.charCodeAt(0) - 97;
+        const r = 8 - parseInt(square[1], 10);
+        const ch = PIECE_TO_FEN[piece] || '?';
+        grid[r][f] = color === 'white' ? ch.toUpperCase() : ch;
+      }
+      let fen = '';
+      for (let r = 0; r < 8; r++) {
+        let empty = 0;
+        for (let f = 0; f < 8; f++) {
+          if (grid[r][f]) {
+            if (empty > 0) {
+              fen += empty;
+              empty = 0;
+            }
+            fen += grid[r][f];
+          } else {
+            empty++;
+          }
+        }
+        if (empty > 0) fen += empty;
+        if (r < 7) fen += '/';
+      }
+      fen += ' w - - 0 1';
+      return fen;
+    });
+    res.json({
+      id: archived.id,
+      status: archived.status,
+      white: archived.white_display_name || archived.white_player_id || '?',
+      black: archived.black_display_name || archived.black_player_id || '?',
+      moves,
+      boardHistory,
+      winner: archived.winner,
+      result: archived.result || '*',
+      createdAt: archived.played_at,
+    });
+  } catch (err) {
+    logger.error('Admin game replay failed: ' + err);
+    res.status(500).json({ error: 'Failed to load game replay' });
+  }
+});
+
 router.get('/admin/api/players', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
     const allPlayers = game.getAllPlayers();
@@ -778,8 +843,8 @@ router.get('/admin/api/archive', adminAuthMiddleware, async (req: Request, res: 
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
     const player = req.query.player as string | undefined;
     const status = req.query.status as string | undefined;
-    const fromDate = req.query.fromDate ? parseInt(req.query.fromDate as string, 10) : undefined;
-    const toDate = req.query.toDate ? parseInt(req.query.toDate as string, 10) : undefined;
+    const fromDate = req.query.fromDate ? new Date((req.query.fromDate as string) + 'T00:00:00').getTime() : undefined;
+    const toDate = req.query.toDate ? new Date((req.query.toDate as string) + 'T23:59:59').getTime() : undefined;
     const sortKey =
       typeof req.query.sortKey === 'string' &&
       ['played_at', 'white_display_name', 'black_display_name'].includes(req.query.sortKey)

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Archive, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { api } from './api';
 import Pagination from './Pagination';
@@ -42,12 +42,19 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
   const [expandedPgn, setExpandedPgn] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState('date');
   const [sortAsc, setSortAsc] = useState(false);
+  const [debouncedPlayer, setDebouncedPlayer] = useState('');
+  const playerTimer = useRef<ReturnType<typeof setTimeout>>();
   const navigate = useNavigateTab();
 
+  function setPlayerDebounced(val: string) {
+    setPlayer(val);
+    if (playerTimer.current) clearTimeout(playerTimer.current);
+    playerTimer.current = setTimeout(() => setDebouncedPlayer(val), 300);
+  }
+
   function load() {
-    // build query string with optional filters, encodeURIComponent for safety
     let path = '/archive?page=' + page + '&limit=' + limit;
-    if (player) path += '&player=' + encodeURIComponent(player);
+    if (debouncedPlayer) path += '&player=' + encodeURIComponent(debouncedPlayer);
     if (statusFilter) path += '&status=' + encodeURIComponent(statusFilter);
     if (fromDate) path += '&fromDate=' + encodeURIComponent(fromDate);
     if (toDate) path += '&toDate=' + encodeURIComponent(toDate);
@@ -64,10 +71,13 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
 
   // set initial player filter from nav params (e.g. OverviewTab → ArchiveTab)
   useEffect(() => {
-    if (initialPlayer) setPlayer(initialPlayer);
+    if (initialPlayer) {
+      setPlayer(initialPlayer);
+      setDebouncedPlayer(initialPlayer);
+    }
   }, [initialPlayer]);
 
-  useEffect(load, [page, limit, player, statusFilter, fromDate, toDate, sortKey, sortAsc]);
+  useEffect(load, [page, limit, debouncedPlayer, statusFilter, fromDate, toDate, sortKey, sortAsc]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -109,7 +119,7 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
             <div className="w-48">
               <SearchBar
                 value={player}
-                onChange={setPlayer}
+                onChange={setPlayerDebounced}
                 placeholder="Filter by player..."
                 sortOptions={[
                   { key: 'date', label: 'Date' },
@@ -208,7 +218,6 @@ export default function ArchiveTab({ initialPlayer }: { initialPlayer?: string }
                   </tbody>
                 </table>
               </div>
-              // expandable PGN viewer, collapses if same game clicked again
               {expandedPgn &&
                 (() => {
                   const g = games.find((x) => x.id === expandedPgn);

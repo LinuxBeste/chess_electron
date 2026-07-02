@@ -849,7 +849,7 @@ export async function saveCompletedGame(
 export async function getArchivedGames(
   page: number,
   limit: number,
-  playerId?: string,
+  playerSearch?: string,
   status?: string,
   fromDate?: number,
   toDate?: number,
@@ -859,10 +859,10 @@ export async function getArchivedGames(
   const conditions: string[] = [];
   const params: unknown[] = [];
   let paramIdx = 0;
-  if (playerId) {
+  if (playerSearch) {
     paramIdx++;
-    conditions.push('(white_player_id = $' + paramIdx + ' OR black_player_id = $' + (paramIdx + 1) + ')');
-    params.push(playerId, playerId);
+    conditions.push('(white_display_name ILIKE $' + paramIdx + ' OR black_display_name ILIKE $' + (paramIdx + 1) + ')');
+    params.push('%' + playerSearch + '%', '%' + playerSearch + '%');
     paramIdx++;
   }
   if (status) {

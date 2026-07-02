@@ -17,23 +17,6 @@ const PIECES: Record<string, string> = {
   p: '♟',
 };
 
-// convert UCI move string to algebraic notation for readability
-function toAlgebraic(move: string): string {
-  const pieceMap: Record<string, string> = { K: 'K', Q: 'Q', R: 'R', B: 'B', N: 'N', P: '' };
-  if (move.length < 4) return move; // castling O-O/O-O-O
-  const piece = move[0];
-  const pieceChar = pieceMap[piece] || '';
-  const rank = move[2];
-  const destFile = move[3];
-  if (piece >= 'A' && piece <= 'Z') {
-    if (piece === 'P') return destFile + rank;
-    return pieceChar + destFile + rank;
-  }
-  if (move === 'O-O') return 'O-O';
-  if (move === 'O-O-O') return 'O-O-O';
-  return move;
-}
-
 interface BoardState {
   squares: (string | null)[][];
 }
@@ -345,7 +328,7 @@ export default function GameReplayTab({ initialGameId }: { initialGameId?: strin
                           {Math.floor(i / 2) + 1}
                           {i % 2 === 0 ? '.' : '...'}
                         </span>
-                        {toAlgebraic(move)}
+                        {move}
                       </div>
                     ))}
                   </div>

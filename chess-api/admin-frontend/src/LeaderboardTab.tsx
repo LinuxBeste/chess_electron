@@ -66,7 +66,7 @@ export default function LeaderboardTab() {
   if (error) return <p className="text-red-500 text-sm">{error}</p>;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#2a2a2a]">
           <h2 className="text-sm font-semibold text-[#e0e0e0] flex items-center gap-2">
