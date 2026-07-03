@@ -149,26 +149,26 @@ export function clearIpRateBuckets(): void {
   ipHealthBuckets.clear();
 }
 
-export function authMiddleware(req: Request, res: Response, next: () => void): void {
+export async function authMiddleware(req: Request, res: Response, next: () => void): Promise<void> {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Authentication required' });
     return;
   }
   const token = header.slice(7);
-  const player = game.authenticatePlayer(token);
+  const player = await game.authenticatePlayerAsync(token);
   if (!player) {
     res.status(401).json({ error: 'Invalid token' });
     return;
   }
   req.player = player;
   const ip = req.ip || req.socket.remoteAddress || '';
-  game.setPlayerIp(player.id, ip); // Track player IP for ban checks
+  game.setPlayerIp(player.id, ip);
   next();
 }
 
-export function rateLimitMiddleware(req: Request, res: Response, next: () => void): void {
-  if (!game.checkRateLimit(req.player.id)) {
+export async function rateLimitMiddleware(req: Request, res: Response, next: () => void): Promise<void> {
+  if (!(await game.checkRateLimit(req.player.id))) {
     res.status(429).json({ error: 'Too many requests. Please slow down.' });
     return;
   }

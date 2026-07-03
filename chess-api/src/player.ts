@@ -166,7 +166,6 @@ export function deleteToken(token: string): void {
 export function authenticatePlayer(token: string): Player | null {
   const expiry = tokenExpiry.get(token);
   if (expiry && expiry <= Date.now()) {
-    // Check expiry before looking up token
     deleteToken(token);
     logger.info('Auth failed: token expired');
     return null;
@@ -183,6 +182,35 @@ export function authenticatePlayer(token: string): Player | null {
     logger.debug('Auth failed: playerId=' + playerId + ' not in memory');
   }
   return player;
+}
+
+export async function authenticatePlayerAsync(token: string): Promise<Player | null> {
+  const cached = authenticatePlayer(token);
+  if (cached) return cached;
+
+  // Lazy-load from DB on cache miss (avoids preloading all users at startup)
+  try {
+    const userId = await db.getUserIdByToken(token);
+    if (!userId) return null;
+
+    const user = await db.getUserById(userId);
+    if (!user) return null;
+
+    const player: Player = {
+      id: user.id,
+      username: user.username,
+      displayName: user.display_name,
+      tokens: [token],
+      isRegistered: true,
+    };
+    players.set(user.id, player);
+    setToken(token, user.id);
+    logger.info('Lazy-loaded player: playerId=' + user.id + ' username="' + user.username + '"');
+    return player;
+  } catch (err) {
+    logger.error('authenticatePlayerAsync failed: ' + err);
+    return null;
+  }
 }
 
 export function addToken(playerId: string): string | null {

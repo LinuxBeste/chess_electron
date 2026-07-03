@@ -831,8 +831,8 @@ describe('Admin API — accounts CRUD', () => {
 
   test('GET /admin/api/accounts lists all registered users', async () => {
     const res = await request.get('/admin/api/accounts').set('Authorization', authHeader).expect(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    const target = res.body.find((a: { id: string; username: string }) => a.id === accountId);
+    expect(Array.isArray(res.body.rows)).toBe(true);
+    const target = res.body.rows.find((a: { id: string; username: string }) => a.id === accountId);
     expect(target).toBeDefined();
     expect(target!.username).toBe('adm_crud');
   });
@@ -845,7 +845,7 @@ describe('Admin API — accounts CRUD', () => {
       .expect(200);
 
     const res = await request.get('/admin/api/accounts').set('Authorization', authHeader).expect(200);
-    const target = res.body.find((a: { id: string; displayName: string }) => a.id === accountId);
+    const target = res.body.rows.find((a: { id: string; displayName: string }) => a.id === accountId);
     expect(target!.displayName).toBe('Admin Test');
   });
 
@@ -905,7 +905,7 @@ describe('Admin API — accounts CRUD', () => {
 
     /* Verify it's gone from the accounts list */
     const res = await request.get('/admin/api/accounts').set('Authorization', authHeader).expect(200);
-    expect(res.body.some((a: { id: string }) => a.id === delId)).toBe(false);
+    expect(res.body.rows.some((a: { id: string }) => a.id === delId)).toBe(false);
   });
 
   test('DELETE /admin/api/accounts/:id rejects non-existent account', async () => {
@@ -914,7 +914,7 @@ describe('Admin API — accounts CRUD', () => {
 
   test('GET /admin/api/accounts returns correct shape', async () => {
     const res = await request.get('/admin/api/accounts').set('Authorization', authHeader).expect(200);
-    for (const a of res.body) {
+    for (const a of res.body.rows) {
       expect(a).toHaveProperty('id');
       expect(a).toHaveProperty('username');
       expect(a).toHaveProperty('displayName');
@@ -1820,7 +1820,7 @@ describe('Admin API — create account', () => {
     expect(res.body).toHaveProperty('id');
 
     const list = await request.get('/admin/api/accounts').set('Authorization', adminAuth).expect(200);
-    expect(list.body.some((a: { username: string }) => a.username === 'admin_created')).toBe(true);
+    expect(list.body.rows.some((a: { username: string }) => a.username === 'admin_created')).toBe(true);
   });
 
   test('POST /admin/api/accounts rejects duplicate username', async () => {
@@ -2516,14 +2516,14 @@ describe('Admin API — warn', () => {
 });
 
 describe('Rate limiting', () => {
-  test('checkRateLimit returns true initially', () => {
-    expect(game.checkRateLimit('rate-test-player')).toBe(true);
+  test('checkRateLimit returns true initially', async () => {
+    expect(await game.checkRateLimit('rate-test-player')).toBe(true);
   });
 
-  test('checkRateLimit returns false after many requests', () => {
+  test('checkRateLimit returns false after many requests', async () => {
     const pid = 'rate-test-spam';
-    for (let i = 0; i < 100; i++) game.checkRateLimit(pid);
-    expect(game.checkRateLimit(pid)).toBe(false);
+    for (let i = 0; i < 100; i++) await game.checkRateLimit(pid);
+    expect(await game.checkRateLimit(pid)).toBe(false);
   });
 });
 

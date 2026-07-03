@@ -3,7 +3,7 @@ import { describe, test, expect, jest, beforeAll, afterAll, beforeEach } from '@
 const mockSetex = jest.fn();
 const mockGet = jest.fn();
 const mockDel = jest.fn();
-const mockKeys = jest.fn();
+const mockScan = jest.fn();
 const mockPipelineGet = jest.fn();
 const mockPipeline = jest.fn(() => ({ get: mockPipelineGet, exec: mockPipelineExec }));
 const mockLrange = jest.fn();
@@ -25,7 +25,7 @@ const mockRedis = jest.fn(() => ({
   setex: mockSetex,
   get: mockGet,
   del: mockDel,
-  keys: mockKeys,
+  scan: mockScan,
   pipeline: mockPipeline,
   lrange: mockLrange,
   rpush: mockRpush,
@@ -57,7 +57,7 @@ describe('Redis (enabled)', () => {
     mockSetex.mockResolvedValue('OK');
     mockGet.mockResolvedValue(null);
     mockDel.mockResolvedValue(1);
-    mockKeys.mockResolvedValue([]);
+    mockScan.mockResolvedValue(['0', []]);
 
     mockLrange.mockResolvedValue([]);
     mockRpush.mockResolvedValue(1);
@@ -139,7 +139,7 @@ describe('Redis (enabled)', () => {
       mockSetex.mockClear();
       mockGet.mockClear();
       mockDel.mockClear();
-      mockKeys.mockClear();
+      mockScan.mockClear();
       mockLrange.mockClear();
       mockRpush.mockClear();
       mockExpire.mockClear();
@@ -148,7 +148,7 @@ describe('Redis (enabled)', () => {
       mockSrem.mockClear();
       /* Restore defaults */
       mockGet.mockResolvedValue(null);
-      mockKeys.mockResolvedValue([]);
+      mockScan.mockResolvedValue(['0', []]);
       mockLrange.mockResolvedValue([]);
       mockSmembers.mockResolvedValue([]);
       mockPipelineExec.mockResolvedValue([]);
@@ -181,13 +181,14 @@ describe('Redis (enabled)', () => {
     });
 
     test('getAllGameIds returns ids without prefix', async () => {
-      mockKeys.mockResolvedValue(['game:a', 'game:b']);
+      mockScan.mockResolvedValue(['0', ['game:a', 'game:b']]);
       const ids = await redis.getAllGameIds();
       expect(ids).toEqual(['a', 'b']);
+      expect(mockScan).toHaveBeenCalledWith('0', 'MATCH', 'game:*', 'COUNT', '100');
     });
 
     test('getAllGames returns a map via pipeline', async () => {
-      mockKeys.mockResolvedValue(['game:g1', 'game:g2']);
+      mockScan.mockResolvedValue(['0', ['game:g1', 'game:g2']]);
       const results: [Error | null, string | null][] = [
         [null, JSON.stringify({ id: 'g1', status: 'active' })],
         [null, JSON.stringify({ id: 'g2', status: 'waiting' })],
@@ -276,7 +277,7 @@ describe('Redis (enabled)', () => {
       const ts = await redis.getGameCompletedAt('g1');
       expect(ts).toBe(1234567890);
 
-      mockKeys.mockResolvedValue(['completed:g1', 'completed:g2']);
+      mockScan.mockResolvedValue(['0', ['completed:g1', 'completed:g2']]);
       const ids = await redis.getAllCompletedGameIds();
       expect(ids).toEqual(['g1', 'g2']);
 

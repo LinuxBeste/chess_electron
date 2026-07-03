@@ -17,6 +17,7 @@ export const rematchOffers = new Map<string, string>();
 export const chatHistory = new Map<string, { playerId: string; username: string; text: string; timestamp: number }[]>();
 export const rateLimitBuckets = new Map<string, number[]>();
 
+export const TOTAL_MAX_GAMES = parseInt(process.env.TOTAL_MAX_GAMES ?? '10000', 10);
 export const MAX_GAMES_PER_PLAYER = parseInt(process.env.MAX_GAMES_PER_PLAYER ?? '20', 10);
 export const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10);
 export const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10);
@@ -86,6 +87,8 @@ function fileEnabled(): boolean {
   return !redis.isRedisEnabled() && _filePersistenceEnabled;
 }
 
+const FILE_SAVE_GAME_WARN_THRESHOLD = parseInt(process.env.FILE_SAVE_GAME_WARN_THRESHOLD ?? '5000', 10);
+
 export async function saveActiveGamesToFile(): Promise<void> {
   if (!fileEnabled()) return;
   try {
@@ -95,11 +98,15 @@ export async function saveActiveGamesToFile(): Promise<void> {
         data[id] = g;
       }
     }
+    const count = Object.keys(data).length;
+    if (count > FILE_SAVE_GAME_WARN_THRESHOLD) {
+      logger.warn('File persistence serializing ' + count + ' games — consider enabling Redis');
+    }
     await fs.mkdir(path.dirname(ACTIVE_GAMES_FILE), { recursive: true });
     await fs.writeFile(ACTIVE_GAMES_FILE + '.tmp', JSON.stringify(data), 'utf-8');
     await fs.rename(ACTIVE_GAMES_FILE + '.tmp', ACTIVE_GAMES_FILE);
     _fileDirty = false;
-    logger.debug('Saved ' + Object.keys(data).length + ' active games to ' + ACTIVE_GAMES_FILE);
+    logger.debug('Saved ' + count + ' active games to ' + ACTIVE_GAMES_FILE);
   } catch (err) {
     logger.error('Failed to save active games: ' + err);
   }

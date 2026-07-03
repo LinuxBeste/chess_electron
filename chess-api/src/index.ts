@@ -154,6 +154,44 @@ app.get('/admin/*', (_req, res) => {
 });
 app.use(friendsRouter);
 
+// Catch-all 404: HTML page for browsers, JSON for API clients
+const NOT_FOUND_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>404 — Page not found</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#0e0e10;color:#e0e0e0;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.board{display:grid;grid-template-columns:repeat(8,32px);grid-template-rows:repeat(8,32px);border:2px solid #b58863;border-radius:4px;overflow:hidden;margin-bottom:24px;box-shadow:0 8px 48px rgba(0,0,0,.5);animation:fadeUp .5s ease}
+.square{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px}
+.light{background:#f0d9b5}
+.dark{background:#b58863}
+h1{font-size:72px;font-weight:800;letter-spacing:-3px;color:#4f8ef7;margin:0;line-height:1;animation:fadeUp .4s ease .3s both}
+p{font-size:16px;color:#888;margin:0;animation:fadeUp .4s ease .5s both}
+a{display:inline-block;margin-top:20px;padding:10px 24px;border:none;border-radius:8px;background:#4f8ef7;color:#fff;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;text-decoration:none;animation:fadeUp .4s ease .7s both;transition:transform .15s ease}
+a:hover{background:#5d9af8;transform:scale(1.03)}
+a:active{transform:scale(.97)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="board" id="board"></div>
+<h1>404</h1>
+<p>This page is out of bounds</p>
+<a href="/">← Back to the board</a>
+<script>var b=document.getElementById('board'),p=['♜','♞','♝','♛','♚','♝','♞','♜','♟','♟','♟','♟','♟','♟','♟','♟','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','♙','♙','♙','♙','♙','♙','♙','♙','♖','♘','♗','♕','♔','♗','♘','♖'];for(var i=0;i<64;i++){var s=document.createElement('div');s.className='square '+(Math.floor(i/8)+i%8&1?'light':'dark');var pc=p[i];if(pc){s.textContent=pc;s.style.color=i<16?'#1a1a1a':'#fff'}b.appendChild(s)}</script>
+</body>
+</html>`;
+app.use((req, res) => {
+  if (req.accepts('html')) {
+    res.status(404).type('html').send(NOT_FOUND_HTML);
+  } else {
+    res.status(404).json({ error: 'Not found' });
+  }
+});
+
 const sentryRequestHandler = monitoring.getSentryRequestHandler();
 if (sentryRequestHandler) app.use(sentryRequestHandler);
 
@@ -205,7 +243,7 @@ export function createServer(): http.Server {
     });
   }, WS_HEARTBEAT_INTERVAL);
 
-  wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+  wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
     const clientIp = req.socket.remoteAddress || 'unknown';
 
     const authEntry = wsAuthAttempts.get(clientIp);
@@ -240,7 +278,7 @@ export function createServer(): http.Server {
       return;
     }
 
-    const player = game.authenticatePlayer(token);
+    const player = await game.authenticatePlayerAsync(token);
     if (!player) {
       decrementWsIp(clientIp);
       recordWsAuthFailure(clientIp);
@@ -618,7 +656,6 @@ if (!isTestEnv) {
 
   async function startApp(): Promise<void> {
     await monitoring.initSentry();
-    await game.loadPersistedUsers().catch((err) => logger.error('Failed to load persisted users: ' + err));
     try {
       await redis.initRedis();
     } catch (e) {

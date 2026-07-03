@@ -98,10 +98,21 @@ export async function deleteGame(gameId: string): Promise<void> {
   }
 }
 
+async function scanKeys(pattern: string): Promise<string[]> {
+  const result: string[] = [];
+  let cursor = '0';
+  do {
+    const reply = await pubClient!.scan(cursor, 'MATCH', pattern, 'COUNT', '100');
+    cursor = reply[0];
+    result.push(...reply[1]);
+  } while (cursor !== '0');
+  return result;
+}
+
 export async function getAllGameIds(): Promise<string[]> {
   if (!ENABLED) return [];
   try {
-    const keys = await pubClient!.keys('game:*');
+    const keys = await scanKeys('game:*');
     return keys.map((k: string) => k.slice(5));
   } catch (err) {
     logger.error('Redis getAllGameIds failed: ' + err);
@@ -316,7 +327,7 @@ export async function getGameCompletedAt(gameId: string): Promise<number | null>
 export async function getAllCompletedGameIds(): Promise<string[]> {
   if (!ENABLED) return [];
   try {
-    const keys = await pubClient!.keys('completed:*');
+    const keys = await scanKeys('completed:*');
     return keys.map((k: string) => k.slice(10));
   } catch (err) {
     logger.error('Redis getAllCompletedGameIds failed: ' + err);
@@ -330,6 +341,72 @@ export async function deleteGameCompletedAt(gameId: string): Promise<void> {
     await pubClient!.del('completed:' + gameId);
   } catch (err) {
     logger.error('Redis deleteGameCompletedAt failed: ' + err);
+  }
+}
+
+/* ─── Rate Limiting (Redis-backed sliding window) ─── */
+
+const RATE_LIMIT_SCRIPT = `
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local window_ms = tonumber(ARGV[2])
+local max_requests = tonumber(ARGV[3])
+redis.call('ZREMRANGEBYSCORE', key, 0, now - window_ms)
+local count = redis.call('ZCARD', key)
+if count >= max_requests then
+  return 0
+end
+local member = now .. ':' .. redis.call('INCR', key .. ':seq')
+redis.call('ZADD', key, now, member)
+redis.call('EXPIRE', key, math.ceil(window_ms / 1000) + 1)
+return 1
+`;
+
+// Fallback in-memory limiter when Redis is disabled
+const fallbackBuckets = new Map<string, number[]>();
+const FALLBACK_CLEANUP_INTERVAL = 60000;
+
+export function checkRateLimitFallback(key: string, maxRequests: number, windowMs: number): boolean {
+  const now = Date.now();
+  const cutoff = now - windowMs;
+  let timestamps = fallbackBuckets.get(key) ?? [];
+  timestamps = timestamps.filter((t) => t > cutoff);
+  if (timestamps.length >= maxRequests) return false;
+  timestamps.push(now);
+  fallbackBuckets.set(key, timestamps);
+  return true;
+}
+
+export function cleanupFallbackRateLimitBuckets(): void {
+  const now = Date.now();
+  for (const [key, timestamps] of fallbackBuckets) {
+    const cutoff = now - 60000;
+    const filtered = timestamps.filter((t) => t > cutoff);
+    if (filtered.length === 0) fallbackBuckets.delete(key);
+    else fallbackBuckets.set(key, filtered);
+  }
+}
+
+// Periodically clean up fallback buckets
+if (typeof setInterval !== 'undefined') {
+  setInterval(cleanupFallbackRateLimitBuckets, FALLBACK_CLEANUP_INTERVAL);
+}
+
+export async function checkRateLimitRedis(key: string, maxRequests: number, windowMs: number): Promise<boolean> {
+  if (!ENABLED) return checkRateLimitFallback(key, maxRequests, windowMs);
+  try {
+    const result = await pubClient!.eval(
+      RATE_LIMIT_SCRIPT,
+      1,
+      'rl:' + key,
+      String(Date.now()),
+      String(windowMs),
+      String(maxRequests),
+    );
+    return result === 1;
+  } catch (err) {
+    logger.error('Redis rate limit check failed, using fallback: ' + err);
+    return checkRateLimitFallback(key, maxRequests, windowMs);
   }
 }
 

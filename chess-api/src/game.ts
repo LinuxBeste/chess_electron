@@ -20,6 +20,7 @@ function withGameLock<T>(gameId: string, fn: () => Promise<T>): Promise<T> {
 import * as chess from './chess.js';
 import * as db from './db.js';
 import { engineManager } from './engine.js';
+import * as redis from './redis.js';
 import logger from './logger.js';
 import { players, BOT_PLAYER_ID } from './player.js';
 import {
@@ -32,6 +33,7 @@ import {
   rematchOffers,
   rateLimitBuckets,
   MAX_GAMES_PER_PLAYER,
+  TOTAL_MAX_GAMES,
   RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_MAX_REQUESTS,
   WAITING_TTL_MS,
@@ -60,6 +62,7 @@ import { loadPersistedBans } from './bans.js';
 export {
   BOT_PLAYER_ID,
   authenticatePlayer,
+  authenticatePlayerAsync,
   registerPlayer,
   loginPlayer,
   logoutPlayer,
@@ -221,7 +224,32 @@ function broadcastSpectatorCount(gameId: string): void {
   sendToSpectators(gameId, message);
 }
 
+const GAME_LIST_CACHE_TTL_MS = parseInt(process.env.GAME_LIST_CACHE_TTL_MS ?? '500', 10);
+let _cachedGameListData: string | null = null;
+let _cachedGameListExpiry = 0;
+let _gameListRefreshScheduled = false;
+
 async function broadcastGameListUpdate(): Promise<void> {
+  // Reuse cached data within TTL
+  if (_cachedGameListData && Date.now() < _cachedGameListExpiry) {
+    const data = _cachedGameListData;
+    for (const conns of wsConnections.values()) {
+      for (const ws of conns) {
+        if (ws.readyState === WebSocket.OPEN) ws.send(data);
+      }
+    }
+    return;
+  }
+
+  // Debounce: coalesce rapid calls, rebuild only once
+  if (_gameListRefreshScheduled) return;
+  _gameListRefreshScheduled = true;
+
+  // Use microtask delay so concurrent mutations (create/join/complete)
+  // all trigger a single rebuild.
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  _gameListRefreshScheduled = false;
+
   const openGames = await Promise.all(
     Array.from(games.values())
       .filter((g) => g.status === 'waiting' && g.visibility === 'public')
@@ -235,12 +263,14 @@ async function broadcastGameListUpdate(): Promise<void> {
   );
   const activeSanitized = activeGames.map(sanitizeForClient);
   const message = { type: 'game_list_update', openGames: openSanitized, activeGames: activeSanitized };
-  const data = JSON.stringify(message);
+
+  _cachedGameListData = JSON.stringify(message);
+  _cachedGameListExpiry = Date.now() + GAME_LIST_CACHE_TTL_MS;
+
+  const data = _cachedGameListData;
   for (const conns of wsConnections.values()) {
     for (const ws of conns) {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(data);
-      }
+      if (ws.readyState === WebSocket.OPEN) ws.send(data);
     }
   }
 }
@@ -267,13 +297,16 @@ function countActiveGamesForPlayer(playerId: string): number {
   return count;
 }
 
-export function checkRateLimit(playerId: string): boolean {
+export async function checkRateLimit(playerId: string): Promise<boolean> {
+  if (redis.isRedisEnabled()) {
+    return redis.checkRateLimitRedis('player:' + playerId, RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MS);
+  }
+  // In-memory fallback
   const now = Date.now();
   const windowStart = now - RATE_LIMIT_WINDOW_MS;
   let timestamps = rateLimitBuckets.get(playerId) ?? [];
   timestamps = timestamps.filter((t) => t > windowStart);
   if (timestamps.length >= RATE_LIMIT_MAX_REQUESTS) {
-    // Sliding window rate limit per player
     logger.info('Rate limit hit: playerId=' + playerId + ' count=' + timestamps.length);
     return false;
   }
@@ -310,6 +343,17 @@ export async function createGame(
     spectateCode,
     halfMoveClock: 0,
   };
+  // Evict oldest waiting/finished game if at capacity
+  if (games.size >= TOTAL_MAX_GAMES) {
+    const finishedStatuses = new Set<GameStatus>(['checkmate', 'stalemate', 'draw', 'resigned']);
+    const oldestEntry = Array.from(games.entries())
+      .filter(([, g]) => g.status === 'waiting' || finishedStatuses.has(g.status))
+      .sort(([, a], [, b]) => (a.createdAt ?? 0) - (b.createdAt ?? 0))[0];
+    if (oldestEntry) {
+      removeGameById(oldestEntry[0]);
+      logger.info('Evicted oldest game: gameId=' + oldestEntry[0]);
+    }
+  }
   games.set(id, game);
   persistGameAndPublish(id);
   addPlayerGameIndex(playerId, id);

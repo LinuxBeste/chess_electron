@@ -161,7 +161,7 @@ router.get('/admin/api/stats', adminAuthMiddleware, async (_req: Request, res: R
     const { gamesActive, playersOnline } = game.getStats();
     const allPlayers = game.getAllPlayers();
     const registeredUsers = allPlayers.filter((p) => p.isRegistered).length;
-    const totalUsers = (await db.loadAllUsers()).length;
+    const totalUsers = await db.countUsers();
     logger.info(
       'Admin stats: gamesActive=' +
         gamesActive +
@@ -475,8 +475,9 @@ router.get('/admin/api/players', adminAuthMiddleware, async (_req: Request, res:
   try {
     const allPlayers = game.getAllPlayers();
     const onlineIds = game.getOnlinePlayerIds();
-    const registeredUsers = await db.loadAllUsers().catch(() => []);
-    const regMap = new Map(registeredUsers.map((u) => [u.id, u.created_at]));
+    const registeredIds = allPlayers.filter((p) => p.isRegistered).map((p) => p.id);
+    const usersMap =
+      registeredIds.length > 0 ? await db.getUsersByIds(registeredIds).catch(() => new Map()) : new Map();
     const list = allPlayers.map((p) => {
       const gameIdSet = playerGameIndex.get(p.id);
       const currentGameId = gameIdSet && gameIdSet.size > 0 ? Array.from(gameIdSet)[0] : undefined;
@@ -488,7 +489,7 @@ router.get('/admin/api/players', adminAuthMiddleware, async (_req: Request, res:
         online: onlineIds.has(p.id),
         tokens: p.tokens.length,
         ip: game.getPlayerIp(p.id) || null,
-        registeredAt: p.isRegistered ? (regMap.get(p.id) ?? null) : null,
+        registeredAt: p.isRegistered ? (usersMap.get(p.id)?.created_at ?? null) : null,
         currentGameId,
       };
     });
@@ -500,9 +501,12 @@ router.get('/admin/api/players', adminAuthMiddleware, async (_req: Request, res:
   }
 });
 
-router.get('/admin/api/accounts', adminAuthMiddleware, async (_req: Request, res: Response) => {
+router.get('/admin/api/accounts', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
-    const users = await db.loadAllUsers();
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const offset = (page - 1) * limit;
+    const { rows: users, total } = await db.getUsersPaginated(limit, offset);
     const list = users.map((u) => ({
       id: u.id,
       username: u.username,
@@ -515,8 +519,8 @@ router.get('/admin/api/accounts', adminAuthMiddleware, async (_req: Request, res
       rating: u.rating,
       isAdmin: u.is_admin === true,
     }));
-    logger.info('Admin accounts listed: count=' + list.length);
-    res.json(list);
+    logger.info('Admin accounts listed: page=' + page + ' count=' + list.length + ' total=' + total);
+    res.json({ rows: list, total, page, limit });
   } catch (err) {
     logger.error('Admin accounts query failed: ' + err);
     res.status(500).json({ error: 'Failed to list accounts' });

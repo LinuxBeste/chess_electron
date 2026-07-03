@@ -5,7 +5,8 @@ import path from 'path';
 import fs from 'fs';
 import logger from './logger.js';
 
-const DB_POOL_MAX = parseInt(process.env.DB_POOL_MAX ?? '20', 10);
+// At 1M users, increase to 50-200 and front with PgBouncer for connection pooling
+const DB_POOL_MAX = parseInt(process.env.DB_POOL_MAX ?? '50', 10);
 const DB_POOL_IDLE_TIMEOUT_MS = parseInt(process.env.DB_POOL_IDLE_TIMEOUT_MS ?? '30000', 10);
 const DB_POOL_CONNECTION_TIMEOUT_MS = parseInt(process.env.DB_POOL_CONNECTION_TIMEOUT_MS ?? '5000', 10);
 const __filename = fileURLToPath(import.meta.url);
@@ -304,6 +305,15 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_warnings_user ON warnings(user_id);
     `,
   },
+  {
+    version: 10,
+    sql: `
+      CREATE INDEX IF NOT EXISTS idx_users_rating ON users(rating DESC);
+      CREATE INDEX IF NOT EXISTS idx_completed_games_player_played ON completed_games(white_player_id, played_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_completed_games_black_player ON completed_games(black_player_id, played_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_completed_games_played_at ON completed_games(played_at DESC);
+    `,
+  },
 ];
 
 let migrated = false;
@@ -523,6 +533,21 @@ export async function addLoss(userId: string): Promise<void> {
 export async function addDraw(userId: string): Promise<void> {
   await getPool().query('UPDATE users SET draws = draws + 1 WHERE id = $1', [userId]);
   invalidateLeaderboardCache();
+}
+
+export async function countUsers(): Promise<number> {
+  const { rows } = await getPool().query('SELECT COUNT(*) as c FROM users');
+  return (rows[0] as { c: number }).c;
+}
+
+export async function getUsersPaginated(limit: number, offset: number): Promise<{ rows: DbUser[]; total: number }> {
+  const { rows: countRows } = await getPool().query('SELECT COUNT(*) as c FROM users');
+  const total = (countRows[0] as { c: number }).c;
+  const { rows } = await getPool().query('SELECT * FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2', [
+    limit,
+    offset,
+  ]);
+  return { rows: rows as DbUser[], total };
 }
 
 export async function loadAllUsers(): Promise<DbUser[]> {
@@ -755,8 +780,19 @@ export async function getLeaderboard(
     params.push(minGames);
   }
   const where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
-  const { rows: countRows } = await getPool().query('SELECT COUNT(*) as c FROM users' + where, params);
-  const total = (countRows[0] as { c: number }).c;
+
+  // Use estimated row count from pg_class for unfiltered queries to avoid sequential COUNT(*) scan
+  let total: number;
+  if (conditions.length === 0) {
+    const { rows: estRows } = await getPool().query(
+      "SELECT reltuples::bigint AS estimate FROM pg_class WHERE relname = 'users'",
+    );
+    total = (estRows[0] as { estimate: number })?.estimate ?? 0;
+  } else {
+    const { rows: countRows } = await getPool().query('SELECT COUNT(*) as c FROM users' + where, params);
+    total = (countRows[0] as { c: number }).c;
+  }
+
   const allowedSort = ['rating', 'wins', 'username', 'display_name'];
   const orderCol = allowedSort.includes(sortKey) ? sortKey : 'rating';
   const orderDir = sortAsc ? 'ASC' : 'DESC';

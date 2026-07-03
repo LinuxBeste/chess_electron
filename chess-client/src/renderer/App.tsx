@@ -33,6 +33,7 @@ const ArchivePage = lazy(() => import('./pages/ArchivePage'));
 const TournamentPage = lazy(() => import('./pages/TournamentPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const BoardEditorPage = lazy(() => import('./pages/BoardEditorPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 export default function App() {
   const navigate = useNavigate();
@@ -124,9 +125,19 @@ export default function App() {
           const path = window.location.hash.replace(/^#/, '') || '/';
           if (path.startsWith('/game/') || path.startsWith('/result/')) {
             logger.info('Already on game/result page, skipping redirect', { path });
-          } else {
+          } else if (
+            path === '/login' ||
+            path === '/lobby' ||
+            path === '/local' ||
+            path === '/leaderboard' ||
+            path === '/archive' ||
+            path === '/tournaments' ||
+            path === '/editor' ||
+            path.startsWith('/profile/')
+          ) {
             navigate('/lobby', { replace: true });
           }
+          /* invalid paths hit the catch-all NotFoundPage */
         })
         .catch((err) => {
           if (err instanceof ApiError && err.status === 401) {
@@ -396,6 +407,7 @@ export default function App() {
               <Route path="/tournaments" element={<TournamentPage />} />
               <Route path="/profile/:playerId" element={<ProfilePage />} />
               <Route path="/editor" element={<BoardEditorPage />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
         </div>
