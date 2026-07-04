@@ -22,7 +22,7 @@ function updateSidebarPush(
   } else if (isMobile) {
     width = '0px';
   } else {
-    width = 'clamp(320px, 30vw, 420px)';
+    width = 'clamp(280px, 28vw, 380px)';
   }
   if (sidebarPosition === 'right') {
     document.documentElement.style.setProperty('--sidebar-push-right', width);

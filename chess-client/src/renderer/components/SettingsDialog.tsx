@@ -539,6 +539,16 @@ function DisplayTab({ settings, onUpdate }: { settings: AppSettings; onUpdate: (
 
       <Section title={t('settings.display.visuals')} />
       <SelectRow
+        label="UI Theme"
+        desc="Warm dark tones with purple accent"
+        options={[
+          { value: 'default', label: 'Default' },
+          { value: 'slate', label: 'Slate' },
+        ]}
+        value={settings.uiTheme}
+        onChange={(v) => onUpdate({ ...settings, uiTheme: v as AppSettings['uiTheme'] })}
+      />
+      <SelectRow
         label={t('settings.display.backgroundPattern')}
         desc={t('settings.display.backgroundPatternDesc')}
         options={backgroundOptions}

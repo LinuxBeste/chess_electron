@@ -59,6 +59,7 @@ export interface AppSettings {
   showGameResultPopup: boolean;
 
   /* ── Display :: Visuals ── */
+  uiTheme: 'default' | 'slate';
   background: 'default' | 'dots' | 'grid' | 'none';
   showLegalHints: boolean;
   showThreats: boolean;
@@ -148,6 +149,7 @@ export const defaultSettings: AppSettings = {
   showGameResultPopup: true,
 
   /* ── Display :: Visuals ── */
+  uiTheme: 'default',
   background: 'default',
   showLegalHints: true,
   showThreats: false,
@@ -211,6 +213,7 @@ export function saveSettings(settings: AppSettings): void {
     soundEnabled: settings.soundEnabled,
     language: settings.language,
   });
+  applyUiTheme(settings.uiTheme);
   applyTheme(settings.boardTheme);
   applyBoardStyle(settings.boardStyle);
   applyBackground(settings.background);
@@ -292,6 +295,15 @@ export function clearAllLocalData(): void {
   logger.info('All local data cleared');
 }
 
+export function applyUiTheme(theme: string): void {
+  const root = document.documentElement;
+  root.removeAttribute('data-ui-theme');
+  if (theme !== 'default') {
+    root.setAttribute('data-ui-theme', theme);
+  }
+  logger.info('UI theme applied', theme);
+}
+
 export function applyBoardBorder(enabled: boolean): void {
   const root = document.documentElement;
   if (enabled) root.setAttribute('data-board-border', 'true');
@@ -307,6 +319,7 @@ logger.info('Applying initial settings on module load', {
   language: initial.language,
   soundEnabled: initial.soundEnabled,
 });
+applyUiTheme(initial.uiTheme);
 applyTheme(initial.boardTheme);
 applyBoardStyle(initial.boardStyle);
 applyBackground(initial.background);

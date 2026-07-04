@@ -274,13 +274,15 @@ export default function LoginPage() {
           }}
           disabled={loading}
         >
-          {loading
-            ? t('login.connecting')
-            : mode === 'quick'
-              ? t('login.enter')
-              : mode === 'signin'
-                ? t('login.signIn')
-                : t('login.createAccount')}
+          {loading ? (
+            <span className="spinner" style={{ display: 'inline-block' }} />
+          ) : mode === 'quick' ? (
+            t('login.enter')
+          ) : mode === 'signin' ? (
+            t('login.signIn')
+          ) : (
+            t('login.createAccount')
+          )}
         </button>
 
         {mode === 'signin' && (

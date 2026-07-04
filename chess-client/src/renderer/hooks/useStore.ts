@@ -31,6 +31,8 @@ type StateMap = {
   sidebarMinimized: boolean;
   sidebarPosition: 'left' | 'right';
   sidebarTab: 'play' | 'chat' | 'friends';
+  navOpen: boolean;
+  navMinimized: boolean;
   conversations: import('../../types').ConversationInfo[];
   unreadCount: number;
 };

@@ -12,6 +12,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import logger from './logger';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
+import Navigation from './components/Navigation';
 import ToastContainer from './components/ToastContainer';
 import ErrorBoundary from './components/ErrorBoundary';
 import { SkeletonBoard } from './components/Skeleton';
@@ -363,11 +364,12 @@ export default function App() {
           flex: 1,
           minHeight: 0,
           marginRight: 'var(--sidebar-push-right, 0px)',
-          marginLeft: 'var(--sidebar-push-left, 0px)',
-          transition: 'margin-right 0.2s ease-out, margin-left 0.2s ease-out',
+          marginLeft: 'var(--nav-push-left, 0px)',
+          transition: 'margin-left 0.18s ease-out, margin-right 0.2s ease-out',
         }}
       >
         <Navbar key={langKey} />
+        <Navigation />
         <Sidebar />
         <ToastContainer />
 

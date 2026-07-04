@@ -71,8 +71,8 @@ export default function NotFoundPage() {
   const navigate = useNavigate();
   return (
     <div
+      className="page-container"
       style={{
-        flex: 1,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -89,7 +89,7 @@ export default function NotFoundPage() {
           border: '2px solid var(--sq-dark)',
           borderRadius: 4,
           overflow: 'hidden',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
           animation: 'fadeInUp 500ms ease',
         }}
       >
@@ -123,7 +123,7 @@ export default function NotFoundPage() {
           color: 'var(--accent)',
           margin: 0,
           lineHeight: 1,
-          animation: 'fadeInUp 400ms ease 300ms both',
+          animation: 'glow 2s ease-in-out infinite, fadeInUp 400ms ease 300ms both',
         }}
       >
         404

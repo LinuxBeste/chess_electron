@@ -140,7 +140,7 @@ export default function LobbyPage() {
   }
 
   return (
-    <div className="lobby-layout">
+    <div className="lobby-layout" style={{ animation: 'fadeInUp 300ms ease' }}>
       {!offline && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
           <h2 className="card-title">{t('lobby.openGames')}</h2>

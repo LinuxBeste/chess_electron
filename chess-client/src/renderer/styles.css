@@ -86,6 +86,34 @@ body {
   --sq-dark: #b8860b;
 }
 
+/* ─── UI Themes ─── */
+[data-ui-theme='slate'] {
+  --bg: #1e1e1e;
+  --surface: #252525;
+  --elevated: #2d2d2d;
+  --accent: #7f6df2;
+  --accent-hover: #8b7cf5;
+  --text: #d4d4d4;
+  --muted: #999;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-light: rgba(255, 255, 255, 0.12);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+[data-ui-theme='slate'] .navbar {
+  border-bottom-width: 0;
+  box-shadow: 0 1px 0 var(--border);
+}
+[data-ui-theme='slate'] .card {
+  background: var(--elevated);
+}
+[data-ui-theme='slate'] .game-card {
+  background: var(--elevated);
+}
+[data-ui-theme='slate'] .card-elevated {
+  background: var(--elevated);
+}
+
 /* ─── Board Styles ─── */
 [data-board-style='rounded'] .sq-light,
 [data-board-style='rounded'] .sq-dark {
@@ -410,17 +438,17 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  height: 48px;
+  padding: 0 20px;
+  height: 42px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 .navbar-brand {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text);
-  letter-spacing: -0.3px;
+  letter-spacing: -0.2px;
 }
 .navbar-brand span {
   color: var(--accent);
@@ -443,20 +471,22 @@ body {
   gap: 8px;
 }
 .navbar-btn {
-  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
   background: transparent;
-  border: 1px solid var(--border-light);
+  border: none;
   border-radius: 6px;
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 15px;
+  line-height: 1;
   cursor: pointer;
   transition: all 150ms ease;
-  letter-spacing: 0.3px;
 }
 .navbar-btn:hover {
   color: var(--text);
-  border-color: var(--muted);
+  background: var(--elevated);
 }
 .navbar-player {
   display: inline-flex;
@@ -1143,8 +1173,8 @@ body {
 /* ─── Lobby ─── */
 .lobby-layout {
   display: flex;
-  gap: 24px;
-  padding: 20px 32px;
+  gap: 20px;
+  padding: 16px 24px;
   flex: 1;
   width: 100%;
   min-height: 0;
@@ -1976,7 +2006,7 @@ body {
 
 .sidebar-tab {
   flex: 1;
-  padding: 12px 16px;
+  padding: 10px 16px;
   background: none;
   border: none;
   color: var(--text);
@@ -2026,6 +2056,136 @@ body {
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+}
+
+/* ─── Navigation Panel (left side) ─── */
+.nav-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 160px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 900;
+  animation: slideInLeft 0.18s ease-out;
+}
+
+.nav-panel.nav-minimized {
+  width: 44px;
+  align-items: center;
+  padding: 0;
+  gap: 0;
+  border-right: 1px solid var(--border);
+  animation: none;
+}
+
+.nav-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding-top: 42px;
+}
+
+.nav-panel.nav-minimized .nav-inner {
+  padding-top: 0;
+}
+
+.nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 4px 8px;
+  flex-shrink: 0;
+}
+
+.nav-minimize-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-minimize-btn:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.nav-items {
+  display: flex;
+  flex-direction: column;
+  padding: 0 4px 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  background: none;
+  border: none;
+  color: var(--text-secondary, #999);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s;
+  position: relative;
+  text-align: left;
+  width: 100%;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.nav-item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.nav-item.nav-active {
+  color: var(--text);
+  background: rgba(127, 109, 242, 0.12);
+}
+
+.nav-item.nav-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background: #7f6df2;
+  border-radius: 0 2px 2px 0;
+}
+
+.nav-minimized .nav-item {
+  padding: 8px 0;
+  justify-content: center;
+  width: 36px;
+  border-radius: 6px;
+}
+
+.nav-minimized .nav-item.nav-active::before {
+  display: none;
+}
+
+.nav-minimized .nav-item.nav-active {
+  background: rgba(127, 109, 242, 0.15);
+}
+
+.nav-expand-top {
+  margin-top: 0;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ─── Sidebar Chat ─── */

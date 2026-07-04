@@ -40,6 +40,8 @@ interface StateMap {
   sidebarMinimized: boolean;
   sidebarPosition: 'left' | 'right';
   sidebarTab: 'play' | 'chat' | 'friends';
+  navOpen: boolean;
+  navMinimized: boolean;
   conversations: ConversationInfo[];
   unreadCount: number;
 }
@@ -65,6 +67,8 @@ class Store {
     sidebarMinimized: false,
     sidebarPosition: 'right',
     sidebarTab: 'chat',
+    navOpen: true,
+    navMinimized: false,
     conversations: [],
     unreadCount: 0,
   };
