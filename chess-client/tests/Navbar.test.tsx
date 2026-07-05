@@ -20,7 +20,7 @@ describe('Navbar', () => {
     );
   }
 
-  test('shows brand and nav buttons when logged out', () => {
+  test('shows brand when logged out', () => {
     renderNavbar();
     expect(screen.getByText(/chess/i)).toBeTruthy();
   });
@@ -28,9 +28,8 @@ describe('Navbar', () => {
   test('shows no user section when logged out', () => {
     renderNavbar();
     expect(screen.queryByText('Logout')).toBeNull();
-    expect(screen.getByText('Stats')).toBeTruthy();
-    expect(screen.getByText('Settings')).toBeTruthy();
-    expect(screen.queryByText('History')).toBeNull();
+    expect(screen.getByTitle('Settings')).toBeTruthy();
+    expect(screen.queryByTitle('History')).toBeNull();
   });
 
   test('shows username and all buttons when online', () => {
@@ -38,10 +37,9 @@ describe('Navbar', () => {
     store.set('username', 'OnlinePlayer');
     renderNavbar();
     expect(screen.getByText('OnlinePlayer')).toBeTruthy();
-    expect(screen.getByText('Stats')).toBeTruthy();
-    expect(screen.getByText('Settings')).toBeTruthy();
-    expect(screen.getByText('History')).toBeTruthy();
-    expect(screen.getByText('Logout')).toBeTruthy();
+    expect(screen.getByTitle('Settings')).toBeTruthy();
+    expect(screen.getByTitle('History')).toBeTruthy();
+    expect(screen.getByTitle('Logout')).toBeTruthy();
   });
 
   test('shows connection dot when online', () => {
@@ -59,10 +57,9 @@ describe('Navbar', () => {
     store.set('username', 'OfflinePlayer');
     renderNavbar();
     expect(screen.getByText('OfflinePlayer')).toBeTruthy();
-    expect(screen.getByText('Settings')).toBeTruthy();
-    expect(screen.getByText('Logout')).toBeTruthy();
-    expect(screen.getByText('Stats')).toBeTruthy();
-    expect(screen.queryByText('History')).toBeNull();
+    expect(screen.getByTitle('Settings')).toBeTruthy();
+    expect(screen.getByTitle('Logout')).toBeTruthy();
+    expect(screen.queryByTitle('History')).toBeNull();
   });
 
   test('offline mode username has offline dot', () => {
@@ -83,8 +80,7 @@ describe('Navbar', () => {
         <Navbar />
       </MemoryRouter>,
     );
-    expect(screen.getByText('Stats')).toBeTruthy();
-    expect(screen.queryByText('History')).toBeNull();
+    expect(screen.queryByTitle('History')).toBeNull();
 
     act(() => {
       store.set('offline', false);
@@ -95,8 +91,7 @@ describe('Navbar', () => {
         <Navbar />
       </MemoryRouter>,
     );
-    expect(screen.getByText('Stats')).toBeTruthy();
-    expect(screen.getByText('History')).toBeTruthy();
+    expect(screen.getByTitle('History')).toBeTruthy();
   });
 
   test('removes user section when username is cleared', () => {
@@ -112,6 +107,6 @@ describe('Navbar', () => {
       store.set('playerId', null);
     });
     expect(screen.queryByText('Player')).toBeNull();
-    expect(screen.queryByText('Logout')).toBeNull();
+    expect(screen.queryByTitle('Logout')).toBeNull();
   });
 });

@@ -65,9 +65,10 @@ export default function LobbyPage() {
     };
   }, []);
 
-  /* Auto-open sidebar and switch to play tab on lobby entry */
+  /* Auto-open sidebar minimized on lobby entry */
   useEffect(() => {
     store.set('sidebarOpen', true);
+    store.set('sidebarMinimized', true);
     store.set('sidebarTab', 'play');
   }, []);
 

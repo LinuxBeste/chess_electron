@@ -1,9 +1,10 @@
-import { useLayoutEffect } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useStoreValue } from '../hooks/useStore';
 import { store } from '../store';
 import { t } from '../translate';
-import { Swords, Trophy, Archive, Award, PenLine, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Swords, Trophy, Archive, Award, PenLine, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
+import StatsDialog from './StatsDialog';
 
 const NAV_ITEMS = [
   { path: '/lobby', icon: Swords, labelKey: 'navbar.play' as const },
@@ -30,6 +31,7 @@ updateNavPush(store.get('navOpen'), store.get('navMinimized'));
 export default function Navigation() {
   const navOpen = useStoreValue('navOpen');
   const navMinimized = useStoreValue('navMinimized');
+  const [showStats, setShowStats] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
@@ -66,6 +68,10 @@ export default function Navigation() {
             </button>
           );
         })}
+        <button className="nav-item" onClick={() => setShowStats(true)} title={t('navbar.stats')}>
+          <BarChart3 size={18} />
+        </button>
+        {showStats && <StatsDialog onClose={() => setShowStats(false)} />}
       </div>
     );
   }
@@ -93,8 +99,13 @@ export default function Navigation() {
               </button>
             );
           })}
+          <button className="nav-item" onClick={() => setShowStats(true)}>
+            <BarChart3 size={16} />
+            <span>{t('navbar.stats')}</span>
+          </button>
         </div>
       </div>
+      {showStats && <StatsDialog onClose={() => setShowStats(false)} />}
     </div>
   );
 }
