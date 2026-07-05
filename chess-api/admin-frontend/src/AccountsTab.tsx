@@ -221,8 +221,8 @@ export default function AccountsTab() {
   const [deleting, setDeleting] = useState(false);
 
   function load() {
-    api<AccountRow[]>('/accounts')
-      .then(setAccounts)
+    api<{ rows: AccountRow[] }>('/accounts')
+      .then((r) => setAccounts(r.rows))
       .catch((e) => setError(e.message));
   }
 

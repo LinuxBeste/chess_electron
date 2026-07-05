@@ -130,8 +130,8 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
   return (
     <ToastProvider>
       <TabProvider onNavigate={handleNavigate}>
-        <div className="min-h-screen flex flex-col">
-          <header className="flex items-center justify-between px-6 py-4 bg-[#1a1a1a] border-b border-[#2a2a2a]">
+        <div className="min-h-screen bg-[#1a1a1a]">
+          <header className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-3 bg-[#1a1a1a] border-b border-[#2a2a2a]">
             <h1 className="text-lg font-semibold">Chess API Admin</h1>
             <button
               onClick={handleLogout}
@@ -142,30 +142,32 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
             </button>
           </header>
 
-          <nav className="flex gap-0 pl-6 bg-[#141414] border-b border-[#2a2a2a] overflow-x-auto">
-            {tabs.map((t) => {
-              const Icon = t.icon;
-              return (
-                <button
-                  key={t.key}
-                  onClick={() => {
-                    setActive(t.key);
-                    setNavParams(undefined); // clear cross-tab params when navigating directly
-                  }}
-                  className={`flex items-center gap-1.5 px-4 py-2.5 text-sm border-b-2 transition-colors whitespace-nowrap ${
-                    active === t.key
-                      ? 'text-[#4a9eff] border-[#4a9eff]'
-                      : 'text-[#888] border-transparent hover:text-[#ccc]'
-                  }`}
-                >
-                  <Icon size={15} />
-                  {t.label}
-                </button>
-              );
-            })}
-          </nav>
+          <aside className="fixed left-0 top-12 bottom-0 z-10 w-56 bg-[#141414] border-r border-[#2a2a2a] overflow-y-auto">
+            <nav className="flex flex-col py-2">
+              {tabs.map((t) => {
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => {
+                      setActive(t.key);
+                      setNavParams(undefined);
+                    }}
+                    className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left border-l-2 ${
+                      active === t.key
+                        ? 'text-[#4a9eff] border-[#4a9eff] bg-[#4a9eff]/10'
+                        : 'text-[#888] border-transparent hover:text-[#ccc] hover:bg-[#1a1a1a]'
+                    }`}
+                  >
+                    <Icon size={16} />
+                    {t.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
 
-          <main className="flex-1 p-6">{renderTab()}</main>
+          <main className="ml-56 pt-12 p-6 min-h-screen bg-[#1a1a1a]">{renderTab()}</main>
         </div>
       </TabProvider>
     </ToastProvider>
