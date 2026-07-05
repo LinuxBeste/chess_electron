@@ -168,6 +168,28 @@ jobs:
       - run: pnpm exec tsc --noEmit -p chess-api/admin-frontend/tsconfig.json
       - run: pnpm exec prettier --check chess-api/admin-frontend/src/
 
+  tests-ui-admin:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PNPM_CACHE_FOLDER }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter chess-api-admin test
+
   client-typecheck:
     needs: lint
     runs-on: ubuntu-latest
@@ -193,7 +215,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
 
-  client-test:
+  tests-client:
     needs: lint
     runs-on: ubuntu-latest
     defaults:
@@ -216,17 +238,49 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:coverage
+      - run: pnpm test:general
       - name: Upload coverage
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: chess-client-coverage
+          name: chess-client-general-coverage
+          path: chess-client/coverage/
+          retention-days: 7
+
+  tests-ui:
+    needs: lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chess-client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PNPM_CACHE_FOLDER }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:ui
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: chess-client-ui-coverage
           path: chess-client/coverage/
           retention-days: 7
 
   client-build:
-    needs: [client-typecheck, client-test]
+    needs: [client-typecheck, tests-client, tests-ui]
     runs-on: ubuntu-latest
     defaults:
       run:

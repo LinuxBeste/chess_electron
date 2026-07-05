@@ -17,6 +17,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:coverage": "jest --coverage",
+    "test:general": "jest --testPathPattern='\\.test\\.ts$'",
+    "test:ui": "jest --testPathPattern='\\.test\\.tsx$'",
     "package": "pnpm run build && electron-builder",
     "package:linux": "pnpm run build && electron-builder --linux",
     "package:mac": "pnpm run build && electron-builder --mac",
