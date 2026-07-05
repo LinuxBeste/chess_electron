@@ -108,10 +108,10 @@ describe('Game creation and joining', () => {
     await createGame(white.authHeader);
 
     const res = await request.get('/games').expect(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBeGreaterThanOrEqual(1);
+    expect(Array.isArray(res.body.games)).toBe(true);
+    expect(res.body.games.length).toBeGreaterThanOrEqual(1);
     /* All listed games must be in 'waiting' status */
-    expect(res.body.every((g: { status: string }) => g.status === 'waiting')).toBe(true);
+    expect(res.body.games.every((g: { status: string }) => g.status === 'waiting')).toBe(true);
   });
 
   test('POST /games/:gameId/join lets second player join', async () => {
@@ -278,11 +278,11 @@ describe('Private games via API', () => {
     await request.post('/games').set('Authorization', priv.authHeader).send({ visibility: 'private' }).expect(201);
 
     const list = await request.get('/games').expect(200);
-    expect(Array.isArray(list.body)).toBe(true);
+    expect(Array.isArray(list.body.games)).toBe(true);
     /* The public game is listed */
-    expect(list.body.some((g: { players: { white: string } }) => g.players.white === pub.playerId)).toBe(true);
+    expect(list.body.games.some((g: { players: { white: string } }) => g.players.white === pub.playerId)).toBe(true);
     /* The private game is NOT listed */
-    expect(list.body.some((g: { players: { white: string } }) => g.players.white === priv.playerId)).toBe(false);
+    expect(list.body.games.some((g: { players: { white: string } }) => g.players.white === priv.playerId)).toBe(false);
   });
 
   test('private game can be joined by ID', async () => {
@@ -632,8 +632,8 @@ describe('GET /games/active', () => {
     await joinGame(gameId, p2.authHeader);
 
     const res = await request.get('/games/active').expect(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.some((g: { id: string }) => g.id === gameId)).toBe(true);
+    expect(Array.isArray(res.body.games)).toBe(true);
+    expect(res.body.games.some((g: { id: string }) => g.id === gameId)).toBe(true);
   });
 
   test('does not include waiting games', async () => {
@@ -642,8 +642,8 @@ describe('GET /games/active', () => {
     await createGame(p2.authHeader);
 
     const res = await request.get('/games/active').expect(200);
-    if (res.body.length > 0) {
-      expect(res.body.every((g: { status: string }) => g.status === 'active')).toBe(true);
+    if (res.body.games.length > 0) {
+      expect(res.body.games.every((g: { status: string }) => g.status === 'active')).toBe(true);
     }
   });
 
@@ -656,7 +656,7 @@ describe('GET /games/active', () => {
     await request.post(`/games/${gameId}/resign`).set('Authorization', p1.authHeader).expect(200);
 
     const res = await request.get('/games/active').expect(200);
-    expect(res.body.some((g: { id: string }) => g.id === gameId)).toBe(false);
+    expect(res.body.games.some((g: { id: string }) => g.id === gameId)).toBe(false);
   });
 });
 

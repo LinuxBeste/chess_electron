@@ -351,7 +351,7 @@ describe('WebSocket spectate', () => {
 
     /* active games should strip it */
     const activeRes = await request.get('/games/active').expect(200);
-    for (const g of activeRes.body) {
+    for (const g of activeRes.body.games) {
       expect(g.spectateCode).toBeUndefined();
     }
   });
