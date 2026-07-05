@@ -524,16 +524,20 @@ router.post('/games/bot', authMiddleware, banCheckMiddleware, async (req: Reques
   }
 });
 
-router.get('/games', globalGetLimiter, async (_req: Request, res: Response) => {
-  const openGames = await game.getOpenGames();
-  logger.info('GET /games: count=' + openGames.length);
-  res.json(openGames);
+router.get('/games', globalGetLimiter, async (req: Request, res: Response) => {
+  const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+  const openGames = await game.getOpenGames(page, limit);
+  logger.info('GET /games: count=' + openGames.length + ' page=' + page + ' limit=' + limit);
+  res.json({ games: openGames, page, limit });
 });
 
-router.get('/games/active', globalGetLimiter, async (_req: Request, res: Response) => {
-  const activeGames = await game.getActiveGames();
-  logger.info('GET /games/active: count=' + activeGames.length);
-  res.json(activeGames);
+router.get('/games/active', globalGetLimiter, async (req: Request, res: Response) => {
+  const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+  const activeGames = await game.getActiveGames(page, limit);
+  logger.info('GET /games/active: count=' + activeGames.length + ' page=' + page + ' limit=' + limit);
+  res.json({ games: activeGames, page, limit });
 });
 
 router.get('/games/archive', globalGetLimiter, async (req: Request, res: Response) => {

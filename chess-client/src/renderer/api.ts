@@ -418,9 +418,9 @@ export async function createBotGame(skillLevel: number, playerColor?: 'white' | 
 export async function getOpenGames(): Promise<GameState[]> {
   logger.debug('getOpenGames called');
   try {
-    const result = await request<GameState[]>('/games');
-    logger.debug('getOpenGames ok: count=' + result.length);
-    return result;
+    const result = await request<{ games: GameState[]; page: number; limit: number }>('/games');
+    logger.debug('getOpenGames ok: count=' + result.games.length + ' page=' + result.page + ' limit=' + result.limit);
+    return result.games;
   } catch (err) {
     logger.error('getOpenGames failed: ' + err);
     throw err;
@@ -432,9 +432,9 @@ export async function getOpenGames(): Promise<GameState[]> {
 export async function getActiveGames(): Promise<GameState[]> {
   logger.debug('getActiveGames called');
   try {
-    const result = await request<GameState[]>('/games/active');
-    logger.debug('getActiveGames ok: count=' + result.length);
-    return result;
+    const result = await request<{ games: GameState[]; page: number; limit: number }>('/games/active');
+    logger.debug('getActiveGames ok: count=' + result.games.length + ' page=' + result.page + ' limit=' + result.limit);
+    return result.games;
   } catch (err) {
     logger.error('getActiveGames failed: ' + err);
     throw err;

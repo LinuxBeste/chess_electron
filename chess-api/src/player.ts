@@ -285,12 +285,20 @@ export async function deleteAccount(playerId: string): Promise<{ success: true }
     deleteToken(t);
   }
   await db.transaction(async (client) => {
-    // Transaction: cascade delete user data atomically
     await client.query('DELETE FROM user_tokens WHERE user_id = $1', [playerId]);
-    await client.query('DELETE FROM completed_games WHERE white_player_id = $1 OR black_player_id = $1', [playerId]);
+    await client.query('DELETE FROM bans WHERE player_id = $1', [playerId]);
+    await client.query('DELETE FROM friend_requests WHERE from_user_id = $1 OR to_user_id = $1', [playerId]);
+    await client.query('DELETE FROM friends WHERE user_id = $1 OR friend_id = $1', [playerId]);
+    await client.query('DELETE FROM tournament_participants WHERE player_id = $1', [playerId]);
+    await client.query('DELETE FROM tournament_matches WHERE white_player_id = $1 OR black_player_id = $1', [playerId]);
+    await client.query('DELETE FROM chat_conversation_members WHERE user_id = $1', [playerId]);
+    await client.query('DELETE FROM chat_messages WHERE sender_id = $1', [playerId]);
+    await client.query('UPDATE completed_games SET white_player_id = NULL WHERE white_player_id = $1', [playerId]);
+    await client.query('UPDATE completed_games SET black_player_id = NULL WHERE black_player_id = $1', [playerId]);
     await client.query('DELETE FROM users WHERE id = $1', [playerId]);
   });
   players.delete(playerId);
+  playerIps.delete(playerId);
 
   logger.info('Account deleted: playerId=' + playerId);
   return { success: true };
@@ -344,8 +352,20 @@ export async function loadPersistedUsers(): Promise<void> {
 
 export function cleanupExpiredTokens(): void {
   const now = Date.now();
+  const expiredTokens: { token: string; playerId: string | undefined }[] = [];
   for (const [token, expiry] of tokenExpiry) {
-    if (expiry <= now) deleteToken(token);
+    if (expiry <= now) {
+      expiredTokens.push({ token, playerId: tokenIndex.get(token) });
+    }
+  }
+  for (const { token, playerId } of expiredTokens) {
+    deleteToken(token);
+    if (playerId) {
+      const player = players.get(playerId);
+      if (player) {
+        player.tokens = player.tokens.filter((t) => t !== token);
+      }
+    }
   }
   const activePlayerIds = new Set(tokenIndex.values());
   for (const [playerId, _player] of players) {

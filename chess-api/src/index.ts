@@ -205,7 +205,9 @@ const originalErrorHandler: express.ErrorRequestHandler = (
   const msg = err instanceof Error ? err.message : String(err);
   const stack = err instanceof Error ? err.stack : undefined;
   logger.error('Unhandled error:', msg, stack ? '\n' + stack : '');
-  res.status(500).json({ error: 'Internal server error' });
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
 app.use(originalErrorHandler);
 if (sentryErrorHandler) app.use(sentryErrorHandler);
@@ -319,6 +321,10 @@ export function createServer(): http.Server {
     }
 
     ws.on('message', (raw: Buffer) => {
+      if (raw.length > 65536) {
+        ws.close(4009, 'Message too large');
+        return;
+      }
       if (isWsRateLimited()) {
         logger.warn('WS rate limited: playerId=' + player.id);
         ws.send(JSON.stringify({ type: 'error', error: 'Rate limited — slow down' }));
@@ -328,7 +334,7 @@ export function createServer(): http.Server {
         const msg = JSON.parse(raw.toString());
         if (msg.type === 'spectate' && typeof msg.gameId === 'string') {
           const code: string | undefined = typeof msg.code === 'string' ? msg.code : undefined;
-          if (game.registerSpectator(msg.gameId, ws, code)) {
+          if (game.registerSpectator(msg.gameId, ws, code, player.id)) {
             spectatingGameId = msg.gameId;
             ws.send(JSON.stringify({ type: 'spectate_ok', gameId: msg.gameId }));
             logger.info('WS spectate: playerId=' + player.id + ' gameId=' + msg.gameId);
@@ -607,8 +613,12 @@ if (!isTestEnv) {
       }
       const now = Date.now();
       for (const [ip, entry] of wsAuthAttempts) {
-        if (entry.blockedUntil <= now && entry.count >= WS_AUTH_MAX_ATTEMPTS) {
-          wsAuthAttempts.delete(ip);
+        if (entry.blockedUntil <= now) {
+          if (entry.count >= WS_AUTH_MAX_ATTEMPTS) {
+            wsAuthAttempts.delete(ip);
+          } else {
+            entry.count = 0;
+          }
         }
       }
     }, CLEANUP_INTERVAL_MS),

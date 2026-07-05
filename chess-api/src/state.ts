@@ -172,6 +172,16 @@ export function removeGameById(id: string): void {
   games.delete(id);
   chatHistory.delete(id);
   gameCompletedAt.delete(id);
+  uciHistory.delete(id);
+  spectatorConnections.delete(id);
+  drawOffers.delete(id);
+  rematchOffers.delete(id);
+  deleteEventBuffer(id);
+  for (const [pid, gameIds] of playerGameIndex) {
+    if (gameIds.delete(id) && gameIds.size === 0) {
+      playerGameIndex.delete(pid);
+    }
+  }
   if (redis.isRedisEnabled()) {
     redis.deleteGame(id).catch(redisLog);
     redis.deleteChatHistory(id).catch(redisLog);

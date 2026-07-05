@@ -1045,7 +1045,7 @@ router.post('/admin/api/accounts', adminAuthMiddleware, async (req: Request, res
     const parsed = z
       .object({
         username: z.string().min(2).max(30),
-        password: z.string().min(4),
+        password: passwordSchema,
         displayName: z.string().min(1).max(50).optional(),
       })
       .safeParse(req.body);
@@ -1422,28 +1422,34 @@ router.post('/admin/api/db/query', adminAuthMiddleware, async (req: Request, res
       return;
     }
     const sql = parsed.data.sql.trim();
-    const stripped = sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, ''); // Strip SQL comments before validation
+    const stripped = sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
     const upper = stripped.toUpperCase();
     if (!upper.startsWith('SELECT') && !upper.startsWith('EXPLAIN') && !upper.startsWith('WITH')) {
       res.status(403).json({ error: 'Only SELECT queries are allowed' });
       return;
     }
-    if (/(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE)\s/i.test(stripped)) {
-      // Reject write statements
-      res.status(403).json({ error: 'Write queries are not allowed' });
-      return;
-    }
     const pool = db.getDb();
-    const startTime = Date.now();
-    const { rows, fields } = await pool.query({ text: sql, rowMode: 'array' });
-    const elapsed = Date.now() - startTime;
-    const columnNames = fields ? fields.map((f: { name: string }) => f.name) : [];
-    res.json({
-      columns: columnNames,
-      rows: rows.slice(0, 500),
-      totalRows: rows.length,
-      elapsedMs: elapsed,
-    });
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN READ ONLY');
+      await client.query("SET LOCAL statement_timeout = '10000'");
+      const startTime = Date.now();
+      const { rows, fields } = await client.query({ text: sql, rowMode: 'array' });
+      await client.query('COMMIT');
+      const elapsed = Date.now() - startTime;
+      const columnNames = fields ? fields.map((f: { name: string }) => f.name) : [];
+      res.json({
+        columns: columnNames,
+        rows: rows.slice(0, 500),
+        totalRows: rows.length,
+        elapsedMs: elapsed,
+      });
+    } catch (err2) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err2;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     logger.error('Admin DB query failed: ' + err);
     res.status(500).json({ error: 'Query execution failed' });

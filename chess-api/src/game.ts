@@ -25,6 +25,7 @@ import logger from './logger.js';
 import { players, BOT_PLAYER_ID } from './player.js';
 import {
   games,
+  chatHistory,
   uciHistory,
   wsConnections,
   spectatorConnections,
@@ -57,7 +58,7 @@ import {
 } from './state.js';
 import { updateEloRatings } from './elo.js';
 import { sendChatHistory } from './chat.js';
-import { loadPersistedBans } from './bans.js';
+import { isBanned, loadPersistedBans } from './bans.js';
 
 export {
   BOT_PLAYER_ID,
@@ -185,14 +186,17 @@ export function cleanupPlayerWaitingGames(playerId: string): void {
   }
 }
 
-export function registerSpectator(gameId: string, ws: WebSocket, code?: string): boolean {
+export function registerSpectator(gameId: string, ws: WebSocket, code?: string, playerId?: string): boolean {
+  if (playerId && isBanned(playerId, '')) {
+    logger.info('Spectator register failed: gameId=' + gameId + ' reason=banned');
+    return false;
+  }
   const game = games.get(gameId);
   if (!game || game.status !== 'active') {
     logger.info('Spectator register failed: gameId=' + gameId + ' reason=not active or not found');
     return false;
   }
   if (game.spectateMode === 'code' && (!code || code !== game.spectateCode)) {
-    // Code-based access requires exact match
     logger.info('Spectator register failed: gameId=' + gameId + ' reason=invalid spectate code');
     return false;
   }
@@ -529,19 +533,23 @@ export function isBotGame(game: GameState): boolean {
   return game.players.white === BOT_PLAYER_ID || game.players.black === BOT_PLAYER_ID;
 }
 
-export async function getActiveGames(): Promise<GameState[]> {
-  const gamesList = Array.from(games.values()).filter((g) => g.status === 'active');
+export async function getActiveGames(page = 1, limit = 50): Promise<GameState[]> {
+  const gamesList = Array.from(games.values())
+    .filter((g) => g.status === 'active')
+    .slice((page - 1) * limit, page * limit);
   const result = await Promise.all(gamesList.map(enrichNames));
   const sanitized = result.map(sanitizeForClient);
-  logger.info('getActiveGames: count=' + sanitized.length);
+  logger.info('getActiveGames: count=' + sanitized.length + ' page=' + page + ' limit=' + limit);
   return sanitized;
 }
 
-export async function getOpenGames(): Promise<GameState[]> {
-  const gamesList = Array.from(games.values()).filter((g) => g.status === 'waiting' && g.visibility === 'public');
+export async function getOpenGames(page = 1, limit = 50): Promise<GameState[]> {
+  const gamesList = Array.from(games.values())
+    .filter((g) => g.status === 'waiting' && g.visibility === 'public')
+    .slice((page - 1) * limit, page * limit);
   const result = await Promise.all(gamesList.map(enrichNames));
   const sanitized = result.map(sanitizeForClient);
-  logger.info('getOpenGames: count=' + sanitized.length);
+  logger.info('getOpenGames: count=' + sanitized.length + ' page=' + page + ' limit=' + limit);
   return sanitized;
 }
 
@@ -1188,11 +1196,15 @@ export function endGame(gameId: string): { success: true } | { success: false; e
   persistGame(g.id);
 
   uciHistory.delete(g.id);
+  drawOffers.delete(g.id);
+  rematchOffers.delete(g.id);
+  deleteEventBuffer(g.id);
   if (isBotGame(g)) {
     engineManager.destroyInstance(g.id);
   }
 
   spectatorConnections.delete(g.id);
+  chatHistory.delete(g.id);
 
   const message = { type: 'game_over', reason: g.reason, result: 'draw', status: 'draw', gameId };
   if (g.players.white) sendToPlayer(g.players.white, message);
