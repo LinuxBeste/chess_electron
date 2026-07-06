@@ -3,7 +3,9 @@ import { Key, Trash2, Plus, Eye, UserCheck, X, Download, SearchX, CheckSquare, S
 import { api, AccountRow, UserGamesResponse, ImpersonateResponse } from './api';
 import { useToast } from './Toast';
 import SearchBar from './SearchBar';
+import Pagination from './Pagination';
 import AccountEditModal from './AccountEditModal';
+import PlayerViewModal from './PlayerViewModal';
 
 // heuristic client-side password strength: length + char variety
 function passwordStrength(pw: string): { label: string; color: string; score: number } {
@@ -207,26 +209,39 @@ function UserGamesModal({ userId, username, onClose }: { userId: string; usernam
 
 type SortKey = 'username' | 'displayName' | 'wins' | 'rating' | 'createdAt';
 
-export default function AccountsTab() {
+export default function AccountsTab({ initialSearch }: { initialSearch?: string }) {
   const { addToast } = useToast();
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [error, setError] = useState('');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialSearch || '');
   const [editAccount, setEditAccount] = useState<AccountRow | null>(null);
+  const [viewAccount, setViewAccount] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [gamesUser, setGamesUser] = useState<{ id: string; username: string } | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortAsc, setSortAsc] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 50;
 
-  function load() {
-    api<{ rows: AccountRow[] }>('/accounts')
-      .then((r) => setAccounts(r.rows))
+  function load(p?: number) {
+    const pg = p ?? page;
+    api<{ rows: AccountRow[]; total: number }>('/accounts?page=' + pg + '&limit=' + pageSize)
+      .then((r) => {
+        setAccounts(r.rows);
+        setTotal(r.total);
+      })
       .catch((e) => setError(e.message));
   }
 
   useEffect(load, []);
+
+  function handlePageChange(p: number) {
+    setPage(p);
+    load(p);
+  }
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -406,9 +421,9 @@ export default function AccountsTab() {
         <>
           {sorted.length > 0 && (
             <div className="mb-3 flex items-center gap-4 px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-xs text-[#888]">
-              <span>{sorted.length} accounts</span>
+              <span>{total} accounts</span>
               <span>
-                {totalStats.wins}W / {totalStats.losses}L / {totalStats.draws}D
+                {totalStats.wins}W / {totalStats.losses}L / {totalStats.draws}D (this page)
               </span>
             </div>
           )}
@@ -444,8 +459,22 @@ export default function AccountsTab() {
                       </button>
                     </td>
                     <td className="px-4 py-2.5 font-mono">{a.id.slice(0, 8)}…</td>
-                    <td className="px-4 py-2.5">{a.username}</td>
-                    <td className="px-4 py-2.5">{a.displayName}</td>
+                    <td className="px-4 py-2.5">
+                      <button
+                        onClick={() => setViewAccount(a.id)}
+                        className="text-left hover:text-[#4a9eff] transition-colors"
+                      >
+                        {a.username}
+                      </button>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <button
+                        onClick={() => setViewAccount(a.id)}
+                        className="text-left hover:text-[#4a9eff] transition-colors"
+                      >
+                        {a.displayName}
+                      </button>
+                    </td>
                     <td className="px-4 py-2.5 text-[#4a9eff] font-semibold">{a.rating}</td>
                     <td className="px-4 py-2.5">
                       {a.wins} / {a.losses} / {a.draws}
@@ -511,9 +540,11 @@ export default function AccountsTab() {
               </tbody>
             </table>
           </div>
+          <Pagination page={page} totalPages={Math.ceil(total / pageSize)} onChange={handlePageChange} />
         </>
       )}
 
+      {viewAccount && <PlayerViewModal accountId={viewAccount} onClose={() => setViewAccount(null)} />}
       {editAccount && <AccountEditModal account={editAccount} onClose={() => setEditAccount(null)} onSaved={load} />}
       {showCreate && <CreateAccountModal onClose={() => setShowCreate(false)} onCreated={load} />}
       {gamesUser && (

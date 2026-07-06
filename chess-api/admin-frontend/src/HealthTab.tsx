@@ -15,11 +15,21 @@ function fmtUptime(sec: number): string {
   return `${d}d ${h}h ${m}m`;
 }
 
-// inline SVG sparkline for latency trend, needs ≥2 data points
+// inline SVG sparkline for latency trend, needs 2+ data points
 function MiniSparkline({ data, color }: { data: number[]; color: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(120);
+  const h = 30;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setW(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   if (data.length < 2) return null;
-  const w = 120,
-    h = 30;
   const maxVal = Math.max(...data, 1);
   const points = data
     .map((v, i) => {
@@ -29,9 +39,11 @@ function MiniSparkline({ data, color }: { data: number[]; color: string }) {
     })
     .join(' ');
   return (
-    <svg width={w} height={h} className="inline-block">
-      <polyline points={points} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
-    </svg>
+    <div ref={ref} style={{ width: '100%' }}>
+      <svg width={w} height={h} style={{ display: 'block' }}>
+        <polyline points={points} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
+      </svg>
+    </div>
   );
 }
 

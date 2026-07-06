@@ -218,7 +218,7 @@ export default function PlayersTab() {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-[#e0e0e0] flex items-center gap-2">
               <Users size={16} className="text-blue-400" />
-              Active Players
+              Players
             </h2>
             <div className="w-96">
               <SearchBar

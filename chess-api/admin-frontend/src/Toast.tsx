@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, createContext, useContext } from 'react';
+import { useState, useCallback, useEffect, useRef, createContext, useContext } from 'react';
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'info';
@@ -45,11 +45,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
-  // auto-dismiss toast after 4 seconds
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  // auto-dismiss toast after 4 seconds (timer starts once, uses latest onClose via ref)
   useEffect(() => {
-    const timer = setTimeout(onClose, 4000);
+    const timer = setTimeout(() => onCloseRef.current(), 4000);
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, []);
 
   const icons: Record<ToastType, React.ReactNode> = {
     success: <CheckCircle size={16} className="text-green-400" />,

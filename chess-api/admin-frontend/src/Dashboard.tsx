@@ -44,8 +44,8 @@ const ReportsTab = lazy(() => import('./ReportsTab'));
 
 const tabs = [
   { key: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { key: 'games', label: 'Active Games', icon: Swords },
-  { key: 'players', label: 'Active Players', icon: Users },
+  { key: 'games', label: 'Games', icon: Swords },
+  { key: 'players', label: 'Players', icon: Users },
   { key: 'accounts', label: 'Accounts', icon: UserCog },
   { key: 'bans', label: 'Bans', icon: ShieldBan },
   { key: 'logs', label: 'Logs', icon: FileText },
@@ -93,7 +93,7 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
         case 'players':
           return <PlayersTab key={navKey} />;
         case 'accounts':
-          return <AccountsTab key={navKey} />;
+          return <AccountsTab key={navKey} initialSearch={p.search} />;
         case 'bans':
           return <BansTab key={navKey} />;
         case 'logs':

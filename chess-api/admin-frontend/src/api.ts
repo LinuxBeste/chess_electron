@@ -24,14 +24,23 @@ export async function api<T = unknown>(path: string, opts: RequestInit = {}): Pr
     window.location.reload();
     throw new Error('Unauthorized');
   }
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed'); // use server error message if available
-  return data as T;
+  if (!res.ok) {
+    let msg = 'Request failed';
+    try {
+      const body = await res.json();
+      msg = body.error || msg;
+    } catch {
+      /* body is not JSON, keep default */
+    }
+    throw new Error(msg);
+  }
+  return res.json() as Promise<T>;
 }
 
 export interface Stats {
   gamesActive: number;
   playersOnline: number;
+  totalPlayers: number;
   registeredUsers: number;
   totalUsers: number;
 }
@@ -71,6 +80,21 @@ export interface AccountRow {
   draws: number;
   rating: number;
   isAdmin?: boolean;
+}
+
+export interface PlayerProfileView {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  createdAt: number;
+  rating: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  isAdmin: boolean;
+  isOnline: boolean;
+  currentGameId: string | null;
 }
 
 export interface BanEntry {
@@ -137,6 +161,7 @@ export interface ProcessRow {
   cpu: number;
   mem: number;
   rss: number;
+  vsz: number;
   command: string;
 }
 

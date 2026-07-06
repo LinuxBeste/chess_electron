@@ -3,7 +3,7 @@ import { Trophy, Filter } from 'lucide-react';
 import { api } from './api';
 import Pagination from './Pagination';
 import SearchBar from './SearchBar';
-import { useNavigateTab } from './TabContext';
+import PlayerViewModal from './PlayerViewModal';
 
 interface LeaderboardEntry {
   rank: number;
@@ -34,7 +34,7 @@ export default function LeaderboardTab() {
   const [minGames, setMinGames] = useState('');
   const [sortKey, setSortKey] = useState('rating');
   const [sortAsc, setSortAsc] = useState(false);
-  const navigate = useNavigateTab();
+  const [viewAccount, setViewAccount] = useState<string | null>(null);
 
   function load() {
     let path = '/leaderboard?page=' + page + '&limit=' + limit;
@@ -146,14 +146,15 @@ export default function LeaderboardTab() {
                               ? 'text-amber-600'
                               : 'text-[#666]';
                       return (
-                        <tr
-                          key={e.id}
-                          className="border-b border-[#222] last:border-0 hover:bg-[#222] cursor-pointer"
-                          onClick={() => navigate('accounts')}
-                        >
+                        <tr key={e.id} className="border-b border-[#222] last:border-0 hover:bg-[#222]">
                           <td className={`px-3 py-2.5 text-center font-bold ${rankColor}`}>{e.rank}</td>
                           <td className="px-4 py-2.5">
-                            <div className="font-medium text-[#e0e0e0]">{e.displayName || e.username}</div>
+                            <button
+                              onClick={() => setViewAccount(e.id)}
+                              className="text-left font-medium text-[#e0e0e0] hover:text-[#4a9eff] transition-colors"
+                            >
+                              {e.displayName || e.username}
+                            </button>
                             {e.username && e.displayName && <div className="text-xs text-[#666]">@{e.username}</div>}
                           </td>
                           <td className="px-3 py-2.5 text-center font-semibold text-[#4a9eff]">{e.rating}</td>
@@ -179,6 +180,7 @@ export default function LeaderboardTab() {
           )}
         </div>
       </div>
+      {viewAccount && <PlayerViewModal accountId={viewAccount} onClose={() => setViewAccount(null)} />}
     </div>
   );
 }

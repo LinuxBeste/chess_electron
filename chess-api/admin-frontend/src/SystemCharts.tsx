@@ -66,18 +66,29 @@ function Sparkline({
 }
 
 function ChartCard({ def, samples }: { def: ChartDef; samples: SystemMetricsSample[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(280);
   const vals = samples.map(def.extract);
   const current = vals.length > 0 ? vals[vals.length - 1] : 0;
   const maxVal = Math.max(...vals, 1);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setW(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <div ref={ref} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
         <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           {def.label}
         </span>
         <span style={{ fontSize: 18, fontWeight: 700, color: def.color }}>{def.format(current)}</span>
       </div>
-      <Sparkline data={vals} width={280} height={60} color={def.color} maxVal={maxVal} />
+      <Sparkline data={vals} width={w} height={60} color={def.color} maxVal={maxVal} />
     </div>
   );
 }

@@ -68,16 +68,29 @@ export default function OverviewTab() {
   const [procSortAsc, setProcSortAsc] = useState(false);
 
   function load() {
-    // fetch all dashboard data in parallel
-    return Promise.all([api<Stats>('/stats'), api<SystemStats>('/system'), api<ProcessRow[]>('/system/processes')])
-      .then(([s, sy, p]) => {
-        setStats(s);
+    // fetch all dashboard data in parallel, handle each separately so one failure doesn't sink the others
+    return Promise.all([
+      api<Stats>('/stats').catch((e) => {
+        setError((prev) => (prev ? prev + ' | ' : '') + 'Stats: ' + e.message);
+        return null;
+      }),
+      api<SystemStats>('/system').catch((e) => {
+        setError((prev) => (prev ? prev + ' | ' : '') + 'System: ' + e.message);
+        return null;
+      }),
+      api<ProcessRow[]>('/system/processes').catch((e) => {
+        setError((prev) => (prev ? prev + ' | ' : '') + 'Processes: ' + e.message);
+        return [];
+      }),
+    ]).then(([s, sy, p]) => {
+      if (s) setStats(s);
+      if (sy) {
         setSys(sy);
         uptimeRef.current = sy.process.uptime;
         setUptime(sy.process.uptime);
-        setProcs(p);
-      })
-      .catch((e) => setError(e.message));
+      }
+      setProcs(p || []);
+    });
   }
 
   useEffect(() => {
@@ -113,18 +126,20 @@ export default function OverviewTab() {
     URL.revokeObjectURL(url); // free blob memory after download
   }
 
-  if (error) return <p className="text-red-500 text-sm">{error}</p>;
   if (!stats || !sys) return <p className="text-[#666]">Loading...</p>;
 
   const cards = [
-    { label: 'Active Games', value: stats.gamesActive, tab: 'games' },
-    { label: 'Online Players', value: stats.playersOnline, tab: 'players' },
+    { label: 'Games', value: stats.gamesActive, tab: 'games' },
+    { label: 'Players', value: stats.totalPlayers, tab: 'players' },
     { label: 'Logged-In Users', value: stats.registeredUsers, tab: 'accounts' },
     { label: 'Total Accounts', value: stats.totalUsers, tab: 'accounts' },
   ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      {error && (
+        <div className="bg-red-900/30 border border-red-700 rounded-lg px-4 py-2 text-xs text-red-400">{error}</div>
+      )}
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-[#e0e0e0]">Dashboard Overview</h2>
         <div className="flex items-center gap-2">
@@ -174,7 +189,10 @@ export default function OverviewTab() {
               label="CPU Model"
               value={sys.cpu.model.length > 30 ? sys.cpu.model.slice(0, 28) + '…' : sys.cpu.model}
             />
-            <InfoCard label="CPU Speed" value={sys.cpu.speed ? sys.cpu.speed + ' MHz' : '—'} />
+            <InfoCard
+              label="CPU Speed"
+              value={sys.cpu.speed != null && sys.cpu.speed > 0 ? sys.cpu.speed + ' MHz' : 'N/A'}
+            />
             <InfoCard
               label="Load (1m / 5m / 15m)"
               value={
@@ -229,6 +247,7 @@ export default function OverviewTab() {
               { key: 'cpu', label: 'CPU' },
               { key: 'mem', label: 'Mem' },
               { key: 'rss', label: 'RSS' },
+              { key: 'vsz', label: 'VSZ' },
               { key: 'pid', label: 'PID' },
               { key: 'user', label: 'User' },
               { key: 'command', label: 'Command' },
@@ -247,18 +266,21 @@ export default function OverviewTab() {
                 [p.user, String(p.pid), p.command].some((v) => v.toLowerCase().includes(procQuery.toLowerCase())),
               )
             : procs;
-          const sorted = [...filtered].sort((a, b) => {
-            const dir = procSortAsc ? 1 : -1;
-            if (procSortKey === 'cpu') return (a.cpu - b.cpu) * dir;
-            if (procSortKey === 'mem') return (a.mem - b.mem) * dir;
-            if (procSortKey === 'rss') return (a.rss - b.rss) * dir;
-            if (procSortKey === 'pid') return (a.pid - b.pid) * dir;
-            return (
-              String(a[procSortKey as keyof typeof a] || '').localeCompare(
-                String(b[procSortKey as keyof typeof b] || ''),
-              ) * dir
-            );
-          });
+          const sorted = [...filtered]
+            .sort((a, b) => {
+              const dir = procSortAsc ? 1 : -1;
+              if (procSortKey === 'cpu') return (a.cpu - b.cpu) * dir;
+              if (procSortKey === 'mem') return (a.mem - b.mem) * dir;
+              if (procSortKey === 'rss') return (a.rss - b.rss) * dir;
+              if (procSortKey === 'vsz') return (a.vsz - b.vsz) * dir;
+              if (procSortKey === 'pid') return (a.pid - b.pid) * dir;
+              return (
+                String(a[procSortKey as keyof typeof a] || '').localeCompare(
+                  String(b[procSortKey as keyof typeof b] || ''),
+                ) * dir
+              );
+            })
+            .slice(0, 20);
           return sorted.length > 0 ? (
             <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
               <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
@@ -277,17 +299,19 @@ export default function OverviewTab() {
                     <th style={{ textAlign: 'right', padding: '8px 10px' }}>CPU%</th>
                     <th style={{ textAlign: 'right', padding: '8px 10px' }}>Mem%</th>
                     <th style={{ textAlign: 'right', padding: '8px 10px' }}>RSS</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px' }}>VSZ</th>
                     <th style={{ textAlign: 'left', padding: '8px 10px' }}>Command</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sorted.map((p, i) => (
-                    <tr key={p.pid} style={{ borderBottom: i < procs.length - 1 ? '1px solid #222' : 'none' }}>
+                    <tr key={p.pid} style={{ borderBottom: i < sorted.length - 1 ? '1px solid #222' : 'none' }}>
                       <td style={{ padding: '6px 10px', color: '#ccc' }}>{p.user}</td>
                       <td style={{ padding: '6px 10px', color: '#ccc', textAlign: 'right' }}>{p.pid}</td>
                       <td style={{ padding: '6px 10px', color: '#4a9eff', textAlign: 'right' }}>{p.cpu.toFixed(1)}</td>
                       <td style={{ padding: '6px 10px', color: '#4caf50', textAlign: 'right' }}>{p.mem.toFixed(1)}</td>
                       <td style={{ padding: '6px 10px', color: '#ff9800', textAlign: 'right' }}>{fmtBytes(p.rss)}</td>
+                      <td style={{ padding: '6px 10px', color: '#888', textAlign: 'right' }}>{fmtBytes(p.vsz)}</td>
                       <td
                         style={{
                           padding: '6px 10px',

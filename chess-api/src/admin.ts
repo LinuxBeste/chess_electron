@@ -167,12 +167,14 @@ router.get('/admin/api/stats', adminAuthMiddleware, async (_req: Request, res: R
         gamesActive +
         ' playersOnline=' +
         playersOnline +
+        ' totalPlayers=' +
+        allPlayers.length +
         ' registered=' +
         registeredUsers +
         ' totalUsers=' +
         totalUsers,
     );
-    res.json({ gamesActive, playersOnline, registeredUsers, totalUsers });
+    res.json({ gamesActive, playersOnline, totalPlayers: allPlayers.length, registeredUsers, totalUsers });
   } catch (err) {
     logger.error('Stats error:', err);
     res.status(500).json({ error: 'Failed to load stats' });
@@ -323,7 +325,17 @@ router.get('/admin/api/system', adminAuthMiddleware, async (_req: Request, res: 
     cpu: {
       cores: cpus.length,
       model: cpus[0]?.model || 'unknown',
-      speed: cpus[0]?.speed || 0,
+      speed:
+        cpus[0]?.speed ||
+        (() => {
+          try {
+            return Math.round(
+              parseFloat((fs.readFileSync('/proc/cpuinfo', 'utf8').match(/cpu MHz\s*:\s*([\d.]+)/) || [])[1]),
+            );
+          } catch {
+            return 0;
+          }
+        })(),
       loadAverage1: loadAvg[0],
       loadAverage5: loadAvg[1],
       loadAverage15: loadAvg[2],
@@ -353,33 +365,153 @@ router.get('/admin/api/system', adminAuthMiddleware, async (_req: Request, res: 
   });
 });
 
-router.get('/admin/api/system/processes', adminAuthMiddleware, async (_req: Request, res: Response) => {
+function readProcStat(path: string): { utime: number; stime: number; cutime: number; cstime: number } {
   try {
-    const out = await new Promise<string>((resolve, reject) => {
-      execFile('ps', ['aux', '--sort=-%cpu', '--no-headers'], { maxBuffer: 65536 }, (err, stdout) => {
-        if (err) reject(err);
-        else resolve(stdout);
-      });
-    });
-    const lines = out.split('\n');
-    const processes = [];
+    const raw = fs.readFileSync(path, 'utf8');
+    const closeIdx = raw.lastIndexOf(')');
+    if (closeIdx === -1) return { utime: 0, stime: 0, cutime: 0, cstime: 0 };
+    const fields = raw.slice(closeIdx + 2).split(/\s+/);
+    return {
+      utime: parseInt(fields[12], 10) || 0,
+      stime: parseInt(fields[13], 10) || 0,
+      cutime: parseInt(fields[14], 10) || 0,
+      cstime: parseInt(fields[15], 10) || 0,
+    };
+  } catch {
+    return { utime: 0, stime: 0, cutime: 0, cstime: 0 };
+  }
+}
+
+function readProcStatus(path: string): { name: string; uid: string; vszKb: number; rssKb: number } {
+  try {
+    const raw = fs.readFileSync(path, 'utf8');
+    const lines = raw.split('\n');
+    let name = '',
+      uid = '',
+      vszKb = '0',
+      rssKb = '0';
     for (const line of lines) {
-      if (!line.trim()) continue;
-      const parts = line.trim().split(/\s+/);
-      if (parts.length < 11) continue;
-      processes.push({
-        user: parts[0],
-        pid: parseInt(parts[1], 10),
-        cpu: parseFloat(parts[2]),
-        mem: parseFloat(parts[3]),
-        rss: parseInt(parts[5], 10) * 1024,
-        command: parts.slice(10).join(' ').slice(0, 80),
-      });
+      if (line.startsWith('Name:')) name = line.split('\t')[1] || '';
+      else if (line.startsWith('Uid:')) uid = (line.split('\t')[1] || '').split(/\s+/)[0];
+      else if (line.startsWith('VmSize:')) vszKb = line.split(/\s+/)[1] || '0';
+      else if (line.startsWith('VmRSS:')) rssKb = line.split(/\s+/)[1] || '0';
     }
-    logger.info('Admin processes listed: count=' + processes.length);
+    return { name, uid, vszKb: parseInt(vszKb, 10) || 0, rssKb: parseInt(rssKb, 10) || 0 };
+  } catch {
+    return { name: '', uid: '', vszKb: 0, rssKb: 0 };
+  }
+}
+
+function readProcCmdline(path: string): string {
+  try {
+    const raw = fs.readFileSync(path, 'utf8');
+    return raw.replace(/\0/g, ' ').trim();
+  } catch {
+    return '';
+  }
+}
+
+function uidToUser(uid: string): string {
+  try {
+    const pw = fs.readFileSync('/etc/passwd', 'utf8');
+    for (const line of pw.split('\n')) {
+      const fields = line.split(':');
+      if (fields[2] === uid) return fields[0];
+    }
+  } catch {
+    /* ignore */
+  }
+  return uid;
+}
+
+router.get('/admin/api/system/processes', adminAuthMiddleware, async (_req: Request, res: Response) => {
+  const hostProc = '/host/proc';
+  const hasHostProc = fs.existsSync(hostProc);
+  const procRoot = hasHostProc ? hostProc : '/proc';
+
+  // Use processes.sh for non-host-proc (fast ps path)
+  if (!hasHostProc) {
+    const scriptPath = path.join(__dirname, '..', 'scripts', 'processes.sh');
+    try {
+      const out = await new Promise<string>((resolve, reject) => {
+        execFile(scriptPath, [], { maxBuffer: 256 * 1024, timeout: 10000 }, (err, stdout) => {
+          if (err) reject(err);
+          else resolve(stdout);
+        });
+      });
+      const rows = JSON.parse(out) as {
+        user: string;
+        pid: number;
+        cpu: number;
+        mem: number;
+        vsz: number;
+        rss: number;
+        command: string;
+      }[];
+      const processes = rows.map((p) => ({
+        ...p,
+        vsz: p.vsz * 1024,
+        rss: p.rss * 1024,
+      }));
+      logger.info('Admin processes listed: count=' + processes.length);
+      res.json(processes);
+    } catch (e) {
+      logger.error('Failed to list processes: ' + e);
+      res.json([]);
+    }
+    return;
+  }
+
+  // Read /host/proc directly for full host process visibility
+  try {
+    const pids = fs.readdirSync(procRoot).filter((f) => /^\d+$/.test(f));
+    const totalMemKb = (() => {
+      try {
+        const meminfo = fs.readFileSync(procRoot + '/meminfo', 'utf8');
+        const m = meminfo.match(/MemTotal:\s+(\d+)/);
+        return m ? parseInt(m[1], 10) : 1;
+      } catch {
+        return 1;
+      }
+    })();
+    const uptimeSec = (() => {
+      try {
+        const u = fs.readFileSync(procRoot + '/uptime', 'utf8');
+        return parseFloat(u.split(/\s+/)[0]) || 1;
+      } catch {
+        return 1;
+      }
+    })();
+    const clkTck = 100;
+
+    const processes = pids
+      .map((pid) => {
+        const status = readProcStatus(procRoot + '/' + pid + '/status');
+        if (!status.name) return null;
+        const stat = readProcStat(procRoot + '/' + pid + '/stat');
+        const cmdline = readProcCmdline(procRoot + '/' + pid + '/cmdline') || '[' + status.name + ']';
+        const totalTicks = stat.utime + stat.stime + stat.cutime + stat.cstime;
+        const cpu = uptimeSec > 0 ? (totalTicks * 100) / (uptimeSec * clkTck) : 0;
+        const mem = totalMemKb > 0 ? (status.rssKb * 100) / totalMemKb : 0;
+        return {
+          user: uidToUser(status.uid),
+          pid: parseInt(pid, 10),
+          cpu: Math.round(cpu * 10) / 10,
+          mem: Math.round(mem * 10) / 10,
+          vsz: status.vszKb * 1024,
+          rss: status.rssKb * 1024,
+          command: cmdline.slice(0, 80),
+        };
+      })
+      .filter(Boolean);
+
+    // Sort by CPU descending
+    processes.sort((a, b) => b!.cpu - a!.cpu);
+
+    logger.info('Admin processes listed (host): count=' + processes.length);
     res.json(processes);
   } catch (e) {
-    logger.error('Failed to list processes: ' + e);
+    logger.error('Failed to list host processes: ' + e);
     res.json([]);
   }
 });
@@ -471,6 +603,18 @@ router.get('/admin/api/games/:id/replay', adminAuthMiddleware, async (req: Reque
   }
 });
 
+interface PlayerRowResponse {
+  id: string;
+  username: string;
+  displayName: string;
+  isRegistered: boolean;
+  online: boolean;
+  tokens: number;
+  ip: string | null;
+  registeredAt: number | null;
+  currentGameId: string | undefined;
+}
+
 router.get('/admin/api/players', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
     const allPlayers = game.getAllPlayers();
@@ -478,23 +622,65 @@ router.get('/admin/api/players', adminAuthMiddleware, async (_req: Request, res:
     const registeredIds = allPlayers.filter((p) => p.isRegistered).map((p) => p.id);
     const usersMap =
       registeredIds.length > 0 ? await db.getUsersByIds(registeredIds).catch(() => new Map()) : new Map();
-    const list = allPlayers.map((p) => {
-      const gameIdSet = playerGameIndex.get(p.id);
-      const currentGameId = gameIdSet && gameIdSet.size > 0 ? Array.from(gameIdSet)[0] : undefined;
-      return {
-        id: p.id,
-        username: p.username,
-        displayName: p.displayName,
-        isRegistered: p.isRegistered,
-        online: onlineIds.has(p.id),
-        tokens: p.tokens.length,
-        ip: game.getPlayerIp(p.id) || null,
-        registeredAt: p.isRegistered ? (usersMap.get(p.id)?.created_at ?? null) : null,
-        currentGameId,
-      };
-    });
-    logger.info('Admin players listed: count=' + list.length + ' online=' + onlineIds.size);
-    res.json(list);
+
+    // index in-memory players by id for merging below
+    const memById = new Map(
+      allPlayers.map((p) => {
+        const gameIdSet = playerGameIndex.get(p.id);
+        const currentGameId = gameIdSet && gameIdSet.size > 0 ? Array.from(gameIdSet)[0] : undefined;
+        return [
+          p.id,
+          {
+            id: p.id,
+            username: p.username,
+            displayName: p.displayName,
+            isRegistered: p.isRegistered,
+            online: onlineIds.has(p.id),
+            tokens: p.tokens.length,
+            ip: game.getPlayerIp(p.id) || null,
+            registeredAt: p.isRegistered ? (usersMap.get(p.id)?.created_at ?? null) : null,
+            currentGameId,
+          },
+        ];
+      }),
+    );
+
+    // load all DB accounts and merge with in-memory players
+    const dbUsers = await db.loadAllUsers().catch(() => []);
+    const seen = new Set<string>();
+    const merged: PlayerRowResponse[] = [];
+
+    // DB users first (sorted by username)
+    for (const u of dbUsers) {
+      seen.add(u.id);
+      const mem = memById.get(u.id);
+      if (mem) {
+        merged.push(mem);
+      } else {
+        merged.push({
+          id: u.id,
+          username: u.username,
+          displayName: u.display_name,
+          isRegistered: true,
+          online: false,
+          tokens: 0,
+          ip: null,
+          registeredAt: u.created_at ?? null,
+          currentGameId: undefined,
+        });
+      }
+    }
+
+    // add temp players not in DB
+    for (const p of allPlayers) {
+      if (!seen.has(p.id)) {
+        const mem = memById.get(p.id);
+        if (mem) merged.push(mem);
+      }
+    }
+
+    logger.info('Admin players listed: count=' + merged.length + ' online=' + onlineIds.size);
+    res.json(merged);
   } catch (err) {
     logger.error('Admin players query failed: ' + err);
     res.status(500).json({ error: 'Failed to list players' });
@@ -661,6 +847,35 @@ router.delete('/admin/api/accounts/:id', adminAuthMiddleware, async (req: Reques
   } catch (err) {
     logger.error('Admin account deletion failed: ' + err);
     res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
+router.get('/admin/api/accounts/:id/profile', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = await db.getUserById(req.params.id);
+    if (!user) {
+      res.status(404).json({ error: 'Account not found' });
+      return;
+    }
+    const online = game.getOnlinePlayerIds().has(req.params.id);
+    const currentGameId = game.getPlayerCurrentGameId(req.params.id);
+    res.json({
+      id: user.id,
+      username: user.username,
+      displayName: user.display_name,
+      avatarUrl: user.avatar_url,
+      createdAt: user.created_at,
+      rating: user.rating,
+      wins: user.wins,
+      losses: user.losses,
+      draws: user.draws,
+      isAdmin: user.is_admin === true,
+      isOnline: online,
+      currentGameId: currentGameId || null,
+    });
+  } catch (err) {
+    logger.error('Admin account profile query failed: ' + err);
+    res.status(500).json({ error: 'Failed to load profile' });
   }
 });
 
@@ -832,7 +1047,8 @@ router.get('/admin/api/leaderboard', adminAuthMiddleware, async (_req: Request, 
     const sortAsc = _req.query.sortAsc === 'true';
     const offset = (page - 1) * limit;
     const result = await db.getLeaderboard(limit, offset, minGames, sortKey, sortAsc);
-    res.json({ entries: result.rows, total: result.total, page, limit });
+    const entries = result.rows.map((row, i) => ({ ...row, rank: offset + i + 1 }));
+    res.json({ entries, total: result.total, page, limit });
   } catch (err) {
     logger.error('Admin leaderboard query failed: ' + err);
     res.status(500).json({ error: 'Failed to load leaderboard' });
