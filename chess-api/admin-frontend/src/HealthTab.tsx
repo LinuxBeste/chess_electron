@@ -117,7 +117,11 @@ export default function HealthTab() {
             {health.database.latencyMs !== undefined && (
               <div className="bg-[#222] rounded p-3">
                 <div className="text-xs text-[#888]">Latency</div>
-                <div className="font-semibold mt-0.5 text-[#4a9eff]">{health.database.latencyMs}ms</div>
+                <div className="font-semibold mt-0.5 text-[#4a9eff]">
+                  {health.database.latencyMs >= 1
+                    ? `${health.database.latencyMs.toFixed(2)}ms`
+                    : `${(health.database.latencyMs * 1000).toFixed(1)}μs`}
+                </div>
               </div>
             )}
           </div>

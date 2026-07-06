@@ -165,9 +165,9 @@ export async function getHealthDetails(): Promise<{
   let poolWaiting = 0;
   try {
     const pool = db.getDb();
-    const start = Date.now();
+    const start = process.hrtime.bigint();
     await pool.query('SELECT 1');
-    dbLatency = Date.now() - start;
+    dbLatency = Number(process.hrtime.bigint() - start) / 1e6;
     dbConnected = true;
     poolTotal = pool.totalCount;
     poolIdle = pool.idleCount;

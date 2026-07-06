@@ -1551,9 +1551,9 @@ router.get('/admin/api/ws', adminAuthMiddleware, (_req: Request, res: Response) 
 router.get('/admin/api/health', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
     const pool = db.getDb();
-    const dbStart = Date.now();
+    const dbStart = process.hrtime.bigint();
     await pool.query('SELECT 1');
-    const dbLatency = Date.now() - dbStart;
+    const dbLatency = Number(process.hrtime.bigint() - dbStart) / 1e6;
     const { gamesActive, playersOnline } = game.getStats();
     const memUsage = process.memoryUsage();
     res.json({
@@ -1591,9 +1591,9 @@ router.get('/admin/api/health', adminAuthMiddleware, async (_req: Request, res: 
 router.get('/admin/api/health/history', adminAuthMiddleware, async (_req: Request, res: Response) => {
   try {
     const pool = db.getDb();
-    const start = Date.now();
+    const start = process.hrtime.bigint();
     await pool.query('SELECT 1');
-    const latency = Date.now() - start;
+    const latency = Number(process.hrtime.bigint() - start) / 1e6;
     dbLatencyHistory.push(latency);
     if (dbLatencyHistory.length > MAX_LATENCY_SAMPLES) dbLatencyHistory.shift();
     res.json({ history: dbLatencyHistory });
