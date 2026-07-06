@@ -37,8 +37,8 @@ describe('Dashboard', () => {
   test('renders tab navigation with all tab labels', () => {
     render(<Dashboard onLogout={() => {}} />);
     expect(screen.getByText('Overview')).toBeTruthy();
-    expect(screen.getByText('Active Games')).toBeTruthy();
-    expect(screen.getByText('Active Players')).toBeTruthy();
+    expect(screen.getByText('Games')).toBeTruthy();
+    expect(screen.getByText('Players')).toBeTruthy();
     expect(screen.getByText('Accounts')).toBeTruthy();
     expect(screen.getByText('Bans')).toBeTruthy();
     expect(screen.getByText('Logs')).toBeTruthy();

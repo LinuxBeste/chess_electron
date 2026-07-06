@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import SystemCharts from '../src/SystemCharts';
 
@@ -7,6 +7,14 @@ vi.mock('../src/api', () => ({
 }));
 
 import { api } from '../src/api';
+
+beforeAll(() => {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+});
 
 function makeSample(
   overrides: Partial<import('../src/api').SystemMetricsSample> = {},
