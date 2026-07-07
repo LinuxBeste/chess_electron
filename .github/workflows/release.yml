@@ -156,10 +156,6 @@ jobs:
       run:
         working-directory: chess-client
 
-    env:
-      CSC_LINK: ${{ secrets.WIN_CSC_LINK || '' }}
-      CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD || '' }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -191,20 +187,29 @@ jobs:
           jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json && mv package.tmp.json package.json
           cat package.json | grep '"version"'
 
-      - name: Generate self-signed cert fallback
+      - name: Set code signing env vars
         shell: bash
         if: matrix.os == 'windows'
         env:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: |
-          if [ -z "$WIN_CSC_LINK" ]; then
+          if [ -n "$WIN_CSC_LINK" ]; then
+            echo "CSC_LINK=$WIN_CSC_LINK" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=$WIN_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "Using WIN_CSC_LINK from secrets"
+          fi
+
+      - name: Generate self-signed cert fallback
+        if: matrix.os == 'windows'
+        shell: bash
+        run: |
+          if [ -z "${CSC_LINK:-}" ]; then
             echo "WIN_CSC_LINK not set, generating self-signed code signing cert"
             bash scripts/gen-cert.sh
             PFX="${GITHUB_WORKSPACE}/chess-client/.certs/code-signing.pfx"
             echo "CSC_LINK=$PFX" >> "$GITHUB_ENV"
             echo "CSC_KEY_PASSWORD=chess-client-selfsigned" >> "$GITHUB_ENV"
-          else
-            echo "Using WIN_CSC_LINK from secrets"
           fi
 
       - run: pnpm install --frozen-lockfile
