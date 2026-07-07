@@ -90,12 +90,16 @@ jobs:
         with:
           name: chess-api-docker
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checksum-docker
+          path: chess-api-sha256.txt
+          retention-days: 1
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.create-release.outputs.tag }}
-          files: |
-            chess-api-*.tar.gz
-            chess-api-*.txt
+          files: chess-api-*.tar.gz
 
   create-release:
     name: Create GitHub Release
@@ -246,11 +250,41 @@ jobs:
             cat "$GITHUB_WORKSPACE/chess-client-${{ matrix.os }}-sha256.txt"
           fi
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checksum-client-${{ matrix.os }}
+          path: ${{ github.workspace }}/chess-client-${{ matrix.os }}-sha256.txt
+          retention-days: 1
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.create-release.outputs.tag }}
-          files: |
-            chess-client/release/*
-            chess-client-*-sha256.txt
+          files: chess-client/release/*
           fail_on_unmatched_files: false
+
+  checksums:
+    name: Bundle checksums
+    runs-on: ubuntu-latest
+    needs: [create-release, upload-docker, package]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: checksum-docker
+          path: checksums
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: checksum-client-*
+          path: checksums
+          merge-multiple: true
+
+      - name: Bundle checksums
+        run: |
+          ls -la checksums/
+          tar czf checksums-all.tar.gz checksums/*-sha256.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
+          files: checksums-all.tar.gz
