@@ -65,13 +65,20 @@ jobs:
           TAG="${VERSION:-latest}"
           OWNER="${{ steps.owner.outputs.owner }}"
           docker pull "${{ env.REGISTRY }}/${OWNER}/chess-api:$TAG"
-          docker save "${{ env.REGISTRY }}/${OWNER}/chess-api:$TAG" | gzip > chess-api-docker.tar.gz
-          ls -lh chess-api-docker.tar.gz
+          docker save "${{ env.REGISTRY }}/${OWNER}/chess-api:$TAG" | gzip > "chess-api-${TAG}.tar.gz"
+          ls -lh "chess-api-${TAG}.tar.gz"
+
+      - name: Generate SHA256 checksums
+        run: |
+          sha256sum chess-api-*.tar.gz > chess-api-sha256.txt
+          cat chess-api-sha256.txt
 
       - uses: actions/upload-artifact@v4
         with:
           name: chess-api-docker
-          path: chess-api-docker.tar.gz
+          path: |
+            chess-api-*.tar.gz
+            chess-api-sha256.txt
           retention-days: 1
 
   upload-docker:
@@ -86,7 +93,9 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.create-release.outputs.tag }}
-          files: chess-api-docker.tar.gz
+          files: |
+            chess-api-*.tar.gz
+            chess-api-*.txt
 
   create-release:
     name: Create GitHub Release
@@ -168,6 +177,16 @@ jobs:
           echo "APP_VERSION=${APP_VERSION:-1.0.0}" >> "$GITHUB_ENV"
           echo "SERVER_URL=${SERVER_URL:-http://localhost:25566}" >> "$GITHUB_ENV"
 
+      - name: Set version from release tag
+        shell: bash
+        run: |
+          TAG="${{ needs.create-release.outputs.tag }}"
+          VERSION="${TAG#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Applying version $VERSION to package.json"
+          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json && mv package.tmp.json package.json
+          cat package.json | grep '"version"'
+
       - run: pnpm install --frozen-lockfile
 
       - name: Create .env for build
@@ -179,14 +198,28 @@ jobs:
 
       - run: npx electron-builder ${{ matrix.builder-args }} --publish=never
 
+      - name: Generate SHA256 checksums
+        shell: bash
+        run: |
+          cd release
+          found=0
+          for f in *.AppImage *.deb *.dmg *.exe *.zip; do
+            if [ -f "$f" ]; then
+              sha256sum "$f" >> "$GITHUB_WORKSPACE/chess-client-${{ matrix.os }}-sha256.txt"
+              found=1
+            fi
+          done
+          if [ "$found" = "0" ]; then
+            echo "No artifacts found for checksum generation"
+          else
+            cat "$GITHUB_WORKSPACE/chess-client-${{ matrix.os }}-sha256.txt"
+          fi
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.create-release.outputs.tag }}
           files: |
-            chess-client/release/*.AppImage
-            chess-client/release/*.deb
-            chess-client/release/*.dmg
-            chess-client/release/*.exe
-            chess-client/release/*.zip
+            chess-client/release/*
+            chess-client-*-sha256.txt
           fail_on_unmatched_files: false
