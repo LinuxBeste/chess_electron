@@ -5,7 +5,7 @@
     "output": "release"
   },
   "files": ["dist/**/*", "assets/**/*"],
-  "icon": "assets/icon.png",
+  "icon": "assets/icon",
   "linux": {
     "target": ["AppImage", "deb"],
     "category": "Game",
@@ -16,6 +16,13 @@
     "category": "public.app-category.games"
   },
   "win": {
-    "target": ["nsis"]
+    "target": ["nsis"],
+    "publisherName": "Chess App"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "runAfterFinish": true
   }
 }

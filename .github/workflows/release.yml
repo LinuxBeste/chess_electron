@@ -156,6 +156,10 @@ jobs:
       run:
         working-directory: chess-client
 
+    env:
+      CSC_LINK: ${{ secrets.WIN_CSC_LINK || '' }}
+      CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD || '' }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -186,6 +190,19 @@ jobs:
           echo "Applying version $VERSION to package.json"
           jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json && mv package.tmp.json package.json
           cat package.json | grep '"version"'
+
+      - name: Generate self-signed cert fallback
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.WIN_CSC_LINK }}" ]; then
+            echo "WIN_CSC_LINK not set, generating self-signed code signing cert"
+            bash scripts/gen-cert.sh
+            PFX="$(pwd)/.certs/code-signing.pfx"
+            echo "CSC_LINK=$PFX" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=chess-client-selfsigned" >> "$GITHUB_ENV"
+          else
+            echo "Using WIN_CSC_LINK from secrets"
+          fi
 
       - run: pnpm install --frozen-lockfile
 
