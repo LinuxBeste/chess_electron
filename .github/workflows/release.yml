@@ -193,8 +193,11 @@ jobs:
 
       - name: Generate self-signed cert fallback
         shell: bash
+        if: matrix.os == 'windows'
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
         run: |
-          if [ -z "${{ secrets.WIN_CSC_LINK }}" ]; then
+          if [ -z "$WIN_CSC_LINK" ]; then
             echo "WIN_CSC_LINK not set, generating self-signed code signing cert"
             bash scripts/gen-cert.sh
             PFX="${GITHUB_WORKSPACE}/chess-client/.certs/code-signing.pfx"
