@@ -181,6 +181,18 @@ The webpack dev server listens on `http://localhost:3000` and proxies API calls 
 pnpm dev
 ```
 
+### Using the start script
+
+```bash
+cd chess-api
+./start.sh                    # Docker, port 25565
+./start.sh --native           # pnpm dev, port 25565
+./start.sh --native --redis   # native + Redis
+./start.sh --tunnel cloudflared   # Docker + public HTTPS tunnel
+```
+
+The orchestrator script handles native/Docker mode, Redis setup, Cloudflare/ngrok tunnels, and client env file updates. See `./start.sh --help`.
+
 ### Play the game
 
 1. Open the app - the **login** screen appears.

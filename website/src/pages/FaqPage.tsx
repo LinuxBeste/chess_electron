@@ -68,6 +68,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
+// FAQ page: expandable questions and answers
 export default function FaqPage() {
   return (
     <div className="pt-24 pb-20 px-6">

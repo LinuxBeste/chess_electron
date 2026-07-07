@@ -6,6 +6,7 @@ import { t } from '../translate';
 import { Swords, Trophy, Archive, Award, PenLine, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import StatsDialog from './StatsDialog';
 
+// Side navigation bar with page links and stats
 const NAV_ITEMS = [
   { path: '/lobby', icon: Swords, labelKey: 'navbar.play' as const },
   { path: '/leaderboard', icon: Trophy, labelKey: 'navbar.leaderboard' as const },

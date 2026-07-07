@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+// Zod validation schemas for all user-facing form inputs
 export const usernameSchema = z
   .string()
   .trim()

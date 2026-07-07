@@ -114,6 +114,7 @@ export function registerMetrics(enableFlag: boolean): {
   }
 }
 
+// Return Prometheus-format metrics
 export async function getMetricsResponse(): Promise<string> {
   if (!ENABLE_METRICS) return '# Metrics disabled';
   try {
@@ -124,6 +125,8 @@ export async function getMetricsResponse(): Promise<string> {
 }
 
 /* ─── CAPTCHA verification (Cloudflare Turnstile / Google reCAPTCHA) ─── */
+
+// Verify turnstile token against Cloudflare API
 
 export async function verifyCaptchaToken(token: string, ip: string): Promise<boolean> {
   const secret = process.env.CAPTCHA_SECRET_KEY;

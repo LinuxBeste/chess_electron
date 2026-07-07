@@ -25,6 +25,7 @@ interface EngineInstance {
   settled: boolean;
 }
 
+// Manages concurrent Stockfish subprocesses for bot games
 class EngineManager {
   private instances = new Map<string, EngineInstance>();
   private maxConcurrent = Math.max(1, parseInt(process.env.MAX_CONCURRENT_ENGINES ?? '4', 10)); // Cap concurrent Stockfish to limit RAM
@@ -41,6 +42,7 @@ class EngineManager {
     return path.join(__dirname, '..', 'node_modules', 'stockfish', 'bin', 'stockfish-18-lite-single.js');
   }
 
+  // Spawn a Stockfish subprocess and wait for UCI ready
   startInstance(gameId: string, skillLevel: number): Promise<void> {
     if (this.instances.size >= this.maxConcurrent) {
       logger.warn('Engine limit reached: ' + this.instances.size + '/' + this.maxConcurrent + ' active');
@@ -160,6 +162,7 @@ class EngineManager {
     });
   }
 
+  // Send UCI command to engine stdin
   send(gameId: string, cmd: string): void {
     const inst = this.instances.get(gameId);
     if (!inst) {
@@ -174,6 +177,7 @@ class EngineManager {
     }
   }
 
+  // Send go movetime, wait for bestmove response
   async getBestMove(gameId: string, movetime = ENGINE_DEFAULT_MOVETIME_MS): Promise<BestMoveResult> {
     const inst = this.instances.get(gameId);
     if (!inst) {
@@ -210,6 +214,7 @@ class EngineManager {
     });
   }
 
+  // Set up position from UCI move list
   setPosition(gameId: string, moves: string[]): void {
     if (moves.length === 0) {
       this.send(gameId, 'position startpos');
@@ -218,6 +223,7 @@ class EngineManager {
     }
   }
 
+  // Kill the engine process and clean up
   destroyInstance(gameId: string): void {
     const inst = this.instances.get(gameId);
     if (inst) {
@@ -237,6 +243,7 @@ class EngineManager {
     return this.instances.has(gameId);
   }
 
+  // Terminate all running engine processes
   killAll(): void {
     for (const [gameId, inst] of this.instances) {
       try {

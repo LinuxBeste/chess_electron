@@ -35,6 +35,7 @@ export function createInitialBoard(): Board {
   return board;
 }
 
+// Convert algebraic square (e.g. "e4") to board indices
 export function squareToIndices(square: string): [number, number] {
   const file = square.charCodeAt(0) - 97;
   const rank = 8 - parseInt(square[1], 10);
@@ -115,6 +116,7 @@ const PIECE_MAP: Record<string, string> = {
   'black-pawn': 'p',
 };
 
+// Serialize a Board to FEN notation
 export function boardToFen(board: Board): string {
   let fen = '';
   for (let r = 0; r < 8; r++) {
@@ -138,6 +140,7 @@ export function boardToFen(board: Board): string {
   return fen;
 }
 
+// Parse a FEN string back into a Board
 export function fenToBoard(fen: string): Board | null {
   const board: Board = Array.from({ length: 8 }, () => Array(8).fill(null));
   const rows = fen.split(' ')[0].split('/');
@@ -180,6 +183,7 @@ export const PIECE_CHARS: Record<string, Record<string, string>> = {
   black: { king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟' },
 };
 
+// Render a piece as a Unicode character wrapped in HTML
 export function getPieceSvg(type: string, color: string): string {
   const char = PIECE_CHARS[color]?.[type];
   if (!char) {

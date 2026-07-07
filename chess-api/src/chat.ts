@@ -32,6 +32,7 @@ function makeId(): string {
   return crypto.randomUUID();
 }
 
+// Create the singleton lobby conversation if missing
 export async function ensureLobbyConversation(): Promise<void> {
   const db = getDb();
   const { rows } = await db.query('SELECT id FROM chat_conversations WHERE id = $1', [LOBBY_CONVERSATION_ID]);
@@ -46,6 +47,7 @@ export async function ensureLobbyConversation(): Promise<void> {
   }
 }
 
+// Persist and broadcast a lobby chat message
 export async function handleLobbyChat(playerId: string, text: string): Promise<void> {
   if (!text) return;
   if (text.length > CHAT_MAX_LENGTH) text = text.slice(0, CHAT_MAX_LENGTH);
@@ -82,6 +84,7 @@ export async function handleLobbyChat(playerId: string, text: string): Promise<v
   }
 }
 
+// Send recent lobby messages to a newly connected client
 export async function sendLobbyChatHistory(ws: WebSocket): Promise<void> {
   const db = getDb();
   const { rows } = await db.query(
@@ -108,6 +111,7 @@ export async function sendLobbyChatHistory(ws: WebSocket): Promise<void> {
   );
 }
 
+// Find or create a deterministic private conversation ID
 export async function getOrCreatePrivateConversation(playerA: string, playerB: string): Promise<string> {
   const db = getDb();
   const ids = [playerA, playerB].sort();
@@ -132,6 +136,7 @@ export async function getOrCreatePrivateConversation(playerA: string, playerB: s
   return convId;
 }
 
+// Persist and deliver a 1:1 private message
 export async function handlePrivateChat(senderId: string, targetPlayerId: string, text: string): Promise<void> {
   if (!text) return;
   if (text.length > CHAT_MAX_LENGTH) text = text.slice(0, CHAT_MAX_LENGTH);

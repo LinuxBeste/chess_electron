@@ -8,6 +8,7 @@ import { t } from '../translate';
 import logger from '../logger';
 import { Swords, MessageCircle, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 
+// Sidebar panel: tabs for play/lobby, chat, and friends
 function updateSidebarPush(
   sidebarOpen: boolean,
   sidebarMinimized: boolean,

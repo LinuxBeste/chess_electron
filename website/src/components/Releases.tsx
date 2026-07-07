@@ -2,6 +2,7 @@ import { Download, Github, ExternalLink } from 'lucide-react';
 import ScrollReveal from './ScrollReveal';
 import Placeholder from './Placeholder';
 
+// Download release cards for each platform
 const platforms = [
   { name: 'Linux', format: '.AppImage / .deb', icon: '🐧' },
   { name: 'macOS', format: '.dmg', icon: '🍎' },

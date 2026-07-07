@@ -1,5 +1,7 @@
 # Environment Variables
 
+> The `chess-api/start.sh` orchestrator also respects `PORT`, `TUNNEL`, and `REDIS_URL` — see `./start.sh --help`.
+
 ## chess-api
 
 | Variable                        | Default                                         | Required | Type   | Description                                                     |

@@ -16,6 +16,7 @@ let audioCtx: AudioContext | null = null;
 // Cached 0-1 volume, applied per-tone via GainNode
 let cachedVolume = 1;
 
+// Set master sound volume (0-100), clamped to 0-1 internally
 export function setSoundVolume(pct: number): void {
   cachedVolume = Math.max(0, Math.min(1, pct / 100));
   logger.info('Sound volume set', pct);

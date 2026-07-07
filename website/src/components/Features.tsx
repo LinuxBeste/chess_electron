@@ -2,6 +2,7 @@ import { Users, Palette, Cpu, Download, Gamepad2, Shield } from 'lucide-react';
 import ScrollReveal from './ScrollReveal';
 import Placeholder from './Placeholder';
 
+// Features grid showcasing the app's capabilities
 const features = [
   {
     icon: Users,

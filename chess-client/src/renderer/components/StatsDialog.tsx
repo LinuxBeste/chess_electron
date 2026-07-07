@@ -8,6 +8,7 @@ interface Props {
   onClose: () => void;
 }
 
+// Modal displaying player win/loss/draw stats
 export default function StatsDialog({ onClose }: Props) {
   const [stats, setStats] = useState<{ wins: number; losses: number; draws: number } | null>(null);
   const [loading, setLoading] = useState(true);

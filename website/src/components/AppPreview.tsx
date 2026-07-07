@@ -1,5 +1,6 @@
 import Placeholder from './Placeholder';
 
+// Phone mockup preview of the app screenshot
 export default function AppPreview() {
   return (
     // constrained width matches typical phone-like mockup

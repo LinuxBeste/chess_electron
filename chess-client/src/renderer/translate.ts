@@ -14,6 +14,7 @@ export function onLanguageChange(listener: () => void): () => void {
   };
 }
 
+// Switch the active locale and persist it
 export function setLanguage(lang: string): void {
   currentLang = lang;
   current = lang === 'de' ? de : en;
@@ -24,11 +25,13 @@ export function setLanguage(lang: string): void {
   logger.info('Language changed', lang);
 }
 
+// Get the currently active language code
 export function getLanguage(): string {
   logger.debug('Language accessed', currentLang);
   return currentLang;
 }
 
+// Translate a dot-separated key, optionally interpolating vars
 export function t(path: string, vars?: Record<string, string | number>): string {
   logger.debug('Translation accessed', { lang: currentLang, key: path });
   const keys = path.split('.');

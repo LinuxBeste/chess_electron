@@ -258,6 +258,7 @@ export async function getArchivedGames(params: {
   return request('/games/archive?' + q.toString(), params.signal ? { signal: params.signal } : undefined);
 }
 
+// Get a single archived game by ID
 export async function getArchivedGame(gameId: string): Promise<ArchivedGame> {
   logger.info('getArchivedGame called', { gameId });
   return request('/games/archive/' + encodeURIComponent(gameId));

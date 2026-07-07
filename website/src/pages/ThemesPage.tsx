@@ -12,6 +12,7 @@ const themes = [
   { name: 'High Contrast', desc: 'Maximum contrast for accessibility and visibility.', colors: '#222 / #eee' },
 ];
 
+// Themes page: showcase of available board color schemes
 export default function ThemesPage() {
   return (
     <div className="pt-24 pb-20 px-6">

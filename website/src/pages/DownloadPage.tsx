@@ -33,6 +33,7 @@ const requirements = [
   { label: 'Display', value: '1024×768 or larger' },
 ];
 
+// Download page: platform releases, system requirements, and links
 export default function DownloadPage() {
   return (
     <div className="pt-24 pb-20 px-6">

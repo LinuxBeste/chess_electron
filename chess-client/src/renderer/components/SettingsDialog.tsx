@@ -1288,6 +1288,7 @@ function AccountTab() {
   );
 }
 
+// Full-featured settings modal with tabs for general/board/display/gameplay/account
 export default function SettingsDialog({ onClose }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('general');
   const [settings, setSettings] = useState<AppSettings>(loadSettings);

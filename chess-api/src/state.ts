@@ -5,6 +5,7 @@ import logger from './logger.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+// In-memory stores for all active game state
 export const games = new Map<string, GameState>();
 export const uciHistory = new Map<string, string[]>();
 export const wsConnections = new Map<string, Set<WebSocket>>();
@@ -36,6 +37,7 @@ export function setSweepTimer(timer: ReturnType<typeof setInterval> | null): voi
 
 /* ─── Redis sync ─── */
 
+// Pull all games from Redis into local memory
 export async function syncGamesFromRedis(): Promise<void> {
   if (!redis.isRedisEnabled()) return;
   try {
@@ -47,6 +49,7 @@ export async function syncGamesFromRedis(): Promise<void> {
   }
 }
 
+// Rebuild player→game index from loaded Redis games
 export async function syncPlayerIndexFromRedis(): Promise<void> {
   if (!redis.isRedisEnabled()) return;
   try {
@@ -147,6 +150,7 @@ export function isFileDirty(): boolean {
 
 /* ─── Write-through helpers (call after mutating game state) ─── */
 
+// Persist game to Redis or mark file-dirty
 export function persistGame(id: string): void {
   const g = games.get(id);
   if (!g) return;
@@ -157,6 +161,7 @@ export function persistGame(id: string): void {
   }
 }
 
+// Persist + publish event to Redis subscribers
 export function persistGameAndPublish(id: string): void {
   const g = games.get(id);
   if (!g) return;
@@ -168,6 +173,7 @@ export function persistGameAndPublish(id: string): void {
   }
 }
 
+// Remove game from all in-memory stores and Redis
 export function removeGameById(id: string): void {
   games.delete(id);
   chatHistory.delete(id);
@@ -190,6 +196,7 @@ export function removeGameById(id: string): void {
   }
 }
 
+// Track player→gameId mapping for lookups
 export function addPlayerGameIndex(playerId: string, gameId: string): void {
   let set = playerGameIndex.get(playerId);
   if (!set) {
@@ -240,6 +247,7 @@ export function setGameCompletedAtEntry(gameId: string): void {
 
 /* ─── WS messaging ─── */
 
+// Send raw JSON string to all player's WS connections
 export function sendToPlayerRaw(playerId: string, data: string): void {
   if (redis.isRedisEnabled()) {
     redis.publish('player:' + playerId, JSON.stringify({ type: 'ws_message', data, playerId }));
@@ -251,11 +259,14 @@ export function sendToPlayerRaw(playerId: string, data: string): void {
   }
 }
 
+// Send JSON message to all player's WS connections
 export function sendToPlayer(playerId: string, message: Record<string, unknown>): void {
   sendToPlayerRaw(playerId, JSON.stringify(message));
 }
 
 /* ─── Event Buffer for WS reconnection replay ─── */
+
+// Buffer recent game events so reconnecting clients can catch up
 
 const GAME_EVENT_BUFFER_TTL_MS = parseInt(process.env.GAME_EVENT_BUFFER_TTL_MS ?? '60000', 10);
 const GAME_EVENT_BUFFER_MAX = parseInt(process.env.GAME_EVENT_BUFFER_MAX ?? '50', 10);
@@ -301,6 +312,7 @@ export function deleteEventBuffer(gameId: string): void {
   eventBuffer.delete(gameId);
 }
 
+// Send message to all spectators watching a game
 export function sendToSpectators(gameId: string, dataOrMessage: Record<string, unknown> | string): void {
   if (redis.isRedisEnabled()) {
     redis.publish('spectate:' + gameId, JSON.stringify({ type: 'ws_message', data: dataOrMessage, gameId }));

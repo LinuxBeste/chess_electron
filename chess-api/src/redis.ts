@@ -13,10 +13,12 @@ let subClient: InstanceType<typeof Redis> | null = null;
 type PubSubHandler = (channel: string, message: string) => void;
 let messageHandler: PubSubHandler | null = null;
 
+// Check if Redis URL was configured
 export function isRedisEnabled(): boolean {
   return ENABLED;
 }
 
+// Connect pub/sub clients and register message handler
 export async function initRedis(): Promise<void> {
   if (!ENABLED) {
     logger.info('Redis not configured — using in-memory state');
@@ -98,6 +100,7 @@ export async function deleteGame(gameId: string): Promise<void> {
   }
 }
 
+// Iterate Redis keyspace with SCAN (non-blocking)
 async function scanKeys(pattern: string): Promise<string[]> {
   const result: string[] = [];
   let cursor = '0';

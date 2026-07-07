@@ -5,6 +5,7 @@ import { indicesToSquare, squareToIndices, cloneBoard, PIECE_CHARS } from '../ch
 import type { Board as BoardType, PieceType } from '../../types';
 import { t } from '../translate';
 
+// Interactive board editor for setting up custom positions
 const PIECE_TYPES: (PieceType | null)[] = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn', null];
 
 function emptyBoard(): BoardType {

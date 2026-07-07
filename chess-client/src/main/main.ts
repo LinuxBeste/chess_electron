@@ -1,3 +1,4 @@
+// Electron main process: window creation, env config, multi-window IPC
 import { app, BrowserWindow, screen, ipcMain } from 'electron';
 import * as path from 'path';
 import dotenv from 'dotenv';

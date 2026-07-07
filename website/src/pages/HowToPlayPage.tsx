@@ -36,6 +36,7 @@ const steps = [
   },
 ];
 
+// How-to-play page: step-by-step guide with illustrations
 export default function HowToPlayPage() {
   return (
     <div className="pt-24 pb-20 px-6">

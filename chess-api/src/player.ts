@@ -51,12 +51,14 @@ export function cleanupLoginAttempts(): void {
   }
 }
 
+// PBKDF2 hash with random salt, 100k iterations
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');
   const key = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex'); // PBKDF2 with 100k iterations
   return `${salt}:${key}`;
 }
 
+// Constant-time comparison prevents timing attacks
 export function verifyPassword(password: string, stored: string): boolean {
   const parts = stored.split(':');
   if (parts.length < 2) return false;
@@ -102,6 +104,7 @@ export function verifyPasswordAsync(password: string, stored: string): Promise<b
 
 export const BOT_PLAYER_ID = '_bot_';
 
+// Create user in DB, issue auth token
 export async function registerPlayer(
   username: string,
   password?: string,
@@ -119,6 +122,7 @@ export async function registerPlayer(
   return { playerId, token, isRegistered, displayName: username };
 }
 
+// Verify credentials, issue token, cache in memory
 export async function loginPlayer(
   username: string,
   password: string,
@@ -163,6 +167,7 @@ export function deleteToken(token: string): void {
   tokenExpiry.delete(token);
 }
 
+// Fast in-memory token lookup with expiry check
 export function authenticatePlayer(token: string): Player | null {
   const expiry = tokenExpiry.get(token);
   if (expiry && expiry <= Date.now()) {
@@ -184,11 +189,10 @@ export function authenticatePlayer(token: string): Player | null {
   return player;
 }
 
+// Lazy-load from DB on cache miss
 export async function authenticatePlayerAsync(token: string): Promise<Player | null> {
   const cached = authenticatePlayer(token);
   if (cached) return cached;
-
-  // Lazy-load from DB on cache miss (avoids preloading all users at startup)
   try {
     const userId = await db.getUserIdByToken(token);
     if (!userId) return null;
@@ -213,6 +217,7 @@ export async function authenticatePlayerAsync(token: string): Promise<Player | n
   }
 }
 
+// Issue a new token for an existing player session
 export function addToken(playerId: string): string | null {
   const player = players.get(playerId);
   if (!player) {
@@ -226,6 +231,7 @@ export function addToken(playerId: string): string | null {
   return token;
 }
 
+// Remove token from memory and DB
 export async function logoutPlayer(token: string): Promise<boolean> {
   const playerId = tokenIndex.get(token);
   if (!playerId) return false;
@@ -255,6 +261,7 @@ export async function updateDisplayName(
   return { success: true };
 }
 
+// Verify current pw, hash and store new one
 export async function changePassword(
   playerId: string,
   currentPassword: string,
@@ -276,6 +283,7 @@ export async function changePassword(
   return { success: true };
 }
 
+// Remove user, tokens, relationships from DB in a transaction
 export async function deleteAccount(playerId: string): Promise<{ success: true } | { success: false; error: string }> {
   const player = players.get(playerId);
   if (!player || !player.isRegistered)
@@ -327,6 +335,7 @@ export function getAllPlayers(): Player[] {
   return result;
 }
 
+// Load all users and active tokens from DB into memory
 export async function loadPersistedUsers(): Promise<void> {
   const allUsers = await db.loadAllUsers();
   for (const u of allUsers) {

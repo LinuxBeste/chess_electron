@@ -15,6 +15,7 @@ function fmtDate(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+// Modal displaying a player's profile, stats, and friend actions
 export default function PlayerProfileDialog({ playerId, onClose }: Props) {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);

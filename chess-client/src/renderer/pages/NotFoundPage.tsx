@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
+// 404 page with decorative chess board layout
 const START_POSITION = [
   '♜',
   '♞',

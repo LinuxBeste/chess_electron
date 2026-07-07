@@ -10,6 +10,7 @@ interface Props {
   once?: boolean;
 }
 
+// Wrapper that animates children into view on scroll
 const variantStyles: Record<Variant, string> = {
   'fade-up': 'opacity-0 translate-y-8',
   'fade-left': 'opacity-0 -translate-x-16',

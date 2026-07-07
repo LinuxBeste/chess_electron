@@ -22,7 +22,7 @@ function timestamp(): string {
 function getStream(file: string): fs.WriteStream {
   const tag = dateTag();
   if (currentDateTag !== tag) {
-    // Rotate log files daily
+    // Daily log rotation
     closeAllStreams();
     currentDateTag = tag;
   }
@@ -98,6 +98,7 @@ function log(level: LogLevel, message: string, ...args: unknown[]): void {
   }
 }
 
+// Write security-relevant events to audit log
 export function audit(action: string, detail: string): void {
   const ts = timestamp();
   if (LOG_FORMAT_JSON) {

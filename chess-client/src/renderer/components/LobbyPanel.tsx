@@ -5,6 +5,7 @@ import * as api from '../api';
 import { t } from '../translate';
 import logger from '../logger';
 
+// Lobby sidebar panel: create/join/spectate games and play vs bot
 export default function LobbyPanel() {
   const navigate = useNavigate();
   const [isPrivate, setIsPrivate] = useState(false);

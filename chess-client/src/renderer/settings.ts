@@ -100,6 +100,7 @@ export interface AppSettings {
 
 const SETTINGS_KEY = 'chess_settings';
 
+// Default values for all user-configurable settings
 export const defaultSettings: AppSettings = {
   /* ── General :: Sound ── */
   soundEnabled: true,
@@ -190,6 +191,7 @@ export const defaultSettings: AppSettings = {
 
 let cachedSettings: AppSettings = { ...defaultSettings };
 
+// Load settings from localStorage, merging with defaults
 export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
@@ -205,6 +207,7 @@ export function loadSettings(): AppSettings {
   return cachedSettings;
 }
 
+// Persist settings to localStorage and apply all visual themes
 export function saveSettings(settings: AppSettings): void {
   cachedSettings = settings;
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
@@ -224,10 +227,12 @@ export function saveSettings(settings: AppSettings): void {
   store.set('sidebarPosition', settings.sidebarPosition);
 }
 
+// Get a single setting value from the cached settings
 export function getSetting<K extends keyof AppSettings>(key: K): AppSettings[K] {
   return cachedSettings[key];
 }
 
+// Apply board theme via data-theme attribute on <html>
 export function applyTheme(theme: string): void {
   const root = document.documentElement;
   root.removeAttribute('data-theme');
@@ -237,6 +242,7 @@ export function applyTheme(theme: string): void {
   logger.info('Theme applied', theme);
 }
 
+// Apply board visual style via data-board-style attribute
 export function applyBoardStyle(style: string): void {
   const root = document.documentElement;
   root.removeAttribute('data-board-style');
@@ -246,6 +252,7 @@ export function applyBoardStyle(style: string): void {
   logger.info('Board style applied', style);
 }
 
+// Apply background pattern via data-background attribute
 export function applyBackground(bg: string): void {
   const root = document.documentElement;
   root.removeAttribute('data-background');
@@ -255,6 +262,7 @@ export function applyBackground(bg: string): void {
   logger.info('Background applied', bg);
 }
 
+// Apply board size via data-board-size attribute
 export function applyBoardSize(size: string): void {
   const root = document.documentElement;
   root.removeAttribute('data-board-size');
@@ -262,6 +270,7 @@ export function applyBoardSize(size: string): void {
   logger.info('Board size applied', size);
 }
 
+// Toggle compact UI mode via data-compact attribute
 export function applyCompactMode(enabled: boolean): void {
   const root = document.documentElement;
   if (enabled) root.setAttribute('data-compact', 'true');
@@ -269,6 +278,7 @@ export function applyCompactMode(enabled: boolean): void {
   logger.info('Compact mode', enabled ? 'enabled' : 'disabled');
 }
 
+// Toggle reduced motion via data-reduce-motion attribute
 export function applyReduceMotion(enabled: boolean): void {
   const root = document.documentElement;
   if (enabled) root.setAttribute('data-reduce-motion', 'true');
@@ -276,6 +286,7 @@ export function applyReduceMotion(enabled: boolean): void {
   logger.info('Reduce motion', enabled ? 'enabled' : 'disabled');
 }
 
+// List all keys currently stored in localStorage
 export function getLocalStorageKeys(): string[] {
   const keys: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
@@ -285,16 +296,19 @@ export function getLocalStorageKeys(): string[] {
   return keys;
 }
 
+// Remove a single key from localStorage
 export function clearLocalStorageKey(key: string): void {
   localStorage.removeItem(key);
   logger.info('LocalStorage key cleared', key);
 }
 
+// Clear all localStorage data (logout/uninstall)
 export function clearAllLocalData(): void {
   localStorage.clear();
   logger.info('All local data cleared');
 }
 
+// Apply UI color theme via data-ui-theme attribute
 export function applyUiTheme(theme: string): void {
   const root = document.documentElement;
   root.removeAttribute('data-ui-theme');
@@ -304,6 +318,7 @@ export function applyUiTheme(theme: string): void {
   logger.info('UI theme applied', theme);
 }
 
+// Toggle board border via data-board-border attribute
 export function applyBoardBorder(enabled: boolean): void {
   const root = document.documentElement;
   if (enabled) root.setAttribute('data-board-border', 'true');

@@ -13,6 +13,7 @@ interface ReviewBoardProps {
   compact?: boolean;
 }
 
+// Interactive board review with move-by-move navigation
 function renderBoardState(serialized: SerializedSquare[], flipped: boolean, cellSize: number): React.ReactNode {
   const squares: React.ReactNode[] = [];
   const pieceChars: Record<string, Record<string, string>> = {

@@ -8,6 +8,7 @@ import Releases from '../components/Releases';
 import AppPreview from '../components/AppPreview';
 import ScrollReveal from '../components/ScrollReveal';
 
+// Home page: hero, how-it-works, features, game modes, and stats
 export default function Home() {
   return (
     <>

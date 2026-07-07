@@ -1070,4 +1070,5 @@ class SocketManager {
   }
 }
 
+// Singleton WebSocket manager for real-time events
 export const socketManager = new SocketManager();

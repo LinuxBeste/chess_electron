@@ -7,6 +7,7 @@ interface Props {
   onToggleTheme: () => void;
 }
 
+// Site navigation bar with theme toggle and download link
 const links = [
   { to: '/features', label: 'Features' },
   { to: '/themes', label: 'Themes' },

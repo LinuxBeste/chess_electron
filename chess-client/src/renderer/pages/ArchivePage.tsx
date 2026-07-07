@@ -7,6 +7,7 @@ import { Crown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SkeletonLine } from '../components/Skeleton';
 import type { ArchivedGame } from '../../types';
 
+// Archive page: browse and filter completed games
 export default function ArchivePage() {
   const navigate = useNavigate();
   const [games, setGames] = useState<ArchivedGame[]>([]);

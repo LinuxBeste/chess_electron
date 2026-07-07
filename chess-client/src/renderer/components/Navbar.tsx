@@ -9,6 +9,7 @@ import { t } from '../translate';
 import { avatarSrc } from '../api';
 import logger from '../logger';
 
+// Top navigation bar with user info, settings, and logout
 export default function Navbar() {
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);

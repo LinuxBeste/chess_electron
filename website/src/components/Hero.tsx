@@ -1,5 +1,6 @@
 import { Sword, Sparkles } from 'lucide-react';
 
+// Hero banner with headline, CTA, and animated chess board
 export default function Hero() {
   return (
     // full-viewport hero with padding for fixed navbar overlap

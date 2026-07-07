@@ -31,6 +31,7 @@ function ScrollProgress() {
   );
 }
 
+// App root with routing, theme toggle, and scroll progress bar
 export default function App() {
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem('theme');

@@ -2,6 +2,7 @@ import * as db from './db.js';
 import logger from './logger.js';
 import type { Color, GameState } from './types.js';
 
+// Standard Elo formula: expected score via logistic, K-factor applied
 export function calculateElo(ratingA: number, ratingB: number, scoreA: number): [number, number] {
   const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
   const expectedB = 1 - expectedA;
@@ -9,6 +10,7 @@ export function calculateElo(ratingA: number, ratingB: number, scoreA: number): 
   return [Math.round(ratingA + k * (scoreA - expectedA)), Math.round(ratingB + k * (1 - scoreA - expectedB))];
 }
 
+// Recalculate ratings for both players after a game ends
 export async function updateEloRatings(game: GameState, winner: Color | null): Promise<void> {
   const whiteId = game.players.white;
   const blackId = game.players.black;

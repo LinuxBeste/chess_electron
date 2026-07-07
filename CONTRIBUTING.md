@@ -32,6 +32,15 @@ pnpm --filter chess-api dev            # API server on :25565
 pnpm --filter chess-client dev:web     # webpack dev server on :3000
 ```
 
+Or use the `start.sh` orchestrator script:
+
+```bash
+cd chess-api
+./start.sh --native                   # pnpm dev on :25565
+./start.sh --native --redis           # native + Redis
+./start.sh                            # Docker mode
+```
+
 The webpack dev server proxies API calls to `:25565` and WebSocket connections to `/chess-ws`.
 
 ## Project Structure

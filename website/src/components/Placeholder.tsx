@@ -5,7 +5,7 @@ interface Props {
   className?: string;
 }
 
-// fallback component used before real screenshots are available
+// Generic placeholder with icon for missing images
 export default function Placeholder({ label, className = '' }: Props) {
   return (
     <div className={`bg-surface-alt rounded-xl flex items-center justify-center text-muted ${className}`}>

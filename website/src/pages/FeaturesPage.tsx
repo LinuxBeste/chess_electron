@@ -80,6 +80,7 @@ const features = [
   },
 ];
 
+// Features page: detailed breakdown of app capabilities
 export default function FeaturesPage() {
   return (
     <div className="pt-24 pb-20 px-6">

@@ -2,6 +2,7 @@ import { Monitor, Globe } from 'lucide-react';
 import ScrollReveal from './ScrollReveal';
 import Placeholder from './Placeholder';
 
+// Game mode cards: online, local, and bot play
 const modes = [
   {
     icon: Monitor,

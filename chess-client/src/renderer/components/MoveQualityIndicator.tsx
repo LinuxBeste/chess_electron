@@ -2,6 +2,8 @@ import { t } from '../translate';
 
 export type MoveQuality = 'excellent' | 'good' | 'inaccuracy';
 
+// Badge showing move quality (excellent/good/inaccuracy) with color coding
+
 const QUALITY_CONFIG: Record<MoveQuality, { label: string; color: string; bg: string; border: string }> = {
   excellent: {
     label: '!!',

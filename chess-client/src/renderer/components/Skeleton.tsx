@@ -5,18 +5,22 @@ interface SkeletonProps {
   style?: React.CSSProperties;
 }
 
+// Generic shimmer placeholder for loading states
 export function Skeleton({ width = '100%', height = 16, borderRadius = 'var(--radius-sm)', style }: SkeletonProps) {
   return <div className="shimmer" style={{ width, height, borderRadius, ...style }} />;
 }
 
+// Skeleton line for text placeholder
 export function SkeletonLine({ width = '100%', style }: { width?: string | number; style?: React.CSSProperties }) {
   return <div className="shimmer shimmer-line" style={{ width, ...style }} />;
 }
 
+// Circular skeleton for avatar loading
 export function SkeletonAvatar({ size = 80 }: { size?: number }) {
   return <div className="shimmer" style={{ width: size, height: size, borderRadius: '50%', margin: '0 auto 12px' }} />;
 }
 
+// Card-shaped skeleton placeholder
 export function SkeletonCard({
   width = 280,
   height = 120,
@@ -29,6 +33,7 @@ export function SkeletonCard({
   return <div className="shimmer" style={{ width, height, borderRadius: 'var(--radius)', ...style }} />;
 }
 
+// Full chess board skeleton for page loading
 export function SkeletonBoard() {
   return (
     <div className="skeleton-page">
@@ -44,6 +49,7 @@ export function SkeletonBoard() {
   );
 }
 
+// Lobby page skeleton placeholder
 export function SkeletonLobby() {
   return (
     <div className="page-container" style={{ padding: 24, display: 'flex', gap: 24, flexDirection: 'column' }}>

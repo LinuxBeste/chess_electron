@@ -1,3 +1,4 @@
+// Copy text to clipboard with Electron/navigator/fallback support
 export function copyToClipboard(text: string): Promise<void> {
   if (window.electronAPI?.clipboardWrite) {
     window.electronAPI.clipboardWrite(text);

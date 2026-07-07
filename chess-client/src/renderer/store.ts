@@ -208,4 +208,5 @@ class Store {
   }
 }
 
+// Singleton store instance for app-wide state management
 export const store = new Store();

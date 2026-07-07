@@ -7,6 +7,7 @@ interface Props {
   children: React.ReactNode;
 }
 
+// Page layout wrapping navbar, content, and footer
 export default function Layout({ theme, onToggleTheme, children }: Props) {
   return (
     <>

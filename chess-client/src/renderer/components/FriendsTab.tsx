@@ -21,6 +21,7 @@ import logger from '../logger';
 
 type Tab = 'friends' | 'requests' | 'sent';
 
+// Full-page friends modal with add/accept/decline/challenge
 export default function FriendsTab({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('friends');
   const friends = useStoreValue('friends');

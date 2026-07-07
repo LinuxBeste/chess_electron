@@ -16,6 +16,7 @@ import type { UserSearchResult } from '../api';
 import { t } from '../translate';
 import logger from '../logger';
 
+// Friends panel: manage friends, requests, and challenges
 export default function FriendsPanel() {
   const friends = useStoreValue('friends');
   const incomingRequests = useStoreValue('incomingRequests');

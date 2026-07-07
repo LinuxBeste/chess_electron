@@ -11,6 +11,7 @@ import {
   sendToPlayer,
 } from './state.js';
 
+// Check if player or IP is in the ban set
 export function isBanned(playerId: string, ip?: string): boolean {
   if (bannedPlayers.has(playerId)) return true;
   if (ip && bannedIps.has(ip)) return true;
@@ -19,6 +20,7 @@ export function isBanned(playerId: string, ip?: string): boolean {
   return false;
 }
 
+// Ban player: disconnect, auto-resign active games
 export async function banPlayer(playerId: string): Promise<{ success: true } | { success: false; error: string }> {
   const player = players.get(playerId);
   if (!player) return { success: false, error: 'Player not found' };
@@ -57,6 +59,7 @@ export async function banPlayer(playerId: string): Promise<{ success: true } | {
   return { success: true };
 }
 
+// Ban IP, disconnect all players sharing it
 export async function banIp(ip: string): Promise<{ success: true } | { success: false; error: string }> {
   if (!ip) return { success: false, error: 'IP is required' }; // Guard against empty IP
   if (bannedIps.has(ip)) return { success: false, error: 'IP already banned' };
@@ -105,8 +108,9 @@ export function getBannedIps(): string[] {
   return list;
 }
 
+// Restore in-memory ban sets from DB on startup
 export async function loadPersistedBans(): Promise<void> {
-  const allBans = await db.loadAllBans(); // Restore in-memory bans from DB on startup
+  const allBans = await db.loadAllBans();
   for (const b of allBans) {
     if (b.player_id) bannedPlayers.add(b.player_id);
     if (b.ip) bannedIps.add(b.ip);

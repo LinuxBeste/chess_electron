@@ -2,6 +2,7 @@ import { Swords, Share2, Trophy } from 'lucide-react';
 import ScrollReveal from './ScrollReveal';
 import Placeholder from './Placeholder';
 
+// Step-by-step guide explaining how to start playing
 const steps = [
   {
     icon: Swords,

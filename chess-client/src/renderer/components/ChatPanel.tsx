@@ -24,6 +24,7 @@ import {
   Users,
 } from 'lucide-react';
 
+// Chat panel for lobby, private, and group conversations
 function formatRelativeTime(ts: number): string {
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60000);

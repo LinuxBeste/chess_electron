@@ -11,7 +11,7 @@ interface Piece {
 
 const pieces: Piece[] = [];
 
-// inclusive random integer helper
+// Decorative floating chess pieces as page background
 function rand(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }

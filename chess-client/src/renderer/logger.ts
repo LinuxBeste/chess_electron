@@ -4,6 +4,7 @@ function formatArgs(args: unknown[]): unknown[] {
   return [PREFIX, ...args];
 }
 
+// Simple prefixed logger for info, warn, error, debug
 export default {
   info: (...args: unknown[]) => {
     console.info(...formatArgs(args));

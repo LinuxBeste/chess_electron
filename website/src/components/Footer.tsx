@@ -1,6 +1,7 @@
 import { Github, Heart } from 'lucide-react';
 import ScrollReveal from './ScrollReveal';
 
+// Site footer with links and attribution
 export default function Footer() {
   return (
     <footer className="py-10 px-6 text-center border-t border-border">

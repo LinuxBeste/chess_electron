@@ -12,6 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
+// Modal showing recent match history with results and opponent names
 export default function MatchHistoryDialog({ onClose }: Props) {
   const navigate = useNavigate();
   const [games, setGames] = useState<GameState[]>([]);
