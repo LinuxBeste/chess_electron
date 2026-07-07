@@ -7,7 +7,6 @@ CERT_FILE="$CERT_DIR/code-signing.crt"
 PFX_FILE="$CERT_DIR/code-signing.pfx"
 PFX_PASSWORD="${PFX_PASSWORD:-chess-client-selfsigned}"
 DAYS="${DAYS:-3650}"
-SUBJ="${SUBJ:-/CN=Chess Client Development/O=Chess App/OU=Development}"
 
 mkdir -p "$CERT_DIR"
 
@@ -19,7 +18,7 @@ fi
 
 echo "Generating self-signed code signing certificate..."
 
-CONFIG_FILE=$(mktemp)
+CONFIG_FILE=$(mktemp /tmp/openssl-codesign.XXXXXX)
 cat > "$CONFIG_FILE" << EOC
 distinguished_name = req_distinguished_name
 prompt = no
@@ -36,7 +35,7 @@ basicConstraints = critical,CA:FALSE
 EOC
 
 openssl req -x509 -newkey rsa:4096 -keyout "$KEY_FILE" -out "$CERT_FILE" \
-  -days "$DAYS" -nodes -subj "$SUBJ" \
+  -days "$DAYS" -nodes \
   -extensions codesign \
   -config "$CONFIG_FILE"
 

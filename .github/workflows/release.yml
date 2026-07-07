@@ -197,7 +197,7 @@ jobs:
           if [ -z "${{ secrets.WIN_CSC_LINK }}" ]; then
             echo "WIN_CSC_LINK not set, generating self-signed code signing cert"
             bash scripts/gen-cert.sh
-            PFX="$(pwd)/.certs/code-signing.pfx"
+            PFX="${GITHUB_WORKSPACE}/chess-client/.certs/code-signing.pfx"
             echo "CSC_LINK=$PFX" >> "$GITHUB_ENV"
             echo "CSC_KEY_PASSWORD=chess-client-selfsigned" >> "$GITHUB_ENV"
           else
@@ -222,7 +222,13 @@ jobs:
           found=0
           for f in *.AppImage *.deb *.dmg *.exe *.zip; do
             if [ -f "$f" ]; then
-              sha256sum "$f" >> "$GITHUB_WORKSPACE/chess-client-${{ matrix.os }}-sha256.txt"
+              if command -v sha256sum &>/dev/null; then
+                sha256sum "$f"
+              elif command -v shasum &>/dev/null; then
+                shasum -a 256 "$f"
+              else
+                openssl dgst -sha256 "$f" | sed 's/^SHA256(\(.*\))= *\(.*\)$/\2  \1/'
+              fi >> "$GITHUB_WORKSPACE/chess-client-${{ matrix.os }}-sha256.txt"
               found=1
             fi
           done

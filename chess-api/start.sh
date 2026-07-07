@@ -87,15 +87,15 @@ start_tunnel() {
       if [[ "${MODE:-docker}" == "native" ]]; then
         echo "Starting cloudflared tunnel on port $local_port ..."
         local tmpfile
-        tmpfile=$(mktemp)
+        tmpfile=$(mktemp /tmp/cloudflared.XXXXXX)
         cloudflared tunnel --url "http://localhost:$local_port" 2>&1 | tee "$tmpfile" &
         sleep 4
-        tunnel_url=$(grep -oP 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' "$tmpfile" 2>/dev/null | head -1 || true)
+        tunnel_url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' "$tmpfile" 2>/dev/null | head -1 || true)
         rm -f "$tmpfile"
       else
         echo "Waiting for cloudflared container URL ..."
-        for i in $(seq 1 10); do
-          tunnel_url=$(docker compose logs cloudflared 2>/dev/null | grep -oP 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' | head -1 || true)
+        for i in {1..10}; do
+          tunnel_url=$(docker compose logs cloudflared 2>/dev/null | grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' | head -1 || true)
           if [[ -n "$tunnel_url" ]]; then
             break
           fi
@@ -158,7 +158,7 @@ ensure_redis() {
       if redis-cli ping &>/dev/null; then
         echo "Redis started on localhost:6379"
         export REDIS_URL=redis://localhost:6379
-        _redis_pid=$(redis-cli ping >/dev/null && pgrep -f "redis-server.*6379" | head -1 || true)
+        _redis_pid=$(redis-cli ping >/dev/null && { command -v pgrep &>/dev/null && pgrep -f "redis-server.*6379" | head -1 || true; })
       else
         echo "Warning: Could not start redis-server" >&2
       fi
