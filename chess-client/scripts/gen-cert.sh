@@ -19,16 +19,28 @@ fi
 
 echo "Generating self-signed code signing certificate..."
 
+CONFIG_FILE=$(mktemp)
+cat > "$CONFIG_FILE" << EOC
+distinguished_name = req_distinguished_name
+prompt = no
+x509_extensions = codesign
+
+[req_distinguished_name]
+CN = Chess Client Development
+O = Chess App
+OU = Development
+
+[codesign]
+extendedKeyUsage = codeSigning
+basicConstraints = critical,CA:FALSE
+EOC
+
 openssl req -x509 -newkey rsa:4096 -keyout "$KEY_FILE" -out "$CERT_FILE" \
   -days "$DAYS" -nodes -subj "$SUBJ" \
   -extensions codesign \
-  -config <(
-    cat /etc/ssl/openssl.cnf 2>/dev/null || cat /usr/lib/ssl/openssl.cnf 2>/dev/null || echo ""
-    echo ""
-    echo "[codesign]"
-    echo "extendedKeyUsage = codeSigning"
-    echo "basicConstraints = critical,CA:FALSE"
-  )
+  -config "$CONFIG_FILE"
+
+rm -f "$CONFIG_FILE"
 
 openssl pkcs12 -export -out "$PFX_FILE" \
   -inkey "$KEY_FILE" -in "$CERT_FILE" \
