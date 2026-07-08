@@ -89,7 +89,6 @@ const Board = memo(function Board({
 
   const sqSize = boardSize / 8;
   const boardRectRef = useRef<DOMRect | null>(null);
-  const _rafRef = useRef<number | null>(null);
   const alwaysBottom = getSetting('alwaysWhiteBottom');
   const showCoordinates = getSetting('showCoordinates');
   const highlightLastMove = getSetting('highlightLastMove');

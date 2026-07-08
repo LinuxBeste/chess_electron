@@ -4,7 +4,6 @@ import logger from '../logger';
 import * as api from '../api';
 import { store } from '../store';
 import { t } from '../translate';
-import type { ApiError } from '../api';
 import type { ArchivedGame } from '../../types';
 import { ArrowLeft, Crown } from 'lucide-react';
 import { Skeleton, SkeletonAvatar, SkeletonCard, SkeletonLine } from '../components/Skeleton';
@@ -37,9 +36,6 @@ export default function ProfilePage() {
   const [archiveError, setArchiveError] = useState('');
 
   const [friendLoading, setFriendLoading] = useState(false);
-  const [editingDisplay, setEditingDisplay] = useState(false);
-  const [displayName, setDisplayName] = useState('');
-  const [_saving, _setSaving] = useState(false);
 
   const myId = store.get('playerId');
   const isMe = myId === playerId;
@@ -56,16 +52,10 @@ export default function ProfilePage() {
       .getPlayerProfile(playerId)
       .then((p) => {
         setProfile(p);
-        setDisplayName(p.displayName || '');
       })
       .catch((e) => {
-        const status = (e as ApiError).status;
-        let msg: string;
-        if (status === 401) msg = t('app.connectFailed');
-        else if (status === 403) msg = 'Access denied';
-        else if (status === 404) msg = t('common.unknown');
-        else msg = e.message || t('common.loading');
-        logger.error('Profile load failed', { playerId, status, msg });
+        const msg = e.message || t('common.loading');
+        logger.error('Profile load failed', { playerId, msg });
         setProfileError(msg);
       })
       .finally(() => setLoadingProfile(false));
@@ -106,21 +96,6 @@ export default function ProfilePage() {
       store.toast(e instanceof Error ? e.message : String(e), 'error');
     } finally {
       setFriendLoading(false);
-    }
-  }
-
-  async function _handleSaveDisplayName() {
-    if (!displayName.trim()) return;
-    _setSaving(true);
-    try {
-      await api.updateDisplayName(displayName.trim());
-      store.toast(t('settings.account.saved'), 'info');
-      setEditingDisplay(false);
-      if (profile) setProfile({ ...profile, displayName: displayName.trim() });
-    } catch (e: unknown) {
-      store.toast(e instanceof Error ? e.message : t('settings.account.saveFailed'), 'error');
-    } finally {
-      _setSaving(false);
     }
   }
 
@@ -254,11 +229,6 @@ export default function ProfilePage() {
             </div>
 
             <div className="profile-action-row" style={{ marginTop: 12 }}>
-              {isMe && !editingDisplay && (
-                <button className="btn btn-sm btn-ghost" onClick={() => setEditingDisplay(true)}>
-                  {t('profile.editProfile')}
-                </button>
-              )}
               {!isMe && profile.isRegistered && profile.friendStatus === 'none' && (
                 <button className="btn btn-sm btn-secondary" onClick={handleAddFriend} disabled={friendLoading}>
                   {friendLoading ? '...' : t('profile.addFriend')}
