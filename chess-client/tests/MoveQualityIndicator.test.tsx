@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import MoveQualityIndicator from '../src/renderer/components/MoveQualityIndicator';
 
 describe('MoveQualityIndicator', () => {

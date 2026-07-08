@@ -203,7 +203,7 @@ describe('chess client helpers', () => {
       black: { king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟' },
     };
     for (const color of ['white', 'black']) {
-      for (const [type, char] of Object.entries(chars[color])) {
+      for (const [, char] of Object.entries(chars[color])) {
         const svg = `<span class="piece-char" style="font-size:36px;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;text-shadow:0 2px 4px rgba(0,0,0,0.4);color:${color === 'white' ? '#ffffff' : '#1a1a1a'}">${char}</span>`;
         expect(svg).toContain(char);
         expect(svg).toContain('piece-char');

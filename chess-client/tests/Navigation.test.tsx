@@ -94,7 +94,7 @@ describe('Navigation', () => {
 
   test('renders nav-minimized class when minimized', () => {
     store.set('navMinimized', true);
-    render(
+    const { container } = render(
       <MemoryRouter>
         <Navigation />
       </MemoryRouter>,
@@ -116,7 +116,7 @@ describe('Navigation', () => {
 
   test('sets --nav-push-left to 0px when closed', () => {
     store.set('navOpen', false);
-    const { container } = render(
+    render(
       <MemoryRouter>
         <Navigation />
       </MemoryRouter>,
