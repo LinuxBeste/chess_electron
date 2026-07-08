@@ -1,4 +1,5 @@
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+import type { GameState } from '../src/types.js';
 
 const mockIsRedisEnabled = jest.fn();
 const mockSaveGame = jest.fn().mockResolvedValue(undefined);
@@ -38,7 +39,12 @@ jest.unstable_mockModule('../src/redis.js', () => ({
 
 const state = await import('../src/state.js');
 
-function makeGame(id: string, white?: string, black?: string): any {
+interface MockWs {
+  readyState: number;
+  send: jest.Mock;
+}
+
+function makeGame(id: string, white?: string, black?: string): Partial<GameState> {
   return {
     id,
     players: { white: white || 'w' + id, black: black || 'b' + id },
@@ -351,8 +357,8 @@ describe('state.ts', () => {
 
   describe('WS messaging', () => {
     test('sendToPlayerRaw sends to connected players', () => {
-      const mockWs = { readyState: 1, send: jest.fn() } as any;
-      const mockWs2 = { readyState: 1, send: jest.fn() } as any;
+      const mockWs: MockWs = { readyState: 1, send: jest.fn() };
+      const mockWs2: MockWs = { readyState: 1, send: jest.fn() };
       state.wsConnections.set('p1', new Set([mockWs, mockWs2]));
       state.sendToPlayerRaw('p1', 'hello');
       expect(mockWs.send).toHaveBeenCalledWith('hello');
@@ -360,8 +366,8 @@ describe('state.ts', () => {
     });
 
     test('sendToPlayerRaw skips closed connections', () => {
-      const mockOpen = { readyState: 1, send: jest.fn() } as any;
-      const mockClosed = { readyState: 3, send: jest.fn() } as any;
+      const mockOpen: MockWs = { readyState: 1, send: jest.fn() };
+      const mockClosed: MockWs = { readyState: 3, send: jest.fn() };
       state.wsConnections.set('p1', new Set([mockOpen, mockClosed]));
       state.sendToPlayerRaw('p1', 'data');
       expect(mockOpen.send).toHaveBeenCalled();
@@ -375,27 +381,27 @@ describe('state.ts', () => {
     });
 
     test('sendToPlayerRaw noop when no connections', () => {
-      const mockWs = { readyState: 1, send: jest.fn() } as any;
+      const mockWs: MockWs = { readyState: 1, send: jest.fn() };
       state.sendToPlayerRaw('nobody', 'data');
       expect(mockWs.send).not.toHaveBeenCalled();
     });
 
     test('sendToPlayer wraps JSON', () => {
-      const mockWs = { readyState: 1, send: jest.fn() } as any;
+      const mockWs: MockWs = { readyState: 1, send: jest.fn() };
       state.wsConnections.set('p1', new Set([mockWs]));
       state.sendToPlayer('p1', { type: 'test', payload: 42 });
       expect(mockWs.send).toHaveBeenCalledWith('{"type":"test","payload":42}');
     });
 
     test('sendToSpectators sends string data to spectators', () => {
-      const mockWs = { readyState: 1, send: jest.fn() } as any;
+      const mockWs: MockWs = { readyState: 1, send: jest.fn() };
       state.spectatorConnections.set('g1', new Set([mockWs]));
       state.sendToSpectators('g1', '{"type":"move"}');
       expect(mockWs.send).toHaveBeenCalledWith('{"type":"move"}');
     });
 
     test('sendToSpectators JSON-stringifies object data', () => {
-      const mockWs = { readyState: 1, send: jest.fn() } as any;
+      const mockWs: MockWs = { readyState: 1, send: jest.fn() };
       state.spectatorConnections.set('g1', new Set([mockWs]));
       state.sendToSpectators('g1', { type: 'move', from: 'e2' });
       expect(mockWs.send).toHaveBeenCalledWith('{"type":"move","from":"e2"}');

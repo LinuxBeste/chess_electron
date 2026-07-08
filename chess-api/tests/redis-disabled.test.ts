@@ -45,7 +45,7 @@ describe('Redis (disabled — no REDIS_URL)', () => {
   });
 
   test('saveGame is noop', async () => {
-    await redis.saveGame('g1', { id: 'g1' } as any);
+    await redis.saveGame('g1', { id: 'g1' } as never);
     expect(mockSetex).not.toHaveBeenCalled();
   });
 

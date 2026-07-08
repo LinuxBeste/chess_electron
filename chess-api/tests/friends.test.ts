@@ -1,5 +1,7 @@
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import type { Player } from '../src/types.js';
 import request from 'supertest';
 
 const mockDb = {
@@ -32,15 +34,15 @@ jest.unstable_mockModule('../src/db.js', () => mockDb);
 jest.unstable_mockModule('../src/game.js', () => mockGame);
 jest.unstable_mockModule('../src/logger.js', () => ({ default: mockLogger }));
 
-let authPlayer: any = { id: 'me', username: 'meuser', displayName: 'Me', tokens: ['tok'], isRegistered: true };
+let authPlayer: Player = { id: 'me', username: 'meuser', displayName: 'Me', tokens: ['tok'], isRegistered: true };
 
 jest.unstable_mockModule('../src/routes.js', () => ({
-  authMiddleware: (req: any, _res: any, next: any) => {
+  authMiddleware: (req: Request, _res: Response, next: NextFunction) => {
     req.player = authPlayer;
     next();
   },
-  banCheckMiddleware: (_req: any, _res: any, next: any) => next(),
-  rateLimitMiddleware: (_req: any, _res: any, next: any) => next(),
+  banCheckMiddleware: (_req: Request, _res: Response, next: NextFunction) => next(),
+  rateLimitMiddleware: (_req: Request, _res: Response, next: NextFunction) => next(),
 }));
 
 const router = (await import('../src/friends.js')).default;

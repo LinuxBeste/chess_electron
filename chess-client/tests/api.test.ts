@@ -51,7 +51,7 @@ describe('API client', () => {
   });
 
   test('register sends POST to /auth/register', async () => {
-    const mockFetch = jest.fn((...args: unknown[]) =>
+    const mockFetch = jest.fn((..._args: unknown[]) =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ playerId: 'p1', token: 't1' }),
@@ -70,7 +70,7 @@ describe('API client', () => {
   });
 
   test('request includes auth header when token is present', async () => {
-    const mockFetch = jest.fn((...args: unknown[]) =>
+    const mockFetch = jest.fn((..._args: unknown[]) =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({}),
@@ -144,7 +144,7 @@ describe('API client', () => {
 
   test('request uses custom base URL', async () => {
     setBaseUrl('https://server.com');
-    const mockFetch = jest.fn((...args: unknown[]) =>
+    const mockFetch = jest.fn((..._args: unknown[]) =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({}),
@@ -170,7 +170,7 @@ describe('API client', () => {
   });
 
   test('request with POST method sends body', async () => {
-    const mockFetch = jest.fn((...args: unknown[]) =>
+    const mockFetch = jest.fn((..._args: unknown[]) =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ id: 'g1' }),

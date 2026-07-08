@@ -138,7 +138,7 @@ describe('loginPlayer', () => {
     mockSaveToken.mockResolvedValue(undefined);
     const result = await player.loginPlayer('u1', 'mypassword');
     expect(result).toHaveProperty('success', true);
-    expect((result as any).playerId).toBe('p1');
+    expect((result as { success: boolean; playerId: string }).playerId).toBe('p1');
   });
 
   test('returns error for invalid username', async () => {
@@ -248,7 +248,7 @@ describe('deleteAccount', () => {
     player.players.set('p1', { id: 'p1', username: 'u1', displayName: 'U1', tokens: ['tok1'], isRegistered: true });
     player.tokenIndex.set('tok1', 'p1');
     player.tokenExpiry.set('tok1', Date.now() + 3600000);
-    mockTransaction.mockImplementation(async (cb: (client: any) => Promise<void>) => {
+    mockTransaction.mockImplementation(async (cb: (client: { query: jest.Mock }) => Promise<void>) => {
       await cb({ query: jest.fn().mockResolvedValue(undefined) });
     });
     const result = await player.deleteAccount('p1');
@@ -281,8 +281,8 @@ describe('getPlayerById / getAllPlayers', () => {
   });
 
   test('getAllPlayers returns all players', () => {
-    player.players.set('p1', {} as any);
-    player.players.set('p2', {} as any);
+    player.players.set('p1', { id: 'p1', username: '', displayName: '', tokens: [], isRegistered: false });
+    player.players.set('p2', { id: 'p2', username: '', displayName: '', tokens: [], isRegistered: false });
     expect(player.getAllPlayers()).toHaveLength(2);
   });
 });

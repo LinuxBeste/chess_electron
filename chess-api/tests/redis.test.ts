@@ -155,7 +155,7 @@ describe('Redis (enabled)', () => {
     });
 
     test('saveGame calls setex with TTL', async () => {
-      const game = { id: 'g1', status: 'active' } as any;
+      const game = { id: 'g1', status: 'active' };
       await redis.saveGame('g1', game);
       expect(mockSetex).toHaveBeenCalled();
       const call = mockSetex.mock.calls[mockSetex.mock.calls.length - 1];

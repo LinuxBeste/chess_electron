@@ -1,4 +1,5 @@
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+import type { GameState } from '../src/types.js';
 
 const mockSaveBan = jest.fn();
 const mockDeleteBanById = jest.fn();
@@ -75,7 +76,7 @@ describe('banPlayer', () => {
       status: 'active',
       players: { white: 'p1', black: 'p2' },
       winner: null,
-    } as any);
+    } as Partial<GameState> as GameState);
     mockSaveBan.mockResolvedValue(undefined);
 
     const result = await bans.banPlayer('p1');
@@ -112,7 +113,7 @@ describe('banPlayer', () => {
   test('handles waiting game status (calls removeGameById)', async () => {
     playerModule.players.set('p1', { id: 'p1', username: 'u1', displayName: 'U1', tokens: [], isRegistered: true });
     state.playerGameIndex.set('p1', new Set(['g1']));
-    state.games.set('g1', { id: 'g1', status: 'waiting', players: { white: 'p1' } } as any);
+    state.games.set('g1', { id: 'g1', status: 'waiting', players: { white: 'p1' } } as Partial<GameState> as GameState);
     mockSaveBan.mockResolvedValue(undefined);
     await bans.banPlayer('p1');
     expect(mockRemoveGameById).toHaveBeenCalledWith('g1');

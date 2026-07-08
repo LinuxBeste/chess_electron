@@ -17,7 +17,7 @@ jest.mock('lucide-react', () => ({
 
 jest.mock('../src/renderer/components/StatsDialog', () => ({
   __esModule: true,
-  default: ({ onClose }: { onClose: () => void }) => <div data-testid="stats-dialog">Stats</div>,
+  default: ({ onClose: _onClose }: { onClose: () => void }) => <div data-testid="stats-dialog">Stats</div>,
 }));
 
 jest.mock('../src/renderer/api', () => ({
@@ -94,8 +94,8 @@ describe('Navigation', () => {
 
   test('renders nav-minimized class when minimized', () => {
     store.set('navMinimized', true);
-    const { container } = render(
-      <MemoryRouter initialEntries={['/lobby']}>
+    render(
+      <MemoryRouter>
         <Navigation />
       </MemoryRouter>,
     );

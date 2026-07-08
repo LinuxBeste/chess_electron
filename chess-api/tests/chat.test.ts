@@ -1,5 +1,6 @@
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { WebSocket } from 'ws';
+import type { GameState } from '../src/types.js';
 
 const mockQuery = jest.fn();
 const mockGetDb = jest.fn(() => ({ query: mockQuery }));
@@ -78,7 +79,7 @@ describe('ensureLobbyConversation', () => {
   test('skips if lobby exists', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ id: 'lobby' }] });
     await chat.ensureLobbyConversation();
-    const insertCalls = mockQuery.mock.calls.filter((c: any) => String(c[0]).includes('INSERT'));
+    const insertCalls = mockQuery.mock.calls.filter((c: unknown[]) => String(c[0]).includes('INSERT'));
     expect(insertCalls).toHaveLength(0);
   });
 });
@@ -110,7 +111,9 @@ describe('handleLobbyChat', () => {
     playerModule.players.set('p1', { id: 'p1', username: 'u1', displayName: 'U1', tokens: [], isRegistered: true });
     mockQuery.mockResolvedValue({ rows: [] });
     await chat.handleLobbyChat('p1', 'a'.repeat(600));
-    const insertCalls = mockQuery.mock.calls.filter((c: any) => String(c[0]).includes('INSERT INTO chat_messages'));
+    const insertCalls = mockQuery.mock.calls.filter((c: unknown[]) =>
+      String(c[0]).includes('INSERT INTO chat_messages'),
+    );
     expect(insertCalls[0][1][3].length).toBe(500);
   });
 
@@ -126,7 +129,7 @@ describe('sendLobbyChatHistory', () => {
     mockQuery.mockResolvedValue({
       rows: [{ id: 'm1', sender_id: 'p1', text: 'Hi', created_at: 1000, display_name: 'U1' }],
     });
-    await chat.sendLobbyChatHistory(ws as any);
+    await chat.sendLobbyChatHistory(ws as unknown as WebSocket);
     const data = JSON.parse(ws.send.mock.calls[0][0]);
     expect(data.type).toBe('lobby_chat_history');
     expect(data.messages).toHaveLength(1);
@@ -346,7 +349,7 @@ describe('handleDisbandGroup', () => {
 describe('handleChatMessage', () => {
   test('sends to both players and spectators', () => {
     playerModule.players.set('p1', { id: 'p1', username: 'u1', displayName: 'U1', tokens: [], isRegistered: true });
-    mockGames.set('g1', { id: 'g1', players: { white: 'p1', black: 'p2' } } as any);
+    mockGames.set('g1', { id: 'g1', players: { white: 'p1', black: 'p2' } } as Partial<GameState> as GameState);
     const ws = {} as WebSocket;
     mockSpectatorConnections.set('g1', new Set([ws]));
 
@@ -365,14 +368,14 @@ describe('handleChatMessage', () => {
 
   test('does nothing for unknown player', () => {
     const ws = {} as WebSocket;
-    mockGames.set('g1', { id: 'g1', players: { white: 'p1', black: 'p2' } } as any);
+    mockGames.set('g1', { id: 'g1', players: { white: 'p1', black: 'p2' } } as Partial<GameState> as GameState);
     chat.handleChatMessage('g1', 'unknown', 'Hello', ws);
     expect(mockSendToPlayer).not.toHaveBeenCalled();
   });
 
   test('does nothing for non-player non-spectator', () => {
     playerModule.players.set('p3', { id: 'p3', username: 'u3', displayName: 'U3', tokens: [], isRegistered: true });
-    mockGames.set('g1', { id: 'g1', players: { white: 'p1', black: 'p2' } } as any);
+    mockGames.set('g1', { id: 'g1', players: { white: 'p1', black: 'p2' } } as Partial<GameState> as GameState);
     const ws = {} as WebSocket;
     chat.handleChatMessage('g1', 'p3', 'Hello', ws);
     expect(mockSendToPlayer).not.toHaveBeenCalled();
@@ -380,7 +383,7 @@ describe('handleChatMessage', () => {
 
   test('limits history to 50 messages', () => {
     playerModule.players.set('p1', { id: 'p1', username: 'u1', displayName: 'U1', tokens: [], isRegistered: true });
-    mockGames.set('g1', { id: 'g1', players: { white: 'p1', black: 'p2' } } as any);
+    mockGames.set('g1', { id: 'g1', players: { white: 'p1', black: 'p2' } } as Partial<GameState> as GameState);
     const ws = {} as WebSocket;
     mockSpectatorConnections.set('g1', new Set([ws]));
 
@@ -397,7 +400,7 @@ describe('handleChatMessage', () => {
 describe('sendChatHistory', () => {
   test('sends empty array when no history', () => {
     const ws = { send: jest.fn() };
-    chat.sendChatHistory('g1', ws as any);
+    chat.sendChatHistory('g1', ws as unknown as WebSocket);
     const data = JSON.parse(ws.send.mock.calls[0][0]);
     expect(data.messages).toEqual([]);
   });
@@ -405,7 +408,7 @@ describe('sendChatHistory', () => {
   test('sends stored history', () => {
     mockChatHistory.set('g1', [{ playerId: 'p1', username: 'U1', text: 'Hi', timestamp: 1000 }]);
     const ws = { send: jest.fn() };
-    chat.sendChatHistory('g1', ws as any);
+    chat.sendChatHistory('g1', ws as unknown as WebSocket);
     const data = JSON.parse(ws.send.mock.calls[0][0]);
     expect(data.messages).toHaveLength(1);
   });

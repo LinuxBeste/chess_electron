@@ -1188,21 +1188,21 @@ describe('endGame', () => {
 
 describe('registerSpectator', () => {
   test('registerSpectator returns false for non-existent game', () => {
-    const mockWs = { readyState: 1, send: jest.fn() } as any;
+    const mockWs = { readyState: WebSocket.OPEN, send: jest.fn() } as unknown as WebSocket;
     expect(game.registerSpectator('no-such-game', mockWs)).toBe(false);
   });
 
   test('registerSpectator returns false for inactive game', async () => {
     const pid = await registerPlayer('spec-inactive');
     const g = await game.createGame(pid);
-    const mockWs = { readyState: 1, send: jest.fn() } as any;
+    const mockWs = { readyState: WebSocket.OPEN, send: jest.fn() } as unknown as WebSocket;
     expect(game.registerSpectator(g.id, mockWs)).toBe(false);
   });
 
   test('registerSpectator rejects incorrect spectate code', async () => {
     const pid = await registerPlayer('spec-code-reject');
     const g = await game.createGame(pid, 'public', 'code');
-    const mockWs = { readyState: 1, send: jest.fn() } as any;
+    const mockWs = { readyState: WebSocket.OPEN, send: jest.fn() } as unknown as WebSocket;
     expect(game.registerSpectator(g.id, mockWs, 'wrong-code')).toBe(false);
   });
 
@@ -1211,7 +1211,7 @@ describe('registerSpectator', () => {
     const p2 = await registerPlayer('spec-code-ok-2');
     const g = await game.createGame(pid, 'public', 'code');
     await game.joinGame(g.id, p2);
-    const mockWs = { readyState: 1, send: jest.fn() } as any;
+    const mockWs = { readyState: WebSocket.OPEN, send: jest.fn() } as unknown as WebSocket;
     const result = game.registerSpectator(g.id, mockWs, g.spectateCode);
     expect(result).toBe(true);
     game.removeSpectator(g.id, mockWs);
