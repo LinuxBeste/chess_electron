@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+ (see `.nvmrc` — `nvm use` to switch automatically)
 - pnpm 9+ (`npm install -g pnpm`)
 - PostgreSQL 17+ (for tests)
 - Docker (optional, for containerized deployment)
@@ -12,6 +12,7 @@
 ```bash
 git clone <repo>
 cd chess-electron
+nvm use                  # switch to project Node version (see .nvmrc)
 pnpm install
 pnpm --filter chess-api build
 pnpm test
@@ -74,12 +75,14 @@ chess-client/        Electron desktop app (React + Webpack)
     renderer/        React app (pages, components, store, socket, api)
   tests/             Jest test suites (232 tests)
   docs/              Client documentation
+website/             Public marketing site (React + Vite + Tailwind v4)
 docs/                Shared documentation (environment variables)
 ```
 
 ## Code Style
 
 - TypeScript strict mode everywhere
+- `noUnusedLocals` and `noUnusedParameters` enforced across all packages
 - 2-space indent, single quotes, trailing commas, 120 print width
 - No semicolons (Prettier handles this)
 - Prefer `Map` over objects for dynamic dictionaries
@@ -89,8 +92,15 @@ Run before committing:
 
 ```bash
 pnpm format
+pnpm lint:typecheck      # lint + tsc --noEmit on all packages
+```
+
+or
+
+```bash
+pnpm format
 pnpm lint
-pnpm typecheck          # tsc --noEmit on all packages
+pnpm typecheck
 ```
 
 ## Testing
@@ -127,15 +137,15 @@ The test database is configured via `DATABASE_URL` (defaults to `postgresql://ch
 ## Pull Requests
 
 1. Make sure all tests pass (`pnpm test`)
-2. Run `pnpm format && pnpm lint && pnpm typecheck` — CI will reject if any fail
-3. Keep changes focused — one feature/fix per PR
-4. Update docs if adding or changing environment variables
+2. Run `pnpm lint:typecheck` — CI will reject if any fail
+3. Update `.env.example` and `docs/environment.md` if adding or changing env vars
+4. Keep changes focused — one feature/fix per PR
 5. If adding a new state-mutating game function, wrap it with `withGameLock` in `game.ts`
 
 ## Adding Environment Variables
 
 1. Add the `process.env` read with a sensible default in the relevant source file
-2. Add the variable to `chess-api/.env.example` with a comment
+2. Add the variable to the relevant `.env.example` file with a comment
 3. Add it to `docs/environment.md` with default, type, and description
 4. If it's user-facing, add a note in the root `README.md`
 
