@@ -63,6 +63,9 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
   return (
     <div
       className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('profile.title')}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

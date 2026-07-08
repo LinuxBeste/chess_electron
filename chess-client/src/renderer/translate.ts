@@ -27,13 +27,11 @@ export function setLanguage(lang: string): void {
 
 // Get the currently active language code
 export function getLanguage(): string {
-  logger.debug('Language accessed', currentLang);
   return currentLang;
 }
 
 // Translate a dot-separated key, optionally interpolating vars
 export function t(path: string, vars?: Record<string, string | number>): string {
-  logger.debug('Translation accessed', { lang: currentLang, key: path });
   const keys = path.split('.');
   let value: unknown = current;
   for (const key of keys) {

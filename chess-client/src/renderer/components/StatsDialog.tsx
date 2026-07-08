@@ -37,7 +37,13 @@ export default function StatsDialog({ onClose }: Props) {
   }
 
   return (
-    <div className="modal-overlay" onClick={handleOverlayClick}>
+    <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="stats-title"
+      onClick={handleOverlayClick}
+    >
       <div
         className="modal-card"
         style={{
@@ -49,7 +55,7 @@ export default function StatsDialog({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 0' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>
+          <h2 id="stats-title" style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>
             {t('stats.title')}
           </h2>
           <button

@@ -312,6 +312,9 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
   return (
     <div
       className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="friends-title"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -339,7 +342,9 @@ export default function FriendsTab({ onClose }: { onClose: () => void }) {
             padding: '16px 20px 0',
           }}
         >
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#e0e0e0', margin: 0 }}>{t('friends.title')}</h2>
+          <h2 id="friends-title" style={{ fontSize: 16, fontWeight: 700, color: '#e0e0e0', margin: 0 }}>
+            {t('friends.title')}
+          </h2>
           <button
             onClick={onClose}
             style={{

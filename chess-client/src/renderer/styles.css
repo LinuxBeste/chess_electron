@@ -54,6 +54,7 @@ body {
   --elevated: #222228;
   --accent: #4f8ef7;
   --accent-hover: #5d9af8;
+  --hover: rgba(255, 255, 255, 0.04);
   --danger: rgba(220, 80, 80, 0.9);
   --success: #22c55e;
   --text: #e0e0e0;
@@ -93,6 +94,7 @@ body {
   --elevated: #2d2d2d;
   --accent: #7f6df2;
   --accent-hover: #8b7cf5;
+  --hover: rgba(255, 255, 255, 0.05);
   --text: #d4d4d4;
   --muted: #999;
   --border: rgba(255, 255, 255, 0.07);

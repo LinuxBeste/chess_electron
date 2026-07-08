@@ -1329,7 +1329,13 @@ export default function SettingsDialog({ onClose }: Props) {
   }
 
   return (
-    <div className="modal-overlay" onClick={handleOverlayClick}>
+    <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-title"
+      onClick={handleOverlayClick}
+    >
       <div
         className="modal-card"
         style={{
@@ -1344,7 +1350,7 @@ export default function SettingsDialog({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 28px 0' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>
+          <h2 id="settings-title" style={{ fontSize: 20, fontWeight: 700, color: '#e0e0e0', letterSpacing: '-0.3px' }}>
             {t('settings.title')}
           </h2>
           <button

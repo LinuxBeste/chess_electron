@@ -31,11 +31,19 @@ export default function PromotionDialog({ color, onSelect }: PromotionDialogProp
   }
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('promotion.title')}
+      onClick={(e) => e.stopPropagation()}
+    >
       {' '}
       {/* block clicks from reaching board */}
       <div className="modal-card" style={{ padding: 24 }}>
-        <div className="promo-title">{t('promotion.title')}</div>
+        <div className="promo-title" id="promo-title">
+          {t('promotion.title')}
+        </div>
         <div className="promo-row">
           {pieces.map((pt) => (
             <div key={pt} className="promo-piece" onClick={() => handleSelect(pt)}>
