@@ -1,11 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PanelRightOpen, PanelRightClose } from 'lucide-react';
 import Square from '../components/Square';
 import { indicesToSquare, squareToIndices, cloneBoard, PIECE_CHARS } from '../chess';
 import type { Board as BoardType, PieceType } from '../../types';
 import { t } from '../translate';
 
-// Interactive board editor for setting up custom positions
 const PIECE_TYPES: (PieceType | null)[] = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn', null];
 
 function emptyBoard(): BoardType {
@@ -93,6 +93,15 @@ export default function BoardEditorPage() {
   const [fenInput, setFenInput] = useState('');
   const [fenError, setFenError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    setSidebarOpen(!mq.matches);
+    const handler = (e: MediaQueryListEvent) => setSidebarOpen(!e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   function hasBothKings(): boolean {
     let whiteKing = false;
@@ -178,19 +187,139 @@ export default function BoardEditorPage() {
 
   const files = flipped ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
   const ranks = flipped ? [0, 1, 2, 3, 4, 5, 6, 7] : [7, 6, 5, 4, 3, 2, 1, 0];
-  const sqSize = Math.min(56, (window.innerWidth - 40) / 8);
+  const sqSize = Math.min(80, (window.innerWidth - 380) / 8);
+
+  const sidebarContent = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16, overflowY: 'auto', flex: 1 }}>
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 4, display: 'block' }}>
+          {t('boardEditor.piece')}
+        </label>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {PIECE_TYPES.map((pt) => (
+            <button
+              key={pt ?? 'empty'}
+              className={`btn btn-sm ${selectedPiece === pt ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setSelectedPiece(pt)}
+              style={{ fontSize: 20, width: 40, height: 40, padding: 0 }}
+              title={pt ?? 'empty'}
+            >
+              {pt === null ? '✕' : PIECE_CHARS[selectedColor]?.[pt] || '?'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 4, display: 'block' }}>
+          {t('boardEditor.color')}
+        </label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className={`btn btn-sm ${selectedColor === 'white' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setSelectedColor('white')}
+            style={{ flex: 1 }}
+          >
+            {t('common.white')}
+          </button>
+          <button
+            className={`btn btn-sm ${selectedColor === 'black' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setSelectedColor('black')}
+            style={{ flex: 1 }}
+          >
+            {t('common.black')}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button className="btn btn-ghost btn-sm" onClick={setStartPos} style={{ flex: 1 }}>
+          {t('boardEditor.startPos')}
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={clearBoard} style={{ flex: 1 }}>
+          {t('boardEditor.clear')}
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={() => setFlipped(!flipped)} style={{ flex: 1 }}>
+          {t('boardEditor.flipBoard')}
+        </button>
+      </div>
+
+      <div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          <button className="btn btn-primary btn-sm" onClick={handleExportFen} style={{ flex: 1 }}>
+            {copied ? t('boardEditor.fenCopied') : t('boardEditor.exportFen')}
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="text"
+            value={fenInput}
+            onChange={(e) => {
+              setFenInput(e.target.value);
+              setFenError('');
+            }}
+            placeholder={t('boardEditor.fenPlaceholder')}
+            style={{
+              flex: 1,
+              padding: '6px 8px',
+              fontSize: 12,
+              background: '#1a1a1f',
+              border: '1px solid #333',
+              borderRadius: 6,
+              color: '#e0e0e0',
+            }}
+          />
+          <button className="btn btn-secondary btn-sm" onClick={handleImportFen}>
+            {t('boardEditor.importFen')}
+          </button>
+        </div>
+        {fenError && <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{fenError}</div>}
+      </div>
+
+      <button className="btn btn-primary" onClick={handlePlayFromPosition} style={{ marginTop: 'auto' }}>
+        {t('boardEditor.play')}
+      </button>
+    </div>
+  );
 
   return (
     <div
       className="page-container"
-      style={{ padding: 16, display: 'flex', gap: 16, flexDirection: 'column', alignItems: 'center' }}
+      style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
     >
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: '#e0e0e0', margin: 0 }}>{t('boardEditor.title')}</h2>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          width: '100%',
+          maxWidth: sidebarOpen ? 1000 : 800,
+          marginBottom: 16,
+        }}
+      >
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#e0e0e0', margin: 0, marginRight: 'auto' }}>
+          {t('boardEditor.title')}
+        </h2>
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={() => setSidebarOpen((v) => !v)}
+          style={{ padding: 6 }}
+          title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+        >
+          {sidebarOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+        </button>
+      </div>
 
       <div
-        style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', width: '100%', maxWidth: 800 }}
+        style={{
+          display: 'flex',
+          gap: 16,
+          width: '100%',
+          maxWidth: sidebarOpen ? 1000 : 800,
+          justifyContent: 'center',
+        }}
       >
-        <div style={{ position: 'relative', width: sqSize * 8, height: sqSize * 8 }}>
+        <div style={{ position: 'relative', width: sqSize * 8, height: sqSize * 8, flexShrink: 0 }}>
           {ranks.map((r) =>
             files.map((f) => {
               const fileIdx = f.charCodeAt(0) - 97;
@@ -221,96 +350,23 @@ export default function BoardEditorPage() {
           )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 200 }}>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 4, display: 'block' }}>
-              {t('boardEditor.piece')}
-            </label>
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-              {PIECE_TYPES.map((pt) => (
-                <button
-                  key={pt ?? 'empty'}
-                  className={`btn btn-sm ${selectedPiece === pt ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => setSelectedPiece(pt)}
-                  style={{ fontSize: 20, width: 40, height: 40, padding: 0 }}
-                  title={pt ?? 'empty'}
-                >
-                  {pt === null ? '✕' : PIECE_CHARS[selectedColor]?.[pt] || '?'}
-                </button>
-              ))}
-            </div>
+        {sidebarOpen && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              width: sqSize * 4,
+              height: sqSize * 8,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.2)',
+              overflow: 'hidden',
+            }}
+          >
+            {sidebarContent}
           </div>
-
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 4, display: 'block' }}>
-              {t('boardEditor.color')}
-            </label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                className={`btn btn-sm ${selectedColor === 'white' ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => setSelectedColor('white')}
-                style={{ flex: 1 }}
-              >
-                {t('common.white')}
-              </button>
-              <button
-                className={`btn btn-sm ${selectedColor === 'black' ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => setSelectedColor('black')}
-                style={{ flex: 1 }}
-              >
-                {t('common.black')}
-              </button>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn btn-ghost btn-sm" onClick={setStartPos} style={{ flex: 1 }}>
-              {t('boardEditor.startPos')}
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={clearBoard} style={{ flex: 1 }}>
-              {t('boardEditor.clear')}
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setFlipped(!flipped)} style={{ flex: 1 }}>
-              {t('boardEditor.flipBoard')}
-            </button>
-          </div>
-
-          <div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-              <button className="btn btn-primary btn-sm" onClick={handleExportFen} style={{ flex: 1 }}>
-                {copied ? t('boardEditor.fenCopied') : t('boardEditor.exportFen')}
-              </button>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                type="text"
-                value={fenInput}
-                onChange={(e) => {
-                  setFenInput(e.target.value);
-                  setFenError('');
-                }}
-                placeholder={t('boardEditor.fenPlaceholder')}
-                style={{
-                  flex: 1,
-                  padding: '6px 8px',
-                  fontSize: 12,
-                  background: '#1a1a1f',
-                  border: '1px solid #333',
-                  borderRadius: 6,
-                  color: '#e0e0e0',
-                }}
-              />
-              <button className="btn btn-secondary btn-sm" onClick={handleImportFen}>
-                {t('boardEditor.importFen')}
-              </button>
-            </div>
-            {fenError && <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{fenError}</div>}
-          </div>
-
-          <button className="btn btn-primary" onClick={handlePlayFromPosition} style={{ marginTop: 4 }}>
-            {t('boardEditor.play')}
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );

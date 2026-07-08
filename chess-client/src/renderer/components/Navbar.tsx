@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStoreValue } from '../hooks/useStore';
 import { store } from '../store';
 import { useNavigate } from 'react-router-dom';
+import { Menu, Settings, ScrollText, LogOut } from 'lucide-react';
 import SettingsDialog from './SettingsDialog';
 import MatchHistoryDialog from './MatchHistoryDialog';
 import FriendsTab from './FriendsTab';
@@ -127,19 +128,19 @@ export default function Navbar() {
           }}
           title="Sidebar"
         >
-          ☰
+          <Menu size={18} />
         </button>
         <button className="navbar-btn" onClick={handleOpenSettings} title={t('navbar.settings')}>
-          ⚙
+          <Settings size={18} />
         </button>
         {isLoggedIn && (
           <button className="navbar-btn" onClick={handleOpenHistory} title={t('navbar.history')}>
-            📋
+            <ScrollText size={18} />
           </button>
         )}
         {(isLoggedIn || isOffline) && (
           <button className="navbar-btn" onClick={handleLogout} title={t('navbar.logout')}>
-            ✕
+            <LogOut size={18} />
           </button>
         )}
         {!isLoggedIn && !isOffline && (
