@@ -229,15 +229,14 @@ router.post('/auth/register', ipRateLimitMiddleware, regRateLimit, async (req: R
       return;
     }
   }
-  try {
-    const result = await game.registerPlayer(username, password);
-    game.setPlayerIp(result.playerId, ip);
-    logger.audit('register', `username="${username}" registered=${result.isRegistered} ip="${ip}"`);
-    res.status(201).json({ playerId: result.playerId, token: result.token });
-  } catch (err) {
-    logger.error('Register error:', err instanceof Error ? err.message : String(err));
-    res.status(500).json({ error: 'Registration failed' });
+  const result = await game.registerPlayer(username, password);
+  if (!result.success) {
+    res.status(409).json({ error: result.error });
+    return;
   }
+  game.setPlayerIp(result.playerId, ip);
+  logger.audit('register', `username="${username}" registered=${result.isRegistered} ip="${ip}"`);
+  res.status(201).json({ playerId: result.playerId, token: result.token });
 });
 
 router.post('/auth/logout', authMiddleware, async (req: Request, res: Response) => {

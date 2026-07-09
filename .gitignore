@@ -22,6 +22,7 @@ yarn-error.log*
 
 # Web build output
 dist/
+chess-api/load-test/dist/
 
 # Electron release artifacts
 chess-client/release/

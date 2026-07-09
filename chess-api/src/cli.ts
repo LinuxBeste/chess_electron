@@ -1655,6 +1655,123 @@ be made via the .env file or the process environment.
     });
   });
 
+/* ─── Load Test ─── */
+
+program
+  .command('load-test')
+  .description('Run a k6 load test scenario against the running API')
+  .option(
+    '-s, --scenario <name>',
+    'Scenario to run (http_baseline, game_flow, websocket, engine, sustained, max_load)',
+    'sustained',
+  )
+  .option('-o, --output <file>', 'Export JSON summary to file')
+  .option('-v, --verbose', 'Verbose k6 output', false)
+  .addHelpText(
+    'after',
+    `
+Available scenarios:
+  http_baseline   Register, login, profile, read endpoints (6m, 1→100 VUs)
+  game_flow       Create game, join, move, resign (5m, 1→30 VUs)
+  websocket       Connect WS, send/receive chat (5m, 1→50 VUs)
+  engine          Bot games + engine analysis (4m30s, 1→10 VUs)
+  sustained       Mixed HTTP + WS + game workload (5m, 20 VUs)
+  max_load        Aggressive ramp-up to find breaking point (6m30s, 1→200 VUs)
+
+Requires the API to be running via Docker (start.sh).
+The k6 container connects to the API via Docker's internal network.
+
+Examples:
+  chess-admin load-test --scenario http_baseline
+  chess-admin load-test -s game_flow
+  chess-admin load-test -s sustained -o results.json
+  chess-admin load-test -s max_load
+`,
+  )
+  .action(async (opts: { scenario: string; output?: string; verbose: boolean }) => {
+    const { execSync } = await import('child_process');
+    const scriptDir = new URL('.', import.meta.url).pathname;
+    const loadTestDir = path.resolve(scriptDir, '..', 'load-test');
+    const distDir = path.resolve(loadTestDir, 'dist');
+
+    if (!fs.existsSync(loadTestDir)) {
+      console.error('Load test directory not found: ' + loadTestDir);
+      console.error('Run from the chess-api directory.');
+      process.exit(1);
+    }
+
+    try {
+      execSync('k6 version', { stdio: 'ignore' });
+    } catch {
+      console.error('k6 is not installed. Install it first:');
+      console.error('  apt install k6');
+      console.error('  or see https://k6.io/docs/getting-started/installation/');
+      process.exit(1);
+    }
+
+    const apiUrl = process.env.BASE_URL || 'http://localhost:25565';
+    const scenarios: Record<string, string> = {
+      http_baseline: 'http-baseline.js',
+      game_flow: 'game-flow.js',
+      websocket: 'websocket.js',
+      engine: 'engine.js',
+      sustained: 'sustained.js',
+      max_load: 'max-load.js',
+    };
+    const scriptFile = scenarios[opts.scenario];
+    if (!scriptFile) {
+      console.error('Unknown scenario: ' + opts.scenario);
+      console.error('Valid: ' + Object.keys(scenarios).join(', '));
+      process.exit(1);
+    }
+
+    const scriptPath = path.resolve(distDir, scriptFile);
+    if (!fs.existsSync(scriptPath)) {
+      if (fs.existsSync(path.resolve(loadTestDir, 'helpers.ts'))) {
+        console.log('Building load test scripts...');
+        try {
+          execSync(
+            'npx esbuild load-test/*.ts --bundle --platform=node --format=esm --outdir=load-test/dist --external:k6/http --external:k6/ws --external:k6 --external:k6/metrics --external:k6/execution --external:k6/data',
+            {
+              stdio: 'inherit',
+              cwd: path.resolve(scriptDir, '..'),
+            },
+          );
+        } catch {
+          console.error('Build failed.');
+          process.exit(1);
+        }
+      } else {
+        console.error('Scenario file not found: ' + scriptPath);
+        console.error('Run pnpm build:loadtest first.');
+        process.exit(1);
+      }
+    }
+
+    const args = ['run', '--env', 'BASE_URL=' + apiUrl];
+    if (opts.output) {
+      args.push('--summary-export', opts.output);
+    }
+    if (opts.verbose) {
+      args.push('--verbose');
+    }
+    args.push(scriptPath);
+
+    console.log('Starting load test: ' + opts.scenario);
+    console.log('Target: ' + apiUrl);
+    console.log('');
+
+    try {
+      execSync('k6 ' + args.map((a) => (a.includes(' ') ? '"' + a + '"' : a)).join(' '), {
+        stdio: 'inherit',
+        cwd: distDir,
+      });
+    } catch (err) {
+      const code = (err as { status?: number }).status ?? 1;
+      process.exit(code);
+    }
+  });
+
 /* ─── Parse ─── */
 
 if (process.env.DISABLE_CLI === 'true' || process.env.DISABLE_CLI === '1') {

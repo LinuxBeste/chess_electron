@@ -105,10 +105,15 @@ export function verifyPasswordAsync(password: string, stored: string): Promise<b
 export const BOT_PLAYER_ID = '_bot_';
 
 // Create user in DB, issue auth token
-export async function registerPlayer(
-  username: string,
-  password?: string,
-): Promise<{ playerId: string; token: string; isRegistered: boolean; displayName: string }> {
+export type RegisterResult =
+  | { success: true; playerId: string; token: string; isRegistered: boolean; displayName: string }
+  | { success: false; error: string };
+
+export async function registerPlayer(username: string, password?: string): Promise<RegisterResult> {
+  const existing = await db.getUserByUsername(username);
+  if (existing) {
+    return { success: false, error: 'Username already taken' };
+  }
   const playerId = uuidv4();
   const token = uuidv4();
   const isRegistered = !!password;
@@ -119,7 +124,7 @@ export async function registerPlayer(
   players.set(playerId, player);
   setToken(token, playerId);
   logger.info('Player registered: playerId=' + playerId + ' username="' + username + '" registered=' + isRegistered);
-  return { playerId, token, isRegistered, displayName: username };
+  return { success: true as const, playerId, token, isRegistered, displayName: username };
 }
 
 // Verify credentials, issue token, cache in memory

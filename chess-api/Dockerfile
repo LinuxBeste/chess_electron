@@ -14,6 +14,10 @@ RUN cd admin-frontend && pnpm install --no-frozen-lockfile
 # Generate CLI entry point
 RUN mkdir -p /app/bin && node -e "fs.writeFileSync('/app/bin/chess-admin.mjs', Buffer.from('#!/usr/bin/env node\nconst d=process.env.DISABLE_CLI;if(d===\"true\"||d===\"1\"){console.error(\"chess-admin: CLI is disabled (DISABLE_CLI is set)\");process.exit(1)}import{spawnSync}from\"child_process\";import{fileURLToPath,pathToFileURL}from\"url\";import path from\"path\";import fs from\"fs\";var dir=path.dirname(fileURLToPath(import.meta.url));var cli=path.join(dir,\"..\",\"dist\",\"cli.js\");if(fs.existsSync(cli)){await import(pathToFileURL(cli).href)}else{var tsx=path.join(dir,\"..\",\"node_modules\",\".bin\",\"tsx\");if(fs.existsSync(tsx)){var r=spawnSync(tsx,[path.join(dir,\"..\",\"src\",\"cli.ts\"),...process.argv.slice(2)],{stdio:\"inherit\",cwd:path.resolve(dir,\"..\")});process.exit(r.status??0)}else{console.error(\"chess-admin CLI not found. Run pnpm build first.\");process.exit(1)}}'));require('fs').chmodSync('/app/bin/chess-admin.mjs', 0o755)"
 
+# Build load-test TypeScript → JS dist/ for k6
+COPY load-test/ ./load-test/
+RUN pnpm build:loadtest
+
 # Build both (admin-frontend → dist/admin/ via Vite, then API via tsc)
 COPY tsconfig.json ./
 COPY src/ ./src/
@@ -23,7 +27,9 @@ FROM node:20-alpine AS runner
 RUN addgroup -S chess && adduser -S chess -G chess
 # su-exec is a tiny (~5KB) C binary that execs as a given user,
 # correctly becoming PID 1 for proper signal forwarding.
-RUN apk add --no-cache su-exec postgresql-client procps-ng
+RUN apk add --no-cache su-exec postgresql-client procps-ng curl && \
+    curl -sL https://github.com/grafana/k6/releases/download/v0.54.0/k6-v0.54.0-linux-amd64.tar.gz | \
+    tar -xz && mv k6-*/k6 /usr/local/bin/ && rm -rf k6-*
 WORKDIR /app
 COPY package.json ./
 COPY --from=builder /app/node_modules ./node_modules
