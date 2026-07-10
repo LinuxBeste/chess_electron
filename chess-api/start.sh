@@ -12,12 +12,13 @@ COMPOSE_PROFILES=()
 
 usage() {
   cat <<EOF
-Usage: $0 [--native | -n] [--redis] [--tunnel (cloudflared|ngrok)] [--port <num>] [--no-client-env]
+Usage: $0 [--native | -n] [--rebuild | -r] [--redis] [--tunnel (cloudflared|ngrok)] [--port <num>] [--no-client-env] [--help | -h]
 
 Start the chess-api server.
 
 Options:
   --native, -n        Run natively (pnpm dev) instead of Docker
+  --rebuild, -r       Force full rebuild (rm -rf dist for native; --no-cache for Docker)
   --redis             Enable Redis for state persistence and cross-instance WS messaging
   --tunnel <tool>     Expose via tunnel (cloudflared | ngrok)
   --port <num>        Local port (default: $PORT)
@@ -29,16 +30,20 @@ Examples:
   $0 --redis                      # Docker on port $PORT with Redis
   $0 --native                     # pnpm dev on port $PORT, no Redis
   $0 --native --redis             # pnpm dev on port $PORT with Redis
+  $0 --rebuild                    # Docker full rebuild + start
+  $0 --native --rebuild           # Native clean rebuild + start
   $0 --tunnel cloudflared         # Docker + cloudflared tunnel
   $0 --native --tunnel ngrok      # Native + ngrok tunnel
 EOF
   exit 0
 }
 
+REBUILD=false
 UPDATE_CLIENT_ENV=true
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --native|-n) MODE="native"; shift ;;
+    --rebuild|-r) REBUILD=true; shift ;;
     --redis) USE_REDIS=true; shift ;;
     --tunnel) TUNNEL="${2:-}"; shift 2 ;;
     --port) PORT="${2:-}"; shift 2 ;;
@@ -173,8 +178,13 @@ if [[ "${MODE:-docker}" == "native" ]]; then
   if "$USE_REDIS"; then
     ensure_redis
   fi
-  if [[ ! -d dist ]]; then
-    echo "Building first ..."
+  if "$REBUILD" || [[ ! -d dist ]]; then
+    if "$REBUILD"; then
+      echo "Rebuilding (clean) ..."
+      rm -rf dist
+    else
+      echo "Building first ..."
+    fi
     pnpm run build
   fi
   if [[ -n "$TUNNEL" ]]; then
@@ -189,6 +199,9 @@ else
   fi
   if "$USE_REDIS"; then
     export REDIS_URL=redis://redis:6379
+  fi
+  if "$REBUILD"; then
+    docker compose "${COMPOSE_PROFILES[@]}" build --no-cache
   fi
   docker compose "${COMPOSE_PROFILES[@]}" up --build -d
   if [[ -n "$TUNNEL" ]]; then
