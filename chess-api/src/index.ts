@@ -41,6 +41,7 @@ const CLEANUP_INTERVAL_MS = parseInt(process.env.CLEANUP_INTERVAL_MS ?? '60000',
 const LOG_CLEANUP_INTERVAL_MS = parseInt(process.env.LOG_CLEANUP_INTERVAL_MS ?? '86400000', 10);
 const TOKEN_CLEANUP_INTERVAL_MS = parseInt(process.env.TOKEN_CLEANUP_INTERVAL_MS ?? '3600000', 10);
 const ENABLE_HELMET = process.env.ENABLE_HELMET !== 'false';
+const ENABLE_HSTS = process.env.ENABLE_HSTS === 'true';
 const ENABLE_MORGAN = process.env.ENABLE_MORGAN !== 'false';
 const CHAT_MAX_LENGTH = parseInt(process.env.CHAT_MAX_LENGTH ?? '500', 10);
 
@@ -55,6 +56,7 @@ if (ENABLE_HELMET) {
   const cspStyleSrc = process.env.CSP_STYLE_SRC ? process.env.CSP_STYLE_SRC.split(',') : ["'self'", "'unsafe-inline'"];
   app.use(
     helmet({
+      crossOriginOpenerPolicy: false,
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
@@ -68,11 +70,13 @@ if (ENABLE_HELMET) {
           frameSrc: ["'none'"],
         },
       },
-      strictTransportSecurity: {
-        maxAge: parseInt(process.env.HSTS_MAX_AGE ?? String(365 * 24 * 3600), 10),
-        includeSubDomains: process.env.HSTS_INCLUDE_SUBDOMAINS !== 'false',
-        preload: process.env.HSTS_PRELOAD === 'true',
-      },
+      ...(ENABLE_HSTS && {
+        strictTransportSecurity: {
+          maxAge: parseInt(process.env.HSTS_MAX_AGE ?? String(365 * 24 * 3600), 10),
+          includeSubDomains: process.env.HSTS_INCLUDE_SUBDOMAINS !== 'false',
+          preload: process.env.HSTS_PRELOAD === 'true',
+        },
+      }),
     }),
   );
 }
