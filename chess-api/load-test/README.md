@@ -4,18 +4,37 @@ Uses [k6](https://k6.io) to stress-test the chess API.
 
 ## Setup
 
-### Option A: CLI (recommended)
+### Option A: Docker exec (recommended)
 
-The chess-admin CLI runs k6 directly on the host:
+k6 is pre-installed in the Docker image:
 
 ```bash
-# Run a scenario
+# Run any scenario
+docker exec -it chess-api-chess-api-1 chess-admin load-test -s http_baseline
+docker exec -it chess-api-chess-api-1 chess-admin load-test -s game_flow
+docker exec -it chess-api-chess-api-1 chess-admin load-test -s websocket
+docker exec -it chess-api-chess-api-1 chess-admin load-test -s engine
+docker exec -it chess-api-chess-api-1 chess-admin load-test -s sustained
+docker exec -it chess-api-chess-api-1 chess-admin load-test -s max_load
+# Export JSON summary
+docker exec -it chess-api-chess-api-1 chess-admin load-test -s sustained -o results.json
+```
+
+### Option B: CLI (host)
+
+The chess-admin CLI runs k6 directly on the host (requires k6 installed):
+
+```bash
+# Run any scenario
 chess-admin load-test -s http_baseline
 chess-admin load-test -s game_flow
+chess-admin load-test -s websocket
+chess-admin load-test -s engine
+chess-admin load-test -s sustained
 chess-admin load-test -s max_load
 ```
 
-### Option B: Native
+### Option C: Native
 
 ```bash
 # Install k6 (Debian/Ubuntu)
@@ -30,10 +49,10 @@ The default rate limits will block load test traffic. On the server,
 add these to your `.env` before starting:
 
 ```bash
-IP_RATE_LIMIT_MAX=1000
-REG_RATE_LIMIT_MAX=1000
-RATE_LIMIT_MAX_REQUESTS=1000
-WS_MAX_CONNECTIONS_PER_IP=100
+IP_RATE_LIMIT_MAX=100000
+REG_RATE_LIMIT_MAX=100000
+RATE_LIMIT_MAX_REQUESTS=100000
+WS_MAX_CONNECTIONS_PER_IP=1000
 ```
 
 Otherwise tests will hit 429/403 on registration and login.

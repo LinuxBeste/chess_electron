@@ -187,6 +187,9 @@ if [[ "${MODE:-docker}" == "native" ]]; then
     fi
     pnpm run build
   fi
+  if "$REBUILD" || [[ ! -d load-test/dist ]]; then
+    pnpm build:loadtest
+  fi
   if [[ -n "$TUNNEL" ]]; then
     start_tunnel "$PORT"
   fi
@@ -199,6 +202,9 @@ else
   fi
   if "$USE_REDIS"; then
     export REDIS_URL=redis://redis:6379
+  fi
+  if "$REBUILD" || [[ ! -d load-test/dist ]]; then
+    pnpm build:loadtest
   fi
   if "$REBUILD"; then
     docker compose "${COMPOSE_PROFILES[@]}" build --no-cache

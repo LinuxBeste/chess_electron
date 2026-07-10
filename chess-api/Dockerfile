@@ -35,6 +35,7 @@ COPY package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 RUN corepack enable && corepack prepare pnpm@9 --activate && pnpm prune --prod
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/load-test/dist ./load-test/dist
 COPY --from=builder /app/bin/chess-admin.mjs ./bin/chess-admin.mjs
 RUN ln -s /app/bin/chess-admin.mjs /usr/local/bin/chess-admin
 COPY scripts/ ./scripts/
