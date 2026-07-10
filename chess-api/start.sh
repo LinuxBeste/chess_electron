@@ -55,6 +55,54 @@ done
 
 export PORT
 
+ensure_node_version() {
+  local nvm_sh="${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+  if [[ ! -s "$nvm_sh" ]]; then
+    return 0
+  fi
+  # shellcheck source=/dev/null
+  . "$nvm_sh"
+
+  local current
+  current=$(node --version 2>/dev/null || true)
+  local required="22.13"
+
+  if [[ -z "$current" ]]; then
+    echo "Warning: Node not found" >&2
+    return 1
+  fi
+
+  # Strip 'v' prefix for comparison
+  local current_ver="${current#v}"
+
+  if printf '%s\n' "$required" "$current_ver" | sort -V -C; then
+    return 0
+  fi
+
+  echo "Node $current is below v$required. Checking nvm for a newer version ..."
+
+  local available
+  available=$(nvm ls --no-alias 2>/dev/null | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1 || true)
+
+  if [[ -z "$available" ]]; then
+    echo "Warning: No suitable Node version found via nvm (need >= $required)." >&2
+    return 1
+  fi
+
+  local available_ver="${available#v}"
+  if printf '%s\n' "$required" "$available_ver" | sort -V -C; then
+    echo "Switching to Node $available via nvm ..."
+    nvm use "$available" >/dev/null 2>&1 || true
+  else
+    echo "Warning: No suitable Node version found via nvm (need >= $required)." >&2
+    return 1
+  fi
+}
+
+if [[ "${MODE:-docker}" == "native" ]]; then
+  ensure_node_version
+fi
+
 if [[ -n "$TUNNEL" ]]; then
   COMPOSE_PROFILES+=(--profile tunnel)
 fi
