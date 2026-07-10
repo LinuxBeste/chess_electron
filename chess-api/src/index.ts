@@ -6,6 +6,8 @@ import morgan from 'morgan';
 import path from 'path';
 import fs from 'fs';
 import http from 'http';
+import https from 'https';
+import { execSync } from 'child_process';
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
 import routes from './routes.js';
@@ -28,6 +30,7 @@ export const app: Express = express();
 app.set('trust proxy', 1); // Respect X-Forwarded-For behind nginx
 
 const PORT = parseInt(process.env.PORT ?? '25565', 10);
+const HTTPS_PORT = parseInt(process.env.HTTPS_PORT ?? '25566', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 const CORS_CREDENTIALS = process.env.CORS_CREDENTIALS !== 'false';
@@ -42,6 +45,7 @@ const LOG_CLEANUP_INTERVAL_MS = parseInt(process.env.LOG_CLEANUP_INTERVAL_MS ?? 
 const TOKEN_CLEANUP_INTERVAL_MS = parseInt(process.env.TOKEN_CLEANUP_INTERVAL_MS ?? '3600000', 10);
 const ENABLE_HELMET = process.env.ENABLE_HELMET !== 'false';
 const ENABLE_HSTS = process.env.ENABLE_HSTS === 'true';
+const ENABLE_HTTPS = process.env.ENABLE_HTTPS === 'true';
 const ENABLE_MORGAN = process.env.ENABLE_MORGAN !== 'false';
 const CHAT_MAX_LENGTH = parseInt(process.env.CHAT_MAX_LENGTH ?? '500', 10);
 
@@ -669,8 +673,46 @@ if (!isTestEnv) {
     process.exit(1);
   });
 
+  let httpsServer: https.Server | null = null;
+
+  function getOrCreateCert(): { key: string; cert: string } | null {
+    const dataDir = path.join(path.resolve(__dirname, '..'), 'data');
+    const keyPath = path.join(dataDir, 'server.key');
+    const certPath = path.join(dataDir, 'server.cert');
+    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+      return { key: fs.readFileSync(keyPath, 'utf8'), cert: fs.readFileSync(certPath, 'utf8') };
+    }
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+      execSync(
+        `openssl req -x509 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" -days 3650 -nodes -subj "/CN=chess-api" 2>/dev/null`,
+        { stdio: 'pipe' },
+      );
+      const cert = { key: fs.readFileSync(keyPath, 'utf8'), cert: fs.readFileSync(certPath, 'utf8') };
+      logger.info('Self-signed HTTPS certificate generated at ' + dataDir);
+      return cert;
+    } catch (e) {
+      logger.error('Failed to generate HTTPS certificate: ' + e);
+      return null;
+    }
+  }
+
   async function startApp(): Promise<void> {
-    await monitoring.initSentry();
+    if (ENABLE_HTTPS) {
+      const cert = getOrCreateCert();
+      if (cert) {
+        httpsServer = https.createServer({ key: cert.key, cert: cert.cert }, app);
+        httpsServer.on('upgrade', (req, socket, head) => {
+          server.emit('upgrade', req, socket, head);
+        });
+        httpsServer.listen(HTTPS_PORT, HOST, () => {
+          logger.info('HTTPS server listening on ' + HOST + ':' + HTTPS_PORT);
+        });
+      } else {
+        logger.warn('ENABLE_HTTPS is true but could not load/generate certificate. HTTPS not available.');
+      }
+    }
+
     try {
       await redis.initRedis();
     } catch (e) {
@@ -720,7 +762,13 @@ if (!isTestEnv) {
     }
     await chat.ensureLobbyConversation().catch((e) => logger.error('Failed to ensure lobby conversation: ' + e));
     server.listen(PORT, HOST, () => {
-      logger.info('Chess API server listening on ' + HOST + ':' + PORT);
+      if (httpsServer) {
+        logger.info(
+          'Chess API server listening on ' + HOST + ':' + PORT + ' (HTTP) and ' + HOST + ':' + HTTPS_PORT + ' (HTTPS)',
+        );
+      } else {
+        logger.info('Chess API server listening on ' + HOST + ':' + PORT);
+      }
       logger.info('CORS origin: ' + CORS_ORIGIN);
       logger.info('WS heartbeat interval: ' + WS_HEARTBEAT_INTERVAL + 'ms');
     });
@@ -763,6 +811,10 @@ if (!isTestEnv) {
     state.saveActiveGamesToFile().catch((err) => logger.error('Final save failed: ' + err));
     server.close(() => {
       logger.info('HTTP server closed');
+      if (httpsServer) {
+        httpsServer.close();
+        logger.info('HTTPS server closed');
+      }
       const wss = (server as http.Server & { __wss: WebSocketServer | undefined }).__wss;
       if (wss) {
         wss.clients.forEach((client) => client.close(1001, 'Server shutting down'));

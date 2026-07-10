@@ -27,7 +27,7 @@ FROM node:20-alpine AS runner
 RUN addgroup -S chess && adduser -S chess -G chess
 # su-exec is a tiny (~5KB) C binary that execs as a given user,
 # correctly becoming PID 1 for proper signal forwarding.
-RUN apk add --no-cache su-exec postgresql-client procps-ng curl wget && \
+RUN apk add --no-cache su-exec postgresql-client procps-ng curl wget openssl && \
     curl -sL https://github.com/grafana/k6/releases/download/v0.54.0/k6-v0.54.0-linux-amd64.tar.gz | \
     tar -xz && mv k6-*/k6 /usr/local/bin/ && rm -rf k6-*
 WORKDIR /app
