@@ -57,6 +57,7 @@ if (ENABLE_HELMET) {
   app.use(
     helmet({
       crossOriginOpenerPolicy: false,
+      originAgentCluster: false,
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
