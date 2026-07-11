@@ -1,9 +1,3 @@
-# Caddyfile — unused when Cloudflare Tunnel is active.
-# Only needed if you have a domain + port forwarding.
-#
-# Replace your-domain.com with your actual domain,
-# then uncomment the caddy service in docker-compose.yml.
-
-# your-domain.com {
-#     reverse_proxy chess-api:3000
-# }
+:80 {
+    reverse_proxy chess-api:25565
+}

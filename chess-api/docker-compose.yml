@@ -83,6 +83,19 @@ services:
       retries: 3
       start_period: 10s
 
+  # ─── Caddy reverse proxy ───────────────────────────
+  caddy:
+    image: caddy:alpine
+    restart: unless-stopped
+    depends_on:
+      - chess-api
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+
   # ─── Cloudflare Tunnel (optional, enabled via --profile tunnel) ─
   cloudflared:
     profiles: ["tunnel"]
@@ -96,3 +109,5 @@ volumes:
   chess-pg-data:
   pgadmin-data:
   redis-data:
+  caddy-data:
+  caddy-config:

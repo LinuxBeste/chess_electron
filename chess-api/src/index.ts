@@ -62,6 +62,7 @@ if (ENABLE_HELMET) {
     helmet({
       crossOriginOpenerPolicy: false,
       originAgentCluster: false,
+      strictTransportSecurity: false,
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
@@ -73,6 +74,7 @@ if (ENABLE_HELMET) {
           objectSrc: ["'none'"],
           mediaSrc: ["'none'"],
           frameSrc: ["'none'"],
+          'upgrade-insecure-requests': null,
         },
       },
       ...(ENABLE_HSTS && {
