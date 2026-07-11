@@ -340,6 +340,7 @@ export type TranslationKeys = {
   settings: {
     title: string;
     reset: string;
+    searchPlaceholder: string;
     tabs: {
       general: string;
       board: string;
@@ -926,6 +927,7 @@ export const en: TranslationKeys = {
   settings: {
     title: 'Settings',
     reset: 'Reset to Defaults',
+    searchPlaceholder: 'Search settings...',
     tabs: {
       general: 'General',
       board: 'Board',
@@ -1513,6 +1515,7 @@ export const de: TranslationKeys = {
   settings: {
     title: 'Einstellungen',
     reset: 'Zurücksetzen',
+    searchPlaceholder: 'Einstellungen durchsuchen...',
     tabs: {
       general: 'Allgemein',
       board: 'Brett',
