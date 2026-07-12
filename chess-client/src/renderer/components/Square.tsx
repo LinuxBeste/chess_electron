@@ -89,7 +89,7 @@ function Square({
         <span
           className="piece-char"
           style={{
-            fontSize: 36,
+            fontSize: Math.round(sqSize * 0.75),
             lineHeight: 1,
             display: 'flex',
             alignItems: 'center',

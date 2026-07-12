@@ -42,7 +42,7 @@ function CreateTournamentMenu({ onClose }: { onClose: () => void }) {
         position: 'absolute',
         top: '100%',
         right: 0,
-        width: 340,
+        width: 'min(340px, calc(100vw - 48px))',
         padding: 16,
         marginTop: 6,
         zIndex: 100,

@@ -680,7 +680,7 @@ body {
   box-shadow: var(--shadow-lg);
   padding: 32px;
   text-align: center;
-  max-width: 400px;
+  max-width: min(400px, 90vw);
   width: 90%;
   animation: scaleIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -726,8 +726,9 @@ body {
   box-shadow: var(--shadow);
   animation: slideUp 200ms ease;
   pointer-events: auto;
-  max-width: 480px;
+  max-width: min(480px, calc(100vw - 32px));
   text-align: center;
+  word-break: break-word;
 }
 .toast-error {
   background: rgba(220, 50, 50, 0.95);
@@ -818,14 +819,15 @@ body {
 /* ─── Board ─── */
 .board-container {
   position: relative;
-  width: min(75vh, calc(100vw - 300px), 700px);
-  height: min(75vh, calc(100vw - 300px), 700px);
+  width: min(75vh, 100cqw, 700px);
+  height: min(75vh, 100cqw, 700px);
   border-radius: var(--radius-sm);
   overflow: hidden;
   box-shadow:
     inset 0 2px 8px rgba(0, 0, 0, 0.3),
     var(--shadow);
   user-select: none;
+  isolation: isolate;
 }
 .square {
   position: absolute;
@@ -922,6 +924,9 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
+  container-type: inline-size;
 }
 .game-btn-row {
   display: flex;
@@ -955,6 +960,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
+  min-width: 0;
+}
+.sidebar * {
+  min-width: 0;
 }
 
 /* ─── Chat ─── */
@@ -1071,7 +1081,7 @@ body {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  max-width: min(75vh, calc(100vw - 300px), 700px);
+  max-width: min(75vh, 100cqw, 700px);
   padding: 10px 16px;
   background: var(--surface);
   border-radius: var(--radius-sm);
@@ -1223,11 +1233,11 @@ body {
     gap: 6px;
   }
   .board-container {
-    width: min(80vw, calc(100vh - 400px)) !important;
-    height: min(80vw, calc(100vh - 400px)) !important;
+    width: min(80vw, 100cqw, calc(100vh - 400px)) !important;
+    height: min(80vw, 100cqw, calc(100vh - 400px)) !important;
   }
   .player-bar {
-    max-width: min(80vw, calc(100vh - 400px)) !important;
+    max-width: min(80vw, 100cqw, calc(100vh - 400px)) !important;
     padding: 5px 10px;
     font-size: 12px;
   }
@@ -1312,11 +1322,11 @@ body {
     gap: 4px;
   }
   .board-container {
-    width: min(85vw, calc(100vh - 350px)) !important;
-    height: min(85vw, calc(100vh - 350px)) !important;
+    width: min(85vw, 100cqw, calc(100vh - 350px)) !important;
+    height: min(85vw, 100cqw, calc(100vh - 350px)) !important;
   }
   .player-bar {
-    max-width: min(85vw, calc(100vh - 350px)) !important;
+    max-width: min(85vw, 100cqw, calc(100vh - 350px)) !important;
     padding: 4px 8px;
     font-size: 11px;
   }
@@ -1409,11 +1419,11 @@ body {
     gap: 3px;
   }
   .board-container {
-    width: min(90vw, calc(100vh - 280px)) !important;
-    height: min(90vw, calc(100vh - 280px)) !important;
+    width: min(90vw, 100cqw, calc(100vh - 280px)) !important;
+    height: min(90vw, 100cqw, calc(100vh - 280px)) !important;
   }
   .player-bar {
-    max-width: min(90vw, calc(100vh - 280px)) !important;
+    max-width: min(90vw, 100cqw, calc(100vh - 280px)) !important;
     padding: 2px 6px;
     font-size: 10px;
   }
@@ -1581,6 +1591,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow-y: auto;
 }
 .profile-body {
   display: flex;
@@ -1607,6 +1618,7 @@ body {
   gap: 24px;
   position: sticky;
   top: 20px;
+  overflow: hidden;
 }
 .profile-header-row {
   display: flex;
@@ -1953,7 +1965,8 @@ body {
 .sidebar-slide-in {
   top: 0;
   right: 0;
-  width: clamp(320px, 30vw, 420px);
+  width: clamp(280px, 30vw, 420px);
+  max-width: calc(100vw - 16px);
   height: 100%;
   animation: slideInRight 0.2s ease-out;
 }
@@ -1977,7 +1990,7 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 70vh;
+  height: min(70vh, 400px);
   border-radius: 16px 16px 0 0;
   animation: slideUp 0.25s ease-out;
 }
@@ -2314,10 +2327,15 @@ body {
   font-weight: 600;
   font-size: 11px;
   margin-right: 6px;
+  flex-shrink: 0;
 }
 
 .sidebar-chat-text {
   color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .sidebar-chat-time {

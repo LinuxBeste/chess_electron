@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PanelRightOpen, PanelRightClose } from 'lucide-react';
 import Square from '../components/Square';
@@ -87,6 +87,8 @@ function fenToBoard(fen: string): BoardType | null {
 export default function BoardEditorPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [boardWidth, setBoardWidth] = useState(() => Math.min(80, (window.innerWidth - 380) / 8) * 8);
   const [board, setBoard] = useState<BoardType>(() => {
     const fenParam = searchParams.get('fen');
     if (fenParam) {
@@ -127,6 +129,20 @@ export default function BoardEditorPage() {
     const handler = (e: MediaQueryListEvent) => setSidebarOpen(!e.matches);
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  /* Track container width for responsive board sizing */
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
+        setBoardWidth(w);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   function hasBothKings(): boolean {
@@ -213,7 +229,10 @@ export default function BoardEditorPage() {
 
   const files = flipped ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
   const ranks = flipped ? [0, 1, 2, 3, 4, 5, 6, 7] : [7, 6, 5, 4, 3, 2, 1, 0];
-  const sqSize = Math.min(80, (window.innerWidth - 380) / 8);
+  const useSidebar = sidebarOpen && boardWidth > 400;
+  const sqSize = useSidebar
+    ? Math.max(20, Math.min(80, (boardWidth - 16) / 12))
+    : Math.max(20, Math.min(80, boardWidth / 8));
 
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16, overflowY: 'auto', flex: 1 }}>
@@ -337,6 +356,7 @@ export default function BoardEditorPage() {
       </div>
 
       <div
+        ref={boardRef}
         style={{
           display: 'flex',
           gap: 16,
@@ -376,18 +396,34 @@ export default function BoardEditorPage() {
           )}
         </div>
 
-        {sidebarOpen && (
+        {useSidebar && (
           <div
             style={{
               display: 'flex',
               flexDirection: 'column',
-              width: sqSize * 4,
+              width: Math.max(160, Math.min(280, boardWidth * 0.35)),
               height: sqSize * 8,
+              minHeight: 300,
               background: 'var(--surface)',
               border: '1px solid var(--border)',
               borderRadius: 8,
               boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.2)',
               overflow: 'hidden',
+              flexShrink: 0,
+            }}
+          >
+            {sidebarContent}
+          </div>
+        )}
+        {sidebarOpen && !useSidebar && (
+          <div
+            style={{
+              width: '100%',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              overflow: 'hidden',
+              flexShrink: 0,
             }}
           >
             {sidebarContent}

@@ -950,8 +950,10 @@ export default function GamePage() {
                   borderRadius: 8,
                   boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                   minWidth: 160,
+                  maxHeight: 'calc(100vh - 120px)',
+                  overflowY: 'auto',
                   padding: 4,
-                  zIndex: 100,
+                  zIndex: 3000,
                   animation: 'fadeIn 100ms ease',
                 }}
               >

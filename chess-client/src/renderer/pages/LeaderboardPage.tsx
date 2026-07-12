@@ -148,7 +148,7 @@ export default function LeaderboardPage() {
                     )}
                   </div>
                   <div
-                    style={{ flex: '0 0 170px', cursor: 'pointer', minWidth: 0 }}
+                    style={{ flex: '1 1 auto', cursor: 'pointer', minWidth: 0, maxWidth: 200 }}
                     onClick={() => setProfilePlayerId(e.playerId)}
                   >
                     <div

@@ -293,6 +293,8 @@ export default function LobbyPage() {
               gap: 8,
               paddingRight: 4,
               minHeight: 80,
+              maxHeight: '40vh',
+              flexShrink: 0,
             }}
           >
             {liveGames.map((game) => {

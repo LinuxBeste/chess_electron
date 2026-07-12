@@ -82,7 +82,7 @@ const Chat = memo(function Chat({ gameId }: ChatProps) {
       <h3 className="sidebar-title" style={{ marginTop: 8 }}>
         {t('chat.title')}
       </h3>
-      <div ref={listRef} className="sidebar-panel" style={{ minHeight: 60, maxHeight: 150, fontSize: 12, padding: 8 }}>
+      <div ref={listRef} className="sidebar-panel" style={{ flex: 1, fontSize: 12, padding: 8, minHeight: 0 }}>
         {messages.map((msg) => {
           const isMe = msg.playerId === store.get('playerId');
           return (

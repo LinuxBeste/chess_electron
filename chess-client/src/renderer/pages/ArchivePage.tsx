@@ -131,7 +131,10 @@ export default function ArchivePage() {
                     borderLeft: '4px solid ' + borderColor,
                   }}
                 >
-                  <div style={{ flex: 1, cursor: 'pointer', minWidth: 0 }} onClick={() => navigate('/result/' + g.id)}>
+                  <div
+                    style={{ flex: 1, cursor: 'pointer', minWidth: 0, overflow: 'hidden' }}
+                    onClick={() => navigate('/result/' + g.id)}
+                  >
                     <div
                       style={{
                         fontWeight: 500,
@@ -141,11 +144,31 @@ export default function ArchivePage() {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      <span style={{ color: g.winner === 'white' ? 'var(--text)' : 'var(--muted)' }}>
+                      <span
+                        style={{
+                          color: g.winner === 'white' ? 'var(--text)' : 'var(--muted)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: '40%',
+                          display: 'inline-block',
+                          verticalAlign: 'middle',
+                        }}
+                      >
                         <Crown size={14} style={{ marginRight: 2, verticalAlign: 'middle' }} /> {g.white_display_name}
                       </span>
-                      <span style={{ color: 'var(--muted)', margin: '0 6px' }}>vs</span>
-                      <span style={{ color: g.winner === 'black' ? 'var(--text)' : 'var(--muted)' }}>
+                      <span style={{ color: 'var(--muted)', margin: '0 6px', flexShrink: 0 }}>vs</span>
+                      <span
+                        style={{
+                          color: g.winner === 'black' ? 'var(--text)' : 'var(--muted)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: '40%',
+                          display: 'inline-block',
+                          verticalAlign: 'middle',
+                        }}
+                      >
                         <Crown size={14} style={{ marginRight: 2, verticalAlign: 'middle' }} /> {g.black_display_name}
                       </span>
                     </div>
