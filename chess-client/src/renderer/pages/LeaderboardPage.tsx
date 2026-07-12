@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import logger from '../logger';
 import * as api from '../api';
 import { t } from '../translate';
@@ -26,9 +27,13 @@ const rankIcons = [
 
 export default function LeaderboardPage() {
   const myId = store.get('playerId');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get('page');
+    return p ? Math.max(1, parseInt(p, 10) || 1) : 1;
+  });
   const [loading, setLoading] = useState(true);
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const limit = 50;
@@ -36,6 +41,21 @@ export default function LeaderboardPage() {
   useEffect(() => {
     logger.info('LeaderboardPage mounted');
     load();
+  }, [page]);
+
+  useEffect(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (page > 1) {
+          next.set('page', String(page));
+        } else {
+          next.delete('page');
+        }
+        return next;
+      },
+      { replace: true },
+    );
   }, [page]);
 
   async function load() {

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PanelRightOpen, PanelRightClose } from 'lucide-react';
 import Square from '../components/Square';
 import { indicesToSquare, squareToIndices, cloneBoard, PIECE_CHARS } from '../chess';
@@ -86,7 +86,15 @@ function fenToBoard(fen: string): BoardType | null {
 
 export default function BoardEditorPage() {
   const navigate = useNavigate();
-  const [board, setBoard] = useState<BoardType>(emptyBoard);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [board, setBoard] = useState<BoardType>(() => {
+    const fenParam = searchParams.get('fen');
+    if (fenParam) {
+      const parsed = fenToBoard(fenParam);
+      if (parsed) return parsed;
+    }
+    return emptyBoard();
+  });
   const [selectedPiece, setSelectedPiece] = useState<PieceType | null>('king');
   const [selectedColor, setSelectedColor] = useState<'white' | 'black'>('white');
   const [flipped, setFlipped] = useState(false);
@@ -94,6 +102,24 @@ export default function BoardEditorPage() {
   const [fenError, setFenError] = useState('');
   const [copied, setCopied] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  /* Sync board FEN to ?fen= URL param */
+  useEffect(() => {
+    const fen = boardToFen(board);
+    const defaultFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (fen !== defaultFen) {
+          next.set('fen', fen);
+        } else {
+          next.delete('fen');
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  }, [board]);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');

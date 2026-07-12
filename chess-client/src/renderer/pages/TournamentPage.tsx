@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import logger from '../logger';
 import * as api from '../api';
 import { store } from '../store';
@@ -282,6 +283,7 @@ function ManageTournamentDialog({
 
 export default function TournamentPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const myId = store.get('playerId');
   const [tournaments, setTournaments] = useState<TournamentData[]>([]);
   const [selected, setSelected] = useState<TournamentData | null>(null);
@@ -293,6 +295,17 @@ export default function TournamentPage() {
 
   useEffect(() => {
     load();
+  }, []);
+
+  /* On mount, auto-open tournament from ?id= param */
+  useEffect(() => {
+    const id = searchParams.get('id');
+    if (id) {
+      api
+        .getTournament(id)
+        .then((t) => setSelected(t))
+        .catch(() => {});
+    }
   }, []);
 
   function handleToggleCreate() {
@@ -319,6 +332,14 @@ export default function TournamentPage() {
     try {
       const t = await api.getTournament(id);
       setSelected(t);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('id', id);
+          return next;
+        },
+        { replace: true },
+      );
     } catch {
       logger.warn('Failed to load tournament');
     }
@@ -461,7 +482,20 @@ export default function TournamentPage() {
     return (
       <div className="page-container" style={{ padding: '0 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0 16px' }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => setSelected(null)}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setSelected(null);
+              setSearchParams(
+                (prev) => {
+                  const next = new URLSearchParams(prev);
+                  next.delete('id');
+                  return next;
+                },
+                { replace: true },
+              );
+            }}
+          >
             <ArrowLeft size={16} style={{ marginRight: 4 }} /> Back
           </button>
           <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{selected.name}</h2>

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import logger from '../logger';
 import * as api from '../api';
 import { t } from '../translate';
-import { useNavigate } from 'react-router-dom';
 import { Crown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SkeletonLine } from '../components/Skeleton';
 import type { ArchivedGame } from '../../types';
@@ -10,14 +10,33 @@ import type { ArchivedGame } from '../../types';
 // Archive page: browse and filter completed games
 export default function ArchivePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [games, setGames] = useState<ArchivedGame[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get('page');
+    return p ? Math.max(1, parseInt(p, 10) || 1) : 1;
+  });
   const [loading, setLoading] = useState(true);
-  const [filterPlayer, setFilterPlayer] = useState('');
-  const [debouncedFilter, setDebouncedFilter] = useState('');
+  const [filterPlayer, setFilterPlayer] = useState(() => searchParams.get('player') || '');
+  const [debouncedFilter, setDebouncedFilter] = useState(() => searchParams.get('player') || '');
   const abortRef = useRef<AbortController | null>(null);
   const limit = 20;
+
+  useEffect(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (page > 1) next.set('page', String(page));
+        else next.delete('page');
+        const sanitized = debouncedFilter.trim().slice(0, 100);
+        if (sanitized) next.set('player', sanitized);
+        else next.delete('player');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [page, debouncedFilter]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedFilter(filterPlayer), 300);
@@ -66,7 +85,7 @@ export default function ArchivePage() {
           style={{ flex: 1, fontSize: 13 }}
           value={filterPlayer}
           onChange={(e) => {
-            setFilterPlayer(e.target.value);
+            setFilterPlayer(e.target.value.slice(0, 100));
             setPage(1);
           }}
         />

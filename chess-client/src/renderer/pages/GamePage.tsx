@@ -45,7 +45,7 @@ import { SkeletonBoard } from '../components/Skeleton';
 
 export default function GamePage() {
   const { gameId } = useParams<{ gameId: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [game, setGame] = useState<GameState | null>(null);
   const [board, setBoard] = useState<BoardType>([]);
@@ -161,7 +161,6 @@ export default function GamePage() {
       return;
     }
     logger.info('GamePage mounted', { gameId, isSpectator });
-    window.location.hash = `#game/${gameId}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
   }, []);
 
   useEffect(() => {
@@ -261,6 +260,22 @@ export default function GamePage() {
     }
   }, [game?.status]);
 
+  /* Sync reviewIndex to ?move= URL param */
+  useEffect(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (reviewIndex !== null && game && reviewIndex >= -1 && reviewIndex < game.boardHistory.length) {
+          next.set('move', String(reviewIndex));
+        } else {
+          next.delete('move');
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  }, [reviewIndex]);
+
   /* Close menu on click outside */
   useEffect(() => {
     if (!menuOpen) return;
@@ -295,7 +310,27 @@ export default function GamePage() {
     setLastMove(g.lastMove);
     setMoves(g.moveHistory);
     setWaiting(g.status === 'waiting');
-    setReviewIndex(null);
+    const moveParam = searchParams.get('move');
+    if (moveParam !== null && g.boardHistory.length > 0) {
+      const idx = parseInt(moveParam, 10);
+      if (!isNaN(idx) && idx >= -1 && idx < g.boardHistory.length) {
+        setReviewIndex(idx);
+        if (idx === -1) {
+          setBoard(createInitialBoard());
+          setLastMove(null);
+          setMoves([]);
+        } else {
+          const snapshot = g.boardHistory[idx];
+          setBoard(deserializeBoard(snapshot.board));
+          setLastMove(extractLastMoveFromHistory(g.moveHistory, idx));
+          setMoves(g.moveHistory.slice(0, idx + 1));
+        }
+      } else {
+        setReviewIndex(null);
+      }
+    } else {
+      setReviewIndex(null);
+    }
     setDrawOfferedBy(null);
     setDrawPending(false);
     setRematchOfferedBy(null);
