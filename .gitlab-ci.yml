@@ -78,6 +78,8 @@ api-test:
     POSTGRES_DB: chess_test
     TEST_DATABASE_URL: postgresql://chess:chess@postgres:5432/chess_test
   script:
+    - apt-get update -qq && apt-get install -y -qq postgresql-client >/dev/null
+    - until pg_isready -h postgres -U chess; do sleep 1; done
     - pnpm --filter chess-api test:coverage
   artifacts:
     when: always
