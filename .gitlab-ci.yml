@@ -15,6 +15,8 @@ default:
     - corepack enable
     - corepack prepare pnpm@$PNPM_VERSION --activate
     - pnpm config set store-dir $PNPM_CACHE_FOLDER
+    - pnpm config set fetch-timeout 120000
+    - pnpm config set network-concurrency 3
     - pnpm install --frozen-lockfile
 
 stages:
