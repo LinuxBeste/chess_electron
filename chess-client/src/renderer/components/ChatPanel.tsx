@@ -22,6 +22,7 @@ import {
   Trash2,
   ArrowUpRight,
   Users,
+  ChevronDown,
 } from 'lucide-react';
 
 // Chat panel for lobby, private, and group conversations
@@ -760,7 +761,7 @@ export default function ChatPanel() {
       </div>
       {showScrollBtn && (
         <button className="sidebar-scroll-btn" onClick={scrollToBottom}>
-          ↓
+          <ChevronDown size={14} />
         </button>
       )}
       <div className="sidebar-chat-input">

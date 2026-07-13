@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from '@jest/globals';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Navbar from '../src/renderer/components/Navbar';
 import { store } from '../src/renderer/store';
@@ -108,5 +108,57 @@ describe('Navbar', () => {
     });
     expect(screen.queryByText('Player')).toBeNull();
     expect(screen.queryByTitle('Logout')).toBeNull();
+  });
+
+  describe('command palette', () => {
+    test('shows search bar', () => {
+      renderNavbar();
+      expect(screen.getByText('Search commands...')).toBeTruthy();
+      expect(screen.getByText('Ctrl+K')).toBeTruthy();
+    });
+
+    test('opens command palette on search bar click', () => {
+      renderNavbar();
+      fireEvent.click(screen.getByText('Search commands...'));
+      expect(screen.getByPlaceholderText('Type a command...')).toBeTruthy();
+    });
+
+    test('opens command palette on Ctrl+K', () => {
+      renderNavbar();
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+      });
+      expect(screen.getByPlaceholderText('Type a command...')).toBeTruthy();
+    });
+
+    test('opens command palette on Cmd+K', () => {
+      renderNavbar();
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+      });
+      expect(screen.getByPlaceholderText('Type a command...')).toBeTruthy();
+    });
+
+    test('closes command palette on Escape', () => {
+      renderNavbar();
+      fireEvent.click(screen.getByText('Search commands...'));
+      expect(screen.getByPlaceholderText('Type a command...')).toBeTruthy();
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      });
+      expect(screen.queryByPlaceholderText('Type a command...')).toBeNull();
+    });
+
+    test('toggles command palette on repeated Ctrl+K', () => {
+      renderNavbar();
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+      });
+      expect(screen.getByPlaceholderText('Type a command...')).toBeTruthy();
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+      });
+      expect(screen.queryByPlaceholderText('Type a command...')).toBeNull();
+    });
   });
 });

@@ -26,6 +26,9 @@ Object.defineProperty(globalThis, 'localStorage', {
   configurable: true,
 });
 
+// Polyfill scrollIntoView for jsdom (used by CommandPalette)
+Element.prototype.scrollIntoView = () => {};
+
 // Suppress console output during tests to avoid Jest detecting them as failures
 console.info = jest.fn();
 console.debug = jest.fn();

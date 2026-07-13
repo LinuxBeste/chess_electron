@@ -472,6 +472,45 @@ body {
   align-items: center;
   gap: 8px;
 }
+.navbar-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--elevated, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  min-width: 0;
+  max-width: 280px;
+  width: 100%;
+  margin: 0 16px;
+  transition: all 150ms ease;
+  user-select: none;
+}
+.navbar-search:hover {
+  border-color: var(--border-light);
+  color: var(--text);
+  background: var(--surface2, rgba(255, 255, 255, 0.06));
+}
+.navbar-search-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.navbar-search-kbd {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #666;
+  letter-spacing: 0.3px;
+}
 .navbar-btn {
   display: inline-flex;
   align-items: center;
@@ -2606,6 +2645,116 @@ body {
 
 .lobby-panel .card {
   margin: 0;
+}
+
+/* ─── Command Palette ─── */
+.cmd-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 80px;
+  z-index: 3000;
+  animation: fadeIn 120ms ease;
+}
+
+.cmd-palette {
+  width: min(520px, 90vw);
+  max-height: 360px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleIn 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cmd-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cmd-prompt {
+  color: #666;
+  font-family: var(--font-mono, monospace);
+  font-size: 14px;
+  user-select: none;
+}
+
+.cmd-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+}
+
+.cmd-input::placeholder {
+  color: #555;
+}
+
+.cmd-hint {
+  font-size: 11px;
+  color: #555;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.cmd-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.cmd-category {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #666;
+  padding: 8px 16px 4px;
+}
+
+.cmd-item {
+  padding: 8px 16px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+}
+
+.cmd-item:hover,
+.cmd-active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cmd-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: #666;
+  font-size: 13px;
+}
+
+.cmd-results::-webkit-scrollbar {
+  width: 4px;
+}
+.cmd-results::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 
 /* ─── Navbar Badge ─── */

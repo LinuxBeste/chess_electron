@@ -1,7 +1,17 @@
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, jest } from '@jest/globals';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import NotFoundPage from '../src/renderer/pages/NotFoundPage';
+
+jest.mock('lucide-react', () => ({
+  ChessKing: () => '♚',
+  ChessQueen: () => '♛',
+  ChessRook: () => '♜',
+  ChessBishop: () => '♝',
+  ChessKnight: () => '♞',
+  ChessPawn: () => '♟',
+  ArrowLeft: () => '←',
+}));
 
 describe('NotFoundPage', () => {
   function renderPage() {
@@ -24,7 +34,7 @@ describe('NotFoundPage', () => {
 
   test('renders Back to lobby button', () => {
     renderPage();
-    expect(screen.getByText('← Back to lobby')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Back to lobby/i })).toBeTruthy();
   });
 
   test('renders chess board with 64 squares', () => {
@@ -36,7 +46,7 @@ describe('NotFoundPage', () => {
 
   test('navigates to /lobby on button click', () => {
     renderPage();
-    const button = screen.getByText('← Back to lobby');
+    const button = screen.getByRole('button', { name: /Back to lobby/i });
     fireEvent.click(button);
   });
 });

@@ -1,4 +1,20 @@
 import { useNavigate } from 'react-router-dom';
+import { ChessKing, ChessQueen, ChessRook, ChessBishop, ChessKnight, ChessPawn, ArrowLeft } from 'lucide-react';
+
+const PIECE_MAP: Record<string, React.ReactNode> = {
+  '♜': <ChessRook size={20} />,
+  '♞': <ChessKnight size={20} />,
+  '♝': <ChessBishop size={20} />,
+  '♛': <ChessQueen size={20} />,
+  '♚': <ChessKing size={20} />,
+  '♟': <ChessPawn size={20} />,
+  '♙': <ChessPawn size={20} />,
+  '♖': <ChessRook size={20} />,
+  '♘': <ChessKnight size={20} />,
+  '♗': <ChessBishop size={20} />,
+  '♕': <ChessQueen size={20} />,
+  '♔': <ChessKing size={20} />,
+};
 
 // 404 page with decorative chess board layout
 const START_POSITION = [
@@ -108,10 +124,9 @@ export default function NotFoundPage() {
                 justifyContent: 'center',
                 fontSize: 22,
                 color: r < 2 ? '#222' : '#fff',
-                textShadow: r < 2 ? '0 1px 1px rgba(255,255,255,0.2)' : '0 1px 1px rgba(0,0,0,0.3)',
               }}
             >
-              {piece}
+              {piece ? (PIECE_MAP[piece] ?? piece) : ''}
             </div>
           );
         })}
@@ -137,7 +152,7 @@ export default function NotFoundPage() {
         onClick={() => navigate('/lobby')}
         style={{ animation: 'fadeInUp 400ms ease 700ms both' }}
       >
-        ← Back to lobby
+        <ArrowLeft size={18} style={{ marginRight: 6 }} /> Back to lobby
       </button>
     </div>
   );

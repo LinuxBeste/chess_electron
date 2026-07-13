@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { PanelRightOpen, PanelRightClose, X } from 'lucide-react';
 import Square from '../components/Square';
 import { indicesToSquare, squareToIndices, cloneBoard, PIECE_CHARS } from '../chess';
 import type { Board as BoardType, PieceType } from '../../types';
@@ -249,7 +249,7 @@ export default function BoardEditorPage() {
               style={{ fontSize: 20, width: 40, height: 40, padding: 0 }}
               title={pt ?? 'empty'}
             >
-              {pt === null ? '✕' : PIECE_CHARS[selectedColor]?.[pt] || '?'}
+              {pt === null ? <X size={18} /> : PIECE_CHARS[selectedColor]?.[pt] || '?'}
             </button>
           ))}
         </div>

@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStoreValue } from '../hooks/useStore';
 import { store } from '../store';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Settings, ScrollText, LogOut } from 'lucide-react';
+import { Menu, Settings, ScrollText, LogOut, Search, ChessKnight } from 'lucide-react';
 import SettingsDialog from './SettingsDialog';
 import MatchHistoryDialog from './MatchHistoryDialog';
 import FriendsTab from './FriendsTab';
+import CommandPalette from './CommandPalette';
 import { t } from '../translate';
 import { avatarSrc } from '../api';
 import logger from '../logger';
@@ -15,12 +16,27 @@ export default function Navbar() {
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const username = useStoreValue('username');
   const token = useStoreValue('token');
   const avatarUrl = useStoreValue('avatarUrl');
   const wsStatus = useStoreValue('wsStatus');
   const offline = useStoreValue('offline');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandPalette((open) => !open);
+      }
+      if (e.key === 'Escape' && showCommandPalette) {
+        setShowCommandPalette(false);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showCommandPalette]);
 
   const isLoggedIn = !!(token && username);
   const isOffline = !!(offline && username);
@@ -50,8 +66,13 @@ export default function Navbar() {
   return (
     <nav className="navbar">
       <span className="navbar-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/lobby')}>
-        ♟ Chess
+        <ChessKnight size={16} style={{ marginRight: 4 }} /> Chess
       </span>
+      <div className="navbar-search" onClick={() => setShowCommandPalette(true)} role="button" tabIndex={0}>
+        <Search size={14} />
+        <span className="navbar-search-text">Search commands...</span>
+        <span className="navbar-search-kbd">Ctrl+K</span>
+      </div>
       <div className="navbar-actions">
         {(isLoggedIn || isOffline) && (
           <>
@@ -149,6 +170,13 @@ export default function Navbar() {
           </button>
         )}
       </div>
+      {showCommandPalette && (
+        <CommandPalette
+          onClose={() => setShowCommandPalette(false)}
+          onOpenSettings={() => setShowSettings(true)}
+          onOpenHistory={() => setShowHistory(true)}
+        />
+      )}
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
       {showHistory && <MatchHistoryDialog onClose={() => setShowHistory(false)} />}
       {showFriends && <FriendsTab onClose={() => setShowFriends(false)} />}

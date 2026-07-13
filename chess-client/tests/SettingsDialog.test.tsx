@@ -4,7 +4,8 @@ import SettingsDialog from '../src/renderer/components/SettingsDialog';
 import { loadSettings } from '../src/renderer/settings';
 
 jest.mock('lucide-react', () => ({
-  X: () => '✕',
+  X: () => null,
+  Search: () => null,
 }));
 
 describe('SettingsDialog', () => {
