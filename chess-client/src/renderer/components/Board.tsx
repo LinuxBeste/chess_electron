@@ -25,6 +25,7 @@ interface BoardProps {
   onDragStart: (from: string) => void;
   onDragEnd: (to: string) => void;
   children?: React.ReactNode;
+  alwaysBottom?: boolean;
 }
 
 const Board = memo(function Board({
@@ -38,6 +39,7 @@ const Board = memo(function Board({
   onDragStart,
   onDragEnd,
   children,
+  alwaysBottom: alwaysBottomProp,
 }: BoardProps) {
   const boardRef = useRef<HTMLDivElement>(null);
   const [boardSize, setBoardSize] = useState(480);
@@ -89,7 +91,7 @@ const Board = memo(function Board({
 
   const sqSize = boardSize / 8;
   const boardRectRef = useRef<DOMRect | null>(null);
-  const alwaysBottom = getSetting('alwaysWhiteBottom');
+  const alwaysBottom = alwaysBottomProp ?? getSetting('alwaysWhiteBottom');
   const showCoordinates = getSetting('showCoordinates');
   const highlightLastMove = getSetting('highlightLastMove');
   /* Perspective flip: when flipped, display rows/cols invert but logical board stays fixed */

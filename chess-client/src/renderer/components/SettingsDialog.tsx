@@ -12,6 +12,7 @@ import { setSoundVolume } from '../sound';
 import { t, setLanguage, getLanguage } from '../translate';
 import { getLanguageNames } from '../locales';
 import { X, Search } from 'lucide-react';
+import ShortcutsTab from './ShortcutsTab';
 import {
   updateDisplayName as apiUpdateDisplayName,
   changePassword as apiChangePassword,
@@ -30,7 +31,7 @@ interface Props {
   onClose: () => void;
 }
 
-type TabId = 'general' | 'board' | 'display' | 'gameplay' | 'clock' | 'advanced' | 'account';
+type TabId = 'general' | 'board' | 'display' | 'gameplay' | 'clock' | 'advanced' | 'account' | 'shortcuts';
 
 function Section({ title }: { title: string }) {
   return (
@@ -1442,6 +1443,7 @@ export default function SettingsDialog({ onClose }: Props) {
     { id: 'gameplay', label: t('settings.tabs.gameplay') },
     { id: 'clock', label: t('settings.tabs.clock') },
     { id: 'advanced', label: t('settings.tabs.advanced') },
+    { id: 'shortcuts', label: t('settings.tabs.shortcuts') },
     ...(token ? [{ id: 'account' as TabId, label: t('settings.tabs.account') }] : []),
   ];
 
@@ -1564,6 +1566,7 @@ export default function SettingsDialog({ onClose }: Props) {
           {activeTab === 'advanced' && (
             <AdvancedTab settings={settings} onUpdate={updateSettings} searchQuery={searchQuery} />
           )}
+          {activeTab === 'shortcuts' && <ShortcutsTab />}
           {activeTab === 'account' && <AccountTab />}
         </div>
 

@@ -540,6 +540,7 @@ export type TranslationKeys = {
       confirmClearAll: string;
       clearAll: string;
     };
+    shortcuts: string;
     options: {
       defaultPurple: string;
       classicWood: string;
@@ -582,6 +583,48 @@ export type TranslationKeys = {
       min30: string;
       min60: string;
     };
+  };
+  shortcuts: {
+    intro: string;
+    categoryGeneral: string;
+    categoryGame: string;
+    categoryNavigation: string;
+    togglePalette: string;
+    togglePaletteDesc: string;
+    toggleSidebar: string;
+    toggleSidebarDesc: string;
+    toggleSound: string;
+    toggleSoundDesc: string;
+    openSettings: string;
+    openSettingsDesc: string;
+    reloadApp: string;
+    reloadAppDesc: string;
+    flipBoard: string;
+    flipBoardDesc: string;
+    prevMove: string;
+    prevMoveDesc: string;
+    nextMove: string;
+    nextMoveDesc: string;
+    startReview: string;
+    startReviewDesc: string;
+    endReview: string;
+    endReviewDesc: string;
+    offerDraw: string;
+    offerDrawDesc: string;
+    resignGame: string;
+    resignGameDesc: string;
+    newGame: string;
+    newGameDesc: string;
+    toggleChat: string;
+    toggleChatDesc: string;
+    goHome: string;
+    goHomeDesc: string;
+    goPlay: string;
+    goPlayDesc: string;
+    goFriends: string;
+    goFriendsDesc: string;
+    goSettings: string;
+    goSettingsDesc: string;
   };
 };
 
@@ -1128,6 +1171,7 @@ export const en: TranslationKeys = {
       confirmClearAll: 'Confirm Clear All',
       clearAll: 'Clear All Local Data',
     },
+    shortcuts: 'Keyboard Shortcuts',
     options: {
       defaultPurple: 'Default (Purple)',
       classicWood: 'Classic Wood',
@@ -1170,6 +1214,49 @@ export const en: TranslationKeys = {
       min30: '30 minutes',
       min60: '60 minutes',
     },
+  },
+  shortcuts: {
+    intro:
+      'Press the key combination to trigger an action. G+letter sequences: press G, release, then press the letter.',
+    categoryGeneral: 'General',
+    categoryGame: 'Game',
+    categoryNavigation: 'Navigation',
+    togglePalette: 'Command Palette',
+    togglePaletteDesc: 'Open the command palette',
+    toggleSidebar: 'Toggle Sidebar',
+    toggleSidebarDesc: 'Show or hide the sidebar',
+    toggleSound: 'Toggle Sound',
+    toggleSoundDesc: 'Enable or disable sound effects',
+    openSettings: 'Open Settings',
+    openSettingsDesc: 'Open the settings dialog',
+    reloadApp: 'Reload App',
+    reloadAppDesc: 'Reload the entire application',
+    flipBoard: 'Flip Board',
+    flipBoardDesc: 'Rotate the board 180 degrees',
+    prevMove: 'Previous Move',
+    prevMoveDesc: 'Go to the previous move in review',
+    nextMove: 'Next Move',
+    nextMoveDesc: 'Go to the next move in review',
+    startReview: 'Start of Game',
+    startReviewDesc: 'Jump to the initial position',
+    endReview: 'End of Game',
+    endReviewDesc: 'Jump to the last move',
+    offerDraw: 'Offer Draw',
+    offerDrawDesc: 'Offer a draw to your opponent',
+    resignGame: 'Resign',
+    resignGameDesc: 'Resign the current game',
+    newGame: 'New Game',
+    newGameDesc: 'Start a new game',
+    toggleChat: 'Toggle Chat',
+    toggleChatDesc: 'Show or hide the chat panel',
+    goHome: 'Go to Lobby',
+    goHomeDesc: 'Navigate to the lobby page',
+    goPlay: 'Go to Play',
+    goPlayDesc: 'Navigate to the play page',
+    goFriends: 'Go to Friends',
+    goFriendsDesc: 'Open the friends panel',
+    goSettings: 'Go to Settings',
+    goSettingsDesc: 'Open the settings dialog',
   },
 };
 
@@ -1717,6 +1804,7 @@ export const de: TranslationKeys = {
       confirmClearAll: 'Alles löschen bestätigen',
       clearAll: 'Alle lokalen Daten löschen',
     },
+    shortcuts: 'Tastaturkürzel',
     options: {
       defaultPurple: 'Standard (Lila)',
       classicWood: 'Klassisch Holz',
@@ -1759,6 +1847,49 @@ export const de: TranslationKeys = {
       min30: '30 Minuten',
       min60: '60 Minuten',
     },
+  },
+  shortcuts: {
+    intro:
+      'Drücke die Tastenkombination, um eine Aktion auszuführen. G+Buchstabe-Sequenzen: G drücken, loslassen, dann den Buchstaben drücken.',
+    categoryGeneral: 'Allgemein',
+    categoryGame: 'Spiel',
+    categoryNavigation: 'Navigation',
+    togglePalette: 'Befehlspalette',
+    togglePaletteDesc: 'Befehlspalette öffnen',
+    toggleSidebar: 'Seitenleiste umschalten',
+    toggleSidebarDesc: 'Seitenleiste ein- oder ausblenden',
+    toggleSound: 'Ton umschalten',
+    toggleSoundDesc: 'Soundeffekte aktivieren oder deaktivieren',
+    openSettings: 'Einstellungen öffnen',
+    openSettingsDesc: 'Einstellungsdialog öffnen',
+    reloadApp: 'App neuladen',
+    reloadAppDesc: 'Die gesamte Anwendung neu laden',
+    flipBoard: 'Brett drehen',
+    flipBoardDesc: 'Das Brett um 180 Grad drehen',
+    prevMove: 'Vorheriger Zug',
+    prevMoveDesc: 'Zum vorherigen Zug in der Analyse gehen',
+    nextMove: 'Nächster Zug',
+    nextMoveDesc: 'Zum nächsten Zug in der Analyse gehen',
+    startReview: 'Spielanfang',
+    startReviewDesc: 'Zur Anfangsposition springen',
+    endReview: 'Spielende',
+    endReviewDesc: 'Zum letzten Zug springen',
+    offerDraw: 'Remis anbieten',
+    offerDrawDesc: 'Ein Remis anbieten',
+    resignGame: 'Aufgeben',
+    resignGameDesc: 'Das aktuelle Spiel aufgeben',
+    newGame: 'Neues Spiel',
+    newGameDesc: 'Ein neues Spiel beginnen',
+    toggleChat: 'Chat umschalten',
+    toggleChatDesc: 'Chat ein- oder ausblenden',
+    goHome: 'Zur Lobby',
+    goHomeDesc: 'Zur Lobby-Seite navigieren',
+    goPlay: 'Zum Spielen',
+    goPlayDesc: 'Zur Spiel-Seite navigieren',
+    goFriends: 'Zu Freunden',
+    goFriendsDesc: 'Freunde-Panel öffnen',
+    goSettings: 'Zu Einstellungen',
+    goSettingsDesc: 'Einstellungsdialog öffnen',
   },
 };
 

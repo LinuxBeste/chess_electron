@@ -22,6 +22,7 @@ import { ApiError, setBaseUrl, getMe, getFriends, getFriendRequests, joinGame } 
 import { type AppSettings, loadSettings, saveSettings, applyTheme, getSetting } from './settings';
 import { setSoundVolume } from './sound';
 import { t, onLanguageChange } from './translate';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 /* Code-split page bundles — each page is loaded only when first navigated to */
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -39,6 +40,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 export default function App() {
   const navigate = useNavigate();
   const [langKey, setLangKey] = useState(0);
+  useKeyboardShortcuts();
   const challengeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pendingChallenge, setPendingChallenge] = useState<{
     gameId: string;

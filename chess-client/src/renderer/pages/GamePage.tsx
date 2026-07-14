@@ -70,6 +70,7 @@ export default function GamePage() {
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [opponentConnected, setOpponentConnected] = useState(true);
   const [moveQualities, setMoveQualities] = useState<Record<string, MoveQuality>>({});
+  const [boardFlipped, setBoardFlipped] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   /* Spectator mode: read-only, set via ?spectate=1 query param from LobbyPage */
@@ -287,6 +288,40 @@ export default function GamePage() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [menuOpen]);
+
+  /* Keyboard shortcut listeners for board flip and move review */
+  useEffect(() => {
+    function handleFlipBoard() {
+      setBoardFlipped((p) => !p);
+    }
+    function handlePrevMove() {
+      reviewStep(-1);
+    }
+    function handleNextMove() {
+      reviewStep(1);
+    }
+    function handleStartReview() {
+      if (reviewIndex === null || !gameRef.current) return;
+      if (reviewIndex !== -1) setReviewIndex(-1);
+    }
+    function handleEndReview() {
+      if (reviewIndex === null || !gameRef.current) return;
+      const last = gameRef.current.boardHistory.length - 1;
+      if (reviewIndex !== last) setReviewIndex(last);
+    }
+    window.addEventListener('shortcut:flipBoard', handleFlipBoard);
+    window.addEventListener('shortcut:prevMove', handlePrevMove);
+    window.addEventListener('shortcut:nextMove', handleNextMove);
+    window.addEventListener('shortcut:startReview', handleStartReview);
+    window.addEventListener('shortcut:endReview', handleEndReview);
+    return () => {
+      window.removeEventListener('shortcut:flipBoard', handleFlipBoard);
+      window.removeEventListener('shortcut:prevMove', handlePrevMove);
+      window.removeEventListener('shortcut:nextMove', handleNextMove);
+      window.removeEventListener('shortcut:startReview', handleStartReview);
+      window.removeEventListener('shortcut:endReview', handleEndReview);
+    };
+  });
 
   /* REST polling fallback: if WS game_started is missed (reconnect race), poll every 2s */
   useEffect(() => {
@@ -814,6 +849,7 @@ export default function GamePage() {
           onSquareClick={handleSquareClick}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          alwaysBottom={boardFlipped ? !getSetting('alwaysWhiteBottom') : undefined}
         >
           {waiting && game && (
             <div className="waiting-overlay">
