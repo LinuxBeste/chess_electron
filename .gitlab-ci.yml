@@ -64,7 +64,13 @@ tests-ui-admin:
   stage: test
   needs: [lint]
   script:
-    - pnpm --filter chess-api-admin test
+    - mkdir -p chess-api/admin-frontend/reports
+    - pnpm --filter chess-api-admin test -- --reporter=junit --outputFile=reports/junit.xml
+  artifacts:
+    when: always
+    reports:
+      junit: chess-api/admin-frontend/reports/junit.xml
+    expire_in: 7 days
 
 api-test:
   stage: test
@@ -84,11 +90,13 @@ api-test:
   artifacts:
     when: always
     reports:
+      junit: chess-api/reports/junit.xml
       coverage_report:
         coverage_format: cobertura
         path: chess-api/coverage/cobertura-coverage.xml
     paths:
       - chess-api/coverage/
+      - chess-api/reports/
     expire_in: 7 days
 
 tests-client:
@@ -98,8 +106,11 @@ tests-client:
     - pnpm --filter chess-client test:general
   artifacts:
     when: always
+    reports:
+      junit: chess-client/reports/junit.xml
     paths:
       - chess-client/coverage/
+      - chess-client/reports/
     expire_in: 7 days
 
 tests-ui:
@@ -109,8 +120,11 @@ tests-ui:
     - pnpm --filter chess-client test:ui
   artifacts:
     when: always
+    reports:
+      junit: chess-client/reports/junit.xml
     paths:
       - chess-client/coverage/
+      - chess-client/reports/
     expire_in: 7 days
 
 api-build:

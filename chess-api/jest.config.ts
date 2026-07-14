@@ -3,6 +3,7 @@ import type { Config } from 'jest';
 const config: Config = {
   verbose: true,
   testEnvironment: 'node',
+  reporters: ['default', ['jest-junit', { outputDirectory: 'reports', outputName: 'junit.xml' }]],
   roots: ['<rootDir>/tests'],
   moduleFileExtensions: ['ts', 'js'],
   testMatch: ['**/*.test.ts'],
