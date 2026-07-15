@@ -384,6 +384,7 @@ router.get('/auth/me', authMiddleware, banCheckMiddleware, async (req: Request, 
     isRegistered: req.player.isRegistered,
     createdAt: user?.created_at ?? null,
     avatarUrl: user?.avatar_url ?? null,
+    email: user?.email ?? null,
     ...(stats ? { stats } : {}),
   });
 });
@@ -436,6 +437,28 @@ router.put(
     req.player.tokens = [currentToken];
     logger.audit('password_changed', `playerId="${req.player.id}"`);
     res.json({ success: true });
+  },
+);
+
+router.put(
+  '/auth/me/email',
+  authMiddleware,
+  banCheckMiddleware,
+  rateLimitMiddleware,
+  async (req: Request, res: Response) => {
+    if (!req.player.isRegistered) {
+      res.status(400).json({ error: 'Only registered accounts can set a recovery email' });
+      return;
+    }
+    const parsed = z.object({ email: emailSchema.nullable() }).safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+    const { email: newEmail } = parsed.data;
+    await db.updateUserEmail(req.player.id, newEmail);
+    logger.audit('email_updated', 'userId=' + req.player.id + ' email=' + newEmail);
+    res.json({ success: true, email: newEmail });
   },
 );
 

@@ -419,6 +419,12 @@ export type TranslationKeys = {
       deleteConfirmButton: string;
       deleteFailed: string;
       deleted: string;
+      email: string;
+      emailDesc: string;
+      emailPlaceholder: string;
+      emailSaved: string;
+      emailSaveFailed: string;
+      emailClear: string;
     };
     general: {
       sound: string;
@@ -1078,6 +1084,12 @@ export const en: TranslationKeys = {
       deleteConfirmButton: 'Yes, delete my account',
       deleteFailed: 'Failed to delete account',
       deleted: 'Account deleted',
+      email: 'Recovery Email',
+      emailDesc: 'Used for password reset. Only registered accounts can set an email.',
+      emailPlaceholder: 'your@email.com',
+      emailSaved: 'Recovery email updated!',
+      emailSaveFailed: 'Failed to update recovery email',
+      emailClear: 'Clear',
     },
     general: {
       sound: 'Sound',
@@ -1739,6 +1751,12 @@ export const de: TranslationKeys = {
       deleteConfirmButton: 'Ja, Konto löschen',
       deleteFailed: 'Fehler beim Löschen des Kontos',
       deleted: 'Konto gelöscht',
+      email: 'Wiederherstellungs-E-Mail',
+      emailDesc: 'Wird für die Passwortzurücksetzung verwendet. Nur registrierte Konten können eine E-Mail festlegen.',
+      emailPlaceholder: 'deine@email.com',
+      emailSaved: 'Wiederherstellungs-E-Mail aktualisiert!',
+      emailSaveFailed: 'Fehler beim Aktualisieren der Wiederherstellungs-E-Mail',
+      emailClear: 'Entfernen',
     },
     general: {
       sound: 'Sound',

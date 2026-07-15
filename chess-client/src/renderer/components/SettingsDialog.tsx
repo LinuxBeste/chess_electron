@@ -20,6 +20,7 @@ import {
   getMe,
   uploadAvatar as apiUploadAvatar,
   deleteAvatar as apiDeleteAvatar,
+  updateEmail as apiUpdateEmail,
   avatarSrc,
 } from '../api';
 import { useStoreValue } from '../hooks/useStore';
@@ -1047,6 +1048,9 @@ function AccountTab() {
   const [deleteError, setDeleteError] = useState('');
   const [avatarMsg, setAvatarMsg] = useState('');
   const [avatarError, setAvatarError] = useState('');
+  const [email, setEmail] = useState('');
+  const [emailMsg, setEmailMsg] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   useEffect(() => {
     if (!token) return;
@@ -1057,6 +1061,7 @@ function AccountTab() {
         setIsRegistered(me.isRegistered);
         setCreatedAt(me.createdAt);
         setAvatarUrl(me.avatarUrl);
+        setEmail(me.email ?? '');
         if (me.stats) setStats(me.stats);
         setStatsLoading(false);
         logger.debug('Account info loaded', { username: me.username, isRegistered: me.isRegistered });
@@ -1160,6 +1165,21 @@ function AccountTab() {
       const msg = err instanceof Error ? err.message : String(err);
       logger.error('Account deletion failed', { error: msg });
       setDeleteError(msg || t('settings.account.deleteFailed'));
+    }
+  }
+
+  async function handleSaveEmail() {
+    const val = email.trim();
+    setEmailMsg('');
+    setEmailError('');
+    try {
+      await apiUpdateEmail(val || null);
+      setEmailMsg(t('settings.account.emailSaved'));
+      logger.info('Recovery email updated', { email: val });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Failed to update recovery email', { error: msg });
+      setEmailError(msg || t('settings.account.emailSaveFailed'));
     }
   }
 
@@ -1282,6 +1302,59 @@ function AccountTab() {
             {new Date(createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
         </div>
+      )}
+
+      {/* Recovery Email */}
+      {isRegistered && (
+        <>
+          <div className="settings-row">
+            <div>
+              <div className="settings-label">{t('settings.account.email')}</div>
+              <div className="settings-desc">{t('settings.account.emailDesc')}</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  className="settings-text-input"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t('settings.account.emailPlaceholder')}
+                  style={{
+                    width: 160,
+                    padding: '4px 8px',
+                    borderRadius: 4,
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'rgba(0,0,0,0.3)',
+                    color: '#e0e0e0',
+                    fontSize: 13,
+                  }}
+                />
+                {email && (
+                  <button
+                    onClick={() => setEmail('')}
+                    style={{
+                      background: 'none',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      color: '#aaa',
+                      borderRadius: 4,
+                      padding: '4px 8px',
+                      fontSize: 11,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {t('settings.account.emailClear')}
+                  </button>
+                )}
+                <button className="btn btn-primary btn-xs" onClick={handleSaveEmail} style={{ fontSize: 11 }}>
+                  {t('settings.account.save')}
+                </button>
+              </div>
+              {emailMsg && <span style={{ fontSize: 11, color: '#4caf50' }}>{emailMsg}</span>}
+              {emailError && <span style={{ fontSize: 11, color: '#f44336' }}>{emailError}</span>}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Display Name */}

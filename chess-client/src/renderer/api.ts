@@ -168,6 +168,7 @@ export async function getMe(): Promise<{
   isRegistered: boolean;
   createdAt: number | null;
   avatarUrl: string | null;
+  email: string | null;
   stats?: { wins: number; losses: number; draws: number };
 }> {
   logger.info('getMe called');
@@ -179,6 +180,7 @@ export async function getMe(): Promise<{
       isRegistered: boolean;
       createdAt: number | null;
       avatarUrl: string | null;
+      email: string | null;
       stats?: { wins: number; losses: number; draws: number };
     }>('/auth/me');
     logger.info('getMe ok: username=' + result.username);
@@ -208,6 +210,23 @@ export async function updateDisplayName(displayName: string): Promise<{ success:
 
 /* PUT /auth/me/password — auth required.
  * Change the authenticated player's password. */
+/* PUT /auth/me/email — auth required.
+ * Update the recovery email. Pass null to clear. */
+export async function updateEmail(email: string | null): Promise<{ success: true; email: string | null }> {
+  logger.info('updateEmail called: email=' + email);
+  try {
+    const result = await request<{ success: true; email: string | null }>('/auth/me/email', {
+      method: 'PUT',
+      body: JSON.stringify({ email }),
+    });
+    logger.info('updateEmail ok');
+    return result;
+  } catch (err) {
+    logger.error('updateEmail failed: ' + err);
+    throw err;
+  }
+}
+
 export async function changePassword(currentPassword: string, newPassword: string): Promise<{ success: true }> {
   logger.info('changePassword called');
   try {
