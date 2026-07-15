@@ -314,6 +314,24 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_completed_games_played_at ON completed_games(played_at DESC);
     `,
   },
+  {
+    version: 11,
+    sql: `
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL;
+
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        token TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        created_at BIGINT NOT NULL,
+        expires_at BIGINT NOT NULL,
+        used BOOLEAN NOT NULL DEFAULT false
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id);
+      CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires ON password_reset_tokens(expires_at);
+    `,
+  },
 ];
 
 let migrated = false;
@@ -358,6 +376,7 @@ export interface DbUser {
   avatar_url: string | null;
   rating: number;
   is_admin?: boolean;
+  email?: string | null;
 }
 
 interface CompletedGameRow {
@@ -585,6 +604,60 @@ export async function updateUserDisplayName(id: string, displayName: string): Pr
 export async function updateUserPasswordHash(id: string, passwordHash: string): Promise<void> {
   await getPool().query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
   logger.debug('DB: password hash updated id=' + id);
+}
+
+export async function updateUserEmail(id: string, email: string | null): Promise<void> {
+  await getPool().query('UPDATE users SET email = $1 WHERE id = $2', [email, id]);
+  logger.debug('DB: email updated id=' + id + ' email=' + email);
+}
+
+export async function getUserByEmail(email: string): Promise<DbUser | undefined> {
+  const { rows } = await getPool().query('SELECT * FROM users WHERE email = $1', [email]);
+  const user = rows[0] as DbUser | undefined;
+  logger.debug('DB: getUserByEmail email=' + email + (user ? ' found' : ' not found'));
+  return user;
+}
+
+export async function createPasswordResetToken(token: string, userId: string, ttlMs: number): Promise<void> {
+  const now = Date.now();
+  await getPool().query(
+    'INSERT INTO password_reset_tokens (token, user_id, created_at, expires_at, used) VALUES ($1, $2, $3, $4, false)',
+    [token, userId, now, now + ttlMs],
+  );
+  logger.debug('DB: password reset token created userId=' + userId);
+}
+
+export interface PasswordResetTokenRow {
+  token: string;
+  user_id: string;
+  created_at: number;
+  expires_at: number;
+  used: boolean;
+}
+
+export async function getPasswordResetToken(token: string): Promise<PasswordResetTokenRow | undefined> {
+  const { rows } = await getPool().query('SELECT * FROM password_reset_tokens WHERE token = $1', [token]);
+  const row = rows[0] as PasswordResetTokenRow | undefined;
+  logger.debug('DB: getPasswordResetToken ' + (row ? 'found userId=' + row.user_id : 'not found'));
+  return row;
+}
+
+export async function markPasswordResetTokenUsed(token: string): Promise<void> {
+  await getPool().query('UPDATE password_reset_tokens SET used = true WHERE token = $1', [token]);
+  logger.debug('DB: password reset token marked used token=' + token);
+}
+
+export async function deleteUserPasswordResetTokens(userId: string): Promise<void> {
+  await getPool().query('DELETE FROM password_reset_tokens WHERE user_id = $1', [userId]);
+  logger.debug('DB: password reset tokens deleted userId=' + userId);
+}
+
+export async function cleanupExpiredPasswordResetTokens(): Promise<number> {
+  const { rowCount } = await getPool().query('DELETE FROM password_reset_tokens WHERE expires_at < $1 OR used = true', [
+    Date.now(),
+  ]);
+  if (rowCount && rowCount > 0) logger.info('DB: cleaned up ' + rowCount + ' expired password reset tokens');
+  return rowCount ?? 0;
 }
 
 export async function deleteUserTokens(id: string): Promise<void> {

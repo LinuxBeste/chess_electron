@@ -106,6 +106,34 @@ export type TranslationKeys = {
     loginFailed: string;
     offlineMode: string;
     offlineModeDesc: string;
+    forgotPassword: string;
+  };
+  forgotPassword: {
+    title: string;
+    desc: string;
+    emailPlaceholder: string;
+    send: string;
+    sent: string;
+    sentDesc: string;
+    checkEmail: string;
+    enterEmail: string;
+    failed: string;
+    backToLogin: string;
+  };
+  resetPassword: {
+    title: string;
+    desc: string;
+    newPassword: string;
+    confirmPassword: string;
+    reset: string;
+    done: string;
+    doneDesc: string;
+    success: string;
+    failed: string;
+    invalidToken: string;
+    invalidLink: string;
+    passwordsDontMatch: string;
+    goToLogin: string;
   };
   lobby: {
     openGames: string;
@@ -736,6 +764,34 @@ export const en: TranslationKeys = {
     loginFailed: 'Login failed',
     offlineMode: 'Offline mode',
     offlineModeDesc: 'Play locally without a server. No stats, no history.',
+    forgotPassword: 'Forgot password?',
+  },
+  forgotPassword: {
+    title: 'Forgot Password',
+    desc: "Enter your email address and we'll send you a recovery link.",
+    emailPlaceholder: 'your@email.com',
+    send: 'Send Recovery Email',
+    sent: 'Recovery email sent',
+    sentDesc: 'Check your inbox for the recovery link.',
+    checkEmail: 'Check Your Email',
+    enterEmail: 'Please enter your email address',
+    failed: 'Failed to send recovery email',
+    backToLogin: 'Back to login',
+  },
+  resetPassword: {
+    title: 'Reset Password',
+    desc: 'Enter your new password.',
+    newPassword: 'New password',
+    confirmPassword: 'Confirm new password',
+    reset: 'Reset Password',
+    done: 'Password Reset',
+    doneDesc: 'Your password has been reset. You can now log in with your new password.',
+    success: 'Password reset successfully',
+    failed: 'Failed to reset password',
+    invalidToken: 'Invalid or missing reset token',
+    invalidLink: 'Invalid Reset Link',
+    passwordsDontMatch: 'Passwords do not match',
+    goToLogin: 'Go to login',
   },
   lobby: {
     openGames: 'Open Games',
@@ -1368,6 +1424,34 @@ export const de: TranslationKeys = {
     loginFailed: 'Anmeldung fehlgeschlagen',
     offlineMode: 'Offline-Modus',
     offlineModeDesc: 'Lokal spielen ohne Server. Keine Statistik, kein Verlauf.',
+    forgotPassword: 'Passwort vergessen?',
+  },
+  forgotPassword: {
+    title: 'Passwort vergessen',
+    desc: 'Gib deine E-Mail-Adresse ein und wir senden dir einen Wiederherstellungslink.',
+    emailPlaceholder: 'deine@email.com',
+    send: 'Wiederherstellungs-E-Mail senden',
+    sent: 'Wiederherstellungs-E-Mail gesendet',
+    sentDesc: 'Überprüfe dein Postfach für den Wiederherstellungslink.',
+    checkEmail: 'Überprüfe deine E-Mails',
+    enterEmail: 'Bitte gib deine E-Mail-Adresse ein',
+    failed: 'Wiederherstellungs-E-Mail konnte nicht gesendet werden',
+    backToLogin: 'Zurück zum Login',
+  },
+  resetPassword: {
+    title: 'Passwort zurücksetzen',
+    desc: 'Gib dein neues Passwort ein.',
+    newPassword: 'Neues Passwort',
+    confirmPassword: 'Neues Passwort bestätigen',
+    reset: 'Passwort zurücksetzen',
+    done: 'Passwort zurückgesetzt',
+    doneDesc: 'Dein Passwort wurde zurückgesetzt. Du kannst dich jetzt mit deinem neuen Passwort anmelden.',
+    success: 'Passwort erfolgreich zurückgesetzt',
+    failed: 'Passwort zurücksetzen fehlgeschlagen',
+    invalidToken: 'Ungültiger oder fehlender Reset-Token',
+    invalidLink: 'Ungültiger Reset-Link',
+    passwordsDontMatch: 'Passwörter stimmen nicht überein',
+    goToLogin: 'Zum Login',
   },
   lobby: {
     openGames: 'Offene Spiele',

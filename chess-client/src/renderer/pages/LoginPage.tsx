@@ -5,7 +5,7 @@ import * as api from '../api';
 import { setBaseUrl } from '../api';
 import { socketManager } from '../socket';
 import { getSetting } from '../settings';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { t } from '../translate';
 import { serverUrlSchema, passwordSchema } from '../validation';
 
@@ -262,6 +262,17 @@ export default function LoginPage() {
               {t('login.offlineModeDesc')}
             </span>
           </div>
+        )}
+
+        {mode === 'signin' && (
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8, textAlign: 'right' }}>
+            <Link
+              to="/forgot-password"
+              style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              {t('login.forgotPassword')}
+            </Link>
+          </p>
         )}
 
         <button

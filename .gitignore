@@ -44,6 +44,10 @@ FEATURES.md
 coverage/
 **/coverage/
 
+# Test reports (JUnit XML, etc.)
+reports/
+**/reports/
+
 # CD workflow (replaced by separate build+release workflows)
 .github/workflows/cd.yml
 

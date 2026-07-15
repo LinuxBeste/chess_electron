@@ -26,6 +26,8 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 /* Code-split page bundles — each page is loaded only when first navigated to */
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const LobbyPage = lazy(() => import('./pages/LobbyPage'));
 const GamePage = lazy(() => import('./pages/GamePage'));
 const ResultPage = lazy(() => import('./pages/ResultPage'));
@@ -130,6 +132,8 @@ export default function App() {
             logger.info('Already on game/result page, skipping redirect', { path });
           } else if (
             path === '/login' ||
+            path === '/forgot-password' ||
+            path === '/reset-password' ||
             path === '/lobby' ||
             path === '/local' ||
             path === '/leaderboard' ||
@@ -401,6 +405,8 @@ export default function App() {
             <Routes key={langKey}>
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/lobby" element={<LobbyPage />} />
               <Route path="/game/:gameId" element={<GamePage />} />
               <Route path="/result/:gameId" element={<ResultPage />} />

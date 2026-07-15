@@ -314,6 +314,43 @@ export async function startTournament(id: string): Promise<TournamentData> {
   return request('/tournaments/' + encodeURIComponent(id) + '/start', { method: 'POST' });
 }
 
+/* ─── Password Reset ─── */
+
+/* POST /auth/forgot-password — no auth required. */
+export async function forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+  logger.info('forgotPassword called: email=' + email);
+  try {
+    const result = await request<{ success: boolean; message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+    logger.info('forgotPassword ok');
+    return result;
+  } catch (err) {
+    logger.error('forgotPassword failed: ' + err);
+    throw err;
+  }
+}
+
+/* POST /auth/reset-password — no auth required. */
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<{ success: boolean; message: string }> {
+  logger.info('resetPassword called');
+  try {
+    const result = await request<{ success: boolean; message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    });
+    logger.info('resetPassword ok');
+    return result;
+  } catch (err) {
+    logger.error('resetPassword failed: ' + err);
+    throw err;
+  }
+}
+
 /* GET /health — no auth required.
  * Response shape confirmed in ../chess-api/src/routes.ts line 35-43
  * and ../chess-api/docs/api.md lines 44-54. */

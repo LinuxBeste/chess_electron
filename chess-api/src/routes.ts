@@ -6,7 +6,9 @@ import { PieceType } from './types.js';
 import * as game from './game.js';
 import * as db from './db.js';
 import * as chess from './chess.js';
+import * as player from './player.js';
 import * as monitoring from './monitoring.js';
+import * as email from './email.js';
 import { engineManager } from './engine.js';
 import logger from './logger.js';
 import fs from 'fs';
@@ -21,6 +23,7 @@ import {
   tournamentNameSchema,
   joinCodeSchema,
   captchaTokenSchema,
+  emailSchema,
 } from './validation.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -281,6 +284,93 @@ router.post('/auth/login', ipRateLimitMiddleware, async (req: Request, res: Resp
   game.clearLoginAttempts(trimmed);
   logger.audit('login_ok', `playerId="${result.playerId}" username="${trimmed}" ip="${ip}"`);
   res.json(result);
+});
+
+router.post('/auth/forgot-password', ipRateLimitMiddleware, async (req: Request, res: Response) => {
+  const parsed = z.object({ email: emailSchema }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message });
+    return;
+  }
+  const { email: emailAddr } = parsed.data;
+
+  if (!email.isEmailConfigured()) {
+    res.status(503).json({ error: 'Password reset is not configured on this server' });
+    return;
+  }
+
+  /* Always return success to prevent email enumeration */
+  const user = await db.getUserByEmail(emailAddr);
+  if (!user) {
+    logger.info('Forgot password: email not found email=' + emailAddr);
+    res.json({ success: true, message: 'If that email is registered, a recovery link has been sent.' });
+    return;
+  }
+
+  if (!user.password_hash) {
+    logger.info('Forgot password: anonymous account email=' + emailAddr);
+    res.json({ success: true, message: 'If that email is registered, a recovery link has been sent.' });
+    return;
+  }
+
+  const token = uuidv4();
+  const RESET_TOKEN_TTL = parseInt(process.env.PASSWORD_RESET_TOKEN_TTL ?? '3600000', 10);
+  await db.createPasswordResetToken(token, user.id, RESET_TOKEN_TTL);
+
+  const sent = await email.sendPasswordResetEmail(emailAddr, token);
+  if (!sent) {
+    res.status(500).json({ error: 'Failed to send recovery email. Please try again later.' });
+    return;
+  }
+
+  logger.audit('password_reset_requested', 'userId=' + user.id + ' email=' + emailAddr);
+  res.json({ success: true, message: 'If that email is registered, a recovery link has been sent.' });
+});
+
+router.post('/auth/reset-password', ipRateLimitMiddleware, async (req: Request, res: Response) => {
+  const parsed = z
+    .object({
+      token: z.string().uuid(),
+      newPassword: passwordSchema,
+    })
+    .safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message });
+    return;
+  }
+  const { token, newPassword } = parsed.data;
+
+  const resetRow = await db.getPasswordResetToken(token);
+  if (!resetRow) {
+    res.status(400).json({ error: 'Invalid or expired reset token' });
+    return;
+  }
+  if (resetRow.used) {
+    res.status(400).json({ error: 'Reset token has already been used' });
+    return;
+  }
+  if (resetRow.expires_at < Date.now()) {
+    res.status(400).json({ error: 'Reset token has expired' });
+    return;
+  }
+
+  const user = await db.getUserById(resetRow.user_id);
+  if (!user || !user.password_hash) {
+    res.status(400).json({ error: 'Account not found' });
+    return;
+  }
+
+  const hash = await player.hashPasswordAsync(newPassword);
+  await db.updateUserPasswordHash(resetRow.user_id, hash);
+  await db.markPasswordResetTokenUsed(token);
+  /* Invalidate all existing sessions */
+  await db.deleteUserTokens(resetRow.user_id);
+
+  logger.audit('password_reset_completed', 'userId=' + resetRow.user_id);
+  res.json({
+    success: true,
+    message: 'Password has been reset successfully. You can now log in with your new password.',
+  });
 });
 
 router.get('/auth/me', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {

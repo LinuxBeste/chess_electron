@@ -48,6 +48,14 @@
 | `FILE_SAVE_INTERVAL_MS`         | `30000`                                         | no       | number | Interval for saving active games to file (ms)                   |
 | `DISABLE_FILE_PERSISTENCE`      | `false`                                         | no       | bool   | Disable JSON file persistence fallback                          |
 | `DISABLE_CLI`                   | `false`                                         | no       | bool   | When `true`, prevents the chess-admin CLI from executing        |
+| `SMTP_HOST`                     | _(empty)_                                       | no       | string | SMTP server hostname for email sending (password reset)         |
+| `SMTP_PORT`                     | `587`                                           | no       | number | SMTP server port                                                |
+| `SMTP_USER`                     | _(empty)_                                       | no       | string | SMTP username                                                   |
+| `SMTP_PASS`                     | _(empty)_                                       | no       | string | SMTP password                                                   |
+| `SMTP_FROM`                     | `noreply@chess.example`                         | no       | string | From address for outgoing emails                                |
+| `APP_NAME`                      | `Chess`                                         | no       | string | Application name used in email templates                        |
+| `BASE_URL`                      | `http://localhost:3000`                         | no       | string | Public-facing base URL for password reset links                 |
+| `PASSWORD_RESET_TOKEN_TTL`      | `3600000`                                       | no       | number | Password reset token TTL (ms, default 1 hour)                   |
 | `CHAT_MAX_LENGTH`               | `500`                                           | no       | number | Max characters per chat message                                 |
 | `CHAT_HISTORY_MAX`              | `50`                                            | no       | number | Max in-memory chat messages per game                            |
 | `GROUP_NAME_MAX_LENGTH`         | `50`                                            | no       | number | Max group conversation name length                              |

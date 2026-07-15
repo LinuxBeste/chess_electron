@@ -651,6 +651,13 @@ if (!isTestEnv) {
       });
     }, TOKEN_CLEANUP_INTERVAL_MS),
   );
+  timers.push(
+    setInterval(() => {
+      db.cleanupExpiredPasswordResetTokens().catch((e) => {
+        logger.error('cleanupExpiredPasswordResetTokens failed: ' + e);
+      });
+    }, TOKEN_CLEANUP_INTERVAL_MS),
+  );
 
   const DB_BACKUP_INTERVAL_MS = parseInt(process.env.DB_BACKUP_INTERVAL_MS ?? String(6 * 3600000), 10);
   if (DB_BACKUP_INTERVAL_MS > 0) {

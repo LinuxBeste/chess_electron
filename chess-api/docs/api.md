@@ -161,6 +161,42 @@ Delete the authenticated player's account permanently (registered users only). R
 
 **Response (200):** `{ "success": true }`
 
+### POST /auth/forgot-password
+
+Request a password reset email. No auth required. Rate limited per IP.
+
+**Request:**
+
+```json
+{ "email": "user@example.com" }
+```
+
+**Response (200):** Always returns success to prevent email enumeration.
+
+```json
+{ "success": true, "message": "If that email is registered, a recovery link has been sent." }
+```
+
+Requires SMTP to be configured (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` env vars).
+
+### POST /auth/reset-password
+
+Reset password using a token received via email. No auth required. Rate limited per IP.
+
+**Request:**
+
+```json
+{ "token": "uuid-v4", "newPassword": "new-secret" }
+```
+
+`newPassword` must be at least 8 characters.
+
+**Response (200):**
+
+```json
+{ "success": true, "message": "Password has been reset successfully. You can now log in with your new password." }
+```
+
 ### GET /players/:playerId/profile
 
 Get a player's public profile. Requires auth.
