@@ -813,6 +813,8 @@ body {
   gap: 4px;
   padding: 16px 24px 0;
   border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
 }
 .settings-tab {
   padding: 8px 16px;
@@ -825,6 +827,8 @@ body {
   transition: all 150ms ease;
   letter-spacing: 0.3px;
   color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .settings-tab.active {
   background: rgba(79, 142, 247, 0.15);
