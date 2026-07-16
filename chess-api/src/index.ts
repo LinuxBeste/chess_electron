@@ -391,19 +391,27 @@ export function createServer(): http.Server {
             ) => {
               ws.send(JSON.stringify({ type: 'conversations_list', conversations: convs }));
             },
+            (err: unknown) => {
+              logger.error('getConversationsForUser failed: ' + err);
+            },
           );
         } else if (msg.type === 'start_private_conversation' && typeof msg.toPlayerId === 'string') {
           const targetId = msg.toPlayerId as string;
-          chat.getOrCreatePrivateConversation(player.id, targetId).then((convId: string) => {
-            const targetPlayer = players.get(targetId);
-            ws.send(
-              JSON.stringify({
-                type: 'conversation_created',
-                conversationId: convId,
-                withName: targetPlayer?.displayName || targetId.slice(0, 8),
-              }),
-            );
-          });
+          chat.getOrCreatePrivateConversation(player.id, targetId).then(
+            (convId: string) => {
+              const targetPlayer = players.get(targetId);
+              ws.send(
+                JSON.stringify({
+                  type: 'conversation_created',
+                  conversationId: convId,
+                  withName: targetPlayer?.displayName || targetId.slice(0, 8),
+                }),
+              );
+            },
+            (err: unknown) => {
+              logger.error('getOrCreatePrivateConversation failed: ' + err);
+            },
+          );
         } else if (msg.type === 'offer_draw' && typeof msg.gameId === 'string') {
           game
             .offerDrawSafe(msg.gameId as string, player.id)

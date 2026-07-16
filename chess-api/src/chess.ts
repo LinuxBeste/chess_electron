@@ -483,15 +483,16 @@ export function hasInsufficientMaterial(board: Board): boolean {
     return pieces[0].type === 'bishop' || pieces[0].type === 'knight';
   }
 
-  if (
-    pieces.length === 2 &&
-    pieces[0].type === 'bishop' &&
-    pieces[1].type === 'bishop' &&
-    pieces[0].color !== pieces[1].color
-  ) {
-    const sq1 = (pieces[0].rank + pieces[0].file) % 2;
-    const sq2 = (pieces[1].rank + pieces[1].file) % 2;
-    if (sq1 === sq2) return true;
+  if (pieces.length === 2) {
+    /* Both are knights → cannot force checkmate */
+    if (pieces[0].type === 'knight' && pieces[1].type === 'knight') return true;
+
+    /* Both are bishops (opposite players) on same square color → cannot force checkmate */
+    if (pieces[0].type === 'bishop' && pieces[1].type === 'bishop' && pieces[0].color !== pieces[1].color) {
+      const sq1 = (pieces[0].rank + pieces[0].file) % 2;
+      const sq2 = (pieces[1].rank + pieces[1].file) % 2;
+      if (sq1 === sq2) return true;
+    }
   }
 
   return false;

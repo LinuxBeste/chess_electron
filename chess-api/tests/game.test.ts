@@ -1180,8 +1180,8 @@ describe('kickPlayer', () => {
 });
 
 describe('endGame', () => {
-  test('endGame fails for non-existent game', () => {
-    const result = game.endGame('no-such-game');
+  test('endGame fails for non-existent game', async () => {
+    const result = await game.endGame('no-such-game');
     expect(result.success).toBe(false);
   });
 });

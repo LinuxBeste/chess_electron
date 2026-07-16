@@ -697,6 +697,7 @@ router.get('/admin/api/accounts', adminAuthMiddleware, async (req: Request, res:
       id: u.id,
       username: u.username,
       displayName: u.display_name,
+      email: u.email,
       avatarUrl: u.avatar_url,
       createdAt: u.created_at,
       wins: u.wins,
@@ -911,9 +912,9 @@ router.post('/admin/api/players/:id/kick', adminAuthMiddleware, (req: Request, r
   }
 });
 
-router.post('/admin/api/games/:id/end', adminAuthMiddleware, (req: Request, res: Response) => {
+router.post('/admin/api/games/:id/end', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
-    const result = game.endGame(req.params.id);
+    const result = await game.endGame(req.params.id);
     if (!result.success) {
       res.status(400).json({ error: result.error });
       return;

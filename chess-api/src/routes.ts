@@ -295,7 +295,7 @@ router.post('/auth/forgot-password', ipRateLimitMiddleware, async (req: Request,
   const { email: emailAddr } = parsed.data;
 
   if (!email.isEmailConfigured()) {
-    res.status(503).json({ error: 'Password reset is not configured on this server' });
+    res.status(503).json({ error: 'Password reset is not configured on this server', code: 'smtp_not_configured' });
     return;
   }
 
@@ -313,13 +313,16 @@ router.post('/auth/forgot-password', ipRateLimitMiddleware, async (req: Request,
     return;
   }
 
+  await db.deleteUserPasswordResetTokens(user.id);
   const token = uuidv4();
   const RESET_TOKEN_TTL = parseInt(process.env.PASSWORD_RESET_TOKEN_TTL ?? '3600000', 10);
   await db.createPasswordResetToken(token, user.id, RESET_TOKEN_TTL);
 
   const sent = await email.sendPasswordResetEmail(emailAddr, token);
   if (!sent) {
-    res.status(500).json({ error: 'Failed to send recovery email. Please try again later.' });
+    res
+      .status(500)
+      .json({ error: 'Failed to send recovery email. Please try again later.', code: 'email_send_failed' });
     return;
   }
 

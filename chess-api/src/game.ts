@@ -418,14 +418,20 @@ export async function createBotGame(
     .then(() => {
       logger.info('Bot engine ready for game', id);
       if (botColor === 'white') {
-        triggerBotMove(id);
+        withGameLock(id, async () => {
+          triggerBotMove(id);
+        }).catch((err: unknown) => {
+          logger.error('Bot engine triggerBotMove failed for game ' + id, err);
+        });
       }
     })
     .catch(async (err) => {
       logger.error('Failed to start bot engine for game ' + id, err);
-      game.status = 'draw';
-      game.reason = 'Engine error — game cancelled';
-      persistGameAndPublish(id);
+      await withGameLock(id, async () => {
+        game.status = 'draw';
+        game.reason = 'Engine error — game cancelled';
+        persistGameAndPublish(id);
+      });
       broadcastToGame(id, {
         type: 'game_over',
         gameId: id,
@@ -722,6 +728,8 @@ export async function makeMove(
       setTimeout(() => {
         withGameLock(gameId, async () => {
           triggerBotMove(gameId);
+        }).catch((err: unknown) => {
+          logger.error('Bot triggerBotMove failed for game ' + gameId, err);
         });
       }, 100);
     }
@@ -1043,7 +1051,10 @@ export async function acceptRematch(
     }
 
     const isPlayer = game.players.white === playerId || game.players.black === playerId;
-    if (!isPlayer) return { success: false, error: 'You are not a player in this game' };
+    if (!isPlayer) {
+      deleteRematchOfferEntry(gameId);
+      return { success: false, error: 'You are not a player in this game' };
+    }
 
     const newWhite = offererId === game.players.white ? game.players.black : game.players.white;
     const newBlack = offererId === game.players.white ? game.players.white : game.players.black;
@@ -1183,28 +1194,50 @@ export function kickPlayer(playerId: string): { success: true } | { success: fal
   return { success: true };
 }
 
-export function endGame(gameId: string): { success: true } | { success: false; error: string } {
+export async function endGame(gameId: string): Promise<{ success: true } | { success: false; error: string }> {
   const g = games.get(gameId);
   if (!g) return { success: false, error: 'Game not found' };
   if (g.status === 'draw' || g.status === 'stalemate' || g.status === 'resigned' || g.status === 'checkmate') {
     return { success: false, error: 'Game is already over' };
   }
 
-  g.status = 'draw';
-  g.winner = null;
-  g.reason = 'Ended by admin';
-  persistGame(g.id);
+  await withGameLock(gameId, async () => {
+    const game = games.get(gameId)!;
+    game.status = 'draw';
+    game.winner = null;
+    game.reason = 'Ended by admin';
+    persistGame(game.id);
 
-  uciHistory.delete(g.id);
-  drawOffers.delete(g.id);
-  rematchOffers.delete(g.id);
-  deleteEventBuffer(g.id);
+    /* Save to completed_games for recordkeeping, without updating Elo/stats */
+    const result = 'draw';
+    await db.saveCompletedGame(
+      game.id,
+      game.players.white || null,
+      game.players.black || null,
+      game.players.white ? (players.get(game.players.white)?.displayName ?? game.players.white.slice(0, 8)) : '',
+      game.players.black ? (players.get(game.players.black)?.displayName ?? game.players.black.slice(0, 8)) : '',
+      null,
+      game.status,
+      result,
+      game.reason,
+      JSON.stringify(game.moveHistory),
+      JSON.stringify(game.boardHistory),
+      null,
+      '5+0',
+    );
+    gameCompletedAt.set(game.id, Date.now());
+  });
+
+  uciHistory.delete(gameId);
+  drawOffers.delete(gameId);
+  rematchOffers.delete(gameId);
+  deleteEventBuffer(gameId);
   if (isBotGame(g)) {
-    engineManager.destroyInstance(g.id);
+    engineManager.destroyInstance(gameId);
   }
 
-  spectatorConnections.delete(g.id);
-  chatHistory.delete(g.id);
+  spectatorConnections.delete(gameId);
+  chatHistory.delete(gameId);
 
   const message = { type: 'game_over', reason: g.reason, result: 'draw', status: 'draw', gameId };
   if (g.players.white) sendToPlayer(g.players.white, message);
