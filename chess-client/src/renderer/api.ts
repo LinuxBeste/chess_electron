@@ -211,13 +211,16 @@ export async function updateDisplayName(displayName: string): Promise<{ success:
 /* PUT /auth/me/password — auth required.
  * Change the authenticated player's password. */
 /* PUT /auth/me/email — auth required.
- * Update the recovery email. Pass null to clear. */
-export async function updateEmail(email: string | null): Promise<{ success: true; email: string | null }> {
+ * Update the recovery email. Pass null to clear. Requires current password. */
+export async function updateEmail(
+  email: string | null,
+  currentPassword: string,
+): Promise<{ success: true; email: string | null }> {
   logger.info('updateEmail called: email=' + email);
   try {
     const result = await request<{ success: true; email: string | null }>('/auth/me/email', {
       method: 'PUT',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, currentPassword }),
     });
     logger.info('updateEmail ok');
     return result;

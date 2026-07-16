@@ -450,12 +450,26 @@ router.put(
       res.status(400).json({ error: 'Only registered accounts can set a recovery email' });
       return;
     }
-    const parsed = z.object({ email: emailSchema.nullable() }).safeParse(req.body);
+    const parsed = z
+      .object({
+        email: emailSchema.nullable(),
+        currentPassword: z.string().min(1, 'Current password is required'),
+      })
+      .safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
-    const { email: newEmail } = parsed.data;
+    const { email: newEmail, currentPassword } = parsed.data;
+    const user = await db.getUserById(req.player.id);
+    if (!user || !user.password_hash) {
+      res.status(400).json({ error: 'Account not found' });
+      return;
+    }
+    if (!(await player.verifyPasswordAsync(currentPassword, user.password_hash))) {
+      res.status(400).json({ error: 'Current password is incorrect' });
+      return;
+    }
     await db.updateUserEmail(req.player.id, newEmail);
     logger.audit('email_updated', 'userId=' + req.player.id + ' email=' + newEmail);
     res.json({ success: true, email: newEmail });

@@ -1049,8 +1049,8 @@ function AccountTab() {
   const [avatarMsg, setAvatarMsg] = useState('');
   const [avatarError, setAvatarError] = useState('');
   const [email, setEmail] = useState('');
-  const [emailMsg, setEmailMsg] = useState('');
-  const [emailError, setEmailError] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -1170,16 +1170,26 @@ function AccountTab() {
 
   async function handleSaveEmail() {
     const val = email.trim();
-    setEmailMsg('');
-    setEmailError('');
+    if (!emailPassword) {
+      store.toast('Current password is required', 'error');
+      return;
+    }
+    if (val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+      store.toast('Invalid email address', 'error');
+      return;
+    }
+    setEmailSaving(true);
     try {
-      await apiUpdateEmail(val || null);
-      setEmailMsg(t('settings.account.emailSaved'));
+      await apiUpdateEmail(val || null, emailPassword);
+      setEmailPassword('');
+      store.toast(t('settings.account.emailSaved'), 'info');
       logger.info('Recovery email updated', { email: val });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       logger.error('Failed to update recovery email', { error: msg });
-      setEmailError(msg || t('settings.account.emailSaveFailed'));
+      store.toast(msg || t('settings.account.emailSaveFailed'), 'error');
+    } finally {
+      setEmailSaving(false);
     }
   }
 
@@ -1319,6 +1329,9 @@ function AccountTab() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveEmail();
+                  }}
                   placeholder={t('settings.account.emailPlaceholder')}
                   style={{
                     width: 160,
@@ -1346,12 +1359,40 @@ function AccountTab() {
                     {t('settings.account.emailClear')}
                   </button>
                 )}
-                <button className="btn btn-primary btn-xs" onClick={handleSaveEmail} style={{ fontSize: 11 }}>
-                  {t('settings.account.save')}
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="password"
+                  className="settings-text-input"
+                  value={emailPassword}
+                  onChange={(e) => setEmailPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveEmail();
+                  }}
+                  placeholder={t('settings.account.currentPassword')}
+                  style={{
+                    width: 160,
+                    padding: '4px 8px',
+                    borderRadius: 4,
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'rgba(0,0,0,0.3)',
+                    color: '#e0e0e0',
+                    fontSize: 13,
+                  }}
+                />
+                <button
+                  className="btn btn-primary btn-xs"
+                  onClick={handleSaveEmail}
+                  style={{ fontSize: 11 }}
+                  disabled={emailSaving}
+                >
+                  {emailSaving ? (
+                    <span className="spinner" style={{ display: 'inline-block' }} />
+                  ) : (
+                    t('settings.account.save')
+                  )}
                 </button>
               </div>
-              {emailMsg && <span style={{ fontSize: 11, color: '#4caf50' }}>{emailMsg}</span>}
-              {emailError && <span style={{ fontSize: 11, color: '#f44336' }}>{emailError}</span>}
             </div>
           </div>
         </>
