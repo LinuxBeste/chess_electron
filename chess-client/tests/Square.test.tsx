@@ -21,6 +21,8 @@ describe('Square', () => {
     isLegalHint: false,
     isLegalCapture: false,
     isHovered: false,
+    isPremoveFrom: false,
+    isPremoveTo: false,
     showCoordinates: false,
     onClick: () => {},
     onPointerDown: () => {},
