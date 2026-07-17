@@ -67,6 +67,67 @@ describe('Auth', () => {
   });
 });
 
+describe('Verified badge', () => {
+  test('GET /auth/me returns verified field for registered user', async () => {
+    const { authHeader } = await registerPlayer('v_me_' + Date.now());
+    const res = await request.get('/auth/me').set('Authorization', authHeader).expect(200);
+    expect(res.body).toHaveProperty('verified');
+    expect(res.body.verified).toBe(false);
+  });
+
+  test('GET /players/:id/profile returns verified field', async () => {
+    const { playerId, authHeader } = await registerPlayer('v_prof_' + Date.now());
+    const res = await request
+      .get('/players/' + playerId + '/profile')
+      .set('Authorization', authHeader)
+      .expect(200);
+    expect(res.body).toHaveProperty('verified');
+    expect(res.body.verified).toBe(false);
+  });
+
+  test('Admin toggle-verified toggles the flag', async () => {
+    const player = await registerPlayer('v_toggle_' + Date.now());
+    const loginRes = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' }).expect(200);
+    const adminToken = loginRes.body.token;
+    expect(adminToken).toBeDefined();
+    const adminAuth = 'Bearer ' + adminToken;
+
+    /* Toggle ON */
+    const onRes = await request
+      .put('/admin/api/accounts/' + player.playerId + '/toggle-verified')
+      .set('Authorization', adminAuth)
+      .expect(200);
+    expect(onRes.body.verified).toBe(true);
+
+    /* Verify via GET /auth/me */
+    const meRes = await request.get('/auth/me').set('Authorization', player.authHeader).expect(200);
+    expect(meRes.body.verified).toBe(true);
+
+    /* Toggle OFF */
+    const offRes = await request
+      .put('/admin/api/accounts/' + player.playerId + '/toggle-verified')
+      .set('Authorization', adminAuth)
+      .expect(200);
+    expect(offRes.body.verified).toBe(false);
+
+    /* Verify via profile */
+    const profRes = await request
+      .get('/players/' + player.playerId + '/profile')
+      .set('Authorization', player.authHeader)
+      .expect(200);
+    expect(profRes.body.verified).toBe(false);
+  });
+
+  test('Admin toggle-verified returns 404 for non-existent account', async () => {
+    const loginRes = await request.post('/admin/api/login').send({ username: 'admin', password: 'admin' }).expect(200);
+    const res = await request
+      .put('/admin/api/accounts/no-such-id/toggle-verified')
+      .set('Authorization', 'Bearer ' + loginRes.body.token)
+      .expect(404);
+    expect(res.body).toHaveProperty('error');
+  });
+});
+
 describe('Game creation and joining', () => {
   test('POST /games creates a waiting game', async () => {
     /* New game starts in 'waiting' status with only the white player */

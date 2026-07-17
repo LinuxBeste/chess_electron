@@ -498,10 +498,23 @@ export function hasInsufficientMaterial(board: Board): boolean {
   return false;
 }
 
+/* Check if the current position has appeared three times in boardHistory.
+ * Compares the last boardHistory entry's serialized board against all previous
+ * entries to detect threefold repetition for auto-draw. */
+export function hasThreefoldRepetition(boardHistory: { board: SerializedSquare[] }[]): boolean {
+  if (boardHistory.length < 4) return false;
+  const last = JSON.stringify(boardHistory[boardHistory.length - 1].board);
+  let count = 0;
+  for (const entry of boardHistory) {
+    if (JSON.stringify(entry.board) === last) count++;
+    if (count >= 3) return true;
+  }
+  return false;
+}
+
 /* Evaluate game status from color's perspective.
  * Returns 'active', 'check', 'checkmate', 'stalemate', or 'draw'
- * (50-move rule, insufficient material).
- * Other draws (agreement, repetition) handled at app layer. */
+ * (50-move rule, insufficient material). */
 export function getGameStatus(
   board: Board,
   color: Color,
@@ -713,4 +726,144 @@ export function moveToAlgebraic(move: Move, capturedPiece: Piece | undefined, le
   }
 
   return `${pieceLetter}${disambig}${captureSign}${move.to}`;
+}
+
+/* Parse a standard algebraic notation (SAN) move into a Move object.
+ * Strips check/mate markers (+/#) and promotion suffix (=Q etc.).
+ * Returns the matching legal Move or null if not found. */
+export function parseAlgebraicToMove(
+  algebraic: string,
+  board: Board,
+  color: Color,
+  enPassantTarget: string | null,
+  castlingRights: CastlingRights,
+): Move | null {
+  let san = algebraic.replace(/[+#]/g, '').trim();
+  if (!san) return null;
+
+  /* Castling */
+  if (san === 'O-O' || san === 'O-O-O') {
+    const legalMoves = getLegalMoves(board, color, enPassantTarget, castlingRights);
+    return (
+      legalMoves.find(
+        (m) => m.isCastling && (san === 'O-O-O' ? m.isCastling === 'queenside' : m.isCastling === 'kingside'),
+      ) || null
+    );
+  }
+
+  /* Remove promotion suffix (=Q, =R, etc.) */
+  let promotion: PieceType | undefined;
+  const promoMatch = san.match(/=([QRBN])$/);
+  if (promoMatch) {
+    const map: Record<string, PieceType> = { Q: 'queen', R: 'rook', B: 'bishop', N: 'knight' };
+    promotion = map[promoMatch[1]];
+    san = san.slice(0, -2);
+  }
+
+  /* Strip capture sign */
+  san = san.replace('x', '');
+
+  /* Extract piece letter (or pawn = empty) */
+  let pieceLetter = '';
+  let rest = san;
+  const firstChar = san[0];
+  if (firstChar >= 'A' && firstChar <= 'Z') {
+    pieceLetter = firstChar;
+    rest = san.slice(1);
+  }
+
+  const pieceType = pieceLetter
+    ? ({ K: 'king', Q: 'queen', R: 'rook', B: 'bishop', N: 'knight' } as Record<string, PieceType>)[pieceLetter]
+    : 'pawn';
+
+  /* Destination square is the last 2 chars */
+  const toSquare = rest.slice(-2);
+  if (toSquare.length !== 2) return null;
+  const disambig = rest.slice(0, -2);
+
+  const legalMoves = getLegalMoves(board, color, enPassantTarget, castlingRights);
+
+  return (
+    legalMoves.find((m) => {
+      if (m.piece.type !== pieceType) return false;
+      if (m.to !== toSquare) return false;
+      if ((m.promotion || undefined) !== promotion) return false;
+
+      /* Disambiguation: match from-file, from-rank, or full from-square */
+      if (disambig.length >= 2) {
+        if (m.from !== disambig) return false;
+      } else if (disambig.length === 1) {
+        const ch = disambig[0];
+        if (ch >= 'a' && ch <= 'h') {
+          if (m.from[0] !== ch) return false;
+        } else {
+          if (m.from[1] !== ch) return false;
+        }
+      }
+      return true;
+    }) || null
+  );
+}
+
+/* Parse a PGN string and return the resulting board position.
+ * Strips headers, plays through all moves on a starting board.
+ * Returns { fen, board } or null on error. */
+export function pgnToBoard(pgn: string): { fen: string; board: SerializedSquare[] } | null {
+  /* Strip PGN headers (lines in brackets) */
+  let body = pgn.replace(/\[.*?\]\s*/g, '').trim();
+
+  /* Strip result suffix */
+  body = body.replace(/\s*(1-0|0-1|1\/2-1\/2|\*)\s*$/, '').trim();
+
+  /* Tokenise: remove move numbers (1. 2... etc.), split on whitespace */
+  const tokens = body
+    .replace(/\d+\.\.\./g, '')
+    .replace(/\d+\./g, '')
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (tokens.length === 0) {
+    /* Empty PGN = starting position */
+    const board = createInitialBoard();
+    return {
+      fen: boardToFen(
+        board,
+        'white',
+        { white: { kingside: true, queenside: true }, black: { kingside: true, queenside: true } },
+        null,
+        0,
+        1,
+      ),
+      board: serializeBoard(board),
+    };
+  }
+
+  let board = createInitialBoard();
+  let color: Color = 'white';
+  let castlingRights: CastlingRights = {
+    white: { kingside: true, queenside: true },
+    black: { kingside: true, queenside: true },
+  };
+  let enPassantTarget: string | null = null;
+  let halfMoveClock = 0;
+  let fullMoveNumber = 1;
+
+  for (const token of tokens) {
+    const move = parseAlgebraicToMove(token, board, color, enPassantTarget, castlingRights);
+    if (!move) return null;
+
+    const result = applyMove(board, move, castlingRights);
+    board = result.newBoard;
+    enPassantTarget = result.enPassantTarget;
+    castlingRights = result.castlingRights;
+    halfMoveClock = updateHalfMoveClock(move, halfMoveClock);
+
+    if (color === 'black') fullMoveNumber++;
+    color = color === 'white' ? 'black' : 'white';
+  }
+
+  return {
+    fen: boardToFen(board, color, castlingRights, enPassantTarget, halfMoveClock, fullMoveNumber),
+    board: serializeBoard(board),
+  };
 }

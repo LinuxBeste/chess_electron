@@ -697,7 +697,6 @@ router.get('/admin/api/accounts', adminAuthMiddleware, async (req: Request, res:
       id: u.id,
       username: u.username,
       displayName: u.display_name,
-      email: u.email,
       avatarUrl: u.avatar_url,
       createdAt: u.created_at,
       wins: u.wins,
@@ -705,6 +704,7 @@ router.get('/admin/api/accounts', adminAuthMiddleware, async (req: Request, res:
       draws: u.draws,
       rating: u.rating,
       isAdmin: u.is_admin === true,
+      verified: u.verified === true,
     }));
     logger.info('Admin accounts listed: page=' + page + ' count=' + list.length + ' total=' + total);
     res.json({ rows: list, total, page, limit });
@@ -871,6 +871,7 @@ router.get('/admin/api/accounts/:id/profile', adminAuthMiddleware, async (req: R
       losses: user.losses,
       draws: user.draws,
       isAdmin: user.is_admin === true,
+      verified: user.verified === true,
       isOnline: online,
       currentGameId: currentGameId || null,
     });
@@ -1304,6 +1305,25 @@ router.put('/admin/api/accounts/:id/toggle-admin', adminAuthMiddleware, async (r
   } catch (err) {
     logger.error('Admin toggle failed: ' + err);
     res.status(500).json({ error: 'Failed to toggle admin status' });
+  }
+});
+
+/* ─── Admin: Toggle Verified ─── */
+
+router.put('/admin/api/accounts/:id/toggle-verified', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = await db.getUserById(req.params.id);
+    if (!user) {
+      res.status(404).json({ error: 'Account not found' });
+      return;
+    }
+    const isVerified = await db.isUserVerified(req.params.id);
+    await db.setUserVerified(req.params.id, !isVerified);
+    logger.audit('admin_toggled_verified', `account="${req.params.id}" verified="${!isVerified}" by admin`);
+    res.json({ success: true, verified: !isVerified });
+  } catch (err) {
+    logger.error('Admin toggle verified failed: ' + err);
+    res.status(500).json({ error: 'Failed to toggle verified status' });
   }
 });
 

@@ -36,14 +36,19 @@ export default function ResetPasswordPage() {
     }
     setLoading(true);
     try {
-      const result = await api.resetPassword(token, password);
+      await api.resetPassword(token, password);
       logger.info('resetPassword success');
       setDone(true);
-      store.toast(result.message || t('resetPassword.success'), 'info');
+      store.toast(t('resetPassword.successDesc'), 'info');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.error('resetPassword failed', { error: msg });
-      store.toast(msg || t('resetPassword.failed'));
+      const apiErr = err as { status?: number; code?: string; message?: string };
+      if (apiErr.code === 'smtp_not_configured') {
+        store.toast(t('forgotPassword.smtpNotConfigured'), 'error');
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error('resetPassword failed', { error: msg });
+        store.toast(msg || t('resetPassword.failed'));
+      }
     } finally {
       setLoading(false);
     }

@@ -60,6 +60,7 @@ export default function GamePage() {
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null);
+  const [premove, setPremove] = useState<{ from: string; to: string } | null>(null);
   const [resignConfirmed, setResignConfirmed] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -426,10 +427,24 @@ export default function GamePage() {
     const opponentMoveStr = `${msg.lastMove.from}-${msg.lastMove.to}`;
     const fen = boardToFen(boardRef.current);
     evaluateMoveQuality(opponentMoveStr, fen);
+
+    /* Execute queued premove when it becomes this player's turn */
+    setPremove((prev) => {
+      if (!prev || msg.turn !== playerColorRef.current) return null;
+      /* Defer to next tick so React has processed the board update */
+      setTimeout(() => {
+        const g = gameRef.current;
+        if (g && g.status === 'active' && g.turn === playerColorRef.current) {
+          executeMove(prev.from, prev.to, checkPromotion(prev.from, prev.to) ? 'queen' : undefined);
+        }
+      }, 0);
+      return null;
+    });
   }
 
   function handleWsGameOver(msg: GameOverMessage) {
     if (!gameRef.current) return;
+    setPremove(null);
     logger.info('WS game_over received', { gameId: msg.gameId, status: msg.status, winner: msg.winner });
     setBoard(deserializeBoard(msg.board));
     setLastMove(msg.lastMove);
@@ -541,15 +556,32 @@ export default function GamePage() {
   const handleSquareClick = useCallback(
     async (square: string) => {
       if (dragFrom.current) return;
-      if (!gameRef.current || gameRef.current.turn !== playerColor || gameRef.current.status !== 'active') return;
+      if (!gameRef.current || gameRef.current.status !== 'active') return;
       const [r, f] = squareToIndices(square);
       const clickedPiece = boardRef.current[r]?.[f];
+
+      /* Premove: when it's not the player's turn, queue a move */
+      if (gameRef.current.turn !== playerColor) {
+        if (getSetting('premove') && clickedPiece && clickedPiece.color === playerColor) {
+          setSelectedSquare(square);
+          setPremove(null);
+          return;
+        }
+        if (getSetting('premove') && selectedSquare && clickedPiece?.color !== playerColor) {
+          setPremove({ from: selectedSquare, to: square });
+          setSelectedSquare(null);
+          return;
+        }
+        return;
+      }
+
       if (square === selectedSquare) {
         setSelectedSquare(null);
         setLegalHints([]);
         return;
       }
       if (selectedSquare && legalHints.some((h) => h.from === selectedSquare && h.to === square)) {
+        setPremove(null);
         if (checkPromotion(selectedSquare, square) && !getSetting('autoPromoteQueen')) {
           setPromotion({ from: selectedSquare, to: square });
         } else {
@@ -559,6 +591,7 @@ export default function GamePage() {
       }
       if (clickedPiece && clickedPiece.color === playerColor) {
         setSelectedSquare(square);
+        setPremove(null);
         requestLegalMoves(square);
         return;
       }
@@ -849,6 +882,7 @@ export default function GamePage() {
           onSquareClick={handleSquareClick}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          premove={premove}
           alwaysBottom={boardFlipped ? !getSetting('alwaysWhiteBottom') : undefined}
         >
           {waiting && game && (

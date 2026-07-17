@@ -26,6 +26,7 @@ import type {
 } from '../types';
 import { store } from './store';
 import logger from './logger';
+import type { SerializedSquare } from '../types';
 
 /** Base URL — can be overridden via setBaseUrl() for testing or env config. */
 let BASE_URL = 'http://localhost:3000';
@@ -55,6 +56,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -91,11 +93,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       store.clearSession();
     }
     let msg = `Request failed with status ${res.status}`;
+    let code: string | undefined;
     try {
       const body = await res.json();
       if (body.error) msg = body.error;
+      if (body.code) code = body.code;
     } catch {}
-    throw new ApiError(res.status, msg);
+    throw new ApiError(res.status, msg, code);
   }
 
   const text = await res.text();
@@ -169,6 +173,7 @@ export async function getMe(): Promise<{
   createdAt: number | null;
   avatarUrl: string | null;
   email: string | null;
+  verified?: boolean;
   stats?: { wins: number; losses: number; draws: number };
 }> {
   logger.info('getMe called');
@@ -181,6 +186,7 @@ export async function getMe(): Promise<{
       createdAt: number | null;
       avatarUrl: string | null;
       email: string | null;
+      verified?: boolean;
       stats?: { wins: number; losses: number; draws: number };
     }>('/auth/me');
     logger.info('getMe ok: username=' + result.username);
@@ -687,6 +693,7 @@ export interface PlayerProfile {
   avatarUrl: string | null;
   createdAt: number | null;
   rating: number | null;
+  verified?: boolean;
   friendStatus: 'none' | 'friends' | 'incoming' | 'outgoing';
   friendCount: number;
   isOnline: boolean;
@@ -844,4 +851,8 @@ export async function getFriends(): Promise<FriendInfo[]> {
     logger.error('getFriends failed: ' + err);
     throw err;
   }
+}
+
+export async function parsePgn(pgn: string): Promise<{ fen: string; board: SerializedSquare[] }> {
+  return request('/analysis/parse-pgn', { method: 'POST', body: JSON.stringify({ pgn }) });
 }

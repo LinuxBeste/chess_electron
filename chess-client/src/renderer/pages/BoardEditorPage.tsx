@@ -5,6 +5,7 @@ import Square from '../components/Square';
 import { indicesToSquare, squareToIndices, cloneBoard, PIECE_CHARS } from '../chess';
 import type { Board as BoardType, PieceType } from '../../types';
 import { t } from '../translate';
+import * as api from '../api';
 
 const PIECE_TYPES: (PieceType | null)[] = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn', null];
 
@@ -104,6 +105,9 @@ export default function BoardEditorPage() {
   const [fenError, setFenError] = useState('');
   const [copied, setCopied] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [pgnInput, setPgnInput] = useState('');
+  const [pgnLoading, setPgnLoading] = useState(false);
+  const [pgnError, setPgnError] = useState('');
 
   /* Sync board FEN to ?fen= URL param */
   useEffect(() => {
@@ -195,6 +199,30 @@ export default function BoardEditorPage() {
       b[7][f] = { type: back[f], color: 'white' };
     }
     setBoard(b);
+  }
+
+  async function handleImportPgn() {
+    if (!pgnInput.trim()) return;
+    setPgnLoading(true);
+    setPgnError('');
+    try {
+      const result = await api.parsePgn(pgnInput.trim());
+      const fenFen = result.fen;
+      if (fenFen) {
+        const parsedBoard = fenToBoard(fenFen);
+        if (parsedBoard) {
+          setBoard(parsedBoard);
+          setPgnInput('');
+          return;
+        }
+      }
+      setPgnError(t('boardEditor.invalidPgn'));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setPgnError(msg || t('boardEditor.invalidPgn'));
+    } finally {
+      setPgnLoading(false);
+    }
   }
 
   function handleImportFen() {
@@ -321,6 +349,41 @@ export default function BoardEditorPage() {
         {fenError && <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{fenError}</div>}
       </div>
 
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 4, display: 'block' }}>
+          {t('boardEditor.importPgn')}
+        </label>
+        <textarea
+          value={pgnInput}
+          onChange={(e) => {
+            setPgnInput(e.target.value);
+            setPgnError('');
+          }}
+          placeholder={t('boardEditor.pgnPlaceholder')}
+          rows={4}
+          style={{
+            width: '100%',
+            padding: '6px 8px',
+            fontSize: 12,
+            background: '#1a1a1f',
+            border: '1px solid #333',
+            borderRadius: 6,
+            color: '#e0e0e0',
+            resize: 'vertical',
+            fontFamily: 'monospace',
+          }}
+        />
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={handleImportPgn}
+          disabled={pgnLoading}
+          style={{ marginTop: 8 }}
+        >
+          {pgnLoading ? t('common.loading') : t('boardEditor.importPgn')}
+        </button>
+        {pgnError && <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{pgnError}</div>}
+      </div>
+
       <button className="btn btn-primary" onClick={handlePlayFromPosition} style={{ marginTop: 'auto' }}>
         {t('boardEditor.play')}
       </button>
@@ -387,6 +450,8 @@ export default function BoardEditorPage() {
                   isLegalHint={false}
                   isLegalCapture={false}
                   isHovered={false}
+                  isPremoveFrom={false}
+                  isPremoveTo={false}
                   showCoordinates={true}
                   onClick={handleSquareClick}
                   onPointerDown={() => {}}

@@ -102,6 +102,7 @@ Returns the authenticated player's info. Requires auth. Includes stats for regis
   "displayName": "alice",
   "isRegistered": true,
   "avatarUrl": "/avatars/uuid.jpg",
+  "email": "alice@example.com",
   "elo": 1200,
   "stats": { "wins": 5, "losses": 2, "draws": 1 }
 }

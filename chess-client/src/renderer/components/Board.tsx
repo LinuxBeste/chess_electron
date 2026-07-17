@@ -26,6 +26,7 @@ interface BoardProps {
   onDragEnd: (to: string) => void;
   children?: React.ReactNode;
   alwaysBottom?: boolean;
+  premove?: { from: string; to: string } | null;
 }
 
 const Board = memo(function Board({
@@ -40,6 +41,7 @@ const Board = memo(function Board({
   onDragEnd,
   children,
   alwaysBottom: alwaysBottomProp,
+  premove,
 }: BoardProps) {
   const boardRef = useRef<HTMLDivElement>(null);
   const [boardSize, setBoardSize] = useState(480);
@@ -209,6 +211,8 @@ const Board = memo(function Board({
               isLegalHint={getIsLegalHint(squareName)}
               isLegalCapture={getIsLegalCapture(squareName)}
               isHovered={hoverSquare === squareName && getIsLegalHint(squareName)}
+              isPremoveFrom={premove?.from === squareName}
+              isPremoveTo={premove?.to === squareName}
               showCoordinates={showCoordinates}
               onClick={handleClick}
               onPointerDown={handlePointerDown}

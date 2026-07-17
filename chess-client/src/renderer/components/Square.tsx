@@ -28,6 +28,8 @@ interface SquareProps {
   isLegalCapture: boolean;
   isHovered: boolean;
   showCoordinates: boolean;
+  isPremoveFrom: boolean;
+  isPremoveTo: boolean;
   onClick: (square: string) => void;
   onPointerDown: (square: string, e: React.PointerEvent) => void;
 }
@@ -47,6 +49,8 @@ function Square({
   isLegalCapture,
   isHovered,
   showCoordinates,
+  isPremoveFrom,
+  isPremoveTo,
   onClick,
   onPointerDown,
 }: SquareProps) {
@@ -58,6 +62,8 @@ function Square({
     isLastMoveFrom && 'hl-last-from',
     isLastMoveTo && 'hl-last-to',
     isHovered && 'hl-hover',
+    isPremoveFrom && 'hl-premove-from',
+    isPremoveTo && 'hl-premove-to',
   ]
     .filter(Boolean)
     .join(' ');

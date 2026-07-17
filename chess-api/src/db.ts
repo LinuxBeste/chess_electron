@@ -332,6 +332,12 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires ON password_reset_tokens(expires_at);
     `,
   },
+  {
+    version: 12,
+    sql: `
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT false;
+    `,
+  },
 ];
 
 let migrated = false;
@@ -377,6 +383,7 @@ export interface DbUser {
   rating: number;
   is_admin?: boolean;
   email?: string | null;
+  verified?: boolean;
 }
 
 interface CompletedGameRow {
@@ -1446,6 +1453,17 @@ export async function isUserAdmin(id: string): Promise<boolean> {
   const { rows } = await getPool().query('SELECT is_admin FROM users WHERE id = $1', [id]);
   const row = rows[0] as { is_admin: boolean } | undefined;
   return row?.is_admin ?? false;
+}
+
+export async function setUserVerified(id: string, verified: boolean): Promise<void> {
+  await getPool().query('UPDATE users SET verified = $1 WHERE id = $2', [verified, id]);
+  logger.info('DB: verified status updated id=' + id + ' verified=' + verified);
+}
+
+export async function isUserVerified(id: string): Promise<boolean> {
+  const { rows } = await getPool().query('SELECT verified FROM users WHERE id = $1', [id]);
+  const row = rows[0] as { verified: boolean } | undefined;
+  return row?.verified ?? false;
 }
 
 export async function getSetting(key: string): Promise<string | undefined> {

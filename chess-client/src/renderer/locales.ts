@@ -118,6 +118,8 @@ export type TranslationKeys = {
     checkEmail: string;
     enterEmail: string;
     failed: string;
+    smtpNotConfigured: string;
+    sendFailed: string;
     backToLogin: string;
   };
   resetPassword: {
@@ -129,6 +131,7 @@ export type TranslationKeys = {
     done: string;
     doneDesc: string;
     success: string;
+    successDesc: string;
     failed: string;
     invalidToken: string;
     invalidLink: string;
@@ -364,6 +367,9 @@ export type TranslationKeys = {
     play: string;
     piece: string;
     color: string;
+    importPgn: string;
+    pgnPlaceholder: string;
+    invalidPgn: string;
   };
   settings: {
     title: string;
@@ -660,6 +666,10 @@ export type TranslationKeys = {
     goSettings: string;
     goSettingsDesc: string;
   };
+  validation: {
+    required: string;
+    invalidEmail: string;
+  };
 };
 
 export const en: TranslationKeys = {
@@ -782,6 +792,8 @@ export const en: TranslationKeys = {
     checkEmail: 'Check Your Email',
     enterEmail: 'Please enter your email address',
     failed: 'Failed to send recovery email',
+    smtpNotConfigured: 'Password reset is not available. The server does not have email configured.',
+    sendFailed: 'Failed to send the recovery email. Please try again later.',
     backToLogin: 'Back to login',
   },
   resetPassword: {
@@ -793,6 +805,7 @@ export const en: TranslationKeys = {
     done: 'Password Reset',
     doneDesc: 'Your password has been reset. You can now log in with your new password.',
     success: 'Password reset successfully',
+    successDesc: 'You can now log in with your new password.',
     failed: 'Failed to reset password',
     invalidToken: 'Invalid or missing reset token',
     invalidLink: 'Invalid Reset Link',
@@ -1028,6 +1041,9 @@ export const en: TranslationKeys = {
     play: 'Play from Position',
     piece: 'Piece',
     color: 'Color',
+    importPgn: 'Import PGN',
+    pgnPlaceholder: 'Paste PGN...',
+    invalidPgn: 'Invalid PGN',
   },
   settings: {
     title: 'Settings',
@@ -1326,6 +1342,10 @@ export const en: TranslationKeys = {
     goSettings: 'Go to Settings',
     goSettingsDesc: 'Open the settings dialog',
   },
+  validation: {
+    required: '{field} is required',
+    invalidEmail: 'Invalid email address',
+  },
 };
 
 export const de: TranslationKeys = {
@@ -1448,6 +1468,8 @@ export const de: TranslationKeys = {
     checkEmail: 'Überprüfe deine E-Mails',
     enterEmail: 'Bitte gib deine E-Mail-Adresse ein',
     failed: 'Wiederherstellungs-E-Mail konnte nicht gesendet werden',
+    smtpNotConfigured: 'Passwort zurücksetzen ist nicht verfügbar. Der Server hat keine E-Mail-Konfiguration.',
+    sendFailed: 'Die Wiederherstellungs-E-Mail konnte nicht gesendet werden. Bitte versuche es später erneut.',
     backToLogin: 'Zurück zum Login',
   },
   resetPassword: {
@@ -1459,6 +1481,7 @@ export const de: TranslationKeys = {
     done: 'Passwort zurückgesetzt',
     doneDesc: 'Dein Passwort wurde zurückgesetzt. Du kannst dich jetzt mit deinem neuen Passwort anmelden.',
     success: 'Passwort erfolgreich zurückgesetzt',
+    successDesc: 'Du kannst dich jetzt mit deinem neuen Passwort anmelden.',
     failed: 'Passwort zurücksetzen fehlgeschlagen',
     invalidToken: 'Ungültiger oder fehlender Reset-Token',
     invalidLink: 'Ungültiger Reset-Link',
@@ -1694,6 +1717,9 @@ export const de: TranslationKeys = {
     play: 'Von Position spielen',
     piece: 'Figur',
     color: 'Farbe',
+    importPgn: 'PGN importieren',
+    pgnPlaceholder: 'PGN einfügen...',
+    invalidPgn: 'Ungültiges PGN',
   },
   settings: {
     title: 'Einstellungen',
@@ -1992,6 +2018,10 @@ export const de: TranslationKeys = {
     goFriendsDesc: 'Freunde-Panel öffnen',
     goSettings: 'Zu Einstellungen',
     goSettingsDesc: 'Einstellungsdialog öffnen',
+  },
+  validation: {
+    required: '{field} ist erforderlich',
+    invalidEmail: 'Ungültige E-Mail-Adresse',
   },
 };
 

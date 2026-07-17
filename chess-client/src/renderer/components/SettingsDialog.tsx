@@ -1171,11 +1171,11 @@ function AccountTab() {
   async function handleSaveEmail() {
     const val = email.trim();
     if (!emailPassword) {
-      store.toast('Current password is required', 'error');
+      store.toast(t('validation.required', { field: t('settings.account.currentPassword') }), 'error');
       return;
     }
     if (val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
-      store.toast('Invalid email address', 'error');
+      store.toast(t('validation.invalidEmail'), 'error');
       return;
     }
     setEmailSaving(true);

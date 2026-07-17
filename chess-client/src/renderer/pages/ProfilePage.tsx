@@ -173,6 +173,17 @@ export default function ProfilePage() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h2 style={{ fontSize: 24, fontWeight: 700, color: '#e0e0e0', margin: 0 }}>
                   {profile.displayName || profile.username || t('common.unknown')}
+                  {profile.verified && (
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="#38bdf8"
+                      style={{ marginLeft: 8, verticalAlign: 'middle' }}
+                    >
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                  )}
                 </h2>
                 {profile.username && profile.displayName && profile.username !== profile.displayName && (
                   <p style={{ fontSize: 15, color: '#888', margin: '2px 0 8px' }}>@{profile.username}</p>

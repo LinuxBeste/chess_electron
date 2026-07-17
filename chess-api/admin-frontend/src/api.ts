@@ -73,6 +73,7 @@ export interface AccountRow {
   id: string;
   username: string;
   displayName: string;
+  email?: string | null;
   avatarUrl: string | null;
   createdAt: number;
   wins: number;
@@ -80,6 +81,7 @@ export interface AccountRow {
   draws: number;
   rating: number;
   isAdmin?: boolean;
+  verified?: boolean;
 }
 
 export interface PlayerProfileView {
@@ -93,6 +95,7 @@ export interface PlayerProfileView {
   losses: number;
   draws: number;
   isAdmin: boolean;
+  verified?: boolean;
   isOnline: boolean;
   currentGameId: string | null;
 }

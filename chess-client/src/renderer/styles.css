@@ -934,6 +934,13 @@ body {
   outline: 2px solid rgba(79, 142, 247, 0.6);
   outline-offset: -2px;
 }
+.hl-premove-from {
+  background: rgba(0, 200, 150, 0.25) !important;
+}
+.hl-premove-to {
+  background: rgba(0, 200, 150, 0.3) !important;
+  box-shadow: inset 0 0 0 2px rgba(0, 200, 150, 0.7);
+}
 .legal-dot {
   position: absolute;
   width: 12px;

@@ -23,9 +23,17 @@ export default function ForgotPasswordPage() {
       setSent(true);
       store.toast(result.message || t('forgotPassword.sent'), 'info');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.error('forgotPassword failed', { error: msg });
-      store.toast(msg || t('forgotPassword.failed'));
+      const apiErr = err as { status?: number; code?: string; message?: string };
+      const code = apiErr.code;
+      if (code === 'smtp_not_configured') {
+        store.toast(t('forgotPassword.smtpNotConfigured'), 'error');
+      } else if (code === 'email_send_failed') {
+        store.toast(t('forgotPassword.sendFailed'), 'error');
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error('forgotPassword failed', { error: msg });
+        store.toast(msg || t('forgotPassword.failed'), 'error');
+      }
     } finally {
       setLoading(false);
     }

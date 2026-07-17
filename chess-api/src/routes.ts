@@ -388,6 +388,7 @@ router.get('/auth/me', authMiddleware, banCheckMiddleware, async (req: Request, 
     createdAt: user?.created_at ?? null,
     avatarUrl: user?.avatar_url ?? null,
     email: user?.email ?? null,
+    verified: user?.verified === true,
     ...(stats ? { stats } : {}),
   });
 });
@@ -573,6 +574,7 @@ router.get('/players/:playerId/profile', authMiddleware, banCheckMiddleware, asy
       avatarUrl: user?.avatar_url ?? null,
       createdAt: user?.created_at ?? null,
       rating: user?.rating ?? null,
+      verified: user?.verified === true,
       friendStatus,
       friendCount: friendIds.length,
       isOnline,
@@ -861,6 +863,25 @@ router.get('/leaderboard', globalGetLimiter, async (_req: Request, res: Response
 });
 
 /* ─── Move Quality ─── */
+
+router.post('/analysis/parse-pgn', authMiddleware, async (req: Request, res: Response) => {
+  const { pgn } = req.body;
+  if (typeof pgn !== 'string' || !pgn.trim()) {
+    res.status(400).json({ error: 'PGN string required' });
+    return;
+  }
+  try {
+    const result = chess.pgnToBoard(pgn);
+    if (!result) {
+      res.status(400).json({ error: 'Failed to parse PGN' });
+      return;
+    }
+    res.json(result);
+  } catch (err) {
+    logger.error('PGN parsing failed: ' + err);
+    res.status(500).json({ error: 'PGN parsing failed' });
+  }
+});
 
 router.post('/analysis/move-quality', authMiddleware, rateLimitMiddleware, async (req: Request, res: Response) => {
   const { fen, move } = req.body;

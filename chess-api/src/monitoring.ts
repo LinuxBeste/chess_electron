@@ -2,6 +2,7 @@ import * as client from 'prom-client';
 import logger from './logger.js';
 import * as db from './db.js';
 import * as redis from './redis.js';
+import * as email from './email.js';
 import { engineManager } from './engine.js';
 import { games, wsConnections } from './state.js';
 
@@ -156,6 +157,7 @@ export async function getHealthDetails(): Promise<{
   wsConnections: number;
   database: { connected: boolean; latencyMs: number; poolTotal: number; poolIdle: number; poolWaiting: number };
   redis: { enabled: boolean };
+  email: { configured: boolean };
   engine: { active: number; max: number; available: number };
   memory: { rss: number; heapUsed: number; heapTotal: number; external: number };
   nodeVersion: string;
@@ -190,6 +192,7 @@ export async function getHealthDetails(): Promise<{
     wsConnections: wsCount,
     database: { connected: dbConnected, latencyMs: dbLatency, poolTotal, poolIdle, poolWaiting },
     redis: { enabled: redisEnabled },
+    email: { configured: email.isEmailConfigured() },
     engine: {
       active: engineManager.activeCount,
       max: engineManager.maxConcurrentEngines,

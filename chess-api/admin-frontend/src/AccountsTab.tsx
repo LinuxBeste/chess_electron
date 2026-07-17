@@ -1,5 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Key, Trash2, Plus, Eye, UserCheck, X, Download, SearchX, CheckSquare, Square, Shield } from 'lucide-react';
+import {
+  Key,
+  Trash2,
+  Plus,
+  Eye,
+  UserCheck,
+  X,
+  Download,
+  SearchX,
+  CheckSquare,
+  Square,
+  Shield,
+  BadgeCheck,
+} from 'lucide-react';
 import { api, AccountRow, UserGamesResponse, ImpersonateResponse } from './api';
 import { useToast } from './Toast';
 import SearchBar from './SearchBar';
@@ -299,11 +312,12 @@ export default function AccountsTab({ initialSearch }: { initialSearch?: string 
   }
 
   function handleExportCsv() {
-    const headers = ['ID', 'Username', 'Display Name', 'Rating', 'Wins', 'Losses', 'Draws', 'Created'];
+    const headers = ['ID', 'Username', 'Display Name', 'Email', 'Rating', 'Wins', 'Losses', 'Draws', 'Created'];
     const rows = sorted.map((a) => [
       a.id,
       a.username,
       a.displayName,
+      a.email || '',
       String(a.rating),
       String(a.wins),
       String(a.losses),
@@ -443,10 +457,12 @@ export default function AccountsTab({ initialSearch }: { initialSearch?: string 
                   <th className="text-left px-4 py-2.5">ID</th>
                   <SortHeader k="username" label="Username" />
                   <SortHeader k="displayName" label="Display Name" />
+                  <th className="text-left px-4 py-2.5">Email</th>
                   <SortHeader k="rating" label="Rating" />
                   <SortHeader k="wins" label="W/L/D" />
                   <SortHeader k="createdAt" label="Created" />
                   <th className="text-center px-4 py-2.5">Admin</th>
+                  <th className="text-center px-4 py-2.5">Verified</th>
                   <th className="text-left px-4 py-2.5">Actions</th>
                 </tr>
               </thead>
@@ -475,6 +491,7 @@ export default function AccountsTab({ initialSearch }: { initialSearch?: string 
                         {a.displayName}
                       </button>
                     </td>
+                    <td className="px-4 py-2.5 text-xs text-[#888]">{a.email || '—'}</td>
                     <td className="px-4 py-2.5 text-[#4a9eff] font-semibold">{a.rating}</td>
                     <td className="px-4 py-2.5">
                       {a.wins} / {a.losses} / {a.draws}
@@ -499,6 +516,27 @@ export default function AccountsTab({ initialSearch }: { initialSearch?: string 
                       >
                         <Shield size={10} />
                         {a.isAdmin ? 'Yes' : 'No'}
+                      </button>
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await api('/accounts/' + a.id + '/toggle-verified', { method: 'PUT' });
+                            load();
+                          } catch (err: unknown) {
+                            addToast(err instanceof Error ? err.message : String(err), 'error');
+                          }
+                        }}
+                        className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded ${
+                          a.verified
+                            ? 'bg-sky-500 text-white hover:bg-sky-600'
+                            : 'bg-[#2a2a2a] text-[#888] hover:bg-[#333]'
+                        }`}
+                        title={a.verified ? 'Revoke verified' : 'Grant verified'}
+                      >
+                        <BadgeCheck size={10} />
+                        {a.verified ? 'Yes' : 'No'}
                       </button>
                     </td>
                     <td className="px-4 py-2.5">

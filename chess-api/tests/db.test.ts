@@ -414,4 +414,17 @@ describe('db — migrations and utilities', () => {
     expect(rows[0].user_id).toBe(userId);
     expect(rows[0].message).toBe('Test warning');
   });
+
+  test('setUserVerified and isUserVerified round-trip', async () => {
+    const id = await makeUser('verified');
+    expect(await db.isUserVerified(id)).toBe(false);
+    await db.setUserVerified(id, true);
+    expect(await db.isUserVerified(id)).toBe(true);
+    await db.setUserVerified(id, false);
+    expect(await db.isUserVerified(id)).toBe(false);
+  });
+
+  test('isUserVerified returns false for non-existent user', async () => {
+    expect(await db.isUserVerified('no-such-user')).toBe(false);
+  });
 });

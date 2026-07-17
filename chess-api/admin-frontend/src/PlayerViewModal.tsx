@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Shield, Trophy, Swords, ExternalLink } from 'lucide-react';
+import { X, Shield, BadgeCheck, Trophy, Swords, ExternalLink } from 'lucide-react';
 import { api, PlayerProfileView } from './api';
 import { useNavigateTab } from './TabContext';
 
@@ -88,6 +88,11 @@ export default function PlayerViewModal({ accountId, onClose }: { accountId: str
                 <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-900 text-blue-400">
                   Registered
                 </span>
+                {profile.verified && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-900 text-sky-400">
+                    <BadgeCheck size={10} /> Verified
+                  </span>
+                )}
                 {profile.isAdmin && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-900 text-purple-400">
                     <Shield size={10} /> Admin

@@ -689,6 +689,12 @@ export async function makeMove(
     game.lastMove = { from, to };
     game.halfMoveClock = newHalfMoveClock;
     if (winner) game.winner = winner;
+
+    /* Override to draw if threefold repetition detected */
+    if (newStatus === 'active' && chess.hasThreefoldRepetition(game.boardHistory)) {
+      game.status = 'draw';
+      game.reason = 'Draw by threefold repetition';
+    }
     persistGameAndPublish(gameId);
 
     if (!uciHistory.has(gameId)) uciHistory.set(gameId, []);
@@ -714,7 +720,7 @@ export async function makeMove(
       message.result = 'stalemate';
       message.reason = 'Draw by stalemate';
     } else if (newStatus === 'draw') {
-      game.reason = 'Draw by 50-move rule';
+      if (!game.reason) game.reason = 'Draw by 50-move rule';
       message.result = 'draw';
       message.reason = game.reason;
     }
