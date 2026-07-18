@@ -16,7 +16,7 @@ import logger from '../logger';
 import { store } from '../store';
 import * as api from '../api';
 import { socketManager } from '../socket';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
 import Board from '../components/Board';
 import MoveHistory from '../components/MoveHistory';
 import Chat from '../components/Chat';
@@ -34,6 +34,8 @@ import type {
   GameAbortedMessage,
   DrawOfferedMessage,
   DrawDeclinedMessage,
+  TakebackOfferedMessage,
+  TakebackDeclinedMessage,
   RematchOfferMessage,
   RematchAcceptedMessage,
   OpponentDisconnectedMessage,
@@ -61,18 +63,43 @@ export default function GamePage() {
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null);
   const [premove, setPremove] = useState<{ from: string; to: string } | null>(null);
+  const [pendingMove, setPendingMove] = useState<{ from: string; to: string; promotion?: PieceType } | null>(null);
   const [resignConfirmed, setResignConfirmed] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [timeout, setTimeout_] = useState<'white' | 'black' | null>(null);
   const [drawOfferedBy, setDrawOfferedBy] = useState<string | null>(null);
   const [drawPending, setDrawPending] = useState(false);
+  const [takebackOfferedBy, setTakebackOfferedBy] = useState<string | null>(null);
+  const [takebackPending, setTakebackPending] = useState(false);
   const [rematchOfferedBy, setRematchOfferedBy] = useState<string | null>(null);
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [opponentConnected, setOpponentConnected] = useState(true);
   const [moveQualities, setMoveQualities] = useState<Record<string, MoveQuality>>({});
+  const [evalScore, setEvalScore] = useState<number | null>(null);
   const [boardFlipped, setBoardFlipped] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement
+        .requestFullscreen()
+        .then(() => setIsFullscreen(true))
+        .catch(() => {});
+    } else {
+      document
+        .exitFullscreen()
+        .then(() => setIsFullscreen(false))
+        .catch(() => {});
+    }
+  }
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 
   /* Spectator mode: read-only, set via ?spectate=1 query param from LobbyPage */
   const isSpectator = searchParams.get('spectate') === '1';
@@ -191,6 +218,25 @@ export default function GamePage() {
     const unsubDrawDeclined = socketManager.onDrawDeclined((msg) => {
       if (msg.gameId === gameId) handleDrawDeclined(msg);
     });
+    const unsubTakebackOffered = socketManager.onTakebackOffered((msg: TakebackOfferedMessage) => {
+      if (msg.gameId === gameId) {
+        if (msg.byPlayerId === store.get('playerId')) {
+          setTakebackPending(true);
+        } else {
+          setTakebackOfferedBy(msg.byPlayerId);
+        }
+      }
+    });
+    const unsubTakebackDeclined = socketManager.onTakebackDeclined((msg: TakebackDeclinedMessage) => {
+      if (msg.gameId === gameId) setTakebackPending(false);
+    });
+    const unsubTakebackAccepted = socketManager.onTakebackAccepted((msg) => {
+      if (msg.gameId === gameId) {
+        setTakebackPending(false);
+        setTakebackOfferedBy(null);
+        fetchGame(gameId);
+      }
+    });
     const unsubRematchOffer = socketManager.onRematchOffer((msg) => {
       if (msg.gameId === gameId) handleRematchOffer(msg);
     });
@@ -238,6 +284,9 @@ export default function GamePage() {
       unsubGameAborted();
       unsubDrawOffered();
       unsubDrawDeclined();
+      unsubTakebackOffered();
+      unsubTakebackDeclined();
+      unsubTakebackAccepted();
       unsubRematchOffer();
       unsubRematchAccepted();
       unsubSpectatorCount();
@@ -373,6 +422,7 @@ export default function GamePage() {
     const ms = getSetting('timeControlMinutes') * 60 * 1000;
     setWhiteTime(ms);
     setBlackTime(ms);
+    setEvalScore(null);
   }
 
   async function fetchGame(gid: string) {
@@ -415,6 +465,8 @@ export default function GamePage() {
     setGame((prev) => (prev ? { ...prev, turn: msg.turn } : null));
     setDrawOfferedBy(null);
     setDrawPending(false);
+    setTakebackOfferedBy(null);
+    setTakebackPending(false);
     const incMs = getSetting('timeControlIncrement') * 1000;
     if (msg.turn === 'black') setWhiteTime((t) => t + incMs);
     else setBlackTime((t) => t + incMs);
@@ -532,6 +584,27 @@ export default function GamePage() {
     socketManager.send({ type: 'decline_draw', gameId });
   }
 
+  function handleOfferTakeback() {
+    if (!gameId) return;
+    logger.info('Offering takeback', { gameId });
+    setMenuOpen(false);
+    socketManager.send({ type: 'offer_takeback', gameId });
+  }
+
+  function handleAcceptTakeback() {
+    if (!gameId) return;
+    logger.info('Accepting takeback', { gameId });
+    setTakebackOfferedBy(null);
+    socketManager.send({ type: 'accept_takeback', gameId });
+  }
+
+  function handleDeclineTakeback() {
+    if (!gameId) return;
+    logger.info('Declining takeback', { gameId });
+    setTakebackOfferedBy(null);
+    socketManager.send({ type: 'decline_takeback', gameId });
+  }
+
   function handleOfferRematch() {
     if (!gameId) return;
     logger.info('Offering rematch', { gameId });
@@ -584,6 +657,12 @@ export default function GamePage() {
         setPremove(null);
         if (checkPromotion(selectedSquare, square) && !getSetting('autoPromoteQueen')) {
           setPromotion({ from: selectedSquare, to: square });
+        } else if (getSetting('confirmMove')) {
+          setPendingMove({
+            from: selectedSquare,
+            to: square,
+            promotion: checkPromotion(selectedSquare, square) ? 'queen' : undefined,
+          });
         } else {
           executeMove(selectedSquare, square, checkPromotion(selectedSquare, square) ? 'queen' : undefined);
         }
@@ -625,6 +704,8 @@ export default function GamePage() {
       if (isLegal) {
         if (checkPromotion(from, to) && !getSetting('autoPromoteQueen')) {
           setPromotion({ from, to });
+        } else if (getSetting('confirmMove')) {
+          setPendingMove({ from, to, promotion: checkPromotion(from, to) ? 'queen' : undefined });
         } else {
           executeMove(from, to, checkPromotion(from, to) ? 'queen' : undefined);
         }
@@ -807,8 +888,13 @@ export default function GamePage() {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.quality && mountedRef.current) {
-          setMoveQualities((prev) => ({ ...prev, [moveStr]: data.quality }));
+        if (mountedRef.current) {
+          if (data.quality) {
+            setMoveQualities((prev) => ({ ...prev, [moveStr]: data.quality }));
+          }
+          if (data.score !== undefined) {
+            setEvalScore(data.score);
+          }
         }
       })
       .catch(() => {});
@@ -912,6 +998,21 @@ export default function GamePage() {
               </div>
             </div>
           )}
+          {takebackOfferedBy && !isFinished && (
+            <div className="waiting-overlay" style={{ background: 'rgba(0,0,0,0.75)' }}>
+              <div className="waiting-text" style={{ fontSize: 16, marginBottom: 16 }}>
+                {t('game.opponentTakeback')}
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button className="btn btn-primary btn-sm" onClick={handleAcceptTakeback}>
+                  {t('game.accept')}
+                </button>
+                <button className="btn btn-secondary btn-sm" onClick={handleDeclineTakeback}>
+                  {t('game.decline')}
+                </button>
+              </div>
+            </div>
+          )}
           {rematchOfferedBy && isFinished && (
             <div className="waiting-overlay" style={{ background: 'rgba(0,0,0,0.75)' }}>
               <div className="waiting-text" style={{ fontSize: 16, marginBottom: 16 }}>
@@ -934,7 +1035,80 @@ export default function GamePage() {
               </div>
             </div>
           )}
+          {pendingMove && (
+            <div className="waiting-overlay" style={{ background: 'rgba(0,0,0,0.75)' }}>
+              <div className="waiting-text" style={{ fontSize: 16, marginBottom: 16 }}>
+                {t('game.confirmMoveTitle')}
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    const m = pendingMove;
+                    setPendingMove(null);
+                    executeMove(m.from, m.to, m.promotion);
+                  }}
+                >
+                  {t('game.accept')}
+                </button>
+                <button className="btn btn-secondary btn-sm" onClick={() => setPendingMove(null)}>
+                  {t('game.decline')}
+                </button>
+              </div>
+            </div>
+          )}
         </Board>
+        {getSetting('showEvalBar') && evalScore !== null && (
+          <div style={{ width: '100%', maxWidth: 800, marginTop: 8 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 11,
+                color: 'var(--muted)',
+              }}
+            >
+              <span style={{ fontWeight: 700, minWidth: 40, textAlign: 'right' }}>
+                {evalScore > 0 ? '+' : ''}
+                {evalScore.toFixed(1)}
+              </span>
+              <div
+                style={{
+                  flex: 1,
+                  height: 8,
+                  borderRadius: 4,
+                  background: '#333',
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    width: '50%',
+                    right: '50%',
+                    background: '#888',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    transition: 'all 0.3s ease',
+                    width: `${Math.max(0, Math.min(100, 50 + evalScore * 5))}%`,
+                    right: `${Math.max(0, Math.min(100, 50 - evalScore * 5))}%`,
+                    background: evalScore > 0 ? 'var(--primary)' : '#000',
+                    borderRadius: 4,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
         <div className="player-bar">
           <span className="player-name" style={{ gap: 8 }}>
             {game?.players.white === store.get('playerId') ? (
@@ -1044,6 +1218,12 @@ export default function GamePage() {
                         onClick={handleOfferDraw}
                       />
                     )}
+                    {!isSpectator && game?.status === 'active' && (
+                      <MenuItem
+                        label={takebackPending ? t('game.takebackRequested') : t('game.requestTakeback')}
+                        onClick={handleOfferTakeback}
+                      />
+                    )}
                     {waiting && !isSpectator && <MenuItem label={t('game.abortGame')} onClick={handleAbort} />}
                   </>
                 )}
@@ -1057,6 +1237,14 @@ export default function GamePage() {
               </div>
             )}
           </div>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            style={{ padding: 6 }}
+          >
+            {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </button>
         </div>
       </div>
       <div className="sidebar">

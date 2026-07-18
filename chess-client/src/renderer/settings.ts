@@ -63,7 +63,9 @@ export interface AppSettings {
   background: 'default' | 'dots' | 'grid' | 'none';
   showLegalHints: boolean;
   showThreats: boolean;
+  showEvalBar: boolean;
   showOpponentClock: boolean;
+  fullscreenMode: boolean;
 
   /* ── Display :: Clock ── */
   clockDecimalPlaces: 0 | 1 | 2;
@@ -79,6 +81,7 @@ export interface AppSettings {
   enableOpeningBook: boolean;
 
   /* ── Gameplay :: Confirmation ── */
+  confirmMove: boolean;
   confirmResign: boolean;
   confirmDraw: boolean;
   confirmAbort: boolean;
@@ -154,7 +157,9 @@ export const defaultSettings: AppSettings = {
   background: 'default',
   showLegalHints: true,
   showThreats: false,
+  showEvalBar: false,
   showOpponentClock: true,
+  fullscreenMode: false,
 
   /* ── Display :: Clock ── */
   clockDecimalPlaces: 0,
@@ -170,6 +175,7 @@ export const defaultSettings: AppSettings = {
   enableOpeningBook: false,
 
   /* ── Gameplay :: Confirmation ── */
+  confirmMove: false,
   confirmResign: true,
   confirmDraw: false,
   confirmAbort: false,

@@ -461,6 +461,22 @@ export async function createGame(visibility?: 'public' | 'private'): Promise<Gam
   }
 }
 
+/* POST /games/chess960 */
+export async function createChess960Game(visibility?: 'public' | 'private'): Promise<GameState> {
+  logger.info('createChess960Game called' + (visibility ? ': visibility=' + visibility : ''));
+  try {
+    const result = await request<GameState>('/games/chess960', {
+      method: 'POST',
+      body: JSON.stringify({ ...(visibility ? { visibility } : {}) }),
+    });
+    logger.info('createChess960Game ok: gameId=' + result.id);
+    return result;
+  } catch (err) {
+    logger.error('createChess960Game failed: ' + err);
+    throw err;
+  }
+}
+
 /* POST /games/bot */
 export async function createBotGame(skillLevel: number, playerColor?: 'white' | 'black'): Promise<GameState> {
   logger.info('createBotGame called', { skillLevel, playerColor });

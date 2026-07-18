@@ -205,6 +205,22 @@ export interface DrawDeclinedMessage {
   gameId: string;
 }
 
+export interface TakebackOfferedMessage {
+  type: 'takeback_offered';
+  gameId: string;
+  byPlayerId: string;
+}
+
+export interface TakebackAcceptedMessage {
+  type: 'takeback_accepted';
+  gameId: string;
+}
+
+export interface TakebackDeclinedMessage {
+  type: 'takeback_declined';
+  gameId: string;
+}
+
 /* ─── Friend messages ─── */
 
 export interface FriendOnlineMessage {
@@ -313,6 +329,9 @@ type WsMessage =
   | GameAbortedMessage
   | DrawOfferedMessage
   | DrawDeclinedMessage
+  | TakebackOfferedMessage
+  | TakebackAcceptedMessage
+  | TakebackDeclinedMessage
   | FriendOnlineMessage
   | FriendOfflineMessage
   | FriendRequestWsMessage
@@ -387,6 +406,11 @@ export type DrawOfferedHandler = (msg: DrawOfferedMessage) => void;
 /** Handler type for draw-declined events */
 export type DrawDeclinedHandler = (msg: DrawDeclinedMessage) => void;
 
+/** Handler type for takeback events */
+export type TakebackOfferedHandler = (msg: TakebackOfferedMessage) => void;
+export type TakebackAcceptedHandler = (msg: TakebackAcceptedMessage) => void;
+export type TakebackDeclinedHandler = (msg: TakebackDeclinedMessage) => void;
+
 /** Handler type for friend events */
 export type FriendOnlineHandler = (msg: FriendOnlineMessage) => void;
 export type FriendOfflineHandler = (msg: FriendOfflineMessage) => void;
@@ -430,6 +454,9 @@ class SocketManager {
   private gameAbortedHandlers = new Set<GameAbortedHandler>();
   private drawOfferedHandlers = new Set<DrawOfferedHandler>();
   private drawDeclinedHandlers = new Set<DrawDeclinedHandler>();
+  private takebackOfferedHandlers = new Set<TakebackOfferedHandler>();
+  private takebackAcceptedHandlers = new Set<TakebackAcceptedHandler>();
+  private takebackDeclinedHandlers = new Set<TakebackDeclinedHandler>();
   private friendOnlineHandlers = new Set<FriendOnlineHandler>();
   private friendOfflineHandlers = new Set<FriendOfflineHandler>();
   private friendRequestHandlers = new Set<FriendRequestHandler>();
@@ -547,6 +574,15 @@ class SocketManager {
             break;
           case 'draw_declined':
             this.drawDeclinedHandlers.forEach((h) => h(msg as DrawDeclinedMessage));
+            break;
+          case 'takeback_offered':
+            this.takebackOfferedHandlers.forEach((h) => h(msg as TakebackOfferedMessage));
+            break;
+          case 'takeback_accepted':
+            this.takebackAcceptedHandlers.forEach((h) => h(msg as TakebackAcceptedMessage));
+            break;
+          case 'takeback_declined':
+            this.takebackDeclinedHandlers.forEach((h) => h(msg as TakebackDeclinedMessage));
             break;
           case 'friend_online':
             this.friendOnlineHandlers.forEach((h) => h(msg as FriendOnlineMessage));
@@ -740,6 +776,30 @@ class SocketManager {
     this.drawDeclinedHandlers.add(handler);
     return () => {
       this.drawDeclinedHandlers.delete(handler);
+    };
+  }
+
+  onTakebackOffered(handler: TakebackOfferedHandler): () => void {
+    logger.info('Socket: takeback_offered handler registered');
+    this.takebackOfferedHandlers.add(handler);
+    return () => {
+      this.takebackOfferedHandlers.delete(handler);
+    };
+  }
+
+  onTakebackAccepted(handler: TakebackAcceptedHandler): () => void {
+    logger.info('Socket: takeback_accepted handler registered');
+    this.takebackAcceptedHandlers.add(handler);
+    return () => {
+      this.takebackAcceptedHandlers.delete(handler);
+    };
+  }
+
+  onTakebackDeclined(handler: TakebackDeclinedHandler): () => void {
+    logger.info('Socket: takeback_declined handler registered');
+    this.takebackDeclinedHandlers.add(handler);
+    return () => {
+      this.takebackDeclinedHandlers.delete(handler);
     };
   }
 

@@ -108,6 +108,7 @@ export default function BoardEditorPage() {
   const [pgnInput, setPgnInput] = useState('');
   const [pgnLoading, setPgnLoading] = useState(false);
   const [pgnError, setPgnError] = useState('');
+  const [pgnCopied, setPgnCopied] = useState(false);
 
   /* Sync board FEN to ?fen= URL param */
   useEffect(() => {
@@ -222,6 +223,18 @@ export default function BoardEditorPage() {
       setPgnError(msg || t('boardEditor.invalidPgn'));
     } finally {
       setPgnLoading(false);
+    }
+  }
+
+  async function handleExportPgn() {
+    const fen = boardToFen(board);
+    const pgn = `[Event "Custom Position"]\n[FEN "${fen}"]\n[SetUp "1"]\n\n*`;
+    try {
+      await navigator.clipboard.writeText(pgn);
+      setPgnCopied(true);
+      setTimeout(() => setPgnCopied(false), 2000);
+    } catch {
+      setPgnInput(pgn);
     }
   }
 
@@ -382,6 +395,9 @@ export default function BoardEditorPage() {
           {pgnLoading ? t('common.loading') : t('boardEditor.importPgn')}
         </button>
         {pgnError && <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{pgnError}</div>}
+        <button className="btn btn-primary btn-sm" onClick={handleExportPgn} style={{ marginTop: 8, width: '100%' }}>
+          {pgnCopied ? t('boardEditor.pgnCopied') : t('boardEditor.exportPgn')}
+        </button>
       </div>
 
       <button className="btn btn-primary" onClick={handlePlayFromPosition} style={{ marginTop: 'auto' }}>

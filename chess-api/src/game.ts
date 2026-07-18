@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocket } from 'ws';
-import { GameState, Color, PieceType } from './types.js';
+import { GameState, Color, PieceType, Board, CastlingRights } from './types.js';
 import type { GameStatus } from './types.js';
 
 /* Per-game mutex: serializes state-mutating operations on the same game.
@@ -31,6 +31,7 @@ import {
   spectatorConnections,
   playerGameIndex,
   drawOffers,
+  takebackOffers,
   rematchOffers,
   rateLimitBuckets,
   MAX_GAMES_PER_PLAYER,
@@ -51,6 +52,8 @@ import {
   persistGameAndPublish,
   setDrawOfferEntry,
   deleteDrawOfferEntry,
+  setTakebackOfferEntry,
+  deleteTakebackOfferEntry,
   setRematchOfferEntry,
   deleteRematchOfferEntry,
   addGameEvent,
@@ -323,19 +326,21 @@ export async function createGame(
   playerId: string,
   visibility: 'public' | 'private' = 'public',
   spectateMode: 'public' | 'code' = 'public',
+  board?: Board,
+  castlingRights?: CastlingRights,
 ): Promise<GameState> {
   const id = uuidv4();
   const spectateCode = spectateMode === 'code' ? uuidv4() : undefined;
   const game: GameState = {
     id,
-    board: chess.createInitialBoard(),
+    board: board ?? chess.createInitialBoard(),
     turn: 'white',
     status: 'waiting',
     players: { white: playerId },
     moveHistory: [],
     boardHistory: [],
     enPassantTarget: null,
-    castlingRights: {
+    castlingRights: castlingRights ?? {
       white: { kingside: true, queenside: true },
       black: { kingside: true, queenside: true },
     },
@@ -701,6 +706,7 @@ export async function makeMove(
     uciHistory.get(gameId)!.push(from + to + (matchedMove.promotion ? matchedMove.promotion[0] : ''));
 
     cancelDrawOffer(gameId);
+    cancelTakebackOffer(gameId);
 
     const isTerminal = newStatus === 'checkmate' || newStatus === 'stalemate' || newStatus === 'draw';
     const message: Record<string, unknown> = {
@@ -1111,6 +1117,95 @@ export function cancelDrawOffer(gameId: string): void {
   if (drawOffers.has(gameId)) {
     deleteDrawOfferEntry(gameId);
     logger.info('Draw offer cancelled: gameId=' + gameId);
+  }
+}
+
+/* ─── Takeback Requests ─── */
+
+export function offerTakeback(gameId: string, playerId: string): boolean {
+  const game = games.get(gameId);
+  if (!game || game.status !== 'active') return false;
+  if (game.players.white !== playerId && game.players.black !== playerId) return false;
+  if (takebackOffers.has(gameId)) return false;
+
+  setTakebackOfferEntry(gameId, playerId);
+  broadcastToGame(gameId, {
+    type: 'takeback_offered',
+    gameId,
+    byPlayerId: playerId,
+  });
+  logger.info('Takeback offered', { gameId, playerId });
+  return true;
+}
+
+export async function acceptTakeback(
+  gameId: string,
+  playerId: string,
+): Promise<{ success: boolean } | { error: string }> {
+  return withGameLock(gameId, async () => {
+    const offererId = takebackOffers.get(gameId);
+    if (!offererId) return { error: 'No takeback offer' };
+    if (playerId === offererId) return { error: 'Cannot accept your own takeback offer' };
+
+    const game = games.get(gameId);
+    if (!game || game.status !== 'active') return { error: 'Game is not active' };
+    if (game.players.white !== playerId && game.players.black !== playerId)
+      return { error: 'Not a player in this game' };
+
+    deleteTakebackOfferEntry(gameId);
+
+    /* Revert the last move */
+    if (game.boardHistory.length < 2) return { error: 'No moves to take back' };
+
+    const prevSnapshot = game.boardHistory[game.boardHistory.length - 2];
+    game.board = chess.deserializeBoard(prevSnapshot.board);
+    game.lastMove = null;
+    game.turn = game.turn === 'white' ? 'black' : 'white';
+    game.moveHistory = game.moveHistory.slice(0, -1);
+    game.boardHistory = game.boardHistory.slice(0, -1);
+    game.halfMoveClock = 0;
+
+    persistGameAndPublish(gameId);
+
+    const uci = uciHistory.get(gameId);
+    if (uci && uci.length > 0) uci.pop();
+
+    broadcastToGame(gameId, {
+      type: 'move',
+      gameId,
+      board: chess.serializeBoard(game.board),
+      turn: game.turn,
+      lastMove: game.lastMove || { from: '', to: '' },
+      status: game.status,
+    });
+
+    logger.info('Takeback accepted', { gameId, byPlayerId: playerId });
+    return { success: true };
+  });
+}
+
+export async function declineTakeback(gameId: string, playerId: string): Promise<boolean> {
+  return withGameLock(gameId, async () => {
+    const offererId = takebackOffers.get(gameId);
+    if (!offererId) return false;
+    if (playerId === offererId) return false;
+
+    const game = games.get(gameId);
+    if (!game || game.status !== 'active') return false;
+    if (game.players.white !== playerId && game.players.black !== playerId) return false;
+
+    deleteTakebackOfferEntry(gameId);
+
+    sendToPlayer(offererId, { type: 'takeback_declined', gameId });
+
+    logger.info('Takeback declined', { gameId, byPlayerId: playerId });
+    return true;
+  });
+}
+
+export function cancelTakebackOffer(gameId: string): void {
+  if (takebackOffers.has(gameId)) {
+    deleteTakebackOfferEntry(gameId);
   }
 }
 

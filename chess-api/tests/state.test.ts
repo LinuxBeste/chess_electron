@@ -11,6 +11,8 @@ const mockDeleteUciHistory = jest.fn().mockResolvedValue(undefined);
 const mockAddPlayerGame = jest.fn().mockResolvedValue(undefined);
 const mockSetDrawOffer = jest.fn().mockResolvedValue(undefined);
 const mockDeleteDrawOffer = jest.fn().mockResolvedValue(undefined);
+const mockSetTakebackOffer = jest.fn().mockResolvedValue(undefined);
+const mockDeleteTakebackOffer = jest.fn().mockResolvedValue(undefined);
 const mockSetRematchOffer = jest.fn().mockResolvedValue(undefined);
 const mockDeleteRematchOffer = jest.fn().mockResolvedValue(undefined);
 const mockAddChatMessage = jest.fn().mockResolvedValue(undefined);
@@ -29,6 +31,8 @@ jest.unstable_mockModule('../src/redis.js', () => ({
   addPlayerGame: mockAddPlayerGame,
   setDrawOffer: mockSetDrawOffer,
   deleteDrawOffer: mockDeleteDrawOffer,
+  setTakebackOffer: mockSetTakebackOffer,
+  deleteTakebackOffer: mockDeleteTakebackOffer,
   setRematchOffer: mockSetRematchOffer,
   deleteRematchOffer: mockDeleteRematchOffer,
   addChatMessage: mockAddChatMessage,
@@ -302,6 +306,21 @@ describe('state.ts', () => {
       state.deleteDrawOfferEntry('g1');
       expect(state.drawOffers.has('g1')).toBe(false);
       expect(mockDeleteDrawOffer).toHaveBeenCalledWith('g1');
+    });
+
+    test('setTakebackOfferEntry writes to memory and Redis', () => {
+      mockIsRedisEnabled.mockReturnValue(true);
+      state.setTakebackOfferEntry('g1', 'p1');
+      expect(state.takebackOffers.get('g1')).toBe('p1');
+      expect(mockSetTakebackOffer).toHaveBeenCalledWith('g1', 'p1');
+    });
+
+    test('deleteTakebackOfferEntry removes from both', () => {
+      mockIsRedisEnabled.mockReturnValue(true);
+      state.takebackOffers.set('g1', 'p1');
+      state.deleteTakebackOfferEntry('g1');
+      expect(state.takebackOffers.has('g1')).toBe(false);
+      expect(mockDeleteTakebackOffer).toHaveBeenCalledWith('g1');
     });
 
     test('setRematchOfferEntry writes to memory and Redis', () => {

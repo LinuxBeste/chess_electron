@@ -424,6 +424,21 @@ export function createServer(): http.Server {
           game
             .declineDraw(msg.gameId as string, player.id)
             .catch((err: unknown) => logger.error('declineDraw failed: ' + err));
+        } else if (msg.type === 'offer_takeback' && typeof msg.gameId === 'string') {
+          game.offerTakeback(msg.gameId as string, player.id);
+        } else if (msg.type === 'accept_takeback' && typeof msg.gameId === 'string') {
+          game
+            .acceptTakeback(msg.gameId as string, player.id)
+            .then((result) => {
+              if ('error' in result) {
+                state.sendToPlayer(player.id, { type: 'error', error: result.error });
+              }
+            })
+            .catch((err: unknown) => logger.error('acceptTakeback failed: ' + err));
+        } else if (msg.type === 'decline_takeback' && typeof msg.gameId === 'string') {
+          game
+            .declineTakeback(msg.gameId as string, player.id)
+            .catch((err: unknown) => logger.error('declineTakeback failed: ' + err));
         } else if (msg.type === 'rematch_offer' && typeof msg.gameId === 'string') {
           game
             .offerRematch(msg.gameId as string, player.id)

@@ -238,6 +238,36 @@ export async function deleteDrawOffer(gameId: string): Promise<void> {
   }
 }
 
+/* ─── Takeback Offers ─── */
+
+export async function setTakebackOffer(gameId: string, playerId: string): Promise<void> {
+  if (!ENABLED) return;
+  try {
+    await pubClient!.setex('takeback:' + gameId, 300, playerId);
+  } catch (err) {
+    logger.error('Redis setTakebackOffer failed: ' + err);
+  }
+}
+
+export async function getTakebackOffer(gameId: string): Promise<string | null> {
+  if (!ENABLED) return null;
+  try {
+    return await pubClient!.get('takeback:' + gameId);
+  } catch (err) {
+    logger.error('Redis getTakebackOffer failed: ' + err);
+    return null;
+  }
+}
+
+export async function deleteTakebackOffer(gameId: string): Promise<void> {
+  if (!ENABLED) return;
+  try {
+    await pubClient!.del('takeback:' + gameId);
+  } catch (err) {
+    logger.error('Redis deleteTakebackOffer failed: ' + err);
+  }
+}
+
 /* ─── Rematch Offers ─── */
 
 export async function setRematchOffer(gameId: string, playerId: string): Promise<void> {

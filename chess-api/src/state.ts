@@ -14,6 +14,7 @@ export const playerGameIndex = new Map<string, Set<string>>();
 export const bannedPlayers = new Set<string>();
 export const bannedIps = new Set<string>();
 export const drawOffers = new Map<string, string>();
+export const takebackOffers = new Map<string, string>();
 export const rematchOffers = new Map<string, string>();
 export const chatHistory = new Map<string, { playerId: string; username: string; text: string; timestamp: number }[]>();
 export const rateLimitBuckets = new Map<string, number[]>();
@@ -181,6 +182,7 @@ export function removeGameById(id: string): void {
   uciHistory.delete(id);
   spectatorConnections.delete(id);
   drawOffers.delete(id);
+  takebackOffers.delete(id);
   rematchOffers.delete(id);
   deleteEventBuffer(id);
   for (const [pid, gameIds] of playerGameIndex) {
@@ -215,6 +217,16 @@ export function setDrawOfferEntry(gameId: string, playerId: string): void {
 export function deleteDrawOfferEntry(gameId: string): void {
   drawOffers.delete(gameId);
   if (redis.isRedisEnabled()) redis.deleteDrawOffer(gameId).catch(redisLog);
+}
+
+export function setTakebackOfferEntry(gameId: string, playerId: string): void {
+  takebackOffers.set(gameId, playerId);
+  if (redis.isRedisEnabled()) redis.setTakebackOffer(gameId, playerId).catch(redisLog);
+}
+
+export function deleteTakebackOfferEntry(gameId: string): void {
+  takebackOffers.delete(gameId);
+  if (redis.isRedisEnabled()) redis.deleteTakebackOffer(gameId).catch(redisLog);
 }
 
 export function setRematchOfferEntry(gameId: string, playerId: string): void {

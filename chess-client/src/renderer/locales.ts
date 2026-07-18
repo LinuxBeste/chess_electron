@@ -170,6 +170,7 @@ export type TranslationKeys = {
     failedCreate: string;
     failedJoin: string;
     failedLoad: string;
+    chess960: string;
   };
   game: {
     youWhite: string;
@@ -192,9 +193,14 @@ export type TranslationKeys = {
     challengedYou: string;
     challengeTitle: string;
     opponentRematch: string;
+    opponentTakeback: string;
+    takebackRequested: string;
+    requestTakeback: string;
     opponentDisconnected: string;
     spectators: string;
     playAs: string;
+    confirmMoveTitle: string;
+    evalBar: string;
   };
   localGame: {
     blackToMove: string;
@@ -370,6 +376,8 @@ export type TranslationKeys = {
     importPgn: string;
     pgnPlaceholder: string;
     invalidPgn: string;
+    exportPgn: string;
+    pgnCopied: string;
   };
   settings: {
     title: string;
@@ -519,6 +527,8 @@ export type TranslationKeys = {
       showThreatsDesc: string;
       showOpponentClock: string;
       showOpponentClockDesc: string;
+      fullscreen: string;
+      fullscreenDesc: string;
       clockDisplay: string;
       clockStyle: string;
       clockStyleDesc: string;
@@ -542,6 +552,8 @@ export type TranslationKeys = {
       openingBook: string;
       openingBookDesc: string;
       confirmation: string;
+      confirmMove: string;
+      confirmMoveDesc: string;
       confirmResign: string;
       confirmResignDesc: string;
       confirmDraw: string;
@@ -844,6 +856,7 @@ export const en: TranslationKeys = {
     failedCreate: 'Failed to create game',
     failedJoin: 'Failed to join game',
     failedLoad: 'Failed to load game',
+    chess960: 'Chess960 (Fischer Random)',
   },
   game: {
     youWhite: 'You (White)',
@@ -866,9 +879,14 @@ export const en: TranslationKeys = {
     challengedYou: 'challenged you to a game!',
     challengeTitle: 'Challenge!',
     opponentRematch: 'Opponent wants a rematch',
+    opponentTakeback: 'Opponent requests a takeback',
+    takebackRequested: 'Takeback requested...',
+    requestTakeback: 'Request Takeback',
     opponentDisconnected: 'Opponent disconnected',
     spectators: 'Spectators',
     playAs: 'Play as',
+    confirmMoveTitle: 'Make this move?',
+    evalBar: 'Eval',
   },
   localGame: {
     blackToMove: 'Black to move',
@@ -1044,6 +1062,8 @@ export const en: TranslationKeys = {
     importPgn: 'Import PGN',
     pgnPlaceholder: 'Paste PGN...',
     invalidPgn: 'Invalid PGN',
+    exportPgn: 'Export PGN',
+    pgnCopied: 'PGN copied!',
   },
   settings: {
     title: 'Settings',
@@ -1194,6 +1214,8 @@ export const en: TranslationKeys = {
       showThreatsDesc: 'Highlight squares attacked by the opponent',
       showOpponentClock: 'Show Opponent Clock',
       showOpponentClockDesc: "Always display the opponent's remaining time",
+      fullscreen: 'Fullscreen Mode',
+      fullscreenDesc: 'Expand the game to fill the entire screen',
       clockDisplay: 'Clock Display',
       clockStyle: 'Clock Style',
       clockStyleDesc: 'Visual style of the clock display',
@@ -1217,6 +1239,8 @@ export const en: TranslationKeys = {
       openingBook: 'Opening Book',
       openingBookDesc: 'Show opening names during the game',
       confirmation: 'Confirmation',
+      confirmMove: 'Confirm Each Move',
+      confirmMoveDesc: 'Show a confirmation prompt before each move is made',
       confirmResign: 'Confirm Resign',
       confirmResignDesc: 'Require double-click to resign',
       confirmDraw: 'Confirm Draw',
@@ -1520,6 +1544,7 @@ export const de: TranslationKeys = {
     failedCreate: 'Spiel erstellen fehlgeschlagen',
     failedJoin: 'Beitreten fehlgeschlagen',
     failedLoad: 'Spiel laden fehlgeschlagen',
+    chess960: 'Chess960 (Fischer Random)',
   },
   game: {
     youWhite: 'Du (Weiß)',
@@ -1542,9 +1567,14 @@ export const de: TranslationKeys = {
     challengedYou: 'fordert dich zu einem Spiel heraus!',
     challengeTitle: 'Herausforderung!',
     opponentRematch: 'Gegner möchte Revanche',
+    opponentTakeback: 'Gegner möchte einen Zug zurücknehmen',
+    takebackRequested: 'Rücknahme angefordert...',
+    requestTakeback: 'Zug zurücknehmen',
     opponentDisconnected: 'Gegner getrennt',
     spectators: 'Zuschauer',
     playAs: 'Spielen als',
+    confirmMoveTitle: 'Diesen Zug ausführen?',
+    evalBar: 'Bewertung',
   },
   localGame: {
     blackToMove: 'Schwarz ist am Zug',
@@ -1720,6 +1750,8 @@ export const de: TranslationKeys = {
     importPgn: 'PGN importieren',
     pgnPlaceholder: 'PGN einfügen...',
     invalidPgn: 'Ungültiges PGN',
+    exportPgn: 'PGN exportieren',
+    pgnCopied: 'PGN kopiert!',
   },
   settings: {
     title: 'Einstellungen',
@@ -1870,7 +1902,9 @@ export const de: TranslationKeys = {
       showThreats: 'Bedrohungen anzeigen',
       showThreatsDesc: 'Vom Gegner angegriffene Felder markieren',
       showOpponentClock: 'Gegneruhr anzeigen',
-      showOpponentClockDesc: 'Verbleibende Zeit des Gegners immer anzeigen',
+      showOpponentClockDesc: 'Zeigt die verbleibende Zeit des Gegners an',
+      fullscreen: 'Vollbildmodus',
+      fullscreenDesc: 'Das Spiel auf den gesamten Bildschirm vergrößern',
       clockDisplay: 'Uhranzeige',
       clockStyle: 'Uhrstil',
       clockStyleDesc: 'Visueller Stil der Zeitanzeige',
@@ -1894,6 +1928,8 @@ export const de: TranslationKeys = {
       openingBook: 'Eröffnungsbuch',
       openingBookDesc: 'Eröffnungsnamen während des Spiels anzeigen',
       confirmation: 'Bestätigung',
+      confirmMove: 'Jeden Zug bestätigen',
+      confirmMoveDesc: 'Vor jedem Zug eine Bestätigung anzeigen',
       confirmResign: 'Aufgeben bestätigen',
       confirmResignDesc: 'Doppelklick zum Aufgeben erforderlich',
       confirmDraw: 'Unentschieden bestätigen',

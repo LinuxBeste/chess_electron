@@ -659,10 +659,24 @@ function DisplayTab({
       />
       <ToggleRow
         searchQuery={searchQuery}
+        label="Evaluation Bar"
+        desc="Show engine evaluation bar during the game"
+        checked={settings.showEvalBar}
+        onChange={(v) => onUpdate({ ...settings, showEvalBar: v })}
+      />
+      <ToggleRow
+        searchQuery={searchQuery}
         label={t('settings.display.showOpponentClock')}
         desc={t('settings.display.showOpponentClockDesc')}
         checked={settings.showOpponentClock}
         onChange={(v) => onUpdate({ ...settings, showOpponentClock: v })}
+      />
+      <ToggleRow
+        searchQuery={searchQuery}
+        label={t('settings.display.fullscreen')}
+        desc={t('settings.display.fullscreenDesc')}
+        checked={settings.fullscreenMode}
+        onChange={(v) => onUpdate({ ...settings, fullscreenMode: v })}
       />
 
       <Section title={t('settings.display.clockDisplay')} />
@@ -755,6 +769,13 @@ function GameplayTab({
       />
 
       <Section title={t('settings.gameplay.confirmation')} />
+      <ToggleRow
+        searchQuery={searchQuery}
+        label={t('settings.gameplay.confirmMove')}
+        desc={t('settings.gameplay.confirmMoveDesc')}
+        checked={settings.confirmMove}
+        onChange={(v) => onUpdate({ ...settings, confirmMove: v })}
+      />
       <ToggleRow
         searchQuery={searchQuery}
         label={t('settings.gameplay.confirmResign')}

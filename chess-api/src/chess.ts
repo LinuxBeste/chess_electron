@@ -31,6 +31,57 @@ export function createInitialBoard(): Board {
   return board;
 }
 
+/* Generate a Chess960 (Fischer Random) starting position.
+ * Uses standard algorithm: place bishops on opposite colors,
+ * then queen, then knights, then rooks+king (king between rooks). */
+export function generateChess960Position(): { board: Board; castlingRights: CastlingRights } {
+  const back: (PieceType | null)[] = Array(8).fill(null);
+
+  /* 1. Place bishops on opposite-colored squares */
+  const darkSquares = [0, 2, 4, 6];
+  const lightSquares = [1, 3, 5, 7];
+  const bishop1 = darkSquares[Math.floor(Math.random() * darkSquares.length)];
+  const bishop2 = lightSquares[Math.floor(Math.random() * lightSquares.length)];
+  back[bishop1] = 'bishop';
+  back[bishop2] = 'bishop';
+
+  /* 2. Place queen on a random remaining square */
+  const remaining1 = back.reduce<number[]>((acc, p, i) => (p === null ? [...acc, i] : acc), []);
+  const queenIdx = remaining1[Math.floor(Math.random() * remaining1.length)];
+  back[queenIdx] = 'queen';
+
+  /* 3. Place knights on two random remaining squares */
+  const remaining2 = back.reduce<number[]>((acc, p, i) => (p === null ? [...acc, i] : acc), []);
+  const knight1 = remaining2[Math.floor(Math.random() * remaining2.length)];
+  const remaining3 = remaining2.filter((i) => i !== knight1);
+  const knight2 = remaining3[Math.floor(Math.random() * remaining3.length)];
+  back[knight1] = 'knight';
+  back[knight2] = 'knight';
+
+  /* 4. Place rooks and king on the remaining three squares (king between rooks) */
+  const remaining4 = back.reduce<number[]>((acc, p, i) => (p === null ? [...acc, i] : acc), []);
+  back[remaining4[0]] = 'rook';
+  back[remaining4[1]] = 'king';
+  back[remaining4[2]] = 'rook';
+
+  /* Build board: black on rank 0, white on rank 7, pawns on ranks 1 and 6 */
+  const board = Array.from({ length: 8 }, () => Array(8).fill(null) as (Piece | null)[]);
+  for (let f = 0; f < 8; f++) {
+    board[0][f] = { type: back[f]!, color: 'black' };
+    board[1][f] = { type: 'pawn', color: 'black' };
+    board[6][f] = { type: 'pawn', color: 'white' };
+    board[7][f] = { type: back[f]!, color: 'white' };
+  }
+
+  /* All four castling rights are initially available in Chess960 */
+  const castlingRights: CastlingRights = {
+    white: { kingside: true, queenside: true },
+    black: { kingside: true, queenside: true },
+  };
+
+  return { board, castlingRights };
+}
+
 export function cloneBoard(board: Board): Board {
   return board.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
 }
@@ -207,22 +258,49 @@ export function generateKingMoves(
     moves.push({ from, to: indicesToSquare(r, f), piece, captured: target ?? undefined });
   }
 
-  /* Castling: king must be on e1/e8, intervening squares empty, rook present */
+  /* Castling (Chess960-compatible): king must be on home rank, find rooks dynamically */
   const rights = piece.color === 'white' ? castlingRights.white : castlingRights.black;
   const homeRank = piece.color === 'white' ? 7 : 0;
 
-  if (rank === homeRank && file === 4) {
-    if (rights.kingside && board[homeRank][5] === null && board[homeRank][6] === null) {
-      const rook = board[homeRank][7];
-      if (rook?.type === 'rook' && rook.color === piece.color) {
-        // Verify rook hasn't moved
-        moves.push({ from, to: indicesToSquare(homeRank, 6), piece, isCastling: 'kingside' });
+  if (rank === homeRank) {
+    if (rights.kingside) {
+      for (let f = file + 1; f <= 7; f++) {
+        const p = board[homeRank][f];
+        if (p !== null) {
+          if (p.type === 'rook' && p.color === piece.color) {
+            let allClear = true;
+            for (let cf = file + 1; cf < f; cf++) {
+              if (board[homeRank][cf] !== null) {
+                allClear = false;
+                break;
+              }
+            }
+            if (allClear) {
+              moves.push({ from, to: indicesToSquare(homeRank, 6), piece, isCastling: 'kingside' });
+            }
+          }
+          break;
+        }
       }
     }
-    if (rights.queenside && board[homeRank][1] === null && board[homeRank][2] === null && board[homeRank][3] === null) {
-      const rook = board[homeRank][0];
-      if (rook?.type === 'rook' && rook.color === piece.color) {
-        moves.push({ from, to: indicesToSquare(homeRank, 2), piece, isCastling: 'queenside' });
+    if (rights.queenside) {
+      for (let f = file - 1; f >= 0; f--) {
+        const p = board[homeRank][f];
+        if (p !== null) {
+          if (p.type === 'rook' && p.color === piece.color) {
+            let allClear = true;
+            for (let cf = file - 1; cf > f; cf--) {
+              if (board[homeRank][cf] !== null) {
+                allClear = false;
+                break;
+              }
+            }
+            if (allClear) {
+              moves.push({ from, to: indicesToSquare(homeRank, 2), piece, isCastling: 'queenside' });
+            }
+          }
+          break;
+        }
       }
     }
   }
@@ -348,6 +426,15 @@ export function isInCheck(board: Board, color: Color): boolean {
   return false;
 }
 
+/* Find the king's file on a given rank for the specified color. Returns -1 if not found. */
+function findKingFile(board: Board, rank: number, color: Color): number {
+  for (let f = 0; f < 8; f++) {
+    const p = board[rank][f];
+    if (p?.type === 'king' && p.color === color) return f;
+  }
+  return -1;
+}
+
 /* Apply a move on a cloned board. Never mutates the original.
  * Returns new board, updated en-passant target, and updated castling rights. */
 export function applyMove(
@@ -377,27 +464,51 @@ export function applyMove(
     }
   }
 
+  /* Chess960-compatible: revoke castling right when a rook moves from home rank */
   if (movingPiece.type === 'rook') {
-    if (fromRank === 7 && fromFile === 0) newCastlingRights.white.queenside = false;
-    if (fromRank === 7 && fromFile === 7) newCastlingRights.white.kingside = false;
-    if (fromRank === 0 && fromFile === 0) newCastlingRights.black.queenside = false;
-    if (fromRank === 0 && fromFile === 7) newCastlingRights.black.kingside = false;
+    const homeRank = color === 'white' ? 7 : 0;
+    if (fromRank === homeRank) {
+      const kingFile = findKingFile(board, homeRank, color);
+      if (kingFile !== -1) {
+        if (fromFile < kingFile) newCastlingRights[color].queenside = false;
+        else if (fromFile > kingFile) newCastlingRights[color].kingside = false;
+      }
+    }
   }
 
-  if (toRank === 7 && toFile === 0) newCastlingRights.white.queenside = false;
-  if (toRank === 7 && toFile === 7) newCastlingRights.white.kingside = false;
-  if (toRank === 0 && toFile === 0) newCastlingRights.black.queenside = false;
-  if (toRank === 0 && toFile === 7) newCastlingRights.black.kingside = false;
+  /* Chess960-compatible: revoke castling right when opponent's rook is captured on home rank */
+  const capturedPiece = board[toRank][toFile];
+  if (capturedPiece?.type === 'rook' && capturedPiece.color !== color) {
+    const oppColor = capturedPiece.color;
+    const oppHomeRank = oppColor === 'white' ? 7 : 0;
+    if (toRank === oppHomeRank) {
+      const kingFile = findKingFile(board, oppHomeRank, oppColor);
+      if (kingFile !== -1) {
+        if (toFile < kingFile) newCastlingRights[oppColor].queenside = false;
+        else if (toFile > kingFile) newCastlingRights[oppColor].kingside = false;
+      }
+    }
+  }
 
   let newEnPassantTarget: string | null = null;
 
-  /* Castling: move the rook */
+  /* Castling (Chess960-compatible): move the rook to its destination */
   if (move.isCastling === 'kingside') {
-    newBoard[toRank][5] = newBoard[toRank][7];
-    newBoard[toRank][7] = null;
+    for (let f = fromFile + 1; f <= 7; f++) {
+      if (newBoard[toRank][f]?.type === 'rook' && newBoard[toRank][f]?.color === color) {
+        newBoard[toRank][5] = newBoard[toRank][f];
+        newBoard[toRank][f] = null;
+        break;
+      }
+    }
   } else if (move.isCastling === 'queenside') {
-    newBoard[toRank][3] = newBoard[toRank][0];
-    newBoard[toRank][0] = null;
+    for (let f = fromFile - 1; f >= 0; f--) {
+      if (newBoard[toRank][f]?.type === 'rook' && newBoard[toRank][f]?.color === color) {
+        newBoard[toRank][3] = newBoard[toRank][f];
+        newBoard[toRank][f] = null;
+        break;
+      }
+    }
   }
 
   /* En passant: remove captured pawn */
@@ -560,6 +671,15 @@ export function serializeBoard(board: Board): SerializedSquare[] {
     }
   }
   return result;
+}
+
+export function deserializeBoard(serialized: SerializedSquare[]): Board {
+  const board: Board = Array.from({ length: 8 }, () => Array(8).fill(null));
+  for (const sq of serialized) {
+    const [r, f] = squareToIndices(sq.square);
+    board[r][f] = { type: sq.piece as PieceType, color: sq.color as Color };
+  }
+  return board;
 }
 
 const PIECE_FEN: Record<PieceType, string> = {

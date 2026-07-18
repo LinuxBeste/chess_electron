@@ -632,6 +632,33 @@ router.post('/games', authMiddleware, banCheckMiddleware, rateLimitMiddleware, a
   }
 });
 
+router.post('/games/chess960', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
+  if (await db.isMaintenanceMode()) {
+    res.status(503).json({ error: 'Server is in maintenance mode — new games disabled' });
+    return;
+  }
+  const visibility: 'public' | 'private' = req.body.visibility === 'private' ? 'private' : 'public';
+  const spectateMode: 'public' | 'code' = req.body.spectateMode === 'code' ? 'code' : 'public';
+  try {
+    const { board, castlingRights } = chess.generateChess960Position();
+    const g = await game.createGame(req.player.id, visibility, spectateMode, board, castlingRights);
+    logger.info(
+      'Chess960 game created: gameId=' +
+        g.id +
+        ' by playerId=' +
+        req.player.id +
+        ' visibility=' +
+        visibility +
+        ' spectateMode=' +
+        spectateMode,
+    );
+    res.status(201).json(g);
+  } catch (err) {
+    logger.error('Chess960 game creation failed: ' + err);
+    res.status(500).json({ error: 'Failed to create Chess960 game' });
+  }
+});
+
 router.post('/games/bot', authMiddleware, banCheckMiddleware, async (req: Request, res: Response) => {
   if (await db.isMaintenanceMode()) {
     res.status(503).json({ error: 'Server is in maintenance mode — new games disabled' });
