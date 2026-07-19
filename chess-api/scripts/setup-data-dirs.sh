@@ -41,7 +41,12 @@ fi
 HOST_UID=$((CONTAINER_UID + LXC_OFFSET))
 
 echo "Setting ownership to UID $HOST_UID (container UID $CONTAINER_UID + offset $LXC_OFFSET)"
-chown -R "$HOST_UID:$HOST_UID" "$DATA_DIR"
+if chown -R "$HOST_UID:$HOST_UID" "$DATA_DIR" 2>/dev/null; then
+  echo "Ownership set successfully."
+else
+  echo "chown failed (common on NFS/ZFS/unprivileged LXC). Falling back to chmod 777..."
+  chmod -R 777 "$DATA_DIR"
+fi
 
 echo "Done. Directories created:"
 ls -la "$DATA_DIR"/
