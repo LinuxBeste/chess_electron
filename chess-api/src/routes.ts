@@ -51,11 +51,14 @@ function isValidImageType(filePath: string, mimeType: string): boolean {
   }
 }
 
+const avatarDir = process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, 'avatars')
+  : path.join(__dirname, '..', 'data', 'avatars');
+fs.mkdirSync(avatarDir, { recursive: true });
+
 const avatarUpload = multer({
   storage: multer.diskStorage({
-    destination: process.env.DATA_DIR
-      ? path.join(process.env.DATA_DIR, 'avatars')
-      : path.join(__dirname, '..', 'data', 'avatars'),
+    destination: avatarDir,
     filename: (_req, file, cb) => {
       const ext =
         file.mimetype === 'image/png'

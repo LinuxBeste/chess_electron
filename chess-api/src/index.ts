@@ -152,10 +152,17 @@ const API_PREFIX = process.env.API_PREFIX || '/v1';
 app.use(API_PREFIX, routes);
 app.use(routes);
 
-const avatarDir = process.env.DATA_DIR
-  ? path.join(process.env.DATA_DIR, 'avatars')
-  : path.join(path.resolve(__dirname, '..'), 'data', 'avatars');
+const dataDir = process.env.DATA_DIR || path.join(path.resolve(__dirname, '..'), 'data');
+const avatarDir = path.join(dataDir, 'avatars');
+const logsDir = process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, 'logs')
+  : path.join(path.resolve(__dirname, '..'), 'logs');
+const backupsDir = process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, 'backups')
+  : path.join(path.resolve(__dirname, '..'), 'backups');
 fs.mkdirSync(avatarDir, { recursive: true });
+fs.mkdirSync(logsDir, { recursive: true });
+fs.mkdirSync(backupsDir, { recursive: true });
 app.use('/avatars', express.static(avatarDir));
 
 const adminDir = path.join(path.resolve(__dirname, '..'), 'dist', 'admin');
