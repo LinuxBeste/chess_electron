@@ -37,8 +37,12 @@ function getStream(file: string): fs.WriteStream {
       }
     }
     const filePath = path.join(LOG_DIR, file.replace('{date}', tag));
-    s = fs.createWriteStream(filePath, { flags: 'a' }); // Append mode preserves existing logs
-    streams.set(key, s);
+    try {
+      s = fs.createWriteStream(filePath, { flags: 'a' }); // Append mode preserves existing logs
+    } catch {
+      s = null as unknown as fs.WriteStream; // No writable log dir — skip file logging
+    }
+    if (s) streams.set(key, s);
   }
   return s;
 }
@@ -57,7 +61,7 @@ export function closeAllStreams(): void {
 function appendLine(file: string, line: string): void {
   if (isTest) return;
   const s = getStream(file);
-  s.write(line + '\n');
+  if (s) s.write(line + '\n');
 }
 
 type LogLevel = 'error' | 'warn' | 'info' | 'debug';
