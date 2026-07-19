@@ -152,30 +152,32 @@ const API_PREFIX = process.env.API_PREFIX || '/v1';
 app.use(API_PREFIX, routes);
 app.use(routes);
 
-const dataDir = process.env.DATA_DIR || path.join(path.resolve(__dirname, '..'), 'data');
+const defaultDataDir = path.join(path.resolve(__dirname, '..'), 'data');
+const dataDir = process.env.DATA_DIR || defaultDataDir;
 const avatarDir = path.join(dataDir, 'avatars');
-const logsDir = process.env.DATA_DIR
-  ? path.join(process.env.DATA_DIR, 'logs')
-  : path.join(path.resolve(__dirname, '..'), 'logs');
-const backupsDir = process.env.DATA_DIR
-  ? path.join(process.env.DATA_DIR, 'backups')
-  : path.join(path.resolve(__dirname, '..'), 'backups');
-try {
-  fs.mkdirSync(avatarDir, { recursive: true });
-} catch (e) {
-  logger.warn('Cannot create avatar dir: ' + avatarDir + ' — ' + e);
+const logsDir = path.join(dataDir, 'logs');
+const backupsDir = path.join(dataDir, 'backups');
+// Ensure directories exist; if DATA_DIR is unwritable, fall back to defaults
+function ensureDir(dir: string, fallback: string): string {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    return dir;
+  } catch {
+    if (dir !== fallback) {
+      try {
+        fs.mkdirSync(fallback, { recursive: true });
+        return fallback;
+      } catch {
+        return dir;
+      }
+    }
+    return dir;
+  }
 }
-try {
-  fs.mkdirSync(logsDir, { recursive: true });
-} catch (e) {
-  logger.warn('Cannot create logs dir: ' + logsDir + ' — ' + e);
-}
-try {
-  fs.mkdirSync(backupsDir, { recursive: true });
-} catch (e) {
-  logger.warn('Cannot create backups dir: ' + backupsDir + ' — ' + e);
-}
-app.use('/avatars', express.static(avatarDir));
+const resolvedAvatarDir = ensureDir(avatarDir, path.join(defaultDataDir, 'avatars'));
+ensureDir(logsDir, path.join(path.resolve(__dirname, '..'), 'logs'));
+ensureDir(backupsDir, path.join(path.resolve(__dirname, '..'), 'backups'));
+app.use('/avatars', express.static(resolvedAvatarDir));
 
 const adminDir = path.join(path.resolve(__dirname, '..'), 'dist', 'admin');
 app.use('/admin', express.static(adminDir));

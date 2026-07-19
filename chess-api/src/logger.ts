@@ -4,7 +4,25 @@ import path from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const LOG_DIR = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, 'logs') : path.join(__dirname, '..', 'logs');
+const DEFAULT_LOG_DIR = path.join(__dirname, '..', 'logs');
+const LOG_DIR = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, 'logs') : DEFAULT_LOG_DIR;
+
+// Try DATA_DIR first, fall back to default, then /dev/null
+let resolvedLogDir = LOG_DIR;
+try {
+  fs.mkdirSync(resolvedLogDir, { recursive: true });
+} catch {
+  if (resolvedLogDir !== DEFAULT_LOG_DIR) {
+    try {
+      fs.mkdirSync(DEFAULT_LOG_DIR, { recursive: true });
+      resolvedLogDir = DEFAULT_LOG_DIR;
+    } catch {
+      resolvedLogDir = '';
+    }
+  } else {
+    resolvedLogDir = '';
+  }
+}
 const LOG_RETENTION_DAYS = parseInt(process.env.LOG_RETENTION_DAYS ?? '30', 10);
 const isTest = process.env.NODE_ENV === 'test' || typeof process.env.JEST_WORKER_ID !== 'undefined'; // Suppress file I/O during tests
 
@@ -19,7 +37,7 @@ function timestamp(): string {
   return new Date().toISOString();
 }
 
-function getStream(file: string): fs.WriteStream {
+function getStream(file: string): fs.WriteStream | null {
   const tag = dateTag();
   if (currentDateTag !== tag) {
     // Daily log rotation
@@ -31,12 +49,13 @@ function getStream(file: string): fs.WriteStream {
   if (!s) {
     if (!isTest) {
       try {
-        fs.mkdirSync(LOG_DIR, { recursive: true });
+        fs.mkdirSync(resolvedLogDir, { recursive: true });
       } catch {
         /* noop */
       }
     }
-    const filePath = path.join(LOG_DIR, file.replace('{date}', tag));
+    if (!resolvedLogDir) return null; // No writable log dir — skip file logging
+    const filePath = path.join(resolvedLogDir, file.replace('{date}', tag));
     try {
       s = fs.createWriteStream(filePath, { flags: 'a' }); // Append mode preserves existing logs
     } catch {
@@ -129,7 +148,7 @@ export function morganStream(): { write: (msg: string) => void } {
 export function cleanupOldLogs(): void {
   if (isTest) return;
   try {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
+    fs.mkdirSync(resolvedLogDir, { recursive: true });
     const cutoff = Date.now() - LOG_RETENTION_DAYS * 86400000;
     let files: string[];
     try {

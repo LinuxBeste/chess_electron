@@ -52,29 +52,30 @@ function isValidImageType(filePath: string, mimeType: string): boolean {
   }
 }
 
-const avatarDir = process.env.DATA_DIR
-  ? path.join(process.env.DATA_DIR, 'avatars')
-  : path.join(__dirname, '..', 'data', 'avatars');
+const defaultAvatarDir = path.join(__dirname, '..', 'data', 'avatars');
+const avatarDir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, 'avatars') : defaultAvatarDir;
+function resolveAvatarDir(): string {
+  if (fs.existsSync(avatarDir)) return avatarDir;
+  if (avatarDir !== defaultAvatarDir) {
+    try {
+      fs.mkdirSync(defaultAvatarDir, { recursive: true });
+    } catch {
+      /* noop */
+    }
+    if (fs.existsSync(defaultAvatarDir)) return defaultAvatarDir;
+  }
+  return os.tmpdir();
+}
 try {
   fs.mkdirSync(avatarDir, { recursive: true });
-} catch (e) {
-  logger.warn('Cannot create avatar dir: ' + avatarDir + ' — ' + e);
+} catch {
+  /* will fall back in multer */
 }
 
 const avatarUpload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => {
-      if (fs.existsSync(avatarDir)) {
-        cb(null, avatarDir);
-      } else {
-        const fallback = path.join(os.tmpdir(), 'chess-avatars');
-        try {
-          fs.mkdirSync(fallback, { recursive: true });
-        } catch {
-          /* noop */
-        }
-        cb(null, fallback);
-      }
+      cb(null, resolveAvatarDir());
     },
     filename: (_req, file, cb) => {
       const ext =

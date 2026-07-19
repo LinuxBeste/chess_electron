@@ -523,10 +523,19 @@ export async function cleanupExpiredTokens(maxAgeMs = 30 * 86400000): Promise<nu
 
 export async function createBackup(): Promise<string | null> {
   try {
-    const dir = process.env.DATA_DIR
-      ? path.join(process.env.DATA_DIR, 'backups')
-      : path.join(__dirname, '..', 'backups');
-    fs.mkdirSync(dir, { recursive: true });
+    const defaultDir = path.join(__dirname, '..', 'backups');
+    let dir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, 'backups') : defaultDir;
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch {
+      if (dir !== defaultDir) {
+        logger.warn('Cannot create backup dir: ' + dir + ' — falling back to ' + defaultDir);
+        dir = defaultDir;
+        fs.mkdirSync(dir, { recursive: true });
+      } else {
+        throw new Error('Cannot create backup dir: ' + dir);
+      }
+    }
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupPath = path.join(dir, `chess-${timestamp}.dump`);
     const { execFile } = await import('child_process');
