@@ -70,7 +70,7 @@ describe('LobbyPanel', () => {
     (api.createGame as unknown as jest.Mock<() => Promise<{ id: string }>>).mockResolvedValue({ id: 'g1' });
     renderPanel();
     await fireEvent.click(screen.getByText('New Game'));
-    expect(api.createGame).toHaveBeenCalledWith('public');
+    expect(api.createGame).toHaveBeenCalledWith('public', true);
   });
 
   test('toggles private game switch', () => {
@@ -87,7 +87,7 @@ describe('LobbyPanel', () => {
     const toggle = document.querySelector('.toggle');
     fireEvent.click(toggle!);
     await fireEvent.click(screen.getByText('New Game'));
-    expect(api.createGame).toHaveBeenCalledWith('private');
+    expect(api.createGame).toHaveBeenCalledWith('private', true);
   });
 
   test('calls joinGame with entered ID', async () => {
