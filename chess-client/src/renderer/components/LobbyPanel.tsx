@@ -10,6 +10,7 @@ export default function LobbyPanel() {
   const navigate = useNavigate();
   const [isPrivate, setIsPrivate] = useState(false);
   const [chess960, setChess960] = useState(false);
+  const [isRated, setIsRated] = useState(true);
   const [joinId, setJoinId] = useState('');
   const [spectateId, setSpectateId] = useState('');
   const [botSkill, setBotSkill] = useState(5);
@@ -18,9 +19,11 @@ export default function LobbyPanel() {
 
   async function createGame() {
     const visibility = isPrivate ? 'private' : 'public';
-    logger.info('Creating game', { visibility, chess960 });
+    logger.info('Creating game', { visibility, chess960, rated: isRated });
     try {
-      const game = chess960 ? await api.createChess960Game(visibility) : await api.createGame(visibility);
+      const game = chess960
+        ? await api.createChess960Game(visibility, isRated)
+        : await api.createGame(visibility, isRated);
       logger.info('Game created', { gameId: game.id, visibility, chess960 });
       store.set('currentGame', game);
       navigate(`/game/${game.id}`);
@@ -97,6 +100,14 @@ export default function LobbyPanel() {
               {t('lobby.privateGame')}
             </span>
             <div className={`toggle ${isPrivate ? 'active' : ''}`} onClick={() => setIsPrivate(!isPrivate)}>
+              <div className="toggle-knob" />
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)', letterSpacing: '0.2px' }}>
+              {t('lobby.ratedGame')}
+            </span>
+            <div className={`toggle ${isRated ? 'active' : ''}`} onClick={() => setIsRated(!isRated)}>
               <div className="toggle-knob" />
             </div>
           </div>

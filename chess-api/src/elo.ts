@@ -11,35 +11,44 @@ export function calculateElo(ratingA: number, ratingB: number, scoreA: number): 
 }
 
 // Recalculate ratings for both players after a game ends
+// Uses SELECT FOR UPDATE within a transaction to prevent concurrent rating corruption (TOCTOU)
 export async function updateEloRatings(game: GameState, winner: Color | null): Promise<void> {
   const whiteId = game.players.white;
   const blackId = game.players.black;
   if (!whiteId || !blackId) return;
 
-  const [whiteUser, blackUser] = await Promise.all([db.getUserById(whiteId), db.getUserById(blackId)]); // Parallel DB lookup for both players
-  if (!whiteUser || !blackUser) return;
+  await db.transaction(async (client) => {
+    const whiteRes = await client.query('SELECT rating FROM users WHERE id = $1 FOR UPDATE', [whiteId]);
+    const blackRes = await client.query('SELECT rating FROM users WHERE id = $1 FOR UPDATE', [blackId]);
+    if (whiteRes.rows.length === 0 || blackRes.rows.length === 0) return;
 
-  let scoreWhite: number;
-  if (winner === 'white') scoreWhite = 1;
-  else if (winner === 'black') scoreWhite = 0;
-  else scoreWhite = 0.5; // Draw = 0.5 score for both players
+    const whiteRating = (whiteRes.rows[0] as { rating: number }).rating;
+    const blackRating = (blackRes.rows[0] as { rating: number }).rating;
 
-  const [newWhite, newBlack] = calculateElo(whiteUser.rating, blackUser.rating, scoreWhite);
-  await Promise.all([db.updatePlayerRating(whiteId, newWhite), db.updatePlayerRating(blackId, newBlack)]);
-  logger.info(
-    'Elo updated: gameId=' +
-      game.id +
-      ' white=' +
-      whiteId +
-      ' ' +
-      whiteUser.rating +
-      '->' +
-      newWhite +
-      ' black=' +
-      blackId +
-      ' ' +
-      blackUser.rating +
-      '->' +
-      newBlack,
-  );
+    let scoreWhite: number;
+    if (winner === 'white') scoreWhite = 1;
+    else if (winner === 'black') scoreWhite = 0;
+    else scoreWhite = 0.5;
+
+    const [newWhite, newBlack] = calculateElo(whiteRating, blackRating, scoreWhite);
+    await client.query('UPDATE users SET rating = $1 WHERE id = $2', [newWhite, whiteId]);
+    await client.query('UPDATE users SET rating = $1 WHERE id = $2', [newBlack, blackId]);
+
+    logger.info(
+      'Elo updated: gameId=' +
+        game.id +
+        ' white=' +
+        whiteId +
+        ' ' +
+        whiteRating +
+        '->' +
+        newWhite +
+        ' black=' +
+        blackId +
+        ' ' +
+        blackRating +
+        '->' +
+        newBlack,
+    );
+  });
 }

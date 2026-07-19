@@ -152,7 +152,9 @@ const API_PREFIX = process.env.API_PREFIX || '/v1';
 app.use(API_PREFIX, routes);
 app.use(routes);
 
-const avatarDir = path.join(path.resolve(__dirname, '..'), 'data', 'avatars');
+const avatarDir = process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, 'avatars')
+  : path.join(path.resolve(__dirname, '..'), 'data', 'avatars');
 fs.mkdirSync(avatarDir, { recursive: true });
 app.use('/avatars', express.static(avatarDir));
 
@@ -425,7 +427,9 @@ export function createServer(): http.Server {
             .declineDraw(msg.gameId as string, player.id)
             .catch((err: unknown) => logger.error('declineDraw failed: ' + err));
         } else if (msg.type === 'offer_takeback' && typeof msg.gameId === 'string') {
-          game.offerTakeback(msg.gameId as string, player.id);
+          game.offerTakebackSafe(msg.gameId as string, player.id).catch((err: unknown) => {
+            logger.error('offerTakebackSafe failed: ' + err);
+          });
         } else if (msg.type === 'accept_takeback' && typeof msg.gameId === 'string') {
           game
             .acceptTakeback(msg.gameId as string, player.id)

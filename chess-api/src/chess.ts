@@ -6,12 +6,15 @@
 import { Piece, Color, PieceType, Board, Move, CastlingRights, SerializedSquare } from './types.js';
 
 export function squareToIndices(square: string): [number, number] {
+  if (!square || square.length < 2) return [-1, -1];
   const file = square.charCodeAt(0) - 97;
   const rank = 8 - parseInt(square[1], 10);
+  if (file < 0 || file > 7 || rank < 0 || rank > 7) return [-1, -1];
   return [rank, file];
 }
 
 export function indicesToSquare(rank: number, file: number): string {
+  if (rank < 0 || rank > 7 || file < 0 || file > 7) return 'invalid';
   return String.fromCharCode(file + 97) + (8 - rank).toString();
 }
 
@@ -595,10 +598,8 @@ export function hasInsufficientMaterial(board: Board): boolean {
   }
 
   if (pieces.length === 2) {
-    /* Both are knights → cannot force checkmate */
-    if (pieces[0].type === 'knight' && pieces[1].type === 'knight') return true;
-
-    /* Both are bishops (opposite players) on same square color → cannot force checkmate */
+    /* Both bishops on same square color belonging to opposite sides → cannot force checkmate */
+    /* Note: KNN vs K is NOT insufficient material (helpmate is possible under FIDE 5.2.2). */
     if (pieces[0].type === 'bishop' && pieces[1].type === 'bishop' && pieces[0].color !== pieces[1].color) {
       const sq1 = (pieces[0].rank + pieces[0].file) % 2;
       const sq2 = (pieces[1].rank + pieces[1].file) % 2;
@@ -610,14 +611,31 @@ export function hasInsufficientMaterial(board: Board): boolean {
 }
 
 /* Check if the current position has appeared three times in boardHistory.
- * Compares the last boardHistory entry's serialized board against all previous
- * entries to detect threefold repetition for auto-draw. */
-export function hasThreefoldRepetition(boardHistory: { board: SerializedSquare[] }[]): boolean {
-  if (boardHistory.length < 4) return false;
-  const last = JSON.stringify(boardHistory[boardHistory.length - 1].board);
+ * FIDE Article 9.2 requires the same player to move, same castling rights,
+ * and same en passant target square. Signature accepts full game state
+ * to compare these alongside the board layout. */
+export function hasThreefoldRepetition(
+  boardHistory: { board: SerializedSquare[]; move: string }[],
+  turn: Color,
+  castlingRights: CastlingRights,
+  enPassantTarget: string | null,
+): boolean {
+  if (boardHistory.length < 3) return false;
+  const currentKey = JSON.stringify({
+    board: boardHistory[boardHistory.length - 1].board,
+    turn,
+    castling: castlingRights,
+    ep: enPassantTarget,
+  });
   let count = 0;
   for (const entry of boardHistory) {
-    if (JSON.stringify(entry.board) === last) count++;
+    const entryKey = JSON.stringify({
+      board: entry.board,
+      turn,
+      castling: castlingRights,
+      ep: enPassantTarget,
+    });
+    if (entryKey === currentKey) count++;
     if (count >= 3) return true;
   }
   return false;
@@ -639,8 +657,9 @@ export function getGameStatus(
   if (legalMoves.length === 0) {
     return { status: inCheck ? 'checkmate' : 'stalemate' };
   }
-  if (halfMoveClock !== undefined && halfMoveClock >= 100) {
-    return { status: 'draw' };
+  if (halfMoveClock !== undefined) {
+    /* 75-move rule (FIDE 9.6.2): automatic draw after 150 half-moves without pawn move or capture */
+    if (halfMoveClock >= 150) return { status: 'draw' };
   }
   if (hasInsufficientMaterial(board)) {
     return { status: 'draw' };

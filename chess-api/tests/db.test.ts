@@ -177,7 +177,22 @@ describe('db — stats', () => {
   test('getPlayerWinLossDraw counts from completed_games', async () => {
     const w = await makeUser('pwl_w');
     const b = await makeUser('pwl_b');
-    await db.saveCompletedGame('pwl-game-1', w, b, 'W', 'B', 'white', 'resign', '1-0', null, 'e4', '', null, 'blitz');
+    await db.saveCompletedGame(
+      'pwl-game-1',
+      w,
+      b,
+      'W',
+      'B',
+      'white',
+      'resign',
+      '1-0',
+      null,
+      'e4',
+      '',
+      null,
+      'blitz',
+      true,
+    );
     const stats = await db.getPlayerWinLossDraw(w);
     expect(stats.wins).toBe(1);
     expect(stats.losses).toBe(0);
@@ -262,6 +277,7 @@ describe('db — completed games', () => {
       '',
       null,
       'blitz',
+      true,
     );
     const games = await db.getArchivedGames(1, 10);
     expect(games.rows.length).toBeGreaterThanOrEqual(1);
@@ -285,6 +301,7 @@ describe('db — completed games', () => {
       '',
       null,
       'blitz',
+      true,
     );
     const game = await db.getArchivedGame('game-arch-2');
     expect(game).toBeDefined();
@@ -308,6 +325,7 @@ describe('db — completed games', () => {
       '',
       null,
       'blitz',
+      true,
     );
     await db.deleteArchivedGame('game-arch-3');
     expect(await db.getArchivedGame('game-arch-3')).toBeUndefined();

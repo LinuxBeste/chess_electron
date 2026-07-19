@@ -440,6 +440,7 @@ class SocketManager {
   private ws: WebSocket | null = null;
   private retryCount = 0;
   private shouldReconnect = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private moveHandlers = new Set<MoveHandler>();
   private gameOverHandlers = new Set<GameOverHandler>();
   private gameStartedHandlers = new Set<GameStartedHandler>();
@@ -682,6 +683,10 @@ class SocketManager {
   disconnect(): void {
     logger.info('Socket: disconnect called');
     this.shouldReconnect = false;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -703,7 +708,8 @@ class SocketManager {
     logger.info('Socket: scheduling reconnect attempt', this.retryCount, 'in', delay, 'ms');
     store.set('wsStatus', 'connecting');
 
-    setTimeout(() => {
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
       if (this.shouldReconnect) {
         logger.info('Socket: attempting reconnect');
         this.connect(); // onclose triggers scheduleReconnect again if still shouldReconnect

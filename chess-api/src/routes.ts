@@ -53,7 +53,9 @@ function isValidImageType(filePath: string, mimeType: string): boolean {
 
 const avatarUpload = multer({
   storage: multer.diskStorage({
-    destination: path.join(__dirname, '..', 'data', 'avatars'),
+    destination: process.env.DATA_DIR
+      ? path.join(process.env.DATA_DIR, 'avatars')
+      : path.join(__dirname, '..', 'data', 'avatars'),
     filename: (_req, file, cb) => {
       const ext =
         file.mimetype === 'image/png'
@@ -613,8 +615,9 @@ router.post('/games', authMiddleware, banCheckMiddleware, rateLimitMiddleware, a
   }
   const visibility: 'public' | 'private' = req.body.visibility === 'private' ? 'private' : 'public';
   const spectateMode: 'public' | 'code' = req.body.spectateMode === 'code' ? 'code' : 'public';
+  const rated: boolean = req.body.rated !== false;
   try {
-    const g = await game.createGame(req.player.id, visibility, spectateMode);
+    const g = await game.createGame(req.player.id, visibility, spectateMode, undefined, undefined, rated);
     logger.info(
       'Game created: gameId=' +
         g.id +
@@ -623,7 +626,9 @@ router.post('/games', authMiddleware, banCheckMiddleware, rateLimitMiddleware, a
         ' visibility=' +
         visibility +
         ' spectateMode=' +
-        spectateMode,
+        spectateMode +
+        ' rated=' +
+        rated,
     );
     res.status(201).json(g);
   } catch (err) {
@@ -639,9 +644,10 @@ router.post('/games/chess960', authMiddleware, banCheckMiddleware, async (req: R
   }
   const visibility: 'public' | 'private' = req.body.visibility === 'private' ? 'private' : 'public';
   const spectateMode: 'public' | 'code' = req.body.spectateMode === 'code' ? 'code' : 'public';
+  const rated: boolean = req.body.rated !== false;
   try {
     const { board, castlingRights } = chess.generateChess960Position();
-    const g = await game.createGame(req.player.id, visibility, spectateMode, board, castlingRights);
+    const g = await game.createGame(req.player.id, visibility, spectateMode, board, castlingRights, rated);
     logger.info(
       'Chess960 game created: gameId=' +
         g.id +
@@ -650,7 +656,9 @@ router.post('/games/chess960', authMiddleware, banCheckMiddleware, async (req: R
         ' visibility=' +
         visibility +
         ' spectateMode=' +
-        spectateMode,
+        spectateMode +
+        ' rated=' +
+        rated,
     );
     res.status(201).json(g);
   } catch (err) {

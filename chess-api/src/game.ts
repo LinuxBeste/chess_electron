@@ -6,10 +6,14 @@ import type { GameStatus } from './types.js';
 /* Per-game mutex: serializes state-mutating operations on the same game.
  * Each function chains onto a promise so the next call waits for the previous
  * one to complete before reading/modifying the game object. */
+const GAME_LOCK_TIMEOUT_MS = parseInt(process.env.GAME_LOCK_TIMEOUT_MS ?? '30000', 10);
 const gameLocks = new Map<string, Promise<void>>();
 function withGameLock<T>(gameId: string, fn: () => Promise<T>): Promise<T> {
   const prev = gameLocks.get(gameId) ?? (Promise.resolve() as Promise<unknown>);
-  const next = prev.then(fn, fn).finally(() => {
+  const timeout = new Promise<T>((_, reject) => {
+    setTimeout(() => reject(new Error('Game lock timed out: ' + gameId)), GAME_LOCK_TIMEOUT_MS);
+  });
+  const next = Promise.race([prev.then(fn, fn), timeout]).finally(() => {
     if (gameLocks.get(gameId) === next) {
       gameLocks.delete(gameId);
     }
@@ -48,7 +52,6 @@ import {
   sendToPlayer,
   sendToPlayerRaw,
   sendToSpectators,
-  persistGame,
   persistGameAndPublish,
   setDrawOfferEntry,
   deleteDrawOfferEntry,
@@ -103,7 +106,7 @@ export {
 
 export { cleanupChatHistory, handleChatMessage, sendChatHistory } from './chat.js';
 
-export { removeGameById, sendToPlayer, persistGame, persistGameAndPublish } from './state.js';
+export { removeGameById, sendToPlayer, persistGameAndPublish } from './state.js';
 
 async function enrichNames(g: GameState): Promise<GameState> {
   const whitePlayer = g.players.white ? players.get(g.players.white) : undefined;
@@ -249,7 +252,18 @@ async function broadcastGameListUpdate(): Promise<void> {
   }
 
   // Debounce: coalesce rapid calls, rebuild only once
-  if (_gameListRefreshScheduled) return;
+  if (_gameListRefreshScheduled) {
+    // Send cached data if available rather than dropping the update
+    if (_cachedGameListData) {
+      const data = _cachedGameListData;
+      for (const conns of wsConnections.values()) {
+        for (const ws of conns) {
+          if (ws.readyState === WebSocket.OPEN) ws.send(data);
+        }
+      }
+    }
+    return;
+  }
   _gameListRefreshScheduled = true;
 
   // Use microtask delay so concurrent mutations (create/join/complete)
@@ -328,6 +342,7 @@ export async function createGame(
   spectateMode: 'public' | 'code' = 'public',
   board?: Board,
   castlingRights?: CastlingRights,
+  rated: boolean = true,
 ): Promise<GameState> {
   const id = uuidv4();
   const spectateCode = spectateMode === 'code' ? uuidv4() : undefined;
@@ -351,6 +366,7 @@ export async function createGame(
     spectateMode,
     spectateCode,
     halfMoveClock: 0,
+    rated,
   };
   // Evict oldest waiting/finished game if at capacity
   if (games.size >= TOTAL_MAX_GAMES) {
@@ -391,6 +407,18 @@ export async function createBotGame(
   }
   const id = uuidv4();
   const botColor: Color = playerColor === 'white' ? 'black' : 'white';
+  // Evict oldest game if at capacity (like createGame does)
+  if (games.size >= TOTAL_MAX_GAMES) {
+    const finishedStatuses = new Set<GameStatus>(['checkmate', 'stalemate', 'draw', 'resigned']);
+    const oldestEntry = Array.from(games.entries())
+      .filter(([, g]) => g.status === 'waiting' || finishedStatuses.has(g.status))
+      .sort(([, a], [, b]) => (a.createdAt ?? 0) - (b.createdAt ?? 0))[0];
+    if (oldestEntry) {
+      removeGameById(oldestEntry[0]);
+      logger.info('Evicted oldest game for bot game: gameId=' + oldestEntry[0]);
+    }
+  }
+
   const game: GameState = {
     id,
     board: chess.createInitialBoard(),
@@ -413,6 +441,8 @@ export async function createBotGame(
     spectateMode: 'code',
     spectateCode: uuidv4(),
     halfMoveClock: 0,
+    rated: false,
+    aiSkillLevel: skillLevel,
   };
   games.set(id, game);
   persistGameAndPublish(id);
@@ -447,6 +477,12 @@ export async function createBotGame(
         result: 'draw',
         reason: game.reason,
       });
+      // Clean up playerGameIndex on engine failure
+      const pgi = playerGameIndex.get(playerId);
+      if (pgi) {
+        pgi.delete(id);
+        if (pgi.size === 0) playerGameIndex.delete(playerId);
+      }
       spectatorConnections.delete(id);
       await broadcastGameListUpdate();
     });
@@ -479,8 +515,33 @@ export async function triggerBotMove(gameId: string): Promise<void> {
     (m) => m.from === from && m.to === to && (!promotion || m.promotion === promotion),
   );
   if (!matchedMove) {
-    // Reject engine move if not in legal list
-    logger.warn('Bot generated illegal move', { gameId, bestMove: result.move });
+    logger.error('Bot generated illegal move — ending game', {
+      gameId,
+      bestMove: result.move,
+      fen: chess.boardToFen(
+        game.board,
+        botColor,
+        game.castlingRights,
+        game.enPassantTarget,
+        game.halfMoveClock,
+        Math.floor(game.moveHistory.length / 2) + 1,
+      ),
+    });
+    game.status = 'draw';
+    game.reason = 'Engine error — game cancelled';
+    persistGameAndPublish(gameId);
+    const msg = {
+      type: 'game_over',
+      gameId,
+      board: chess.serializeBoard(game.board),
+      turn: game.turn,
+      lastMove: game.lastMove,
+      status: 'draw',
+      result: 'draw',
+      reason: game.reason,
+    };
+    broadcastToGame(gameId, msg);
+    engineManager.destroyInstance(gameId);
     return;
   }
 
@@ -696,7 +757,10 @@ export async function makeMove(
     if (winner) game.winner = winner;
 
     /* Override to draw if threefold repetition detected */
-    if (newStatus === 'active' && chess.hasThreefoldRepetition(game.boardHistory)) {
+    if (
+      newStatus === 'active' &&
+      chess.hasThreefoldRepetition(game.boardHistory, game.turn, game.castlingRights, game.enPassantTarget)
+    ) {
       game.status = 'draw';
       game.reason = 'Draw by threefold repetition';
     }
@@ -805,29 +869,31 @@ async function recordGameResult(game: GameState, winner: Color | null): Promise<
     if (game.players.white) neededIds.push(game.players.white);
     if (game.players.black) neededIds.push(game.players.black);
   }
-  const usersById = await db.getUsersByIds(neededIds);
+  if (game.rated) {
+    const usersById = await db.getUsersByIds(neededIds);
 
-  if (winnerId) {
-    const user = usersById.get(winnerId);
-    if (user) {
-      await db.addWin(user.id);
-      const opponentId = winner === 'white' ? game.players.black : game.players.white;
-      if (opponentId) {
-        const opponent = usersById.get(opponentId);
-        if (opponent) await db.addLoss(opponent.id);
+    if (winnerId) {
+      const user = usersById.get(winnerId);
+      if (user) {
+        await db.addWin(user.id);
+        const opponentId = winner === 'white' ? game.players.black : game.players.white;
+        if (opponentId) {
+          const opponent = usersById.get(opponentId);
+          if (opponent) await db.addLoss(opponent.id);
+        }
+      }
+    } else if (winner === null) {
+      if (game.players.white) {
+        const w = usersById.get(game.players.white);
+        if (w) await db.addDraw(w.id);
+      }
+      if (game.players.black) {
+        const b = usersById.get(game.players.black);
+        if (b) await db.addDraw(b.id);
       }
     }
-  } else if (winner === null) {
-    if (game.players.white) {
-      const w = usersById.get(game.players.white);
-      if (w) await db.addDraw(w.id);
-    }
-    if (game.players.black) {
-      const b = usersById.get(game.players.black);
-      if (b) await db.addDraw(b.id);
-    }
+    await updateEloRatings(game, winner);
   }
-  await updateEloRatings(game, winner);
   spectatorConnections.delete(game.id);
 
   const result =
@@ -866,6 +932,7 @@ async function recordGameResult(game: GameState, winner: Color | null): Promise<
     JSON.stringify(game.boardHistory),
     null,
     '5+0', // Hardcoded default time control
+    game.rated,
   );
   uciHistory.delete(game.id);
   deleteEventBuffer(game.id);
@@ -1092,8 +1159,11 @@ export async function acceptRematch(
       spectateMode: game.spectateMode,
       spectateCode: game.spectateMode === 'code' ? uuidv4() : undefined,
       halfMoveClock: 0,
+      rated: game.rated,
     };
     games.set(newId, newGame);
+    addPlayerGameIndex(newWhite!, newId);
+    addPlayerGameIndex(newBlack!, newId);
     persistGameAndPublish(newId);
     deleteRematchOfferEntry(gameId);
     await broadcastGameListUpdate();
@@ -1122,7 +1192,26 @@ export function cancelDrawOffer(gameId: string): void {
 
 /* ─── Takeback Requests ─── */
 
+export async function offerTakebackSafe(gameId: string, playerId: string): Promise<boolean> {
+  return withGameLock(gameId, async () => {
+    const game = games.get(gameId);
+    if (!game || game.status !== 'active') return false;
+    if (game.players.white !== playerId && game.players.black !== playerId) return false;
+    if (takebackOffers.has(gameId)) return false;
+
+    setTakebackOfferEntry(gameId, playerId);
+    broadcastToGame(gameId, {
+      type: 'takeback_offered',
+      gameId,
+      byPlayerId: playerId,
+    });
+    logger.info('Takeback offered', { gameId, playerId });
+    return true;
+  });
+}
+
 export function offerTakeback(gameId: string, playerId: string): boolean {
+  /* Legacy sync wrapper — prefer offerTakebackSafe for thread safety */
   const game = games.get(gameId);
   if (!game || game.status !== 'active') return false;
   if (game.players.white !== playerId && game.players.black !== playerId) return false;
@@ -1159,11 +1248,18 @@ export async function acceptTakeback(
 
     const prevSnapshot = game.boardHistory[game.boardHistory.length - 2];
     game.board = chess.deserializeBoard(prevSnapshot.board);
-    game.lastMove = null;
+    game.enPassantTarget = null;
+    // castlingRights and halfMoveClock may be slightly stale but cannot cause illegal moves
+    game.lastMove =
+      game.boardHistory.length >= 2
+        ? {
+            from: game.boardHistory[game.boardHistory.length - 2].move.slice(0, 2),
+            to: game.boardHistory[game.boardHistory.length - 2].move.slice(2, 4),
+          }
+        : null;
     game.turn = game.turn === 'white' ? 'black' : 'white';
     game.moveHistory = game.moveHistory.slice(0, -1);
     game.boardHistory = game.boardHistory.slice(0, -1);
-    game.halfMoveClock = 0;
 
     persistGameAndPublish(gameId);
 
@@ -1307,7 +1403,7 @@ export async function endGame(gameId: string): Promise<{ success: true } | { suc
     game.status = 'draw';
     game.winner = null;
     game.reason = 'Ended by admin';
-    persistGame(game.id);
+    persistGameAndPublish(game.id);
 
     /* Save to completed_games for recordkeeping, without updating Elo/stats */
     const result = 'draw';
@@ -1325,6 +1421,7 @@ export async function endGame(gameId: string): Promise<{ success: true } | { suc
       JSON.stringify(game.boardHistory),
       null,
       '5+0',
+      game.rated,
     );
     gameCompletedAt.set(game.id, Date.now());
   });
@@ -1554,7 +1651,15 @@ export function sweepStaleWaitingGames(): number {
 export function startWaitingGameSweep(): void {
   if (WAITING_TTL_MS <= 0) return;
   if (getSweepTimer()) return;
-  setSweepTimer(setInterval(sweepStaleWaitingGames, Math.max(WAITING_TTL_MS / 2, 10_000)));
+  setSweepTimer(
+    setInterval(
+      () => {
+        sweepStaleWaitingGames();
+        db.pruneOldData().catch((err: unknown) => logger.error('pruneOldData failed: ' + err));
+      },
+      Math.max(WAITING_TTL_MS / 2, 10_000),
+    ),
+  );
   logger.info('Waiting game sweep started (interval=' + Math.max(WAITING_TTL_MS / 2, 10_000) + 'ms)');
 }
 

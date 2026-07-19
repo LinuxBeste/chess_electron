@@ -1,12 +1,13 @@
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 
-const mockGetUserById = jest.fn();
-const mockUpdatePlayerRating = jest.fn();
+const mockClientQuery = jest.fn();
+const mockTransaction = jest.fn(async (fn: (client: unknown) => Promise<void>) => {
+  await fn({ query: mockClientQuery });
+});
 const mockLoggerInfo = jest.fn();
 
 jest.unstable_mockModule('../src/db.js', () => ({
-  getUserById: mockGetUserById,
-  updatePlayerRating: mockUpdatePlayerRating,
+  transaction: mockTransaction,
 }));
 
 jest.unstable_mockModule('../src/logger.js', () => ({
@@ -32,6 +33,7 @@ function makeGame(overrides: Record<string, unknown> = {}) {
     visibility: 'public' as const,
     spectateMode: 'public' as const,
     halfMoveClock: 0,
+    rated: true,
     ...overrides,
   } as const;
 }
@@ -83,38 +85,48 @@ describe('updateEloRatings', () => {
   });
 
   test('updates ratings when white wins', async () => {
-    mockGetUserById.mockResolvedValue({ rating: 1500 });
-    mockGetUserById.mockResolvedValue({ rating: 1400 });
-    mockUpdatePlayerRating.mockResolvedValue(undefined);
+    mockClientQuery
+      .mockResolvedValueOnce({ rows: [{ rating: 1500 }] })
+      .mockResolvedValueOnce({ rows: [{ rating: 1400 }] })
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined);
     await updateEloRatings(makeGame({ winner: 'white' }), 'white');
-    expect(mockGetUserById).toHaveBeenCalledTimes(2);
-    expect(mockUpdatePlayerRating).toHaveBeenCalledTimes(2);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockClientQuery).toHaveBeenCalledTimes(4);
   });
 
   test('updates ratings when black wins', async () => {
-    mockGetUserById.mockResolvedValue({ rating: 1500 });
-    mockGetUserById.mockResolvedValue({ rating: 1400 });
-    mockUpdatePlayerRating.mockResolvedValue(undefined);
+    mockClientQuery
+      .mockResolvedValueOnce({ rows: [{ rating: 1500 }] })
+      .mockResolvedValueOnce({ rows: [{ rating: 1400 }] })
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined);
     await updateEloRatings(makeGame({ winner: 'black' }), 'black');
-    expect(mockUpdatePlayerRating).toHaveBeenCalledTimes(2);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockClientQuery).toHaveBeenCalledTimes(4);
   });
 
   test('updates ratings for draw', async () => {
-    mockGetUserById.mockResolvedValue({ rating: 1500 });
-    mockGetUserById.mockResolvedValue({ rating: 1500 });
-    mockUpdatePlayerRating.mockResolvedValue(undefined);
+    mockClientQuery
+      .mockResolvedValueOnce({ rows: [{ rating: 1500 }] })
+      .mockResolvedValueOnce({ rows: [{ rating: 1500 }] })
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined);
     await updateEloRatings(makeGame({ winner: null }), null);
-    expect(mockUpdatePlayerRating).toHaveBeenCalledTimes(2);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockClientQuery).toHaveBeenCalledTimes(4);
   });
 
   test('returns early when players missing', async () => {
     await updateEloRatings(makeGame({ players: {} }), null);
-    expect(mockGetUserById).not.toHaveBeenCalled();
+    expect(mockTransaction).not.toHaveBeenCalled();
   });
 
   test('returns early when user not found in DB', async () => {
-    mockGetUserById.mockResolvedValue(null);
+    mockClientQuery.mockResolvedValueOnce({ rows: [{ rating: 1500 }] }).mockResolvedValueOnce({ rows: [] });
     await updateEloRatings(makeGame(), 'white');
-    expect(mockUpdatePlayerRating).not.toHaveBeenCalled();
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockClientQuery).toHaveBeenCalledTimes(2);
+    expect(mockClientQuery.mock.calls[0][0]).toContain('FOR UPDATE');
   });
 });

@@ -175,12 +175,30 @@ export function persistGameAndPublish(id: string): void {
 }
 
 // Remove game from all in-memory stores and Redis
+function closeAllSockets(connections: Set<WebSocket> | undefined): void {
+  if (!connections) return;
+  for (const ws of connections) {
+    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+      try {
+        ws.close(1000, 'Game ended');
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+}
+
 export function removeGameById(id: string): void {
   games.delete(id);
   chatHistory.delete(id);
   gameCompletedAt.delete(id);
   uciHistory.delete(id);
-  spectatorConnections.delete(id);
+  // Close spectator connections to prevent FD leak
+  const specs = spectatorConnections.get(id);
+  if (specs) {
+    closeAllSockets(specs);
+    spectatorConnections.delete(id);
+  }
   drawOffers.delete(id);
   takebackOffers.delete(id);
   rematchOffers.delete(id);

@@ -114,11 +114,12 @@ const Board = memo(function Board({
 
   /* Pointer-based drag: pointer capture keeps drag active even outside the board element */
   const handlePointerDown = useCallback(
-    (square: string, _e: React.PointerEvent) => {
+    (square: string, e: React.PointerEvent) => {
       if (!isActive) return;
       const [r, f] = squareToIndices(square);
       const piece = board[r]?.[f];
       if (!piece || piece.color !== playerColor) return;
+      e.currentTarget.setPointerCapture(e.pointerId);
       logger.info('Piece drag started', { from: square, piece: piece.type, color: piece.color });
       setDragFrom(square);
       onDragStart(square);

@@ -48,6 +48,7 @@ export interface GameState {
   spectateCode?: string;
   halfMoveClock: number;
   aiSkillLevel?: number;
+  rated: boolean;
   reason?: string;
 }
 

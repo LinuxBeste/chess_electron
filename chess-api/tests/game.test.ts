@@ -1396,3 +1396,57 @@ describe('edge cases', () => {
     await expect(game.triggerBotMove(g.id)).resolves.toBeUndefined();
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  Rated / Unrated games                                               */
+/* ------------------------------------------------------------------ */
+
+describe('rated games', () => {
+  test('createGame defaults to rated', async () => {
+    const pid = await registerPlayer('rated_def');
+    const g = await game.createGame(pid);
+    expect(g.rated).toBe(true);
+  });
+
+  test('createGame accepts rated=false', async () => {
+    const pid = await registerPlayer('rated_false1');
+    const g = await game.createGame(pid, 'public', 'public', undefined, undefined, false);
+    expect(g.rated).toBe(false);
+  });
+
+  test('createGame accepts rated=true', async () => {
+    const pid = await registerPlayer('rated_true1');
+    const g = await game.createGame(pid, 'public', 'public', undefined, undefined, true);
+    expect(g.rated).toBe(true);
+  });
+
+  test('rated game tracks win/loss via resign', async () => {
+    const white = await registerPlayer('rated_win_w');
+    const black = await registerPlayer('rated_win_b');
+    const g = await game.createGame(white, 'public', 'public', undefined, undefined, true);
+    const join = await game.joinGame(g.id, black);
+    expect(join.success).toBe(true);
+
+    /* White resigns → black wins; the game is rated so Elo/stats are updated */
+    await game.resignGame(g.id, white);
+    const finished = await game.getGame(g.id);
+    expect(finished).not.toBeNull();
+    expect(finished!.status).toBe('resigned');
+    expect(finished!.rated).toBe(true);
+  });
+
+  test('unrated game skips win/loss via resign', async () => {
+    const white = await registerPlayer('unrated_win_w');
+    const black = await registerPlayer('unrated_win_b');
+    const g = await game.createGame(white, 'public', 'public', undefined, undefined, false);
+    const join = await game.joinGame(g.id, black);
+    expect(join.success).toBe(true);
+
+    /* White resigns → black wins; the game is NOT rated so Elo/stats are skipped */
+    await game.resignGame(g.id, white);
+    const finished = await game.getGame(g.id);
+    expect(finished).not.toBeNull();
+    expect(finished!.status).toBe('resigned');
+    expect(finished!.rated).toBe(false);
+  });
+});

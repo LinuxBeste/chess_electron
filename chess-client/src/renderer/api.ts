@@ -446,12 +446,16 @@ export async function getLeaderboard(
  * Optional body field: visibility ('public' | 'private', defaults to 'public').
  * Response shape confirmed in ../chess-api/src/routes.ts line 62-65
  * and ../chess-api/docs/api.md lines 58-80. */
-export async function createGame(visibility?: 'public' | 'private'): Promise<GameState> {
-  logger.info('createGame called' + (visibility ? ': visibility=' + visibility : ''));
+export async function createGame(visibility?: 'public' | 'private', rated?: boolean): Promise<GameState> {
+  logger.info(
+    'createGame called' +
+      (visibility ? ': visibility=' + visibility : '') +
+      (rated !== undefined ? ' rated=' + rated : ''),
+  );
   try {
     const result = await request<GameState>('/games', {
       method: 'POST',
-      body: JSON.stringify({ ...(visibility ? { visibility } : {}) }),
+      body: JSON.stringify({ ...(visibility ? { visibility } : {}), ...(rated !== undefined ? { rated } : {}) }),
     });
     logger.info('createGame ok: gameId=' + result.id);
     return result;
@@ -462,12 +466,16 @@ export async function createGame(visibility?: 'public' | 'private'): Promise<Gam
 }
 
 /* POST /games/chess960 */
-export async function createChess960Game(visibility?: 'public' | 'private'): Promise<GameState> {
-  logger.info('createChess960Game called' + (visibility ? ': visibility=' + visibility : ''));
+export async function createChess960Game(visibility?: 'public' | 'private', rated?: boolean): Promise<GameState> {
+  logger.info(
+    'createChess960Game called' +
+      (visibility ? ': visibility=' + visibility : '') +
+      (rated !== undefined ? ' rated=' + rated : ''),
+  );
   try {
     const result = await request<GameState>('/games/chess960', {
       method: 'POST',
-      body: JSON.stringify({ ...(visibility ? { visibility } : {}) }),
+      body: JSON.stringify({ ...(visibility ? { visibility } : {}), ...(rated !== undefined ? { rated } : {}) }),
     });
     logger.info('createChess960Game ok: gameId=' + result.id);
     return result;

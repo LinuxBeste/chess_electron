@@ -3571,7 +3571,7 @@ describe('50-move rule', () => {
     expect(chess.updateHalfMoveClock(move, 5)).toBe(6);
   });
 
-  test('getGameStatus returns draw when halfMoveClock >= 100', () => {
+  test('getGameStatus returns draw when halfMoveClock >= 150', () => {
     const board = boardFromFenLike([
       'k.......',
       'pppppppp',
@@ -3590,12 +3590,12 @@ describe('50-move rule', () => {
         white: { kingside: false, queenside: false },
         black: { kingside: false, queenside: false },
       },
-      100,
+      150,
     );
     expect(status).toBe('draw');
   });
 
-  test('getGameStatus returns active when halfMoveClock < 100', () => {
+  test('getGameStatus returns active when halfMoveClock < 150', () => {
     const board = boardFromFenLike([
       'k.......',
       'pppppppp',

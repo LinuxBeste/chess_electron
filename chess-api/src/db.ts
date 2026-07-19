@@ -338,6 +338,12 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       ALTER TABLE users ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT false;
     `,
   },
+  {
+    version: 13,
+    sql: `
+      ALTER TABLE completed_games ADD COLUMN IF NOT EXISTS rated BOOLEAN NOT NULL DEFAULT true;
+    `,
+  },
 ];
 
 let migrated = false;
@@ -401,6 +407,7 @@ interface CompletedGameRow {
   pgn: string | null;
   played_at: number;
   time_control: string;
+  rated: boolean;
 }
 
 interface TournamentRow {
@@ -516,7 +523,9 @@ export async function cleanupExpiredTokens(maxAgeMs = 30 * 86400000): Promise<nu
 
 export async function createBackup(): Promise<string | null> {
   try {
-    const dir = path.join(__dirname, '..', 'backups');
+    const dir = process.env.DATA_DIR
+      ? path.join(process.env.DATA_DIR, 'backups')
+      : path.join(__dirname, '..', 'backups');
     fs.mkdirSync(dir, { recursive: true });
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupPath = path.join(dir, `chess-${timestamp}.dump`);
@@ -547,12 +556,12 @@ export async function createBackup(): Promise<string | null> {
 }
 
 export async function addWin(userId: string): Promise<void> {
-  await getPool().query('UPDATE users SET wins = wins + 1, rating = rating + 16 WHERE id = $1', [userId]); // +16 Elo as simple default delta
+  await getPool().query('UPDATE users SET wins = wins + 1 WHERE id = $1', [userId]);
   invalidateLeaderboardCache();
 }
 
 export async function addLoss(userId: string): Promise<void> {
-  await getPool().query('UPDATE users SET losses = losses + 1, rating = rating - 16 WHERE id = $1', [userId]);
+  await getPool().query('UPDATE users SET losses = losses + 1 WHERE id = $1', [userId]);
   invalidateLeaderboardCache();
 }
 
@@ -939,9 +948,10 @@ export async function saveCompletedGame(
   boardHistory: string,
   pgn: string | null,
   timeControl: string,
+  rated: boolean,
 ): Promise<void> {
   await getPool().query(
-    'INSERT INTO completed_games (id, white_player_id, black_player_id, white_display_name, black_display_name, winner, status, result, reason, move_history, board_history, pgn, played_at, time_control) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
+    'INSERT INTO completed_games (id, white_player_id, black_player_id, white_display_name, black_display_name, winner, status, result, reason, move_history, board_history, pgn, played_at, time_control, rated) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)',
     [
       id,
       whitePlayerId,
@@ -957,6 +967,7 @@ export async function saveCompletedGame(
       pgn,
       Date.now(),
       timeControl,
+      rated,
     ],
   );
   logger.debug('DB: completed game saved id=' + id);
@@ -1500,4 +1511,33 @@ export async function closeDb(): Promise<void> {
   } catch (err) {
     logger.error('Error closing DB pool:', err);
   }
+}
+
+// Prune old completed games, chat messages, and reports to prevent unbounded table growth
+const COMPLETED_GAME_RETENTION_MS = parseInt(
+  process.env.COMPLETED_GAME_RETENTION_MS ?? (30 * 24 * 60 * 60 * 1000).toString(),
+  10,
+);
+const CHAT_RETENTION_MS = parseInt(process.env.CHAT_RETENTION_MS ?? (7 * 24 * 60 * 60 * 1000).toString(), 10);
+const REPORT_RETENTION_MS = parseInt(process.env.REPORT_RETENTION_MS ?? (90 * 24 * 60 * 60 * 1000).toString(), 10);
+
+export async function pruneOldData(): Promise<number> {
+  const cutoffCompleted = new Date(Date.now() - COMPLETED_GAME_RETENTION_MS).toISOString();
+  const cutoffChat = new Date(Date.now() - CHAT_RETENTION_MS).toISOString();
+  const cutoffReport = new Date(Date.now() - REPORT_RETENTION_MS).toISOString();
+  let total = 0;
+  try {
+    const completedResult = await getPool().query('DELETE FROM completed_games WHERE created_at < $1', [
+      cutoffCompleted,
+    ]);
+    total += completedResult.rowCount ?? 0;
+    const chatResult = await getPool().query('DELETE FROM chat_messages WHERE created_at < $1', [cutoffChat]);
+    total += chatResult.rowCount ?? 0;
+    const reportResult = await getPool().query('DELETE FROM reports WHERE created_at < $1', [cutoffReport]);
+    total += reportResult.rowCount ?? 0;
+    if (total > 0) logger.info('Pruned old DB records: count=' + total);
+  } catch (err) {
+    logger.error('Error pruning old data:', err);
+  }
+  return total;
 }

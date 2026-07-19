@@ -171,6 +171,7 @@ export type TranslationKeys = {
     failedJoin: string;
     failedLoad: string;
     chess960: string;
+    ratedGame: string;
   };
   game: {
     youWhite: string;
@@ -857,6 +858,7 @@ export const en: TranslationKeys = {
     failedJoin: 'Failed to join game',
     failedLoad: 'Failed to load game',
     chess960: 'Chess960 (Fischer Random)',
+    ratedGame: 'Rated game',
   },
   game: {
     youWhite: 'You (White)',
@@ -1545,6 +1547,7 @@ export const de: TranslationKeys = {
     failedJoin: 'Beitreten fehlgeschlagen',
     failedLoad: 'Spiel laden fehlgeschlagen',
     chess960: 'Chess960 (Fischer Random)',
+    ratedGame: 'Rated-Spiel',
   },
   game: {
     youWhite: 'Du (Weiß)',

@@ -114,38 +114,36 @@ export default function GamePage() {
   playerColorRef.current = playerColor;
   const moveInProgressRef = useRef(false);
   const mountedRef = useRef(true);
+  const unsubSpectatorRef = useRef<(() => void) | null>(null);
+  const whiteTimeRef = useRef(whiteTime);
+  whiteTimeRef.current = whiteTime;
+  const blackTimeRef = useRef(blackTime);
+  blackTimeRef.current = blackTime;
+  const premoveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* Chess clock: decrement active player every 50ms; stops on timeout or game end */
   useEffect(() => {
     if (!game || game.status !== 'active' || timeout) return;
     const interval = setInterval(() => {
+      if (!mountedRef.current) return;
       if (gameRef.current && gameRef.current.turn === 'white') {
-        let timedOut = false;
         setWhiteTime((t) => {
-          const next = t - 50;
-          if (next <= 0) {
-            timedOut = true;
-            return 0;
-          }
-          return next;
+          if (t <= 50) return 0;
+          return t - 50;
         });
-        if (timedOut) {
+        /* Use a ref to detect timeout reliably after state update */
+        const wt = whiteTimeRef.current;
+        if (wt !== undefined && wt <= 50) {
           setTimeout_('black');
-          if (gameRef.current && !mountedRef.current) return;
         }
       } else {
-        let timedOut = false;
         setBlackTime((t) => {
-          const next = t - 50;
-          if (next <= 0) {
-            timedOut = true;
-            return 0;
-          }
-          return next;
+          if (t <= 50) return 0;
+          return t - 50;
         });
-        if (timedOut) {
+        const bt = blackTimeRef.current;
+        if (bt !== undefined && bt <= 50) {
           setTimeout_('white');
-          if (gameRef.current && !mountedRef.current) return;
         }
       }
     }, 50);
@@ -261,6 +259,7 @@ export default function GamePage() {
     }
 
     if (isSpectator) {
+      mountedRef.current = true;
       const status = store.get('wsStatus');
       if (status === 'connected') {
         socketManager.send({ type: 'spectate', gameId });
@@ -271,11 +270,16 @@ export default function GamePage() {
             unsub();
           }
         });
+        unsubSpectatorRef.current = unsub;
       }
     }
 
     return () => {
       mountedRef.current = false;
+      if (unsubSpectatorRef.current) {
+        unsubSpectatorRef.current();
+        unsubSpectatorRef.current = null;
+      }
       moveQualityAbortRef.current?.abort();
       logger.info('GamePage unmounting, cleaning up WS handlers', { gameId });
       unsubMove();
@@ -351,13 +355,17 @@ export default function GamePage() {
       reviewStep(1);
     }
     function handleStartReview() {
-      if (reviewIndex === null || !gameRef.current) return;
-      if (reviewIndex !== -1) setReviewIndex(-1);
+      setReviewIndex((prev) => {
+        if (prev === null || !gameRef.current) return prev;
+        return prev !== -1 ? -1 : prev;
+      });
     }
     function handleEndReview() {
-      if (reviewIndex === null || !gameRef.current) return;
-      const last = gameRef.current.boardHistory.length - 1;
-      if (reviewIndex !== last) setReviewIndex(last);
+      setReviewIndex((prev) => {
+        if (prev === null || !gameRef.current) return prev;
+        const last = gameRef.current.boardHistory.length - 1;
+        return prev !== last ? last : prev;
+      });
     }
     window.addEventListener('shortcut:flipBoard', handleFlipBoard);
     window.addEventListener('shortcut:prevMove', handlePrevMove);
@@ -371,7 +379,7 @@ export default function GamePage() {
       window.removeEventListener('shortcut:startReview', handleStartReview);
       window.removeEventListener('shortcut:endReview', handleEndReview);
     };
-  });
+  }, []);
 
   /* REST polling fallback: if WS game_started is missed (reconnect race), poll every 2s */
   useEffect(() => {
@@ -481,17 +489,20 @@ export default function GamePage() {
     evaluateMoveQuality(opponentMoveStr, fen);
 
     /* Execute queued premove when it becomes this player's turn */
+    if (premoveTimerRef.current) clearTimeout(premoveTimerRef.current);
     setPremove((prev) => {
       if (!prev || msg.turn !== playerColorRef.current) return null;
-      /* Defer to next tick so React has processed the board update */
-      setTimeout(() => {
-        const g = gameRef.current;
-        if (g && g.status === 'active' && g.turn === playerColorRef.current) {
-          executeMove(prev.from, prev.to, checkPromotion(prev.from, prev.to) ? 'queen' : undefined);
-        }
-      }, 0);
-      return null;
+      return prev;
     });
+    /* Process premove outside state updater (next tick so React has processed the board update) */
+    premoveTimerRef.current = setTimeout(() => {
+      const g = gameRef.current;
+      const p = premove;
+      if (g && g.status === 'active' && g.turn === playerColorRef.current && p) {
+        executeMove(p.from, p.to, checkPromotion(p.from, p.to) ? 'queen' : undefined);
+      }
+      setPremove(null);
+    }, 0);
   }
 
   function handleWsGameOver(msg: GameOverMessage) {
@@ -980,6 +991,11 @@ export default function GamePage() {
                 <button className="btn btn-secondary btn-xs" onClick={() => copyToClipboard(game.id)}>
                   {t('common.copy')}
                 </button>
+              </div>
+              <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 6 }}>
+                <span className={`badge ${game.rated ? 'badge-rated' : 'badge-casual'}`}>
+                  {game.rated ? 'Rated' : 'Casual'}
+                </span>
               </div>
             </div>
           )}
