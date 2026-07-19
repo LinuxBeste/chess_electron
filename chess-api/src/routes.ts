@@ -13,6 +13,7 @@ import { engineManager } from './engine.js';
 import logger from './logger.js';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { z } from 'zod';
 import {
   usernameSchema,
@@ -54,11 +55,27 @@ function isValidImageType(filePath: string, mimeType: string): boolean {
 const avatarDir = process.env.DATA_DIR
   ? path.join(process.env.DATA_DIR, 'avatars')
   : path.join(__dirname, '..', 'data', 'avatars');
-fs.mkdirSync(avatarDir, { recursive: true });
+try {
+  fs.mkdirSync(avatarDir, { recursive: true });
+} catch (e) {
+  logger.warn('Cannot create avatar dir: ' + avatarDir + ' — ' + e);
+}
 
 const avatarUpload = multer({
   storage: multer.diskStorage({
-    destination: avatarDir,
+    destination: (_req, _file, cb) => {
+      if (fs.existsSync(avatarDir)) {
+        cb(null, avatarDir);
+      } else {
+        const fallback = path.join(os.tmpdir(), 'chess-avatars');
+        try {
+          fs.mkdirSync(fallback, { recursive: true });
+        } catch {
+          /* noop */
+        }
+        cb(null, fallback);
+      }
+    },
     filename: (_req, file, cb) => {
       const ext =
         file.mimetype === 'image/png'

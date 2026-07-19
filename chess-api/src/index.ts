@@ -160,9 +160,21 @@ const logsDir = process.env.DATA_DIR
 const backupsDir = process.env.DATA_DIR
   ? path.join(process.env.DATA_DIR, 'backups')
   : path.join(path.resolve(__dirname, '..'), 'backups');
-fs.mkdirSync(avatarDir, { recursive: true });
-fs.mkdirSync(logsDir, { recursive: true });
-fs.mkdirSync(backupsDir, { recursive: true });
+try {
+  fs.mkdirSync(avatarDir, { recursive: true });
+} catch (e) {
+  logger.warn('Cannot create avatar dir: ' + avatarDir + ' — ' + e);
+}
+try {
+  fs.mkdirSync(logsDir, { recursive: true });
+} catch (e) {
+  logger.warn('Cannot create logs dir: ' + logsDir + ' — ' + e);
+}
+try {
+  fs.mkdirSync(backupsDir, { recursive: true });
+} catch (e) {
+  logger.warn('Cannot create backups dir: ' + backupsDir + ' — ' + e);
+}
 app.use('/avatars', express.static(avatarDir));
 
 const adminDir = path.join(path.resolve(__dirname, '..'), 'dist', 'admin');
