@@ -64,6 +64,7 @@ export interface AppSettings {
   showLegalHints: boolean;
   showThreats: boolean;
   showEvalBar: boolean;
+  showBestMoveHint: boolean;
   showOpponentClock: boolean;
   fullscreenMode: boolean;
 
@@ -158,6 +159,7 @@ export const defaultSettings: AppSettings = {
   showLegalHints: true,
   showThreats: false,
   showEvalBar: false,
+  showBestMoveHint: false,
   showOpponentClock: true,
   fullscreenMode: false,
 

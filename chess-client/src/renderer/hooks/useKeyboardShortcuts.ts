@@ -63,6 +63,13 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      /* H — toggle best move hint (only on game page) */
+      if (e.key === 'h' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('shortcut:toggleHint'));
+        return;
+      }
+
       /* F — flip board (only on game page) */
       if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();

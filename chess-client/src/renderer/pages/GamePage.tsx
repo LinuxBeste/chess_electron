@@ -79,6 +79,9 @@ export default function GamePage() {
   const [evalScore, setEvalScore] = useState<number | null>(null);
   const [boardFlipped, setBoardFlipped] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [bestMoveHint, setBestMoveHint] = useState<{ from: string; to: string } | null>(null);
+  const [hintLoading, setHintLoading] = useState(false);
+  const hintAbortRef = useRef<AbortController | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   function toggleFullscreen() {
@@ -347,6 +350,7 @@ export default function GamePage() {
   useEffect(() => {
     function handleFlipBoard() {
       setBoardFlipped((p) => !p);
+      setBestMoveHint(null);
     }
     function handlePrevMove() {
       reviewStep(-1);
@@ -367,17 +371,27 @@ export default function GamePage() {
         return prev !== last ? last : prev;
       });
     }
+    function handleToggleHint() {
+      if (!getSetting('showBestMoveHint')) return;
+      if (bestMoveHint) {
+        setBestMoveHint(null);
+      } else {
+        fetchBestMove();
+      }
+    }
     window.addEventListener('shortcut:flipBoard', handleFlipBoard);
     window.addEventListener('shortcut:prevMove', handlePrevMove);
     window.addEventListener('shortcut:nextMove', handleNextMove);
     window.addEventListener('shortcut:startReview', handleStartReview);
     window.addEventListener('shortcut:endReview', handleEndReview);
+    window.addEventListener('shortcut:toggleHint', handleToggleHint);
     return () => {
       window.removeEventListener('shortcut:flipBoard', handleFlipBoard);
       window.removeEventListener('shortcut:prevMove', handlePrevMove);
       window.removeEventListener('shortcut:nextMove', handleNextMove);
       window.removeEventListener('shortcut:startReview', handleStartReview);
       window.removeEventListener('shortcut:endReview', handleEndReview);
+      window.removeEventListener('shortcut:toggleHint', handleToggleHint);
     };
   }, []);
 
@@ -458,6 +472,7 @@ export default function GamePage() {
   // Server-broadcast move: update board, clock increment, play sound for opponent's move
   function handleWsMove(msg: MoveMessage) {
     if (!gameRef.current) return;
+    setBestMoveHint(null);
     logger.info('WS move received', {
       gameId: msg.gameId,
       from: msg.lastMove.from,
@@ -740,6 +755,7 @@ export default function GamePage() {
     if (!gameRef.current) return;
     if (moveInProgressRef.current) return;
     moveInProgressRef.current = true;
+    setBestMoveHint(null);
     logger.info('Executing move', { gameId: gameRef.current.id, from, to, promotion });
     setSelectedSquare(null);
     setLegalHints([]);
@@ -853,6 +869,7 @@ export default function GamePage() {
   // Step through board history snapshots after game ends (-1 = initial position)
   function reviewStep(direction: number) {
     if (reviewIndex === null || !gameRef.current) return;
+    setBestMoveHint(null);
     const newIndex = reviewIndex + direction;
     if (newIndex < -1 || newIndex >= gameRef.current.boardHistory.length) return;
     setReviewIndex(newIndex);
@@ -909,6 +926,60 @@ export default function GamePage() {
         }
       })
       .catch(() => {});
+  }
+
+  function buildFen(): string {
+    if (!game || !boardRef.current) return '';
+    const boardFen = boardToFen(boardRef.current).split(' ')[0];
+    const turn = game.turn === 'white' ? 'w' : 'b';
+    const cr = game.castlingRights;
+    const castle =
+      `${cr.white.kingside ? 'K' : ''}${cr.white.queenside ? 'Q' : ''}${cr.black.kingside ? 'k' : ''}${cr.black.queenside ? 'q' : ''}` ||
+      '-';
+    const ep = game.enPassantTarget || '-';
+    return `${boardFen} ${turn} ${castle} ${ep} 0 1`;
+  }
+
+  function fetchBestMove() {
+    if (!game || !boardRef.current) return;
+    const fen = buildFen();
+    if (!fen) return;
+
+    hintAbortRef.current?.abort();
+    const controller = new AbortController();
+    hintAbortRef.current = controller;
+
+    setHintLoading(true);
+    setBestMoveHint(null);
+    const baseUrl = localStorage.getItem('chess_server_url') || 'http://localhost:3000';
+    fetch(`${baseUrl}/analysis/best-move`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fen }),
+      signal: controller.signal,
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Best-move request failed');
+        return res.json();
+      })
+      .then((data) => {
+        if (!mountedRef.current) return;
+        if (data.bestMove && data.bestMove.length >= 4) {
+          const from = data.bestMove.slice(0, 2);
+          const to = data.bestMove.slice(2, 4);
+          setBestMoveHint({ from, to });
+        } else {
+          store.toast('No best move found', 'info');
+        }
+      })
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        logger.error('Failed to fetch best move hint', err);
+        store.toast('Failed to get hint', 'error');
+      })
+      .finally(() => {
+        if (mountedRef.current) setHintLoading(false);
+      });
   }
 
   const isFinished = (game && ['checkmate', 'stalemate', 'resigned', 'draw'].includes(game.status)) || !!timeout;
@@ -980,6 +1051,7 @@ export default function GamePage() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           premove={premove}
+          bestMoveHint={bestMoveHint}
           alwaysBottom={boardFlipped ? !getSetting('alwaysWhiteBottom') : undefined}
         >
           {waiting && game && (
@@ -1190,6 +1262,23 @@ export default function GamePage() {
               </button>
             </div>
           )}
+          {getSetting('showBestMoveHint') && (
+            <button
+              className={`btn btn-sm ${bestMoveHint ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => {
+                if (bestMoveHint) {
+                  setBestMoveHint(null);
+                } else {
+                  fetchBestMove();
+                }
+              }}
+              disabled={hintLoading}
+              title="Show engine's best move (H)"
+              style={{ padding: '4px 10px', fontSize: 12, gap: 4 }}
+            >
+              {hintLoading ? '…' : bestMoveHint ? '✕ Hint' : 'Hint'}
+            </button>
+          )}
           <div ref={menuRef} style={{ position: 'relative' }}>
             <button
               className="btn btn-secondary btn-sm"
@@ -1241,11 +1330,35 @@ export default function GamePage() {
                       />
                     )}
                     {waiting && !isSpectator && <MenuItem label={t('game.abortGame')} onClick={handleAbort} />}
+                    {getSetting('showBestMoveHint') && (
+                      <MenuItem
+                        label={hintLoading ? 'Thinking…' : bestMoveHint ? 'Clear Hint' : 'Show Best Move'}
+                        onClick={() => {
+                          if (bestMoveHint) {
+                            setBestMoveHint(null);
+                          } else {
+                            fetchBestMove();
+                          }
+                        }}
+                      />
+                    )}
                   </>
                 )}
                 {isFinished && (
                   <>
                     {!isSpectator && <MenuItem label={t('result.rematch')} onClick={handleOfferRematch} />}
+                    {getSetting('showBestMoveHint') && (
+                      <MenuItem
+                        label={hintLoading ? 'Thinking…' : bestMoveHint ? 'Clear Hint' : 'Show Best Move'}
+                        onClick={() => {
+                          if (bestMoveHint) {
+                            setBestMoveHint(null);
+                          } else {
+                            fetchBestMove();
+                          }
+                        }}
+                      />
+                    )}
                     <MenuItem label={t('common.backToLobby')} onClick={() => navigate('/lobby')} />
                   </>
                 )}

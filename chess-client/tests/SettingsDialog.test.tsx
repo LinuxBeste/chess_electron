@@ -97,4 +97,19 @@ describe('SettingsDialog', () => {
     expect(slider).toBeTruthy();
     expect(slider.value).toBe('100');
   });
+
+  test('display tab has best move hint toggle', () => {
+    render(<SettingsDialog onClose={() => {}} />);
+    fireEvent.click(screen.getByText('Display'));
+    expect(screen.getByText('Best Move Hint')).toBeTruthy();
+    expect(screen.getByText("Show a hint button during the game to highlight the engine's best move")).toBeTruthy();
+  });
+
+  test('best move hint toggle is off by default', () => {
+    render(<SettingsDialog onClose={() => {}} />);
+    fireEvent.click(screen.getByText('Display'));
+    const toggle = screen.getByText('Best Move Hint').closest('.settings-row')?.querySelector('.toggle');
+    expect(toggle).toBeTruthy();
+    expect(toggle?.className).not.toContain('toggle-on');
+  });
 });

@@ -27,6 +27,7 @@ interface BoardProps {
   children?: React.ReactNode;
   alwaysBottom?: boolean;
   premove?: { from: string; to: string } | null;
+  bestMoveHint?: { from: string; to: string } | null;
 }
 
 const Board = memo(function Board({
@@ -42,6 +43,7 @@ const Board = memo(function Board({
   children,
   alwaysBottom: alwaysBottomProp,
   premove,
+  bestMoveHint,
 }: BoardProps) {
   const boardRef = useRef<HTMLDivElement>(null);
   const [boardSize, setBoardSize] = useState(480);
@@ -176,6 +178,13 @@ const Board = memo(function Board({
     [dragFrom, sqSize, isWhiteBottom, onDragEnd, playerColor],
   );
 
+  function squareToDisplayCenter(sq: string): { x: number; y: number } {
+    const [r, f] = squareToIndices(sq);
+    const df = isWhiteBottom ? f : 7 - f;
+    const dr = isWhiteBottom ? r : 7 - r;
+    return { x: (df + 0.5) * sqSize, y: (dr + 0.5) * sqSize };
+  }
+
   const getIsLegalHint = (sq: string) => legalHints.some((h) => h.to === sq);
   const getIsLegalCapture = (sq: string) => {
     const [r, f] = squareToIndices(sq);
@@ -214,6 +223,8 @@ const Board = memo(function Board({
               isHovered={hoverSquare === squareName && getIsLegalHint(squareName)}
               isPremoveFrom={premove?.from === squareName}
               isPremoveTo={premove?.to === squareName}
+              isBestMoveFrom={bestMoveHint?.from === squareName}
+              isBestMoveTo={bestMoveHint?.to === squareName}
               showCoordinates={showCoordinates}
               onClick={handleClick}
               onPointerDown={handlePointerDown}
@@ -221,6 +232,61 @@ const Board = memo(function Board({
           );
         });
       })}
+      {bestMoveHint &&
+        (() => {
+          const from = squareToDisplayCenter(bestMoveHint.from);
+          const to = squareToDisplayCenter(bestMoveHint.to);
+          const dx = to.x - from.x;
+          const dy = to.y - from.y;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len < 1) return null;
+          const ux = dx / len;
+          const uy = dy / len;
+          const tipLen = Math.min(sqSize * 0.3, len * 0.4);
+          const tipX = to.x - ux * tipLen;
+          const tipY = to.y - uy * tipLen;
+          const perp = sqSize * 0.12;
+          return (
+            <svg
+              className="best-move-arrow"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: boardSize,
+                height: boardSize,
+                pointerEvents: 'none',
+                zIndex: 10,
+              }}
+            >
+              {/* Arrow shaft */}
+              <line
+                x1={from.x}
+                y1={from.y}
+                x2={tipX}
+                y2={tipY}
+                stroke="rgba(255,215,0,0.85)"
+                strokeWidth={Math.max(3, sqSize * 0.06)}
+                strokeLinecap="round"
+              />
+              {/* Arrowhead */}
+              <polygon
+                points={`${to.x},${to.y} ${tipX + uy * perp},${tipY - ux * perp} ${tipX - uy * perp},${tipY + ux * perp}`}
+                fill="rgba(255,215,0,0.85)"
+              />
+              {/* Glow effect */}
+              <line
+                x1={from.x}
+                y1={from.y}
+                x2={tipX}
+                y2={tipY}
+                stroke="rgba(255,215,0,0.25)"
+                strokeWidth={Math.max(8, sqSize * 0.14)}
+                strokeLinecap="round"
+              />
+            </svg>
+          );
+        })()}
       {children}
     </div>
   );

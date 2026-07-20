@@ -941,6 +941,13 @@ body {
   background: rgba(0, 200, 150, 0.3) !important;
   box-shadow: inset 0 0 0 2px rgba(0, 200, 150, 0.7);
 }
+.hl-best-from {
+  background: rgba(255, 215, 0, 0.3) !important;
+}
+.hl-best-to {
+  background: rgba(255, 215, 0, 0.35) !important;
+  box-shadow: inset 0 0 0 2px rgba(255, 215, 0, 0.8);
+}
 .legal-dot {
   position: absolute;
   width: 12px;

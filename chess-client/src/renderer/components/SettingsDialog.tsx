@@ -666,6 +666,13 @@ function DisplayTab({
       />
       <ToggleRow
         searchQuery={searchQuery}
+        label="Best Move Hint"
+        desc="Show a hint button during the game to highlight the engine's best move"
+        checked={settings.showBestMoveHint}
+        onChange={(v) => onUpdate({ ...settings, showBestMoveHint: v })}
+      />
+      <ToggleRow
+        searchQuery={searchQuery}
         label={t('settings.display.showOpponentClock')}
         desc={t('settings.display.showOpponentClockDesc')}
         checked={settings.showOpponentClock}

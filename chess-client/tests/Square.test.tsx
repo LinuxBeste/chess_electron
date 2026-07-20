@@ -23,6 +23,8 @@ describe('Square', () => {
     isHovered: false,
     isPremoveFrom: false,
     isPremoveTo: false,
+    isBestMoveFrom: false,
+    isBestMoveTo: false,
     showCoordinates: false,
     onClick: () => {},
     onPointerDown: () => {},
@@ -94,6 +96,12 @@ describe('Square', () => {
   test('applies selected highlight class', () => {
     const { container } = render(<Square {...baseProps} isSelected={true} />);
     expect(getClasses(container)).toContain('hl-selected');
+  });
+
+  test('applies best move hint highlight classes', () => {
+    const { container } = render(<Square {...baseProps} isBestMoveFrom={true} isBestMoveTo={true} />);
+    expect(getClasses(container)).toContain('hl-best-from');
+    expect(getClasses(container)).toContain('hl-best-to');
   });
 
   test('applies last move highlight classes', () => {

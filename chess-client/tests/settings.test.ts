@@ -40,6 +40,8 @@ interface AppSettings {
   autoFlipBoard: boolean;
   background: string;
   showThreats: boolean;
+  showEvalBar: boolean;
+  showBestMoveHint: boolean;
   showOpponentClock: boolean;
   clockStyle: string;
   clockDecimalPlaces: number;
@@ -94,6 +96,8 @@ const defaultSettings: AppSettings = {
   autoFlipBoard: false,
   background: 'default',
   showThreats: false,
+  showEvalBar: false,
+  showBestMoveHint: false,
   showOpponentClock: true,
   clockStyle: 'digital',
   clockDecimalPlaces: 0,

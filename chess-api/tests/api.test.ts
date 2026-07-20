@@ -2283,6 +2283,57 @@ describe('Move Quality', () => {
     expect(res.body).toHaveProperty('playedMove', 'e1g1');
     expect(res.body).toHaveProperty('quality');
   });
+
+  /* ── POST /analysis/best-move ── */
+
+  test('POST /analysis/best-move returns 401 without auth', async () => {
+    await request.post('/analysis/best-move').send({}).expect(401);
+    await request.post('/analysis/best-move').send({ fen: 'start' }).expect(401);
+  });
+
+  test('POST /analysis/best-move rejects invalid FEN', async () => {
+    await request.post('/analysis/best-move').set('Authorization', authHeader).send({ fen: 'invalid' }).expect(400);
+  });
+
+  test('POST /analysis/best-move returns bestMove and score for initial position', async () => {
+    const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const res = await request.post('/analysis/best-move').set('Authorization', authHeader).send({ fen }).expect(200);
+
+    expect(res.body).toHaveProperty('bestMove');
+    expect(typeof res.body.bestMove).toBe('string');
+    expect(res.body.bestMove.length).toBeGreaterThanOrEqual(4);
+    expect(res.body).toHaveProperty('score');
+    expect(typeof res.body.score).toBe('number');
+  });
+
+  test('POST /analysis/best-move returns a legal best move', async () => {
+    const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const res = await request.post('/analysis/best-move').set('Authorization', authHeader).send({ fen }).expect(200);
+
+    const bm = res.body.bestMove;
+    expect(bm).toMatch(/^[a-h][1-8][a-h][1-8]$/);
+  });
+
+  test('POST /analysis/best-move handles a mid-game FEN', async () => {
+    const fen = 'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4';
+    const res = await request.post('/analysis/best-move').set('Authorization', authHeader).send({ fen }).expect(200);
+
+    expect(res.body).toHaveProperty('bestMove');
+    expect(res.body.bestMove).toMatch(/^[a-h][1-8][a-h][1-8]$/);
+    expect(res.body).toHaveProperty('score');
+  });
+
+  test('/analysis/best-move returns different results for different positions', async () => {
+    const fen1 = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const fen2 = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
+
+    const [r1, r2] = await Promise.all([
+      request.post('/analysis/best-move').set('Authorization', authHeader).send({ fen: fen1 }),
+      request.post('/analysis/best-move').set('Authorization', authHeader).send({ fen: fen2 }),
+    ]);
+
+    expect(r1.body.bestMove).not.toBe(r2.body.bestMove);
+  });
 });
 
 describe('Admin actions', () => {

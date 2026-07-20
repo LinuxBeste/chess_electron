@@ -468,6 +468,8 @@ export default function BoardEditorPage() {
                   isHovered={false}
                   isPremoveFrom={false}
                   isPremoveTo={false}
+                  isBestMoveFrom={false}
+                  isBestMoveTo={false}
                   showCoordinates={true}
                   onClick={handleSquareClick}
                   onPointerDown={() => {}}

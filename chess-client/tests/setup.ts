@@ -29,6 +29,41 @@ Object.defineProperty(globalThis, 'localStorage', {
 // Polyfill scrollIntoView for jsdom (used by CommandPalette)
 Element.prototype.scrollIntoView = () => {};
 
+// Mock ResizeObserver for Board component
+globalThis.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as unknown as typeof ResizeObserver;
+
+// Mock DOMRect for Board component
+globalThis.DOMRect = class DOMRect {
+  constructor(
+    public x = 0,
+    public y = 0,
+    public width = 480,
+    public height = 480,
+  ) {}
+  static fromRect(): DOMRect {
+    return new DOMRect();
+  }
+  toJSON() {
+    return {};
+  }
+  get top() {
+    return this.y;
+  }
+  get left() {
+    return this.x;
+  }
+  get right() {
+    return this.x + this.width;
+  }
+  get bottom() {
+    return this.y + this.height;
+  }
+} as unknown as typeof DOMRect;
+
 // Suppress console output during tests to avoid Jest detecting them as failures
 console.info = jest.fn();
 console.debug = jest.fn();

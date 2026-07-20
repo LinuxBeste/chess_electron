@@ -999,6 +999,43 @@ router.post('/analysis/move-quality', authMiddleware, rateLimitMiddleware, async
   }
 });
 
+router.post('/analysis/best-move', authMiddleware, rateLimitMiddleware, async (req: Request, res: Response) => {
+  const { fen } = req.body;
+  if (typeof fen !== 'string') {
+    res.status(400).json({ error: 'FEN required' });
+    return;
+  }
+
+  const parsed = chess.fenToBoard(fen);
+  if (!parsed) {
+    res.status(400).json({ error: 'Invalid FEN' });
+    return;
+  }
+
+  const analysisId = uuidv4();
+  let destroyAfter = true;
+  try {
+    await engineManager.startInstance(analysisId, 20);
+    engineManager.send(analysisId, `position fen ${fen}`);
+    const result = await engineManager.getBestMove(analysisId, ANALYSIS_MOVE_TIME_MS);
+    engineManager.destroyInstance(analysisId);
+    destroyAfter = false;
+
+    res.json({ bestMove: result.move || null, score: result.score });
+  } catch (err) {
+    logger.error('Best-move analysis failed: ' + err);
+    res.status(500).json({ error: 'Analysis failed' });
+  } finally {
+    if (destroyAfter) {
+      try {
+        engineManager.destroyInstance(analysisId);
+      } catch {
+        /* ok */
+      }
+    }
+  }
+});
+
 /* ─── Tournaments ─── */
 
 router.post(
