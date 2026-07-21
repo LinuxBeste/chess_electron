@@ -719,6 +719,7 @@ export interface PlayerProfile {
   rating: number | null;
   verified?: boolean;
   friendStatus: 'none' | 'friends' | 'incoming' | 'outgoing';
+  blockStatus: 'none' | 'blocked' | 'muted';
   friendCount: number;
   isOnline: boolean;
   currentGameId: string | null;
@@ -875,6 +876,29 @@ export async function getFriends(): Promise<FriendInfo[]> {
     logger.error('getFriends failed: ' + err);
     throw err;
   }
+}
+
+export interface BlockedUserInfo {
+  playerId: string;
+  username: string;
+  displayName: string;
+  reason: 'block' | 'mute';
+}
+
+export async function blockPlayer(playerId: string): Promise<{ success: boolean; reason: string }> {
+  return request('/blocks/block', { method: 'POST', body: JSON.stringify({ playerId }) });
+}
+
+export async function mutePlayer(playerId: string): Promise<{ success: boolean; reason: string }> {
+  return request('/blocks/mute', { method: 'POST', body: JSON.stringify({ playerId }) });
+}
+
+export async function unblockPlayer(playerId: string): Promise<{ success: boolean }> {
+  return request('/blocks/unblock', { method: 'POST', body: JSON.stringify({ playerId }) });
+}
+
+export async function getBlockedUsers(): Promise<BlockedUserInfo[]> {
+  return request('/blocks');
 }
 
 export async function parsePgn(pgn: string): Promise<{ fen: string; board: SerializedSquare[] }> {

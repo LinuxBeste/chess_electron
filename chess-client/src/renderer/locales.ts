@@ -440,6 +440,11 @@ export type TranslationKeys = {
       emailSaved: string;
       emailSaveFailed: string;
       emailClear: string;
+      blockedUsers: string;
+      noBlockedUsers: string;
+      blocked: string;
+      muted: string;
+      unblock: string;
     };
     general: {
       sound: string;
@@ -1128,6 +1133,11 @@ export const en: TranslationKeys = {
       emailSaved: 'Recovery email updated!',
       emailSaveFailed: 'Failed to update recovery email',
       emailClear: 'Clear',
+      blockedUsers: 'Blocked Users',
+      noBlockedUsers: 'No blocked users',
+      blocked: 'Blocked',
+      muted: 'Muted',
+      unblock: 'Unblock',
     },
     general: {
       sound: 'Sound',
@@ -1818,6 +1828,11 @@ export const de: TranslationKeys = {
       emailSaved: 'Wiederherstellungs-E-Mail aktualisiert!',
       emailSaveFailed: 'Fehler beim Aktualisieren der Wiederherstellungs-E-Mail',
       emailClear: 'Entfernen',
+      blockedUsers: 'Blockierte Benutzer',
+      noBlockedUsers: 'Keine blockierten Benutzer',
+      blocked: 'Blockiert',
+      muted: 'Stummgeschaltet',
+      unblock: 'Entblocken',
     },
     general: {
       sound: 'Sound',

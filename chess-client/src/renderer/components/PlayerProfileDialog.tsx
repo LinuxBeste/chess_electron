@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getPlayerProfile, sendFriendRequest, PlayerProfile, avatarSrc } from '../api';
+import {
+  getPlayerProfile,
+  blockPlayer,
+  mutePlayer,
+  unblockPlayer,
+  sendFriendRequest,
+  PlayerProfile,
+  avatarSrc,
+} from '../api';
 import { store } from '../store';
 import { t } from '../translate';
 import logger from '../logger';
@@ -15,13 +23,13 @@ function fmtDate(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-// Modal displaying a player's profile, stats, and friend actions
 export default function PlayerProfileDialog({ playerId, onClose }: Props) {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [error, setError] = useState('');
   const [friendLoading, setFriendLoading] = useState(false);
   const [friendMsg, setFriendMsg] = useState('');
+  const [blockLoading, setBlockLoading] = useState(false);
 
   useEffect(() => {
     logger.info('Loading profile for playerId=' + playerId);
@@ -60,6 +68,49 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
     }
   }
 
+  async function handleBlock() {
+    if (!profile) return;
+    setBlockLoading(true);
+    try {
+      if (profile.blockStatus === 'blocked') {
+        await unblockPlayer(profile.id);
+        setProfile({ ...profile, blockStatus: 'none' });
+        store.toast('Player unblocked', 'info');
+      } else {
+        await blockPlayer(profile.id);
+        setProfile({ ...profile, blockStatus: 'blocked' });
+        store.toast('Player blocked', 'info');
+      }
+    } catch {
+      store.toast('Block action failed', 'error');
+    } finally {
+      setBlockLoading(false);
+    }
+  }
+
+  async function handleMute() {
+    if (!profile) return;
+    setBlockLoading(true);
+    try {
+      if (profile.blockStatus === 'muted') {
+        await unblockPlayer(profile.id);
+        setProfile({ ...profile, blockStatus: 'none' });
+        store.toast('Player unmuted', 'info');
+      } else {
+        await mutePlayer(profile.id);
+        setProfile({ ...profile, blockStatus: 'muted' });
+        store.toast('Player muted', 'info');
+      }
+    } catch {
+      store.toast('Mute action failed', 'error');
+    } finally {
+      setBlockLoading(false);
+    }
+  }
+
+  const myId = store.get('playerId');
+  const isSelf = playerId === myId;
+
   return (
     <div
       className="modal-overlay"
@@ -96,40 +147,57 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
           <p style={{ color: '#888', fontSize: 13 }}>Loading...</p>
         ) : (
           <>
-            {/* Avatar */}
-            {profile.avatarUrl ? (
-              <img
-                src={avatarSrc(profile.avatarUrl)}
-                alt=""
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  margin: '0 auto 12px',
-                  display: 'block',
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: '50%',
-                  background: '#2a2a2a',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 12px',
-                  fontSize: 28,
-                  color: '#555',
-                }}
-              >
-                {(profile.displayName || profile.username || '?')[0].toUpperCase()}
-              </div>
-            )}
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              {profile.avatarUrl ? (
+                <img
+                  src={avatarSrc(profile.avatarUrl)}
+                  alt=""
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    margin: '0 auto 12px',
+                    display: 'block',
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: '50%',
+                    background: '#2a2a2a',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 12px',
+                    fontSize: 28,
+                    color: '#555',
+                  }}
+                >
+                  {(profile.displayName || profile.username || '?')[0].toUpperCase()}
+                </div>
+              )}
+              {profile.blockStatus === 'blocked' && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: -4,
+                    right: -4,
+                    background: '#f44336',
+                    color: '#fff',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    padding: '2px 6px',
+                    borderRadius: 8,
+                  }}
+                >
+                  BLOCKED
+                </span>
+              )}
+            </div>
 
-            {/* Name & badge */}
             <h2 style={{ fontSize: 18, fontWeight: 700, color: '#e0e0e0', margin: '0 0 4px' }}>
               {profile.displayName || profile.username || t('common.unknown')}
               {profile.verified && (
@@ -163,27 +231,41 @@ export default function PlayerProfileDialog({ playerId, onClose }: Props) {
               {profile.isRegistered ? t('settings.account.registered') : t('settings.account.temporary')}
             </span>
 
-            {/* Joined date */}
             {profile.createdAt && (
               <p style={{ fontSize: 12, color: '#888', margin: '0 0 16px' }}>
                 {t('settings.account.joined')}: {fmtDate(profile.createdAt)}
               </p>
             )}
 
-            {/* Add Friend */}
-            {profile.isRegistered && (
-              <button
-                className="btn btn-sm btn-secondary"
-                onClick={handleAddFriend}
-                disabled={friendLoading}
-                style={{ marginBottom: 16 }}
-              >
-                {friendLoading ? '...' : t('friends.add')}
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+              {profile.isRegistered && !isSelf && (
+                <button className="btn btn-sm btn-secondary" onClick={handleAddFriend} disabled={friendLoading}>
+                  {friendLoading ? '...' : t('friends.add')}
+                </button>
+              )}
+              {!isSelf && (
+                <>
+                  <button
+                    className={`btn btn-sm ${profile.blockStatus === 'muted' ? 'btn-secondary' : 'btn-ghost'}`}
+                    onClick={handleMute}
+                    disabled={blockLoading}
+                    style={{ color: profile.blockStatus === 'muted' ? 'var(--text)' : undefined }}
+                  >
+                    {profile.blockStatus === 'muted' ? 'Unmute' : 'Mute'}
+                  </button>
+                  <button
+                    className={`btn btn-sm ${profile.blockStatus === 'blocked' ? 'btn-danger' : 'btn-ghost'}`}
+                    onClick={handleBlock}
+                    disabled={blockLoading}
+                    style={{ color: profile.blockStatus === 'blocked' ? undefined : '#f44336' }}
+                  >
+                    {profile.blockStatus === 'blocked' ? 'Unblock' : 'Block'}
+                  </button>
+                </>
+              )}
+            </div>
             {friendMsg && <p style={{ fontSize: 12, color: '#888', margin: '-8px 0 16px' }}>{friendMsg}</p>}
 
-            {/* Stats */}
             {profile.stats ? (
               <div
                 style={{

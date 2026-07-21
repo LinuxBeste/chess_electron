@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { PieceType } from './types.js';
 import * as game from './game.js';
+import { isBlockedBy, isMutedBy } from './blocks.js';
 import * as db from './db.js';
 import * as chess from './chess.js';
 import * as player from './player.js';
@@ -600,6 +601,14 @@ router.get('/players/:playerId/profile', authMiddleware, banCheckMiddleware, asy
       verified: user?.verified === true,
       friendStatus,
       friendCount: friendIds.length,
+      blockStatus:
+        req.params.playerId === req.player.id
+          ? 'none'
+          : isBlockedBy(req.player.id, req.params.playerId)
+            ? 'blocked'
+            : isMutedBy(req.player.id, req.params.playerId)
+              ? 'muted'
+              : 'none',
       isOnline,
       currentGameId,
       totalGames: archivedStats.wins + archivedStats.losses + archivedStats.draws,

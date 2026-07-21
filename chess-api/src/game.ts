@@ -65,6 +65,7 @@ import {
 import { updateEloRatings } from './elo.js';
 import { sendChatHistory } from './chat.js';
 import { isBanned, loadPersistedBans } from './bans.js';
+import { loadPersistedBlocks } from './blocks.js';
 
 export {
   BOT_PLAYER_ID,
@@ -662,6 +663,12 @@ export async function joinGame(
     if (!game) return { success: false, error: 'Game not found' };
     if (game.status !== 'waiting') return { success: false, error: 'Game is not open for joining' };
     if (game.players.white === playerId) return { success: false, error: 'Cannot join your own game' };
+    if (
+      game.players.white &&
+      (isBlockedBy(playerId, game.players.white) || isBlockedBy(game.players.white, playerId))
+    ) {
+      return { success: false, error: 'Cannot join: player has blocked you or you have blocked them' };
+    }
     const activeCount = countActiveGamesForPlayer(playerId);
     if (activeCount >= MAX_GAMES_PER_PLAYER)
       return { success: false, error: `Already in ${activeCount} active game(s) (max ${MAX_GAMES_PER_PLAYER})` };
@@ -1688,5 +1695,6 @@ export function killAllEngines(): void {
 const isTestEnv = typeof process.env.JEST_WORKER_ID !== 'undefined' || process.env.NODE_ENV === 'test';
 if (!isTestEnv) {
   loadPersistedBans().catch((err) => logger.error('Failed to load persisted bans:', err));
+  loadPersistedBlocks().catch((err) => logger.error('Failed to load persisted blocks:', err));
   startWaitingGameSweep();
 }

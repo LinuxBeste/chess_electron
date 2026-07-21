@@ -21,6 +21,7 @@ import {
   getUserByUsername,
 } from './db.js';
 import { chatHistory, games, spectatorConnections, sendToPlayer, sendToSpectators, wsConnections } from './state.js';
+import { isBlockedOrMutedBy } from './blocks.js';
 
 const LOBBY_CONVERSATION_ID = 'lobby';
 
@@ -77,7 +78,8 @@ export async function handleLobbyChat(playerId: string, text: string): Promise<v
     timestamp,
   };
 
-  for (const [, conns] of wsConnections) {
+  for (const [connPlayerId, conns] of wsConnections) {
+    if (isBlockedOrMutedBy(connPlayerId, playerId)) continue;
     for (const ws of conns) {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
     }
@@ -165,7 +167,9 @@ export async function handlePrivateChat(senderId: string, targetPlayerId: string
   };
 
   sendToPlayer(senderId, message);
-  sendToPlayer(targetPlayerId, message);
+  if (!isBlockedOrMutedBy(targetPlayerId, senderId)) {
+    sendToPlayer(targetPlayerId, message);
+  }
 }
 
 export async function sendPrivateChatHistory(convId: string, ws: WebSocket): Promise<void> {
@@ -556,8 +560,8 @@ export function handleChatMessage(gameId: string, playerId: string, text: string
   };
 
   const { white, black } = game.players;
-  if (white) sendToPlayer(white, message);
-  if (black) sendToPlayer(black, message);
+  if (white && !isBlockedOrMutedBy(white, playerId)) sendToPlayer(white, message);
+  if (black && !isBlockedOrMutedBy(black, playerId)) sendToPlayer(black, message);
   sendToSpectators(gameId, message);
 }
 

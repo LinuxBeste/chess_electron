@@ -13,6 +13,7 @@ import { IncomingMessage } from 'http';
 import routes from './routes.js';
 import adminRouter from './admin.js';
 import friendsRouter from './friends.js';
+import blocksRouter from './blocks.js';
 import * as game from './game.js';
 import * as db from './db.js';
 import * as chat from './chat.js';
@@ -187,6 +188,7 @@ app.get('/admin/*', (_req, res) => {
   res.sendFile(path.join(adminDir, 'index.html'));
 });
 app.use(friendsRouter);
+app.use(blocksRouter);
 
 // Catch-all 404: HTML page for browsers, JSON for API clients
 const NOT_FOUND_HTML = `<!DOCTYPE html>

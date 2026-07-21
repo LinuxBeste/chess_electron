@@ -344,6 +344,20 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       ALTER TABLE completed_games ADD COLUMN IF NOT EXISTS rated BOOLEAN NOT NULL DEFAULT true;
     `,
   },
+  {
+    version: 14,
+    sql: `
+      CREATE TABLE IF NOT EXISTS blocked_players (
+        blocker_id TEXT NOT NULL REFERENCES users(id),
+        blocked_id TEXT NOT NULL REFERENCES users(id),
+        reason TEXT NOT NULL DEFAULT 'block',
+        created_at BIGINT NOT NULL,
+        PRIMARY KEY (blocker_id, blocked_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_blocked_players_blocker ON blocked_players(blocker_id);
+      CREATE INDEX IF NOT EXISTS idx_blocked_players_blocked ON blocked_players(blocked_id);
+    `,
+  },
 ];
 
 let migrated = false;
@@ -830,6 +844,47 @@ export async function getFriendIds(userId: string): Promise<string[]> {
   const ids = (rows as { friend_id: string }[]).map((r) => r.friend_id);
   logger.debug('DB: getFriendIds userId=' + userId + ' count=' + ids.length);
   return ids;
+}
+
+/* ─── Blocks / Mutes ─── */
+
+export async function blockPlayer(blockerId: string, blockedId: string, reason: 'block' | 'mute'): Promise<void> {
+  await getPool().query(
+    'INSERT INTO blocked_players (blocker_id, blocked_id, reason, created_at) VALUES ($1, $2, $3, $4) ON CONFLICT (blocker_id, blocked_id) DO UPDATE SET reason = $3',
+    [blockerId, blockedId, reason, Date.now()],
+  );
+}
+
+export async function unblockPlayer(blockerId: string, blockedId: string): Promise<void> {
+  await getPool().query('DELETE FROM blocked_players WHERE blocker_id = $1 AND blocked_id = $2', [
+    blockerId,
+    blockedId,
+  ]);
+}
+
+export async function getBlockedIds(blockerId: string): Promise<{ blocked_id: string; reason: string }[]> {
+  const { rows } = await getPool().query('SELECT blocked_id, reason FROM blocked_players WHERE blocker_id = $1', [
+    blockerId,
+  ]);
+  return rows as { blocked_id: string; reason: string }[];
+}
+
+export async function getBlockersOfPlayer(playerId: string): Promise<string[]> {
+  const { rows } = await getPool().query('SELECT blocker_id FROM blocked_players WHERE blocked_id = $1', [playerId]);
+  return (rows as { blocker_id: string }[]).map((r) => r.blocker_id);
+}
+
+export async function getBlockRelation(blockerId: string, blockedId: string): Promise<'block' | 'mute' | null> {
+  const { rows } = await getPool().query(
+    'SELECT reason FROM blocked_players WHERE blocker_id = $1 AND blocked_id = $2',
+    [blockerId, blockedId],
+  );
+  return rows.length > 0 ? (rows[0] as { reason: 'block' | 'mute' }).reason : null;
+}
+
+export async function loadAllBlocks(): Promise<{ blocker_id: string; blocked_id: string; reason: string }[]> {
+  const { rows } = await getPool().query('SELECT blocker_id, blocked_id, reason FROM blocked_players');
+  return rows as { blocker_id: string; blocked_id: string; reason: string }[];
 }
 
 /* ─── Leaderboard ─── */

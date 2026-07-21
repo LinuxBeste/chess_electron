@@ -22,6 +22,9 @@ import {
   deleteAvatar as apiDeleteAvatar,
   updateEmail as apiUpdateEmail,
   avatarSrc,
+  getBlockedUsers,
+  unblockPlayer,
+  type BlockedUserInfo,
 } from '../api';
 import { useStoreValue } from '../hooks/useStore';
 import { displayNameSchema } from '../validation';
@@ -1079,6 +1082,9 @@ function AccountTab() {
   const [email, setEmail] = useState('');
   const [emailPassword, setEmailPassword] = useState('');
   const [emailSaving, setEmailSaving] = useState(false);
+  const [blockedList, setBlockedList] = useState<BlockedUserInfo[]>([]);
+  const [blockedListLoading, setBlockedListLoading] = useState(false);
+  const [blockedListError, setBlockedListError] = useState('');
 
   useEffect(() => {
     if (!token) return;
@@ -1098,7 +1104,33 @@ function AccountTab() {
         logger.error('Failed to load account info', { error: err instanceof Error ? err.message : String(err) });
         setStatsLoading(false);
       });
+    loadBlockedList();
   }, [token]);
+
+  async function loadBlockedList() {
+    if (!token) return;
+    setBlockedListLoading(true);
+    setBlockedListError('');
+    try {
+      const list = await getBlockedUsers();
+      setBlockedList(list);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setBlockedListError(msg || 'Failed to load blocked users');
+    } finally {
+      setBlockedListLoading(false);
+    }
+  }
+
+  async function handleUnblock(playerId: string) {
+    try {
+      await unblockPlayer(playerId);
+      setBlockedList((prev) => prev.filter((b) => b.playerId !== playerId));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('Failed to unblock user', { playerId, error: msg });
+    }
+  }
 
   async function handleSaveDisplayName() {
     const parsed = displayNameSchema.safeParse(displayName);
@@ -1534,6 +1566,46 @@ function AccountTab() {
           {t('settings.account.notRegistered')}
           <br />
           <span style={{ fontSize: 11 }}>{t('settings.account.signUpPrompt')}</span>
+        </div>
+      )}
+
+      {/* Blocked Users */}
+      <Section title={t('settings.account.blockedUsers')} />
+      {blockedListLoading ? (
+        <div style={{ fontSize: 13, color: '#888', padding: '8px 0' }}>{t('common.loading')}</div>
+      ) : blockedListError ? (
+        <div style={{ fontSize: 12, color: '#f44336', padding: '8px 0' }}>{blockedListError}</div>
+      ) : blockedList.length === 0 ? (
+        <div style={{ fontSize: 13, color: '#888', padding: '8px 0' }}>{t('settings.account.noBlockedUsers')}</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '8px 0' }}>
+          {blockedList.map((b) => (
+            <div
+              key={b.playerId}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '6px 8px',
+                borderRadius: 4,
+                background: 'rgba(255,255,255,0.03)',
+              }}
+            >
+              <div>
+                <span style={{ fontSize: 13, color: '#e0e0e0' }}>{b.displayName || b.username}</span>
+                <span style={{ fontSize: 11, color: '#888', marginLeft: 6 }}>
+                  ({b.reason === 'block' ? t('settings.account.blocked') : t('settings.account.muted')})
+                </span>
+              </div>
+              <button
+                className="btn btn-ghost btn-xs"
+                style={{ fontSize: 11, color: '#ff9800' }}
+                onClick={() => handleUnblock(b.playerId)}
+              >
+                {t('settings.account.unblock')}
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
